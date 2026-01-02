@@ -14,7 +14,8 @@ import {
   Menu,
   Star,
   Clock,
-  Trash2
+  Trash2,
+  User
 } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import FileBrowser from './components/FileBrowser';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
         />
 
         <Sidebar
+          user={user}
           role={user.role}
           onLogout={logout}
           isOpen={isSidebarOpen}
@@ -67,10 +69,11 @@ const App: React.FC = () => {
   );
 };
 
-const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ role, onLogout, isOpen, onClose }) => {
+const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ user, role, onLogout, isOpen, onClose }) => {
   const location = useLocation();
 
   const menuItems = [
+    { path: `/dept/members/${user.username}`, label: '个人空间', icon: User },
     { path: '/files', label: '所有文件', icon: HardDrive },
     { path: '/recent', label: '最近访问', icon: Clock },
     { path: '/starred', label: '星标文件', icon: Star },
@@ -118,6 +121,35 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
 };
 
 const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenuClick }) => {
+  const location = useLocation();
+  const pathParts = location.pathname.split('/').filter(Boolean);
+
+  const getBreadcrumbs = () => {
+    if (location.pathname === '/files') return [{ label: '所有文件', active: true }];
+    if (location.pathname === '/recent') return [{ label: '最近访问', active: true }];
+    if (location.pathname === '/starred') return [{ label: '星标文件', active: true }];
+    if (location.pathname === '/recycle') return [{ label: '回收站', active: true }];
+    if (location.pathname.startsWith('/dept/')) {
+      const code = pathParts[1];
+      const subPath = pathParts.slice(2).join('/');
+      let label = code;
+      if (code === 'MS') label = '市场部 (MS)';
+      else if (code === 'OP') label = '运营部 (OP)';
+      else if (code === 'RD') label = '研发中心 (RD)';
+      else if (code === 'GE') label = '综合管理 (GE)';
+      else if (code === 'members') label = `个人空间 (${pathParts[2] || ''})`;
+
+      const crumbs = [{ label, active: !subPath }];
+      if (subPath) {
+        crumbs.push({ label: subPath, active: true });
+      }
+      return crumbs;
+    }
+    return [{ label: '主页', active: true }];
+  };
+
+  const crumbs = getBreadcrumbs();
+
   return (
     <header className="top-bar">
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -125,7 +157,15 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <Menu size={24} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <span>根目录</span> <ChevronRight size={14} /> <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>主文件库</span>
+          <span>根目录</span>
+          {crumbs.map((crumb, i) => (
+            <React.Fragment key={i}>
+              <ChevronRight size={14} />
+              <span style={{ color: crumb.active ? 'var(--text-main)' : 'inherit', fontWeight: crumb.active ? 600 : 400 }}>
+                {crumb.label}
+              </span>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 

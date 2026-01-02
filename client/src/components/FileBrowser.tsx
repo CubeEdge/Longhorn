@@ -25,7 +25,8 @@ import {
     FolderPlus,
     Eye,
     User,
-    Clock
+    Clock,
+    ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -394,8 +395,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         </button>
                     )}
                     <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                            {mode === 'recent' ? '最近访问' : (mode === 'starred' ? '星标文件' : (currentPath || '主文件库'))}
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {mode === 'recent' ? '最近访问' :
+                                mode === 'starred' ? '星标文件' :
+                                    (<>
+                                        <span style={{ opacity: 0.5 }}>主文件库</span>
+                                        {currentPath && (
+                                            <>
+                                                <ChevronRight size={20} color="var(--accent-blue)" strokeWidth={3} />
+                                                <span>{currentPath.split('/').pop()}</span>
+                                            </>
+                                        )}
+                                    </>)
+                            }
                         </h2>
                         <div className="hint">{files.length} 个项目</div>
                     </div>
