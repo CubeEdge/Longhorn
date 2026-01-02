@@ -1,0 +1,654 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+import { renderAsync } from 'docx-preview';
+import * as XLSX from 'xlsx';
+import { useAuthStore } from '../store/useAuthStore';
+import {
+    Folder,
+    File,
+    Video,
+    Share2,
+    Plus,
+    ChevronLeft,
+    Upload,
+    Check,
+    LayoutGrid,
+    List,
+    X,
+    Download,
+    FileText,
+    Table as TableIcon,
+    MoreHorizontal,
+    Info,
+    Trash2,
+    FolderPlus,
+    Eye,
+    User,
+    Clock
+} from 'lucide-react';
+import { format } from 'date-fns';
+
+interface FileItem {
+    name: string;
+    isDirectory: boolean;
+    path: string;
+    size: number;
+    mtime: string;
+    accessCount?: number;
+    uploader?: string;
+}
+
+interface AccessLog {
+    username: string;
+    count: number;
+    last_access: string;
+}
+
+type ViewMode = 'grid' | 'list';
+type SortKey = 'name' | 'mtime' | 'size' | 'accessCount' | 'uploader';
+type SortOrder = 'asc' | 'desc';
+
+interface MenuAnchor {
+    x: number;
+    y: number;
+    file: FileItem;
+}
+
+interface FileBrowserProps {
+    mode?: 'all' | 'recent' | 'starred';
+}
+
+const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [currentPath, setCurrentPath] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [sortKey, setSortKey] = useState<SortKey>('name');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    const [canWrite, setCanWrite] = useState(false);
+
+    // Preview & Menu State
+    const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+    const [isZoomed, setIsZoomed] = useState(false);
+    const [textContent, setTextContent] = useState<string | null>(null);
+    const [excelHtml, setExcelHtml] = useState<string | null>(null);
+    const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+
+    // Stats Modal State
+    const [statsFile, setStatsFile] = useState<FileItem | null>(null);
+    const [accessHistory, setAccessHistory] = useState<AccessLog[]>([]);
+
+    // New Folder State
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+
+    // Bulk Actions State
+    const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [moveTargetDir, setMoveTargetDir] = useState('');
+    const [allDepts, setAllDepts] = useState<any[]>([]);
+
+    const { deptCode } = useParams();
+    const { token } = useAuthStore();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const docContainerRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    const fetchFiles = async (path: string) => {
+        setLoading(true);
+        try {
+            const url = mode === 'recent' ? '/api/files/recent' : (mode === 'starred' ? '/api/files/starred' : `/api/files?path=${path}`);
+            const res = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data && Array.isArray(res.data.items)) {
+                setFiles(res.data.items);
+                setCanWrite(res.data.userCanWrite);
+                setCurrentPath(path);
+            } else {
+                console.error("Invalid API response structure", res.data);
+                setFiles([]);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (mode === 'all') {
+            fetchFiles(deptCode || '');
+        } else {
+            fetchFiles('');
+        }
+        setSelectedPaths([]); // Reset selection on folder change
+    }, [deptCode, token, mode]);
+
+    useEffect(() => {
+        const fetchDepts = async () => {
+            try {
+                const res = await axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } });
+                setAllDepts(res.data);
+            } catch (e) { console.error(e); }
+        };
+        fetchDepts();
+    }, [token]);
+
+    // Event Listeners
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                closePreview();
+                setIsCreatingFolder(false);
+                setStatsFile(null);
+            }
+        };
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuAnchor(null);
+            }
+            // Note: Modal click-outside is handled by its own overlay
+        };
+        window.addEventListener('keydown', handleEsc);
+        window.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            window.removeEventListener('keydown', handleEsc);
+            window.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Increment hit counter
+    const recordAccess = async (file: FileItem) => {
+        try {
+            await axios.post('/api/files/hit', { path: file.path }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setFiles(prev => prev.map(f => f.path === file.path ? { ...f, accessCount: (f.accessCount || 0) + 1 } : f));
+        } catch (err) {
+            console.error("Failed to record access", err);
+        }
+    };
+
+    // Fetch detailed stats
+    const fetchStats = async (file: FileItem) => {
+        try {
+            const res = await axios.get(`/api/files/stats?path=${file.path}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setAccessHistory(res.data);
+            setStatsFile(file);
+        } catch (err) {
+            console.error("Failed to fetch statistics", err);
+        }
+    };
+
+    // Rendering logic for DOCX/XLSX
+    useEffect(() => {
+        if (previewFile && (docContainerRef.current || previewFile)) {
+            const ext = previewFile.name.split('.').pop()?.toLowerCase();
+            recordAccess(previewFile);
+
+            if (ext === 'docx' && docContainerRef.current) {
+                axios.get(`/preview/${previewFile.path}`, { responseType: 'blob' })
+                    .then(res => renderAsync(res.data, docContainerRef.current!))
+                    .catch(err => console.error(err));
+            } else if (['xlsx', 'xls'].includes(ext || '')) {
+                axios.get(`/preview/${previewFile.path}`, { responseType: 'arraybuffer' })
+                    .then(res => {
+                        const workbook = XLSX.read(res.data, { type: 'array' });
+                        const html = XLSX.utils.sheet_to_html(workbook.Sheets[workbook.SheetNames[0]], { id: 'excel-table' });
+                        setExcelHtml(html.replace('<table', '<table class="excel-table"'));
+                    });
+            } else if (['txt', 'md', 'js', 'ts', 'css'].includes(ext || '')) {
+                axios.get(`/preview/${previewFile.path}`).then(res => setTextContent(res.data));
+            }
+        }
+    }, [previewFile]);
+
+    const handleFolderClick = (path: string) => fetchFiles(path);
+    const handleBack = () => {
+        const parts = currentPath.split('/').filter(Boolean);
+        parts.pop();
+        fetchFiles(parts.join('/'));
+    };
+
+    const handleUploadClick = () => fileInputRef.current?.click();
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return;
+        setUploading(true);
+        const formData = new FormData();
+        Array.from(e.target.files).forEach(f => formData.append('files', f));
+        try {
+            await axios.post(`/api/upload?path=${currentPath}`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            setUploadStatus('success');
+            fetchFiles(currentPath);
+        } catch { setUploadStatus('error'); } finally { setUploading(false); setTimeout(() => setUploadStatus('idle'), 3000); }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
+        try {
+            await axios.post('/api/folders', { path: currentPath, name: newFolderName }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setIsCreatingFolder(false);
+            setNewFolderName('');
+            fetchFiles(currentPath);
+        } catch (err) {
+            alert("创建文件夹失败");
+        }
+    };
+
+    const formattedSortedFiles = [...files].sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        let valA = a[sortKey as keyof FileItem], valB = b[sortKey as keyof FileItem];
+        if (typeof valA === 'string' && typeof valB === 'string') return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        return sortOrder === 'asc' ? ((valA as number) || 0) - ((valB as number) || 0) : ((valB as number) || 0) - ((valA as number) || 0);
+    });
+
+    const formatSize = (bytes: number) => {
+        if (bytes === 0) return '--';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return parseFloat((bytes / Math.pow(1024, i)).toFixed(1)) + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+    };
+
+    const isPreviewable = (f: string) => ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov', 'm4v', 'heic', 'heif', 'pdf', 'docx', 'xlsx', 'xls', 'txt', 'md', 'js', 'ts'].includes(f.split('.').pop()?.toLowerCase() || '');
+
+    const handleItemClick = (item: FileItem) => {
+        if (item.isDirectory) handleFolderClick(item.path);
+        else if (isPreviewable(item.name)) { setPreviewFile(item); setIsZoomed(false); setTextContent(null); setExcelHtml(null); }
+    };
+
+    const closePreview = () => { setPreviewFile(null); setIsZoomed(false); setTextContent(null); setExcelHtml(null); };
+
+    const handleOpenMenu = (e: React.MouseEvent, file: FileItem) => {
+        e.stopPropagation();
+        setMenuAnchor({ x: e.clientX, y: e.clientY, file });
+    };
+
+    const handleDelete = async (file: FileItem) => {
+        if (!window.confirm(`确定要删除 ${file.name} 吗？`)) return;
+        try {
+            await axios.delete(`/api/files?path=${file.path}`, { headers: { Authorization: `Bearer ${token}` } });
+            fetchFiles(currentPath);
+            setMenuAnchor(null);
+        } catch (err) { alert("删除失败"); }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`确定要删除选中的 ${selectedPaths.length} 个项目吗？`)) return;
+        try {
+            await axios.post('/api/files/bulk-delete', { paths: selectedPaths }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSelectedPaths([]);
+            fetchFiles(currentPath);
+        } catch (err) { alert("批量删除失败"); }
+    };
+
+    const handleBulkMove = async () => {
+        if (!moveTargetDir) return;
+        try {
+            await axios.post('/api/files/bulk-move', { paths: selectedPaths, targetDir: moveTargetDir }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSelectedPaths([]);
+            setIsMoveModalOpen(false);
+            fetchFiles(currentPath);
+        } catch (err) { alert("批量移动失败"); }
+    };
+
+    const toggleSelect = (e: React.MouseEvent, path: string) => {
+        e.stopPropagation();
+        setSelectedPaths(prev =>
+            prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+        );
+    };
+
+    const selectAll = () => {
+        if (selectedPaths.length === files.length) setSelectedPaths([]);
+        else setSelectedPaths(files.map(f => f.path));
+    };
+
+    const handleShare = (file: FileItem) => {
+        alert(`分享链接已生成: ${window.location.origin}/shared/${file.name}`);
+        setMenuAnchor(null);
+    };
+
+    const getIcon = (item: FileItem, size: number = 32) => {
+        if (item.isDirectory) return <Folder size={size} fill="var(--accent-blue)" color="var(--accent-blue)" opacity={0.9} />;
+        const ext = item.name.split('.').pop()?.toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext || '')) {
+            return (
+                <div className="thumbnail-box">
+                    <img src={`/preview/${item.path}`} className="thumbnail-img" alt="" loading="lazy" onError={(e) => { (e.target as any).src = ''; (e.target as any).parentElement.innerHTML = `<File size=${size} color="var(--text-secondary)"/>`; }} />
+                </div>
+            );
+        }
+        if (['mp4', 'mov', 'm4v'].includes(ext || '')) return <Video size={size} color="var(--text-secondary)" />;
+        if (ext === 'pdf') return <FileText size={size} color="#FF4B4B" />;
+        if (ext === 'docx') return <FileText size={size} color="#4B89FF" />;
+        if (['xlsx', 'xls'].includes(ext || '')) return <TableIcon size={size} color="#1D6F42" />;
+        return <File size={size} color="var(--text-secondary)" />;
+    };
+
+    const renderPreviewContent = (file: FileItem) => {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        const url = `/preview/${file.path}`;
+        if (ext?.match(/(mp4|mov|m4v)$/i)) return <video controls autoPlay className="preview-media" onClick={e => e.stopPropagation()}><source src={url} /></video>;
+        if (ext === 'pdf') return <iframe src={url} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} />;
+        if (ext === 'docx') return <div ref={docContainerRef} className="doc-preview-container" onClick={e => e.stopPropagation()} />;
+        if (['xlsx', 'xls'].includes(ext || '')) return <div className="doc-preview-container excel-preview-container" onClick={e => e.stopPropagation()}>{excelHtml ? <div dangerouslySetInnerHTML={{ __html: excelHtml }} /> : "加载中..."}</div>;
+        if (['txt', 'md', 'js', 'ts', 'css'].includes(ext || '')) return <div className="doc-preview-container" onClick={e => e.stopPropagation()}><pre className="txt-preview">{textContent}</pre></div>;
+        return <img src={url} className={`preview-media ${isZoomed ? 'zoomed' : ''}`} alt="" onDoubleClick={e => { e.stopPropagation(); setIsZoomed(!isZoomed); }} onClick={e => e.stopPropagation()} />;
+    };
+
+    return (
+        <div className="fade-in">
+            <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+
+            {/* Batch Action Bar */}
+            {selectedPaths.length > 0 && (
+                <div style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 100,
+                    background: 'var(--accent-blue)',
+                    color: '#000',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    marginBottom: 20,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    boxShadow: '0 8px 32px rgba(255, 210, 0, 0.3)',
+                    animation: 'slideDown 0.3s ease'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(0,0,0,0.1)' }}><X size={18} color="#000" /></button>
+                        <span style={{ fontWeight: 800 }}>已选中 {selectedPaths.length} 个项目</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button onClick={() => setIsMoveModalOpen(true)} style={{ background: '#000', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            移动到...
+                        </button>
+                        <button onClick={handleBulkDelete} style={{ background: '#FF3B30', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            批量删除
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Top Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {currentPath && (
+                        <button onClick={handleBack} className="btn-icon-only" title="返回">
+                            <ChevronLeft size={28} color="var(--accent-blue)" strokeWidth={2.5} />
+                        </button>
+                    )}
+                    <div>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+                            {mode === 'recent' ? '最近访问' : (mode === 'starred' ? '星标文件' : (currentPath || '主文件库'))}
+                        </h2>
+                        <div className="hint">{files.length} 个项目</div>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div className="view-toggle">
+                        <button className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}><LayoutGrid size={18} /></button>
+                        <button className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}><List size={18} /></button>
+                    </div>
+                    {canWrite && mode === 'all' && (
+                        <>
+                            <button className="btn-icon-only" onClick={() => setIsCreatingFolder(true)} title="新建文件夹">
+                                <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
+                            </button>
+                            <button className="btn-primary" onClick={handleUploadClick} disabled={uploading}>
+                                {uploading ? '上传中...' : <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> <span style={{ fontWeight: 600 }}>上传</span></div>}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {isCreatingFolder && (
+                <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--accent-blue)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', boxShadow: 'var(--shadow-lg)' }}>
+                    <Folder color="var(--accent-blue)" size={24} />
+                    <input
+                        type="text"
+                        autoFocus
+                        placeholder="文件夹名称"
+                        value={newFolderName}
+                        onChange={e => setNewFolderName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
+                        style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent-blue)', color: 'var(--text-main)', outline: 'none', padding: '4px 0', fontSize: '1rem' }}
+                    />
+                    <button className="btn-primary" onClick={handleCreateFolder} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>创建</button>
+                    <button onClick={() => setIsCreatingFolder(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
+                </div>
+            )}
+
+            {uploadStatus === 'success' && <div style={{ background: '#ecfdf5', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> 上传成功</div>}
+
+            {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>正在读取文件库...</span></div>
+            ) : files.length > 0 ? (
+                viewMode === 'grid' ? (
+                    <div className="file-grid">
+                        {Array.isArray(files) && formattedSortedFiles.map((file) => (
+                            <div key={file.path} className={`file-item ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)} style={{ position: 'relative' }}>
+                                <div className="item-checkbox" onClick={(e) => toggleSelect(e, file.path)}>
+                                    {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                </div>
+                                <button className="more-btn" onClick={(e) => handleOpenMenu(e, file)}>
+                                    <MoreHorizontal size={16} />
+                                </button>
+                                <div className="file-icon">{getIcon(file, 40)}</div>
+                                <span className="file-name">{file.name}</span>
+                            </div>
+                        ))}
+                        <div className="file-item" onClick={handleUploadClick} style={{ border: '2px dashed var(--glass-border)', background: 'transparent' }}>
+                            <Plus size={40} color="var(--glass-border)" />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="file-list">
+                        <div className="file-list-header">
+                            <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
+                                {selectedPaths.length > 0 && selectedPaths.length === files.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                            </div>
+                            <div className="col-name" onClick={() => { setSortKey('name'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>名称</div>
+                            <div className="col-uploader hidden-mobile" onClick={() => { setSortKey('uploader'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>上传者</div>
+                            <div className="col-date hidden-mobile" onClick={() => { setSortKey('mtime'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>上传日期</div>
+                            <div className="col-size" onClick={() => { setSortKey('size'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>大小</div>
+                            <div className="col-stats" onClick={() => { setSortKey('accessCount'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>访问次数</div>
+                            <div style={{ width: 40 }}></div>
+                        </div>
+                        {Array.isArray(files) && formattedSortedFiles.map((file) => (
+                            <div key={file.path} className={`file-list-row ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)}>
+                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.path)}>
+                                    {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                </div>
+                                <div className="col-name">
+                                    <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>{file.isDirectory ? <Folder size={20} fill="var(--accent-blue)" color="var(--accent-blue)" /> : getIcon(file, 20)}</div>
+                                    <span>{file.name}</span>
+                                </div>
+                                <div className="col-uploader hidden-mobile" title={file.uploader}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} opacity={0.5} color="var(--accent-blue)" /> {file.uploader || 'system'}</div>
+                                </div>
+                                <div className="col-date hidden-mobile">{format(new Date(file.mtime), 'yyyy-MM-dd HH:mm')}</div>
+                                <div className="col-size">{file.isDirectory ? '--' : formatSize(file.size)}</div>
+                                <div className="col-stats" onClick={(e) => { e.stopPropagation(); fetchStats(file); }}>
+                                    {file.isDirectory ? '--' : <><Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" /> {file.accessCount || 0}</>}
+                                </div>
+                                <div className="list-more-btn" onClick={(e) => handleOpenMenu(e, file)}>
+                                    <MoreHorizontal size={18} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            ) : null}
+
+            {/* Stats Modal */}
+            {statsFile && (
+                <div className="modal-overlay" onClick={() => setStatsFile(null)}>
+                    <div className="modal-content fade-in" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Eye size={20} color="var(--accent-blue)" /> 访问分析</h3>
+                            <button onClick={() => setStatsFile(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
+                        </div>
+                        <div style={{ marginBottom: 20, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 12 }}>
+                            <div className="hint" style={{ marginBottom: 4 }}>项目名称</div>
+                            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{statsFile.name}</div>
+                        </div>
+                        <div className="stats-history-list">
+                            {accessHistory.length > 0 ? accessHistory.map((log, i) => (
+                                <div key={i} className="stats-history-item">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,210,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <User size={16} color="var(--accent-blue)" />
+                                        </div>
+                                        <div>
+                                            <div className="stats-user">{log.username}</div>
+                                            <div className="hint" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <Clock size={12} color="var(--accent-blue)" /> {format(new Date(log.last_access), 'yyyy-MM-dd HH:mm')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{log.count}</div>
+                                        <div className="hint" style={{ fontSize: '0.7rem' }}>次访问</div>
+                                    </div>
+                                </div>
+                            )) : <div style={{ textAlign: 'center', padding: 20, opacity: 0.5 }}>暂无详细记录</div>}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Context Menu Overlay */}
+            {menuAnchor && (
+                <div
+                    ref={menuRef}
+                    className="context-menu"
+                    style={{
+                        left: Math.min(menuAnchor.x, window.innerWidth - 240),
+                        top: Math.min(menuAnchor.y, window.innerHeight - 380)
+                    }}
+                >
+                    <div className="context-menu-item" onClick={() => { setPreviewFile(menuAnchor.file); setMenuAnchor(null); }}>
+                        <Info size={16} color="var(--accent-blue)" /> 显示简介
+                    </div>
+                    <a
+                        href={`/preview/${menuAnchor.file.path}`}
+                        download={menuAnchor.file.name}
+                        className="context-menu-item"
+                        style={{ textDecoration: 'none' }}
+                        onClick={() => { recordAccess(menuAnchor.file); setMenuAnchor(null); }}
+                    >
+                        <Download size={16} color="var(--accent-blue)" /> 下载副本...
+                    </a>
+                    <div className="context-menu-separator" />
+                    <div className="context-menu-item" onClick={() => handleShare(menuAnchor.file)}>
+                        <Share2 size={16} color="var(--accent-blue)" /> 与其他人协作...
+                    </div>
+                    {canWrite && (
+                        <>
+                            <div className="context-menu-separator" />
+                            <div className="context-menu-item danger" onClick={() => handleDelete(menuAnchor.file)}>
+                                <Trash2 size={16} /> 删除所选项
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {previewFile && (
+                <div className="preview-overlay" onClick={closePreview}>
+                    <div className="preview-header" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button onClick={closePreview} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={24} /></button>
+                            <span style={{ fontWeight: 600 }}>{previewFile.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <a href={`/preview/${previewFile.path}`} download={previewFile.name} className="btn-preview" onClick={() => recordAccess(previewFile)}><Download size={18} /> 下载</a>
+                            <button className="btn-preview primary" onClick={() => handleShare(previewFile)}><Share2 size={18} /> 分享</button>
+                        </div>
+                    </div>
+                    <div className="preview-content">{renderPreviewContent(previewFile)}</div>
+                    <div className="preview-actions">
+                        <div className="hint" style={{ color: 'white', opacity: 0.6 }}>
+                            {formatSize(previewFile.size)} • 上传者: {previewFile.uploader || 'admin'} • 总访问: {previewFile.accessCount || 0}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move Modal */}
+            {isMoveModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsMoveModalOpen(false)}>
+                    <div className="modal-content fade-in" onClick={e => e.stopPropagation()} style={{ overflow: 'visible', maxWidth: '460px' }}>
+                        <div className="modal-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><FolderPlus size={20} color="var(--accent-blue)" /> 移动至项目文件夹</h3>
+                            <button onClick={() => setIsMoveModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
+                        </div>
+                        <div style={{ padding: '10px 0' }}>
+                            <p className="hint" style={{ marginBottom: 24 }}>请选择目标目录，选中的 {selectedPaths.length} 个项目将被迁移至此处。</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                                {allDepts.map(d => {
+                                    const codeMatch = d.name.match(/\(([^)]+)\)/);
+                                    const code = codeMatch ? codeMatch[1] : d.name;
+                                    return (
+                                        <button
+                                            key={d.id}
+                                            onClick={() => setMoveTargetDir(code)}
+                                            style={{
+                                                padding: '12px 20px',
+                                                borderRadius: '30px',
+                                                border: moveTargetDir === code ? '2px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+                                                background: moveTargetDir === code ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                                color: moveTargetDir === code ? 'var(--accent-blue)' : 'var(--text-main)',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {d.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button
+                                className="btn-primary"
+                                style={{ width: '100%', marginTop: 32, justifyContent: 'center', height: 48 }}
+                                onClick={handleBulkMove}
+                                disabled={!moveTargetDir}
+                            >
+                                执行迁移
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {files.length === 0 && !loading && (
+                <div className="upload-zone" onClick={handleUploadClick}>
+                    <Upload size={48} style={{ color: 'var(--accent-blue)', marginBottom: 16 }} />
+                    <h3>文件夹为空</h3>
+                    <p className="hint">点击或拖拽上传</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default FileBrowser;

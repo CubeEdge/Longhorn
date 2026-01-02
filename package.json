@@ -1,0 +1,11 @@
+{
+    "name": "longhorn-project",
+    "version": "1.0.0",
+    "scripts": {
+        "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+        "build-client": "cd client && npm run build",
+        "server": "cd server && npm start",
+        "server-dev": "cd server && npm run dev",
+        "deploy": "git pull && npm run build-client && pm2 restart longhorn"
+    }
+}

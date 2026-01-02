@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+dist/
+.env
+*.db
+server/data/DiskA/*
+server/data/DiskB/*
+server/data/.recycle/*
+!server/data/DiskA/.gitkeep
+!server/data/DiskB/.gitkeep
+!server/data/.recycle/.gitkeep
+.vite/
+*.zip
+*.log
