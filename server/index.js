@@ -215,8 +215,15 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
 };
 
 async function moveItemToRecycle(subPath, userId) {
-    const fullPath = path.join(DISK_A, subPath);
-    if (!fs.existsSync(fullPath)) return;
+    let fullPath = path.join(DISK_A, subPath);
+    if (!fs.existsSync(fullPath)) {
+        fullPath = path.join(DISK_B, subPath);
+    }
+
+    if (!fs.existsSync(fullPath)) {
+        console.error(`[Recycle] File not found in DISK_A or DISK_B: ${subPath}`);
+        return;
+    }
 
     const stats = fs.statSync(fullPath);
     const isDirectory = stats.isDirectory();
@@ -224,16 +231,22 @@ async function moveItemToRecycle(subPath, userId) {
     const deletedName = `${Date.now()}_${fileName}`;
     const deletedPath = path.join(RECYCLE_DIR, deletedName);
 
+    // Ensure recycle dir exists
+    await fs.ensureDir(RECYCLE_DIR);
     await fs.move(fullPath, deletedPath);
+
+    const user = db.prepare('SELECT username FROM users WHERE id = ?').get(userId);
+    const deletedBy = user ? user.username : 'unknown';
 
     db.prepare(`
         INSERT INTO recycle_bin (name, original_path, deleted_path, user_id, is_directory)
         VALUES (?, ?, ?, ?, ?)
     `).run(fileName, subPath, deletedName, userId, isDirectory ? 1 : 0);
 
-    // Clean up database records from other tables (keeping metadata in recycle_bin)
+    // Clean up database records (stats and logs)
     db.prepare('DELETE FROM file_stats WHERE path = ? OR path LIKE ?').run(subPath, subPath + '/%');
     db.prepare('DELETE FROM access_logs WHERE path = ? OR path LIKE ?').run(subPath, subPath + '/%');
+    console.log(`[Recycle] Item moved: ${subPath} by ${deletedBy}`);
 }
 
 const isAdmin = (req, res, next) => {

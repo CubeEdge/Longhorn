@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Trash2, RotateCcw, Trash, Info } from 'lucide-react';
+import { Trash2, RotateCcw, Trash, Info, FileText, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface RecycleItem {
@@ -74,22 +74,23 @@ const RecycleBin: React.FC = () => {
     };
 
     return (
-        <div className="p-8 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-64px)] flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-10 shrink-0">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Trash2 className="w-6 h-6 text-blue-600" />
+                    <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+                        <Trash2 className="w-8 h-8 text-blue-600" />
                         回收站
                     </h1>
-                    <p className="text-gray-500 mt-1 flex items-center gap-1 text-sm">
-                        <Info className="w-4 h-4" />
-                        删除的文件将保留 30 天，过期后将自动物理销毁
-                    </p>
+                    <div className="flex items-center gap-2 mt-2 px-3 py-1 bg-blue-50/50 border border-blue-100/50 rounded-full w-fit">
+                        <Info className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-blue-700 text-xs font-medium">删除的文件将保留 30 天，过期后将自动物理销毁</span>
+                    </div>
                 </div>
                 {items.length > 0 && (
                     <button
                         onClick={handleClearAll}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 text-sm font-medium"
+                        className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 hover:shadow-sm active:scale-95 transition-all flex items-center gap-2 text-sm font-semibold"
                     >
                         <Trash className="w-4 h-4" />
                         清空回收站
@@ -97,77 +98,96 @@ const RecycleBin: React.FC = () => {
                 )}
             </div>
 
-            {loading ? (
-                <div className="flex justify-center p-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-            ) : items.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-20 text-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Trash2 className="w-8 h-8 text-gray-300" />
+            {/* Content Area */}
+            <div className="flex-1 min-h-0">
+                {loading ? (
+                    <div className="flex justify-center items-center h-full">
+                        <div className="relative">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-100 border-t-blue-600"></div>
+                        </div>
                     </div>
-                    <p className="text-gray-500">回收站是空的</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                            <tr>
-                                <th className="px-6 py-4">文件名</th>
-                                <th className="px-6 py-4">原路径</th>
-                                <th className="px-6 py-4">删除时间</th>
-                                <th className="px-6 py-4">执行人</th>
-                                <th className="px-6 py-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {items.map((item) => (
-                                <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                {item.is_directory ? (
-                                                    <Trash2 className="w-4 h-4 text-gray-400" />
-                                                ) : (
-                                                    <Trash className="w-4 h-4 text-gray-400" />
-                                                )}
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-700">{item.name}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-xs text-gray-400 font-mono">{item.original_path}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {format(new Date(item.deletion_date), 'yyyy-MM-dd HH:mm')}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {item.deleted_by}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2 isolate opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleRestore(item.id)}
-                                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                                                title="恢复"
-                                            >
-                                                <RotateCcw className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeletePermanently(item.id)}
-                                                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                                title="彻底删除"
-                                            >
-                                                <Trash className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                ) : items.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200 p-12 transition-all">
+                        <div className="w-24 h-24 bg-white rounded-3xl shadow-lg border border-gray-100 flex items-center justify-center mb-6 transform hover:rotate-6 transition-transform">
+                            <Trash2 className="w-12 h-12 text-gray-200" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">回收站为空</h3>
+                        <p className="text-gray-400 text-sm max-w-xs text-center">
+                            暂无被删除的文件。您可以放心浏览其他目录。
+                        </p>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+                        <div className="overflow-y-auto flex-1 custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 bg-white/80 backdrop-blur-md z-10 border-b border-gray-100">
+                                    <tr className="text-xs text-gray-400 font-bold uppercase tracking-widest">
+                                        <th className="px-8 py-5">文件名</th>
+                                        <th className="px-8 py-5">原位置</th>
+                                        <th className="px-8 py-5">删除日期</th>
+                                        <th className="px-8 py-5">操作者</th>
+                                        <th className="px-8 py-5 text-right whitespace-nowrap">管理</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {items.map((item) => (
+                                        <tr key={item.id} className="hover:bg-blue-50/20 transition-all group">
+                                            <td className="px-8 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.is_directory ? 'bg-amber-50' : 'bg-blue-50'}`}>
+                                                        {item.is_directory ? (
+                                                            <Folder className={`w-5 h-5 ${item.is_directory ? 'text-amber-500' : 'text-blue-500'}`} />
+                                                        ) : (
+                                                            <FileText className="w-5 h-5 text-blue-500" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</div>
+                                                        <div className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter mt-0.5">
+                                                            {item.is_directory ? '文件夹' : '文件'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded inline-block font-mono max-w-[200px] truncate">
+                                                    {item.original_path}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-4 text-sm text-gray-600 font-medium">
+                                                {format(new Date(item.deletion_date), 'yyyy-MM-dd HH:mm')}
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold">
+                                                    {item.deleted_by}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-4 text-right">
+                                                <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => handleRestore(item.id)}
+                                                        className="p-2.5 text-blue-600 hover:bg-blue-100 rounded-xl transition-all shadow-sm hover:shadow active:scale-90"
+                                                        title="立即恢复"
+                                                    >
+                                                        <RotateCcw className="w-4.5 h-4.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePermanently(item.id)}
+                                                        className="p-2.5 text-red-600 hover:bg-red-100 rounded-xl transition-all shadow-sm hover:shadow active:scale-90"
+                                                        title="永久删除"
+                                                    >
+                                                        <Trash className="w-4.5 h-4.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -1,5 +1,12 @@
 # Changelog
 
+## [10.0.0] - 2026-01-02
+### Fixed
+- **UI**: 重构回收站界面，修复排版乱序与图标重复问题，引入毛玻璃审美。
+- **Core**: 修复软删除逻辑，支持跨 DISK_A 和 DISK_B 的文件检测与移动。
+- **Logic**: 执行部门目录合并脚本，清理冗余的英文名称目录（如 MS/GE），统一为官方中文名称。
+- **DB**: 同步更新 `file_stats` 和 `access_logs` 中的物理路径映射。
+
 ## [9.1.2] - 2026-01-02
 ### Added
 - 在 `FULL_DEPLOYMENT_RECAP.md` 中补充 MBAir 与 Mac mini 的服务运行清单。
