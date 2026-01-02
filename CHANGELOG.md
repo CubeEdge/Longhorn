@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.1] - 2026-01-02
+### Added
+- 在 `FULL_DEPLOYMENT_RECAP.md` 中集成全系统架构图（Mermaid）与核心角色角色定义。
+
 ## [9.1.0] - 2026-01-02
 ### Added
 - 建立双日志体系：`PROMPT_LOG.md` 用于指令溯源，`CHANGELOG.md` 用于版本变更记录。
