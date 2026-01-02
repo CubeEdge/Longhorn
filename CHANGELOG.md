@@ -1,5 +1,9 @@
 # Changelog
 
+## [9.1.2] - 2026-01-02
+### Added
+- 在 `FULL_DEPLOYMENT_RECAP.md` 中补充 MBAir 与 Mac mini 的服务运行清单。
+
 ## [9.1.1] - 2026-01-02
 ### Added
 - 在 `FULL_DEPLOYMENT_RECAP.md` 中集成全系统架构图（Mermaid）与核心角色角色定义。

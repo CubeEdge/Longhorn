@@ -48,7 +48,28 @@ graph TD
 
 ---
 
-## 🕒 时间线与核心动作
+## �️ 服务运行清单 (Service Runtime List)
+
+为了确保系统稳定，我们在两台机器上部署了以下关键服务：
+
+### 1. Mac mini (Server 端) - 生产执行层
+| 服务名称 | 运行方式 | 核心用途 |
+| :--- | :--- | :--- |
+| **`longhorn`** | PM2 进程 | **主程序**。提供前端静态页面及后端所有增删改查 API 接口。 |
+| **`longhorn-watcher`** | PM2 进程 | **自动化哨兵**。即 `deploy-watch.sh`，负责感应 GitHub 变化并自动重启服务。 |
+| **`cloudflared`** | 系统服务 | **内网穿透**。在不暴露 IP 的前提下，提供 `opware` (HTTPS) 和 `ssh` (SSH) 访问。 |
+| **`sqlite3`** | 内嵌引擎 | **数据存储**。位于 `server/longhorn.db`，保存所有用户数据与文件元数据。 |
+
+### 2. MBAir (Dev 端) - 开发调试层
+| 服务名称 | 运行方式 | 核心用途 |
+| :--- | :--- | :--- |
+| **`vite dev server`** | `npm run dev` | **本地调试**。提供热更新的预览环境，让您在正式发布前测试 UI。 |
+| **`cloudflared access`** | SSH 代理插件 | **安全握手**。作为 SSH 的 ProxyCommand 插件，实现跨外网的 22 端口建立连接。 |
+| **`Git (Local)`** | 命令行工具 | **版本管理**。负责本地代码提交 (Commit) 与推送 (Push)。 |
+
+---
+
+## �🕒 时间线与核心动作
 
 ### 15:00 - 16:30 | 基础设施：Cloudflare Tunnel 攻坚
 **目标**：将内网 Mac mini 通过隧道安全映射至 `opware.kineraw.com`。
