@@ -7,7 +7,7 @@
 
 | 日期 | 任务名称 | 版本ID | 状态 | 修改说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| 2026-01-02 23:20 | *服务清单细化* | (pending) | `Done` | 在 FULL_DEPLOYMENT_RECAP.md 中补充 Mac mini 与 MBAir 的关键服务运行清单。 |
+| 2026-01-02 23:20 | *服务清单细化* | `b3064bf` | `Done` | 在 FULL_DEPLOYMENT_RECAP.md 中补充 Mac mini 与 MBAir 的关键服务运行清单。 |
 | 2026-01-02 23:15 | *技术架构复盘可视化* | `54f6aaf` | `Done` | 在 FULL_DEPLOYMENT_RECAP.md 中新增全系统 Mermaid 架构图与各组件角色定义。 |
 | 2026-01-02 23:05 | *日志与发布体系构建* | `3dfdf0e` | `Done` | 建立 CHANGELOG.md 与 PROMPT_LOG.md 双日志闭环，实现“一键发布”功能。 |
 | 2026-01-02 21:55 | *回收站功能 (30天保留)* | `dcc212c` | `Done` | 实现软删除机制、30天自动清理、回收站 UI 界面及 GitHub 独立仓库关联。 |
