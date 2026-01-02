@@ -1,4 +1,59 @@
-# MBAir -> Mac mini 远程开发工作流指引
+# Longhorn 远程同步与发布极简指南 (SOP)
+
+恭喜！您已经完成了最难的“开荒”阶段。从现在开始，您的发布流程被简化为以下三步。
+
+## 🌟 黄金发布流程 (日常使用)
+
+这是一套“离线开发 -> 云端中转 -> 远端上线”的标准动作：
+
+1.  **MBAir 提交代码**：
+    您有两种方式：
+    - **极简方式 (AI 自动化)**：在对话框直接说 **“发布 Git”**。我会自动更新 `CHANGELOG.md` 和 `PROMPT_LOG.md`，并执行 commit 与推送。
+    - **手动方式**：在 MBAir 的 Longhorn 目录下执行：
+    ```bash
+    git add .
+    git commit -m "本次修改的描述"
+    git push
+    ```
+
+2.  **登录 Mac mini** (如果您还没连)：
+    ```bash
+    ssh mini
+    ```
+
+3.  **Mac mini 一键上线**：
+    ```bash
+    cd path/to/Longhorn  # 进入目录
+    npm run deploy
+    ```
+
+---
+
+## ⚡ 极客方案：无人值守自动同步
+如果您连第三步都不想跑，希望在 MBAir 推送后 Mac mini 自动上线：
+
+1.  **在 Mac mini 开启哨兵**：
+    ```bash
+    pm2 start ./deploy-watch.sh --name longhorn-watcher
+    ```
+2.  **从此以后**：
+    您只需在 MBAir 执行 `git push`。剩下的“拉取、构建、重启”动作，Mac mini 会在 1 分钟内自动完成。
+
+---
+
+## 🛠️ 初始配置备忘 (一劳永逸)
+如果您在其他电脑上再次配置，请记住这几个关键点：
+- **Token 记忆**：在 MBAir 使用 `git remote set-url origin https://TOKEN@github.com/...` 可以免去输入密码。
+- **上游分支**：在 Mac mini 运行一次 `git branch --set-upstream-to=origin/main main` 建立同步链路。
+- **后台运行**：使用 `pm2` 启动服务，确保关掉 SSH 窗口后程序依然在线。
+
+---
+
+> [!IMPORTANT]
+> **发布成功验证**：
+> 访问 [opware.kineraw.com](https://opware.kineraw.com) 检查功能是否更新。
+
+---
 
 为了让您在 MBAir 上拥有最佳的开发体验，建议采用以下两种模式之一。
 
