@@ -727,7 +727,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 </div>
             )}
 
-            {uploadStatus === 'success' && <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> ✅ 成功上传了文件</div>}
+            {uploadStatus === 'success' && <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> 成功上传了文件</div>}
 
             {
                 loading ? (
