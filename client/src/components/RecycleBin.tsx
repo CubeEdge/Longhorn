@@ -4,9 +4,9 @@ import { useAuthStore } from '../store/useAuthStore';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import {
-    Trash2, RotateCcw, Trash, FileText, Folder, AlertCircle, XCircle, Clock,
+    Trash2, RotateCcw, Trash, FileText, Folder, AlertCircle, Clock,
     LayoutGrid, List, X, Image as ImageIcon, Video as VideoIcon,
-    File as FileIcon, Check
+    Check
 } from 'lucide-react';
 
 interface RecycleItem {
@@ -42,29 +42,6 @@ const RecycleBin: React.FC = () => {
             console.error('Failed to fetch recycle bin:', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleRestore = async (id: number) => {
-        try {
-            await axios.post(`/api/recycle-bin/restore/${id}`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchItems();
-        } catch (err) {
-            alert('恢复失败');
-        }
-    };
-
-    const handlePermanentDelete = async (id: number) => {
-        if (!window.confirm('确定永久删除此项？此操作不可撤销！')) return;
-        try {
-            await axios.delete(`/api/recycle-bin/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchItems();
-        } catch (err) {
-            alert('删除失败');
         }
     };
 

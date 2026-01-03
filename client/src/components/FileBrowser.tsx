@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
-import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../store/useAuthStore';
 import {
     Folder,
@@ -17,11 +16,6 @@ import {
     LayoutGrid,
     List,
     X,
-    Search,
-    Home,
-    Users,
-    Settings,
-    ChevronDown,
     Download,
     FileText,
     Table as TableIcon,
@@ -34,7 +28,6 @@ import {
     ChevronRight,
     Star,
     Link2,
-    Copy,
     Move,
     FolderPlus
 } from 'lucide-react';
@@ -101,27 +94,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
     const [moveTargetDir, setMoveTargetDir] = useState('');
-    const [allDepts, setAllDepts] = useState<any[]>([]);
-
-    // New states from instruction
-    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-    const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [showMoveModal, setShowMoveModal] = useState(false);
-    const [moveTargetPath, setMoveTargetPath] = useState('');
-    const [movingItems, setMovingItems] = useState<string[]>([]);
-    const [showRenameModal, setShowRenameModal] = useState(false);
-    const [renameTarget, setRenameTarget] = useState<any>(null);
-    const [renameValue, setRenameValue] = useState('');
-    const [previewItem, setPreviewItem] = useState<any>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [shareItem, setShareItem] = useState<any>(null);
     const [sharePassword, setSharePassword] = useState('');
     const [shareExpires, setShareExpires] = useState('7');
-    const [shareLink, setShareLink] = useState('');
-    const [isCreatingShare, setIsCreatingShare] = useState(false);
     const [starredFiles, setStarredFiles] = useState<string[]>([]);
 
     // const { deptCode } = useParams(); // Removed in favor of params usage below
@@ -221,15 +198,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         }
     };
 
-    useEffect(() => {
-        const fetchDepts = async () => {
-            try {
-                const res = await axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } });
-                setAllDepts(res.data);
-            } catch (e) { console.error(e); }
-        };
-        fetchDepts();
-    }, [token]);
 
     // Event Listeners
     useEffect(() => {
@@ -382,33 +350,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         }
     };
 
-    const handleCreateShare = async () => {
-        if (!shareItem) return;
-
-        try {
-            const filePath = `${currentPath}/${shareItem.name}`.replace(/^\/+/, '');
-            const res = await axios.post('/api/shares',
-                {
-                    path: filePath,
-                    password: sharePassword || undefined,
-                    expiresIn: shareExpires ? parseInt(shareExpires) : undefined
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            const shareUrl = res.data.shareUrl;
-            await navigator.clipboard.writeText(shareUrl);
-            alert(`分享链接已创建并复制到剪贴板！\n${shareUrl}`);
-
-            setShowShareDialog(false);
-            setShareItem(null);
-            setSharePassword('');
-            setShareExpires('7');
-        } catch (err) {
-            alert('创建分享链接失败');
-        }
-    };
-
     const handleContextMenu = (e: React.MouseEvent, item: any) => {
         e.preventDefault();
         setContextMenu({ x: e.clientX, y: e.clientY, item });
@@ -475,8 +416,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleShare = async (file: FileItem) => {
         setShareItem(file);
         setShowShareDialog(true);
-        setShareLink(''); // Reset link
-        setSharePassword(''); // Reset password
         setShareExpires('7'); // Default 7 days
         setContextMenu(null);
     };
@@ -484,7 +423,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleCreateShareLink = async () => {
         if (!shareItem) return;
 
-        setIsCreatingShare(true);
         try {
             const res = await axios.post('/api/shares', {
                 path: shareItem.path,
@@ -495,7 +433,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             });
 
             if (res.data.shareUrl) {
-                setShareLink(res.data.shareUrl);
                 // Auto copy to clipboard
                 navigator.clipboard.writeText(res.data.shareUrl);
                 alert('✅ 分享链接已生成并复制到剪贴板！');
@@ -506,8 +443,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             console.error('Failed to create share link:', err);
             const errorMsg = err.response?.data?.error || err.message || '未知错误';
             alert(`❌ 创建分享链接失败：${errorMsg}`);
-        } finally {
-            setIsCreatingShare(false);
         }
     };
 
@@ -1118,7 +1053,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <button
                                     onClick={() => {
                                         setShowShareDialog(false);
-                                        setShareLink('');
                                         setSharePassword('');
                                     }}
                                     style={{

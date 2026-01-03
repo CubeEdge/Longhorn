@@ -3,14 +3,12 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import {
-    User,
     HardDrive,
     FileText,
     Star,
     Link2,
     Clock,
     Calendar,
-    TrendingUp,
     Activity
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
