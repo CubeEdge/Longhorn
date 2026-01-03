@@ -1002,3 +1002,9 @@ User=admin Path=Members/pepper Norm=Members/pepper Access=Read
 User=admin Path=Members/pepper Norm=Members/pepper Access=Full
 User=admin Path=members Norm=members Access=Read
 User=admin Path=members Norm=members Access=Full
+User=admin Path=Members/admin Norm=Members/admin Access=Read
+User=admin Path=Members/admin Norm=Members/admin Access=Full
+User=admin Path=Members/admin Norm=Members/admin Access=Read
+User=admin Path=Members/admin Norm=Members/admin Access=Full
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Full
