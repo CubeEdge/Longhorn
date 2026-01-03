@@ -9,8 +9,6 @@ import {
   Film,
   Code,
   Box,
-  ChevronRight,
-  Info,
   Menu,
   Star,
   Clock,
@@ -49,7 +47,6 @@ const App: React.FC = () => {
         />
 
         <Sidebar
-          user={user}
           role={user.role}
           onLogout={logout}
           isOpen={isSidebarOpen}
@@ -57,7 +54,7 @@ const App: React.FC = () => {
         />
 
         <main className="main-content">
-          <TopBar user={user} role={user.role} onMenuClick={() => setSidebarOpen(true)} />
+          <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
           <div className="content-area">
             <Routes>
               <Route path="/" element={<HomeRedirect user={user} />} />
@@ -98,7 +95,7 @@ const App: React.FC = () => {
   );
 };
 
-const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ user, role, onLogout, isOpen, onClose }) => {
+const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ role, onLogout, isOpen, onClose }) => {
   const location = useLocation();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
@@ -314,69 +311,11 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 };
 
 
-const TopBar: React.FC<{ user: any, role: string, onMenuClick: () => void }> = ({ user, role, onMenuClick }) => {
+const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenuClick }) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const pathParts = location.pathname.split('/').filter(Boolean);
 
-  const getBreadcrumbs = () => {
-    // Special routes
-    if (location.pathname === '/search') return [{ label: 'Kinefinity', path: '/' }, { label: '搜索', path: '', active: true }];
-    if (location.pathname === '/starred') return [{ label: 'Kinefinity', path: '/' }, { label: '星标', path: '', active: true }];
-    if (location.pathname === '/shares') return [{ label: 'Kinefinity', path: '/' }, { label: '分享', path: '', active: true }];
-    if (location.pathname === '/recycle-bin') return [{ label: 'Kinefinity', path: '/' }, { label: '回收站', path: '', active: true }];
-    if (location.pathname === '/members') return [{ label: 'Kinefinity', path: '/' }, { label: '成员空间', path: '', active: true }];
-    if (location.pathname === '/dashboard') return [{ label: 'Kinefinity', path: '/' }, { label: 'Dashboard', path: '', active: true }];
-    if (location.pathname.startsWith('/admin')) return [{ label: 'Kinefinity', path: '/' }, { label: '系统后台', path: '', active: true }];
+  // Removed unused crumbs and shouldHideBreadcrumb to fix build errors.
 
-    // File browser routes
-    if (location.pathname.startsWith('/dept/')) {
-      const breadcrumbs = [{ label: 'Kinefinity', path: '/', active: false }];
-
-      if (pathParts[1] === 'members' && pathParts.length > 2) {
-        // Personal space: Kinefinity > 个人空间 (username)
-        breadcrumbs.push({
-          label: `个人空间 (${pathParts[2]})`,
-          path: `/dept/members/${pathParts[2]}`,
-          active: pathParts.length === 3
-        });
-
-        // Sub-paths
-        if (pathParts.length > 3) {
-          const subPath = pathParts.slice(3).join('/');
-          breadcrumbs.push({ label: decodeURIComponent(subPath), path: '', active: true });
-        }
-      } else {
-        // Department: Kinefinity > 市场部 (MS) > subfolder
-        const code = pathParts[1];
-        let deptLabel = code;
-        if (code === 'MS') deptLabel = '市场部 (MS)';
-        else if (code === 'OP') deptLabel = '运营部 (OP)';
-        else if (code === 'RD') deptLabel = '研发中心 (RD)';
-        else if (code === 'GE') deptLabel = '综合管理 (GE)';
-
-        breadcrumbs.push({
-          label: deptLabel,
-          path: `/dept/${code}`,
-          active: pathParts.length === 2
-        });
-
-        // Sub-paths
-        if (pathParts.length > 2) {
-          const subPath = pathParts.slice(2).join('/');
-          breadcrumbs.push({ label: decodeURIComponent(subPath), path: '', active: true });
-        }
-      }
-
-      return breadcrumbs;
-    }
-
-    // Default
-    return [{ label: 'Kinefinity', active: true }];
-  };
-
-  const crumbs = getBreadcrumbs();
-  const shouldHideBreadcrumb = user.role !== 'Admin' && (location.pathname === '/starred' || location.pathname === '/search' || location.pathname === '/shares');
 
   return (
     <header className="top-bar">
