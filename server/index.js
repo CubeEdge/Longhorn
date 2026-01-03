@@ -14,19 +14,45 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
 const DISK_A = process.env.DISK_A || path.join(__dirname, 'data/DiskA');
-const DISK_B = process.env.DISK_B || path.join(__dirname, 'data/DiskB');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
+// Department code mapping for frontend shortcuts (MS -> 市场部 (MS))
+const DEPT_CODE_MAP = {
+    'MS': '市场部 (MS)',
+    'OP': '运营部 (OP)',
+    'RD': '研发中心 (RD)',
+    'GE': '综合管理 (GE)'
+};
+
+// Resolve frontend paths like '/MS' or '/MS/ProjectA' to physical paths '/市场部 (MS)' or '/市场部 (MS)/ProjectA'
+function resolvePath(requestPath) {
+    if (!requestPath) return '';
+
+    // Handle members personal space: members/pepper → Members/pepper
+    if (requestPath.startsWith('members/')) {
+        const username = requestPath.replace('members/', '');
+        return `Members/${username}`;
+    }
+
+    // Handle department codes
+    const segments = requestPath.split('/').filter(Boolean);
+    if (segments.length > 0 && DEPT_CODE_MAP[segments[0]]) {
+        segments[0] = DEPT_CODE_MAP[segments[0]];
+    }
+    return segments.join('/');
+}
+
 // Ensure base directories exist (Department folders are handled by defaultDepts loop below)
 fs.ensureDirSync(DISK_A);
-fs.ensureDirSync(DISK_B);
 fs.ensureDirSync(RECYCLE_DIR);
 
 // Multer Configuration for Uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const targetDir = req.query.path ? path.join(DISK_A, req.query.path) : DISK_A;
+        const requestedPath = req.query.path || '';
+        const resolvedPath = resolvePath(requestedPath);  // Resolve department codes (e.g., OP -> 运营部 (OP))
+        const targetDir = path.join(DISK_A, resolvedPath);
         fs.ensureDirSync(targetDir);
         cb(null, targetDir);
     },
@@ -114,6 +140,39 @@ try { db.exec("ALTER TABLE permissions ADD COLUMN access_type TEXT DEFAULT 'Read
 try { db.exec("ALTER TABLE permissions ADD COLUMN expires_at DATETIME;"); } catch (e) { }
 try { db.exec("ALTER TABLE permissions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"); } catch (e) { }
 try { db.exec("ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"); } catch (e) { }
+
+// Phase 2: Quick Access Features Tables
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS starred_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            starred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, file_path),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_starred_user ON starred_files(user_id);
+        
+        CREATE TABLE IF NOT EXISTS share_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            share_token TEXT UNIQUE NOT NULL,
+            password TEXT,
+            expires_at DATETIME,
+            access_count INTEGER DEFAULT 0,
+            last_accessed DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_share_token ON share_links(share_token);
+        CREATE INDEX IF NOT EXISTS idx_share_user ON share_links(user_id);
+    `);
+    console.log('[Database] Phase 2 tables created successfully');
+} catch (e) {
+    console.log('[Database] Phase 2 tables might already exist:', e.message);
+}
 
 // Add default admin if not exists
 const adminPassword = bcrypt.hashSync('admin123', 10);
@@ -215,13 +274,10 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
 };
 
 async function moveItemToRecycle(subPath, userId) {
-    let fullPath = path.join(DISK_A, subPath);
-    if (!fs.existsSync(fullPath)) {
-        fullPath = path.join(DISK_B, subPath);
-    }
+    const fullPath = path.join(DISK_A, subPath);
 
     if (!fs.existsSync(fullPath)) {
-        console.error(`[Recycle] File not found in DISK_A or DISK_B: ${subPath}`);
+        console.error(`[Recycle] File not found: ${subPath}`);
         return;
     }
 
@@ -286,9 +342,47 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+// Get user's accessible departments
+app.get('/api/user/accessible-departments', authenticate, (req, res) => {
+    try {
+        if (req.user.role === 'Admin') {
+            const allDepts = db.prepare('SELECT * FROM departments').all();
+            return res.json(allDepts);
+        }
+
+        const accessibleDepts = [];
+
+        if (req.user.department_name) {
+            const dept = db.prepare('SELECT * FROM departments WHERE name = ?').get(req.user.department_name);
+            if (dept) {
+                accessibleDepts.push(dept);
+            }
+        }
+
+        const explicitPerms = db.prepare(`
+            SELECT DISTINCT d.* 
+            FROM permissions p
+            JOIN departments d ON p.folder_path = d.name OR p.folder_path LIKE d.name || '/%'
+            WHERE p.user_id = ? AND (p.expires_at IS NULL OR p.expires_at > datetime('now'))
+        `).all(req.user.id);
+
+        explicitPerms.forEach(dept => {
+            if (!accessibleDepts.find(d => d.id === dept.id)) {
+                accessibleDepts.push(dept);
+            }
+        });
+
+        res.json(accessibleDepts);
+    } catch (err) {
+        console.error('Accessible depts error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Upload Route
 app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
-    const subPath = req.query.path || '';
+    const requestedPath = req.query.path || '';
+    const subPath = resolvePath(requestedPath);
 
     if (!hasPermission(req.user, subPath, 'Full')) {
         return res.status(403).json({ error: 'No write permission for this folder' });
@@ -425,6 +519,97 @@ app.post('/api/admin/departments', authenticate, isAdmin, (req, res) => {
     }
 });
 
+// System Stats API (for Dashboard)
+app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
+    try {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        // Helper function to calculate directory size
+        const getDirectorySize = (dirPath) => {
+            let totalSize = 0;
+            const getAllFiles = (dir) => {
+                const items = fs.readdirSync(dir);
+                for (const item of items) {
+                    const fullPath = path.join(dir, item);
+                    const stat = fs.statSync(fullPath);
+                    if (stat.isDirectory()) {
+                        getAllFiles(fullPath);
+                    } else {
+                        totalSize += stat.size;
+                    }
+                }
+            };
+            if (fs.existsSync(dirPath)) {
+                getAllFiles(dirPath);
+            }
+            return totalSize;
+        };
+
+        // Get upload stats by time period
+        const getUploadStats = (startDate) => {
+            const stats = db.prepare(`
+                SELECT COUNT(*) as count, SUM(s.size) as total_size
+                FROM file_stats s
+                WHERE s.uploaded_at >= ?
+            `).get(startDate.toISOString()) || { count: 0, total_size: 0 };
+
+            return {
+                count: stats.count || 0,
+                size: stats.total_size || 0
+            };
+        };
+
+        const todayStats = getUploadStats(todayStart);
+        const weekStats = getUploadStats(weekStart);
+        const monthStats = getUploadStats(monthStart);
+
+        // Storage usage
+        const totalUsed = getDirectorySize(DISK_A);
+        const diskInfo = require('os').totalmem(); // Simplified, ideally use disk space check
+        const totalAvailable = diskInfo;
+
+        // Top uploaders
+        const topUploaders = db.prepare(`
+            SELECT 
+                u.username,
+                COUNT(DISTINCT s.path) as file_count,
+                COALESCE(SUM(s.size), 0) as total_size
+            FROM users u
+            LEFT JOIN file_stats s ON u.id = s.uploader_id
+            WHERE s.uploader_id IS NOT NULL
+            GROUP BY u.id, u.username
+            ORDER BY total_size DESC
+            LIMIT 5
+        `).all();
+
+        // Total files count
+        const totalFiles = db.prepare('SELECT COUNT(*) as count FROM file_stats').get().count || 0;
+
+        res.json({
+            todayStats,
+            weekStats,
+            monthStats,
+            storage: {
+                used: totalUsed,
+                total: totalAvailable,
+                percentage: totalAvailable > 0 ? Math.round((totalUsed / totalAvailable) * 100) : 0
+            },
+            topUploaders: topUploaders.map(u => ({
+                username: u.username,
+                fileCount: u.file_count,
+                totalSize: u.total_size
+            })),
+            totalFiles
+        });
+    } catch (err) {
+        console.error('Stats error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Dynamic Permissions Management
 app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
     const { user_id, folder_path, access_type, expiry_option } = req.body;
@@ -472,13 +657,404 @@ app.get('/api/files/recent', authenticate, async (req, res) => {
     }
 });
 
+// ==================== SEARCH API ====================
+app.get('/api/search', authenticate, async (req, res) => {
+    try {
+        const { q, type, dept } = req.query;
+        if (!q) return res.status(400).json({ error: 'Search query required' });
+
+        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+        const results = [];
+
+        // Get accessible departments
+        let searchDepts = [];
+        if (user.role === 'Admin') {
+            searchDepts = db.prepare('SELECT * FROM departments').all();
+        } else {
+            const userDept = db.prepare('SELECT * FROM departments WHERE id = ?').get(user.department_id);
+            if (userDept) searchDepts.push(userDept);
+
+            // Add departments with permissions
+            const permDepts = db.prepare(`
+                SELECT DISTINCT d.* FROM departments d
+                JOIN permissions p ON p.folder_path LIKE d.name || '%'
+                WHERE p.user_id = ? AND (p.expires_at IS NULL OR p.expires_at > datetime('now'))
+            `).all(user.id);
+            searchDepts.push(...permDepts);
+        }
+
+        // Filter by dept if specified
+        if (dept) {
+            searchDepts = searchDepts.filter(d => {
+                const code = deptCodeMap[d.name];
+                return code === dept;
+            });
+        }
+
+        // Search in each department
+        for (const deptObj of searchDepts) {
+            const code = deptCodeMap[deptObj.name];
+            if (!code) continue;
+
+            const deptPath = path.join(DISK_A, code);
+            if (!fs.existsSync(deptPath)) continue;
+
+            await searchInDirectory(deptPath, q, type, `${code}`, results, user);
+        }
+
+        // Search in personal space
+        const personalPath = path.join(DISK_A, 'Members', user.username);
+        if (fs.existsSync(personalPath)) {
+            await searchInDirectory(personalPath, q, type, `Members/${user.username}`, results, user);
+        }
+
+        res.json({ results, total: results.length });
+    } catch (err) {
+        console.error('[Search] Error:', err);
+        res.status(500).json({ error: 'Search failed' });
+    }
+});
+
+async function searchInDirectory(dirPath, query, typeFilter, pathPrefix, results, user) {
+    try {
+        const items = await fs.readdir(dirPath);
+        const lowerQuery = query.toLowerCase();
+
+        for (const item of items) {
+            const fullPath = path.join(dirPath, item);
+            const stats = await fs.stat(fullPath);
+            const relativePath = `${pathPrefix}/${item}`;
+
+            // Check if name matches
+            if (!item.toLowerCase().includes(lowerQuery)) {
+                // If directory, search recursively
+                if (stats.isDirectory() && results.length < 100) {
+                    await searchInDirectory(fullPath, query, typeFilter, relativePath, results, user);
+                }
+                continue;
+            }
+
+            // Type filtering
+            if (typeFilter) {
+                const ext = path.extname(item).toLowerCase();
+                if (typeFilter === 'image' && !['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) continue;
+                if (typeFilter === 'video' && !['.mp4', '.mov', '.avi', '.mkv'].includes(ext)) continue;
+                if (typeFilter === 'document' && !['.pdf', '.doc', '.docx', '.txt', '.xlsx'].includes(ext)) continue;
+            }
+
+            results.push({
+                name: item,
+                path: relativePath,
+                isDirectory: stats.isDirectory(),
+                size: stats.size,
+                modified: stats.mtime
+            });
+
+            if (results.length >= 100) break;
+        }
+    } catch (err) {
+        // Skip inaccessible directories
+    }
+}
+
+const deptCodeMap = {
+    '市场部 (MS)': 'MS',
+    '运营部 (OP)': 'OP',
+    '研发中心 (RD)': 'RD',
+    '综合管理 (GE)': 'GE'
+};
+
+// ==================== STARRED FILES API ====================
+app.get('/api/starred', authenticate, (req, res) => {
+    try {
+        const starred = db.prepare(`
+            SELECT id, file_path, starred_at FROM starred_files 
+            WHERE user_id = ? ORDER BY starred_at DESC
+        `).all(req.user.id);
+        res.json(starred);
+    } catch (err) {
+        console.error('[Starred] Error:', err);
+        res.status(500).json({ error: 'Failed to fetch starred files' });
+    }
+});
+
+app.get('/api/starred/check', authenticate, (req, res) => {
+    try {
+        const { path } = req.query;
+        if (!path) return res.status(400).json({ error: 'Path is required' });
+        const starred = db.prepare(`
+            SELECT id FROM starred_files WHERE user_id = ? AND file_path = ?
+        `).get(req.user.id, path);
+        res.json({ starred: !!starred, id: starred?.id });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to check starred status' });
+    }
+});
+
+app.post('/api/starred', authenticate, (req, res) => {
+    try {
+        const { path } = req.body;
+        if (!path) return res.status(400).json({ error: 'Path is required' });
+        const result = db.prepare(`
+            INSERT INTO starred_files (user_id, file_path) VALUES (?, ?)
+        `).run(req.user.id, path);
+        res.json({ success: true, id: result.lastInsertRowid });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(409).json({ error: 'File already starred' });
+        }
+        res.status(500).json({ error: 'Failed to star file' });
+    }
+});
+
+app.delete('/api/starred/:id', authenticate, (req, res) => {
+    try {
+        const result = db.prepare(`
+            DELETE FROM starred_files WHERE id = ? AND user_id = ?
+        `).run(req.params.id, req.user.id);
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Starred file not found' });
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to remove starred' });
+    }
+});
+
 app.get('/api/files/starred', authenticate, (req, res) => {
-    res.json({ items: [], userCanWrite: false }); // Future feature
+    // Legacy route - redirect to new API
+    res.redirect(307, '/api/starred');
+});
+
+// ==================== USER STATS API ====================
+app.get('/api/user/stats', authenticate, (req, res) => {
+    try {
+        const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+
+        // Count uploaded files in user's personal space
+        let uploadCount = 0;
+        let storageUsed = 0;
+        const personalPath = path.join(DISK_A, 'Members', user.username);
+
+        if (fs.existsSync(personalPath)) {
+            const countFiles = (dir) => {
+                try {
+                    const items = fs.readdirSync(dir);
+                    items.forEach(item => {
+                        const fullPath = path.join(dir, item);
+                        const stats = fs.statSync(fullPath);
+                        if (stats.isDirectory()) {
+                            countFiles(fullPath);
+                        } else {
+                            uploadCount++;
+                            storageUsed += stats.size;
+                        }
+                    });
+                } catch (err) {
+                    // Skip inaccessible directories
+                }
+            };
+            countFiles(personalPath);
+        }
+
+        // Count starred files
+        const starredCount = db.prepare(
+            'SELECT COUNT(*) as count FROM starred_files WHERE user_id = ?'
+        ).get(user.id).count;
+
+        // Count share links
+        const shareCount = db.prepare(
+            'SELECT COUNT(*) as count FROM share_links WHERE user_id = ?'
+        ).get(user.id).count;
+
+        res.json({
+            uploadCount,
+            storageUsed,
+            starredCount,
+            shareCount,
+            lastLogin: user.last_login || user.created_at,
+            accountCreated: user.created_at,
+            username: user.username,
+            role: user.role
+        });
+    } catch (err) {
+        console.error('[User Stats] Error:', err);
+        res.status(500).json({ error: 'Failed to fetch user stats' });
+    }
+});
+
+// ==================== SHARE LINKS API ====================
+const crypto = require('crypto');
+
+function generateShareToken() {
+    return crypto.randomBytes(16).toString('hex');
+}
+
+// Get user's share links
+app.get('/api/shares', authenticate, (req, res) => {
+    try {
+        const shares = db.prepare(`
+            SELECT id, file_path, share_token, expires_at, access_count, last_accessed, created_at,
+                   (password IS NOT NULL) as has_password
+            FROM share_links 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        `).all(req.user.id);
+        res.json(shares);
+    } catch (err) {
+        console.error('[Shares] Error fetching:', err);
+        res.status(500).json({ error: 'Failed to fetch shares' });
+    }
+});
+
+// Create share link
+app.post('/api/shares', authenticate, (req, res) => {
+    try {
+        const { path, password, expiresIn } = req.body;
+        if (!path) return res.status(400).json({ error: 'Path is required' });
+
+        const token = generateShareToken();
+        let expiresAt = null;
+
+        if (expiresIn) {
+            const days = parseInt(expiresIn);
+            if (!isNaN(days) && days > 0) {
+                expiresAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
+            }
+        }
+
+        const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
+
+        const result = db.prepare(`
+            INSERT INTO share_links (user_id, file_path, share_token, password, expires_at)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(req.user.id, path, token, hashedPassword, expiresAt);
+
+        res.json({
+            success: true,
+            id: result.lastInsertRowid,
+            token,
+            shareUrl: `${req.protocol}://${req.get('host')}/s/${token}`
+        });
+    } catch (err) {
+        console.error('[Shares] Error creating:', err);
+        res.status(500).json({ error: 'Failed to create share link' });
+    }
+});
+
+// Delete share link
+app.delete('/api/shares/:id', authenticate, (req, res) => {
+    try {
+        const result = db.prepare(`
+            DELETE FROM share_links WHERE id = ? AND user_id = ?
+        `).run(req.params.id, req.user.id);
+
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Shares] Error deleting:', err);
+        res.status(500).json({ error: 'Failed to delete share link' });
+    }
+});
+
+// Public share access (no auth required)
+app.get('/share/:token', async (req, res) => {
+    try {
+        const share = db.prepare(`
+            SELECT * FROM share_links WHERE share_token = ?
+        `).get(req.params.token);
+
+        if (!share) {
+            return res.status(404).send('Share link not found or expired');
+        }
+
+        // Check expiration
+        if (share.expires_at && new Date(share.expires_at) < new Date()) {
+            return res.status(410).send('Share link has expired');
+        }
+
+        // If password protected, show password form
+        if (share.password) {
+            // Return HTML form for password
+            return res.send(`
+                <!DOCTYPE html>
+                <html><head><title>访问共享文件</title></head>
+                <body style="font-family: sans-serif; max-width: 400px; margin: 100px auto; padding: 20px;">
+                    <h2>此链接受密码保护</h2>
+                    <form method="POST" action="/share/${req.params.token}/verify">
+                        <input type="password" name="password" placeholder="请输入密码" required 
+                            style="width: 100%; padding: 10px; margin: 10px 0; font-size: 16px;">
+                        <button type="submit" style="width: 100%; padding: 12px; background: #FFD200; 
+                            border: none; font-size: 16px; font-weight: bold; cursor: pointer;">访问</button>
+                    </form>
+                </body></html>
+            `);
+        }
+
+        // Update access count
+        db.prepare(`
+            UPDATE share_links 
+            SET access_count = access_count + 1, last_accessed = datetime('now')
+            WHERE id = ?
+        `).run(share.id);
+
+        // Serve file/directory
+        const fullPath = path.join(DISK_A, share.file_path);
+        if (fs.existsSync(fullPath)) {
+            const stats = fs.statSync(fullPath);
+            if (stats.isDirectory()) {
+                return res.send('<p>Directory sharing not yet implemented</p>');
+            }
+            return res.download(fullPath);
+        } else {
+            return res.status(404).send('File not found');
+        }
+    } catch (err) {
+        console.error('[Share] Error accessing:', err);
+        res.status(500).send('Error accessing share');
+    }
+});
+
+// Verify password for share
+app.post('/share/:token/verify', async (req, res) => {
+    try {
+        const share = db.prepare(`
+            SELECT * FROM share_links WHERE share_token = ?
+        `).get(req.params.token);
+
+        if (!share || !share.password) {
+            return res.status(404).send('Invalid request');
+        }
+
+        const password = req.body.password;
+        if (!bcrypt.compareSync(password, share.password)) {
+            return res.status(401).send('Invalid password');
+        }
+
+        // Password correct, serve file
+        db.prepare(`
+            UPDATE share_links 
+            SET access_count = access_count + 1, last_accessed = datetime('now')
+            WHERE id = ?
+        `).run(share.id);
+
+        const fullPath = path.join(DISK_A, share.file_path);
+        if (fs.existsSync(fullPath)) {
+            return res.download(fullPath);
+        }
+        return res.status(404).send('File not found');
+    } catch (err) {
+        console.error('[Share] Error verifying:', err);
+        res.status(500).send('Error verifying password');
+    }
 });
 
 // File Routes
 app.get('/api/files', authenticate, async (req, res) => {
-    const subPath = req.query.path || '';
+    const requestedPath = req.query.path || '';
+    const subPath = resolvePath(requestedPath);
     const fullPath = path.join(DISK_A, subPath);
 
     // Check Read permissions for the subPath
@@ -555,8 +1131,9 @@ app.get('/api/files/stats', authenticate, (req, res) => {
 });
 
 app.post('/api/folders', authenticate, async (req, res) => {
-    const { path: subPath, name } = req.body;
-    const targetPath = path.join(subPath || '', name);
+    const { path: requestedSubPath, name } = req.body;
+    const resolvedSubPath = resolvePath(requestedSubPath || '');
+    const targetPath = path.join(resolvedSubPath, name);
 
     if (!hasPermission(req.user, targetPath, 'Full')) {
         return res.status(403).json({ error: 'No permission to create folder here' });
@@ -571,8 +1148,64 @@ app.post('/api/folders', authenticate, async (req, res) => {
     }
 });
 
+// Get folder tree for file move dialog
+app.get('/api/folders/tree', authenticate, async (req, res) => {
+    try {
+        const buildTree = (dirPath = '') => {
+            const fullPath = path.join(DISK_A, dirPath);
+            const nodes = [];
+
+            if (!fs.existsSync(fullPath)) return nodes;
+            if (!hasPermission(req.user, dirPath, 'Read')) return nodes;
+
+            const items = fs.readdirSync(fullPath);
+
+            for (const item of items) {
+                const itemPath = path.join(dirPath, item);
+                const itemFullPath = path.join(DISK_A, itemPath);
+
+                try {
+                    const stat = fs.statSync(itemFullPath);
+                    if (stat.isDirectory()) {
+                        // Only include if user has write permission (can move files here)
+                        if (hasPermission(req.user, itemPath, 'Full')) {
+                            const node = {
+                                path: itemPath,
+                                name: item,
+                                children: buildTree(itemPath)
+                            };
+                            nodes.push(node);
+                        }
+                    }
+                } catch (err) {
+                    // Skip items that can't be accessed
+                    continue;
+                }
+            }
+
+            return nodes.sort((a, b) => a.name.localeCompare(b.name));
+        };
+
+        // Start from root and build the tree
+        const tree = buildTree('');
+
+        // Add root node
+        const result = [{
+            path: '',
+            name: '根目录',
+            children: tree
+        }];
+
+        res.json(result);
+    } catch (err) {
+        console.error('Folder tree error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/files', authenticate, async (req, res) => {
-    const { path: subPath } = req.query;
+    const requestedPath = req.query.path || '';
+    const subPath = resolvePath(requestedPath);
     if (!subPath) return res.status(400).json({ error: 'Path required' });
 
     if (!hasPermission(req.user, subPath, 'Full')) {
@@ -604,8 +1237,10 @@ app.post('/api/files/bulk-delete', authenticate, async (req, res) => {
 });
 
 app.post('/api/files/bulk-move', authenticate, async (req, res) => {
-    const { paths, targetDir } = req.body;
-    if (!Array.isArray(paths) || targetDir === undefined) return res.status(400).json({ error: 'Paths and targetDir required' });
+    const { paths, targetDir: requestedTargetDir } = req.body;
+    if (!Array.isArray(paths) || requestedTargetDir === undefined) return res.status(400).json({ error: 'Paths and targetDir required' });
+
+    const targetDir = resolvePath(requestedTargetDir);
 
     if (!hasPermission(req.user, targetDir, 'Full')) {
         return res.status(403).json({ error: 'No write permission for target directory' });
@@ -664,14 +1299,27 @@ app.get('/api/public/share/:id', async (req, res) => {
 
 // Recycle Bin Routes
 app.get('/api/recycle-bin', authenticate, (req, res) => {
-    let query = "SELECT r.*, u.username as deleted_by FROM recycle_bin r JOIN users u ON r.user_id = u.id";
-    let params = [];
-    if (req.user.role !== 'Admin') {
-        query += " WHERE r.user_id = ?";
-        params.push(req.user.id);
+    try {
+        const items = db.prepare(`
+            SELECT r.*, u.username as deleted_by 
+            FROM recycle_bin r 
+            LEFT JOIN users u ON r.user_id = u.id 
+            ORDER BY r.deletion_date DESC
+        `).all();
+
+        // Filter items based on user permissions
+        const filteredItems = items.filter(item => {
+            // Admin sees everything
+            if (req.user.role === 'Admin') return true;
+
+            // Check if user has Read permission to the original path
+            return hasPermission(req.user, item.original_path, 'Read');
+        });
+
+        res.json(filteredItems);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    const items = db.prepare(query).all(...params);
-    res.json(items);
 });
 
 app.post('/api/recycle-bin/restore/:id', authenticate, async (req, res) => {
@@ -750,24 +1398,9 @@ async function cleanupRecycleBin() {
     }
 }
 
-// Periodic Backup
-const runBackup = () => {
-    console.log('Starting backup to Disk B...');
-    const { exec } = require('child_process');
-    exec(`rsync -av --delete "${DISK_A}/" "${DISK_B}/"`, (error, stdout, stderr) => {
-        if (error) console.error(`Backup error: ${error.message}`);
-        else console.log('Backup completed successfully.');
-    });
-};
-
-runBackup();
+// Automatic cleanup
 cleanupRecycleBin();
-setInterval(runBackup, 3600 * 1000); // Hourly
 setInterval(cleanupRecycleBin, 24 * 3600 * 1000); // Daily
-app.post('/api/admin/backup', authenticate, isAdmin, (req, res) => {
-    runBackup();
-    res.json({ message: 'Backup started' });
-});
 
 // Serve Frontend Static Files (Production)
 app.use(express.static(path.join(__dirname, '../client/dist')));

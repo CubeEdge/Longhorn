@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users,
   Share2,
@@ -17,11 +17,19 @@ import {
   Trash2,
   User
 } from 'lucide-react';
+import axios from 'axios';
 import { useAuthStore } from './store/useAuthStore';
 import FileBrowser from './components/FileBrowser';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import RecycleBin from './components/RecycleBin';
+import SearchPage from './components/SearchPage';
+import StarredPage from './components/StarredPage';
+import RecentPage from './components/RecentPage';
+import SharesPage from './components/SharesPage';
+import MemberSpacePage from './components/MemberSpacePage';
+import RootDirectoryView from './components/RootDirectoryView';
+import Dashboard from './components/Dashboard';
 
 const App: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -49,17 +57,38 @@ const App: React.FC = () => {
         />
 
         <main className="main-content">
-          <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
+          <TopBar user={user} role={user.role} onMenuClick={() => setSidebarOpen(true)} />
           <div className="content-area">
             <Routes>
               <Route path="/" element={<HomeRedirect user={user} />} />
-              <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
+
+              {/* Root Directory (Admin) */}
+              <Route path="/root" element={user.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
+
+              {/* Quick Access */}
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/starred" element={<StarredPage />} />
+              <Route path="/recent" element={<RecentPage />} />
+              <Route path="/shares" element={<SharesPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+
+              {/* Personal & Department Spaces */}
+              <Route path="/dept/members/:username/*" element={<FileBrowser />} />
+              <Route path="/dept/:deptCode/*" element={<FileBrowser />} />
               <Route path="/dept/:deptCode" element={<FileBrowser />} />
-              <Route path="/files" element={<FileBrowser />} />
-              <Route path="/recent" element={<FileBrowser mode="recent" />} />
-              <Route path="/starred" element={<FileBrowser mode="starred" />} />
-              <Route path="/shared" element={<div className="hint"><Info size={16} /> 共享链接管理即将上线</div>} />
-              <Route path="/recycle" element={<RecycleBin />} />
+
+              {/* Admin */}
+              <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
+              <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
+
+              {/* Recycle Bin */}
+              <Route path="/recycle-bin" element={<RecycleBin />} />
+
+              {/* Legacy routes - redirect */}
+              <Route path="/files" element={<Navigate to="/" />} />
+              <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
+              <Route path="/shared" element={<Navigate to="/shares" />} />
+
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
@@ -71,19 +100,64 @@ const App: React.FC = () => {
 
 const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ user, role, onLogout, isOpen, onClose }) => {
   const location = useLocation();
+  const { token } = useAuthStore();
+  const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        console.log('[Sidebar] Fetching departments with token:', token?.substring(0, 20) + '...');
+        const res = await axios.get('/api/user/accessible-departments', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('[Sidebar] Received departments:', res.data);
+        setAccessibleDepts(res.data);
+      } catch (err) {
+        console.error('[Sidebar] Failed to fetch departments:', err);
+      }
+    };
+    if (token) {
+      fetchDepts();
+    }
+  }, [token]);
+
+  const deptCodeMap: { [key: string]: string } = {
+    '市场部 (MS)': 'MS',
+    '运营部 (OP)': 'OP',
+    '研发中心 (RD)': 'RD',
+    '综合管理 (GE)': 'GE'
+  };
+
+  const deptIcons: { [key: string]: any } = {
+    'MS': Camera,
+    'OP': Film,
+    'RD': Code,
+    'GE': Box
+  };
 
   const menuItems = [
     { path: `/dept/members/${user.username}`, label: '个人空间', icon: User },
     { path: '/files', label: '所有文件', icon: HardDrive },
     { path: '/recent', label: '最近访问', icon: Clock },
     { path: '/starred', label: '星标文件', icon: Star },
-    { path: '/dept/MS', label: '市场部 (MS)', icon: Camera },
-    { path: '/dept/OP', label: '运营部 (OP)', icon: Film },
-    { path: '/dept/RD', label: '研发中心 (RD)', icon: Code },
-    { path: '/dept/GE', label: '综合管理 (GE)', icon: Box },
-    { path: '/shared', label: '共享链接管理', icon: Share2 },
-    { path: '/recycle', label: '回收站', icon: Trash2 },
   ];
+
+  // Add accessible departments
+  accessibleDepts.forEach(dept => {
+    const code = deptCodeMap[dept.name];
+    if (code) {
+      menuItems.push({
+        path: `/dept/${code}`,
+        label: dept.name,
+        icon: deptIcons[code] || Box
+      });
+    }
+  });
+
+  menuItems.push(
+    { path: '/shared', label: '共享链接管理', icon: Share2 },
+    { path: '/recycle', label: '回收站', icon: Trash2 }
+  );
 
   if (role === 'Admin') {
     menuItems.push({ path: '/admin', label: '系统后台', icon: Users });
@@ -93,21 +167,71 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
         <h2 className="sidebar-title">Longhorn</h2>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Kinefinity 本地数据中心</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>像空气一样自由流动</p>
       </div>
 
-      <nav style={{ flex: 1 }}>
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`sidebar-item ${location.pathname === item.path ? 'active' : ''}`}
-            onClick={onClose}
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </Link>
-        ))}
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Quick Access */}
+        <Link to="/search" className={`sidebar-item ${location.pathname === '/search' ? 'active' : ''}`} onClick={onClose}>
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+          <span>搜索全部文件</span>
+        </Link>
+        <Link to="/starred" className={`sidebar-item ${location.pathname === '/starred' ? 'active' : ''}`} onClick={onClose}>
+          <Star size={20} />
+          <span>星标文件</span>
+        </Link>
+        <Link to="/shares" className={`sidebar-item ${location.pathname === '/shares' ? 'active' : ''}`} onClick={onClose}>
+          <Share2 size={20} />
+          <span>我的分享</span>
+        </Link>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+
+        {/* Personal Space */}
+        <Link to={`/dept/members/${user.username}`} className={`sidebar-item ${location.pathname === `/dept/members/${user.username}` ? 'active' : ''}`} onClick={onClose}>
+          <User size={20} />
+          <span>个人空间</span>
+        </Link>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+
+        {/* Departments */}
+        {accessibleDepts.map((dept: any) => {
+          const code = deptCodeMap[dept.name];
+          const Icon = code ? deptIcons[code] : Box;
+          const isActive = location.pathname.startsWith(`/dept/${code}`);
+          return (
+            <Link key={dept.name} to={`/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+              <Icon size={20} />
+              <span>{dept.name}</span>
+            </Link>
+          );
+        })}
+
+        {/* Admin */}
+        {role === 'Admin' && (
+          <>
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+            <Link to="/members" className={`sidebar-item ${location.pathname === '/members' ? 'active' : ''}`} onClick={onClose}>
+              <Users size={20} />
+              <span>成员空间</span>
+            </Link>
+            <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v10M23 12h-6m-6 0H1" /></svg>
+              <span>系统后台</span>
+            </Link>
+          </>
+        )}
+
+        {/* Recycle Bin - Bottom */}
+        <div style={{ marginTop: 'auto' }} />
+        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+        <Link to="/recycle-bin" className={`sidebar-item ${location.pathname === '/recycle-bin' ? 'active' : ''}`} onClick={onClose}>
+          <Trash2 size={20} />
+          <span>回收站</span>
+        </Link>
       </nav>
 
       <div style={{ padding: '0 24px 24px' }}>
@@ -120,53 +244,156 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
   );
 };
 
-const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenuClick }) => {
+// User Stats Card Component
+const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { token } = useAuthStore();
+  const [stats, setStats] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get('/api/user/stats', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setStats(res.data);
+      } catch (err) {
+        console.error('Failed to fetch user stats:', err);
+        // Set default stats on error
+        setStats({ uploadCount: 0, storageUsed: 0, starredCount: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [token]);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  // Always render, show loading state if needed
+  const displayStats = stats || { uploadCount: '-', storageUsed: 0, starredCount: '-' };
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        padding: '10px 16px',
+        background: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        opacity: loading ? 0.5 : 1
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255, 210, 0, 0.1)';
+        e.currentTarget.style.borderColor = 'var(--accent-blue)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>文件</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{displayStats.uploadCount}</div>
+      </div>
+      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>存储</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatBytes(displayStats.storageUsed)}</div>
+      </div>
+      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>星标</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{displayStats.starredCount}</div>
+      </div>
+    </div>
+  );
+};
+
+
+const TopBar: React.FC<{ user: any, role: string, onMenuClick: () => void }> = ({ user, role, onMenuClick }) => {
+  const navigate = useNavigate();
   const location = useLocation();
   const pathParts = location.pathname.split('/').filter(Boolean);
 
   const getBreadcrumbs = () => {
-    if (location.pathname === '/files') return [{ label: '所有文件', active: true }];
-    if (location.pathname === '/recent') return [{ label: '最近访问', active: true }];
-    if (location.pathname === '/starred') return [{ label: '星标文件', active: true }];
-    if (location.pathname === '/recycle') return [{ label: '回收站', active: true }];
-    if (location.pathname.startsWith('/dept/')) {
-      const code = pathParts[1];
-      const subPath = pathParts.slice(2).join('/');
-      let label = code;
-      if (code === 'MS') label = '市场部 (MS)';
-      else if (code === 'OP') label = '运营部 (OP)';
-      else if (code === 'RD') label = '研发中心 (RD)';
-      else if (code === 'GE') label = '综合管理 (GE)';
-      else if (code === 'members') label = `个人空间 (${pathParts[2] || ''})`;
+    // Special routes
+    if (location.pathname === '/search') return [{ label: 'Kinefinity', path: '/' }, { label: '搜索', path: '', active: true }];
+    if (location.pathname === '/starred') return [{ label: 'Kinefinity', path: '/' }, { label: '星标', path: '', active: true }];
+    if (location.pathname === '/shares') return [{ label: 'Kinefinity', path: '/' }, { label: '分享', path: '', active: true }];
+    if (location.pathname === '/recycle-bin') return [{ label: 'Kinefinity', path: '/' }, { label: '回收站', path: '', active: true }];
+    if (location.pathname === '/members') return [{ label: 'Kinefinity', path: '/' }, { label: '成员空间', path: '', active: true }];
+    if (location.pathname === '/dashboard') return [{ label: 'Kinefinity', path: '/' }, { label: 'Dashboard', path: '', active: true }];
+    if (location.pathname.startsWith('/admin')) return [{ label: 'Kinefinity', path: '/' }, { label: '系统后台', path: '', active: true }];
 
-      const crumbs = [{ label, active: !subPath }];
-      if (subPath) {
-        crumbs.push({ label: subPath, active: true });
+    // File browser routes
+    if (location.pathname.startsWith('/dept/')) {
+      const breadcrumbs = [{ label: 'Kinefinity', path: '/', active: false }];
+
+      if (pathParts[1] === 'members' && pathParts.length > 2) {
+        // Personal space: Kinefinity > 个人空间 (username)
+        breadcrumbs.push({
+          label: `个人空间 (${pathParts[2]})`,
+          path: `/dept/members/${pathParts[2]}`,
+          active: pathParts.length === 3
+        });
+
+        // Sub-paths
+        if (pathParts.length > 3) {
+          const subPath = pathParts.slice(3).join('/');
+          breadcrumbs.push({ label: decodeURIComponent(subPath), path: '', active: true });
+        }
+      } else {
+        // Department: Kinefinity > 市场部 (MS) > subfolder
+        const code = pathParts[1];
+        let deptLabel = code;
+        if (code === 'MS') deptLabel = '市场部 (MS)';
+        else if (code === 'OP') deptLabel = '运营部 (OP)';
+        else if (code === 'RD') deptLabel = '研发中心 (RD)';
+        else if (code === 'GE') deptLabel = '综合管理 (GE)';
+
+        breadcrumbs.push({
+          label: deptLabel,
+          path: `/dept/${code}`,
+          active: pathParts.length === 2
+        });
+
+        // Sub-paths
+        if (pathParts.length > 2) {
+          const subPath = pathParts.slice(2).join('/');
+          breadcrumbs.push({ label: decodeURIComponent(subPath), path: '', active: true });
+        }
       }
-      return crumbs;
+
+      return breadcrumbs;
     }
-    return [{ label: '主页', active: true }];
+
+    // Default
+    return [{ label: 'Kinefinity', active: true }];
   };
 
   const crumbs = getBreadcrumbs();
+  const shouldHideBreadcrumb = user.role !== 'Admin' && (location.pathname === '/starred' || location.pathname === '/search' || location.pathname === '/shares');
 
   return (
     <header className="top-bar">
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button className="menu-toggle" onClick={onMenuClick}>
           <Menu size={24} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <span>根目录</span>
-          {crumbs.map((crumb, i) => (
-            <React.Fragment key={i}>
-              <ChevronRight size={14} />
-              <span style={{ color: crumb.active ? 'var(--text-main)' : 'inherit', fontWeight: crumb.active ? 600 : 400 }}>
-                {crumb.label}
-              </span>
-            </React.Fragment>
-          ))}
-        </div>
+
+        <UserStatsCard onClick={() => navigate('/dashboard')} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

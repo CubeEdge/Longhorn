@@ -62,7 +62,7 @@ const Login: React.FC = () => {
                         <ShieldCheck size={32} color="#000" />
                     </div>
                     <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent-blue)', letterSpacing: '-1.5px', marginBottom: '4px' }}>Longhorn</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Kinefinity 内部数据管理中心</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>像空气一样自由流动</p>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

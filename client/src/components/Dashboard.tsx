@@ -1,98 +1,366 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 import {
-    Users as UsersIcon,
-    FolderTree,
+    User,
     HardDrive,
-    Activity,
-    ShieldCheck
+    FileText,
+    Star,
+    Link2,
+    Clock,
+    Calendar,
+    TrendingUp,
+    Activity
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 
-const Dashboard: React.FC = () => {
-    const [stats, setStats] = useState({
-        userCount: 0,
-        deptCount: 0,
-        totalFiles: 0,
-        totalAccess: 0
-    });
+interface UserStats {
+    uploadCount: number;
+    storageUsed: number;
+    starredCount: number;
+    shareCount: number;
+    lastLogin: string;
+    accountCreated: string;
+    username: string;
+    role: string;
+}
+
+export const Dashboard: React.FC = () => {
+    const [stats, setStats] = useState<UserStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { token } = useAuthStore();
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchStats = async () => {
-            const headers = { Authorization: `Bearer ${token}` };
-            const [uRes, dRes] = await Promise.all([
-                axios.get('/api/admin/users', { headers }),
-                axios.get('/api/admin/departments', { headers })
-            ]);
-            setStats({
-                userCount: uRes.data.length,
-                deptCount: dRes.data.length,
-                totalFiles: 0, // 示例占位
-                totalAccess: 0 // 示例占位
-            });
-        };
         fetchStats();
-    }, [token]);
+    }, []);
 
-    const cards = [
-        { label: '系统用户', value: stats.userCount, icon: UsersIcon, color: '#007AFF' },
-        { label: '组织架构', value: stats.deptCount, icon: FolderTree, color: '#34C759' },
-        { label: '存储资源', value: '4.2 TB', icon: HardDrive, color: '#FF9500' },
-        { label: '安全健康', value: '良', icon: ShieldCheck, color: '#FF3B30' },
-    ];
+    const fetchStats = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await axios.get('/api/user/stats', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setStats(res.data);
+        } catch (err: any) {
+            console.error('Failed to fetch stats:', err);
+            setError(err.response?.data?.error || err.message || '加载统计数据失败');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    if (loading) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <Activity size={48} style={{ opacity: 0.3, marginBottom: '16px', display: 'block', margin: '0 auto 16px' }} />
+                <p>加载中...</p>
+            </div>
+        );
+    }
+
+    if (error || !stats) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <p style={{ color: '#ff4444', marginBottom: '16px' }}>
+                    ❌ {error || '加载失败'}
+                </p>
+                <button
+                    onClick={fetchStats}
+                    style={{
+                        padding: '12px 24px',
+                        background: 'var(--accent-blue)',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '1rem'
+                    }}
+                >
+                    重试
+                </button>
+            </div>
+        );
+    }
+
+    const storagePercent = Math.min((stats.storageUsed / (10 * 1024 * 1024 * 1024)) * 100, 100); // Assume 10GB quota
 
     return (
-        <div className="fade-in">
-            <div style={{ marginBottom: 32 }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>系统概览</h2>
-                <p className="hint">欢迎回来，Administrator。这是 Longhorn 数据中心的实时快照。</p>
+        <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Header */}
+            <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Activity size={32} color="var(--accent-blue)" />
+                    个人Dashboard
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                    欢迎回来，{stats.username} · {stats.role === 'Admin' ? '管理员' : '用户'}
+                </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginBottom: 40 }}>
-                {cards.map((card, i) => (
-                    <div key={i} style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        padding: 24,
-                        borderRadius: 16,
-                        border: '1px solid var(--glass-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 20
-                    }}>
+            {/* Stats Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '20px',
+                marginBottom: '32px'
+            }}>
+                {/* Upload Count */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+                    onClick={() => navigate(`/dept/members/${stats.username}`)}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                         <div style={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 14,
-                            background: `${card.color}20`,
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 210, 0, 0.1)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}>
-                            <card.icon size={28} color={card.color} />
+                            <FileText size={24} color="var(--accent-blue)" />
                         </div>
                         <div>
-                            <div className="hint" style={{ fontSize: '0.9rem' }}>{card.label}</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{card.value}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>上传文件</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.uploadCount}</div>
                         </div>
                     </div>
-                ))}
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        点击查看个人空间
+                    </div>
+                </div>
+
+                {/* Storage Used */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '24px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 210, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <HardDrive size={24} color="var(--accent-blue)" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>存储使用</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{formatBytes(stats.storageUsed)}</div>
+                        </div>
+                    </div>
+                    <div style={{
+                        width: '100%',
+                        height: '8px',
+                        background: 'rgba(0,0,0,0.1)',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        marginBottom: '8px'
+                    }}>
+                        <div style={{
+                            width: `${storagePercent}%`,
+                            height: '100%',
+                            background: 'var(--accent-blue)',
+                            transition: 'width 0.3s'
+                        }} />
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        {storagePercent.toFixed(1)}% of 10 GB
+                    </div>
+                </div>
+
+                {/* Starred Files */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+                    onClick={() => navigate('/starred')}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 210, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <Star size={24} color="var(--accent-blue)" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>星标文件</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.starredCount}</div>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        点击查看所有星标
+                    </div>
+                </div>
+
+                {/* Share Links */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+                    onClick={() => navigate('/shares')}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 210, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <Link2 size={24} color="var(--accent-blue)" />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>分享链接</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.shareCount}</div>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        点击管理分享
+                    </div>
+                </div>
             </div>
 
+            {/* Account Info */}
             <div style={{
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: 20,
-                border: '1px solid var(--glass-border)',
-                padding: 32,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 200,
-                gap: 16
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+                gap: '20px'
             }}>
-                <Activity size={48} opacity={0.3} />
-                <p className="hint">访问流量分析图表加载中...</p>
+                {/* Last Login */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '20px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <Clock size={20} color="var(--accent-blue)" />
+                        <div style={{ fontWeight: 600 }}>最后登录</div>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>
+                        {formatDistanceToNow(new Date(stats.lastLogin), { addSuffix: true, locale: zhCN })}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {new Date(stats.lastLogin).toLocaleString('zh-CN')}
+                    </div>
+                </div>
+
+                {/* Account Created */}
+                <div style={{
+                    background: 'var(--glass-bg)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '12px',
+                    padding: '20px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                        <Calendar size={20} color="var(--accent-blue)" />
+                        <div style={{ fontWeight: 600 }}>账户创建</div>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>
+                        {formatDistanceToNow(new Date(stats.accountCreated), { addSuffix: true, locale: zhCN })}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {new Date(stats.accountCreated).toLocaleString('zh-CN')}
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div style={{ marginTop: '32px' }}>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '16px' }}>快速操作</h2>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => navigate(`/dept/members/${stats.username}`)}
+                        style={{
+                            padding: '12px 24px',
+                            background: 'var(--accent-blue)',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontSize: '0.95rem'
+                        }}
+                    >
+                        前往个人空间
+                    </button>
+                    <button
+                        onClick={() => navigate('/starred')}
+                        style={{
+                            padding: '12px 24px',
+                            background: 'var(--glass-bg)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontSize: '0.95rem'
+                        }}
+                    >
+                        查看星标文件
+                    </button>
+                    <button
+                        onClick={() => navigate('/search')}
+                        style={{
+                            padding: '12px 24px',
+                            background: 'var(--glass-bg)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontSize: '0.95rem'
+                        }}
+                    >
+                        搜索文件
+                    </button>
+                </div>
             </div>
         </div>
     );
