@@ -330,8 +330,7 @@ const UserManagement: React.FC = () => {
                             <th style={{ padding: '16px 24px' }}>用户名</th>
                             <th style={{ padding: '16px 24px' }}>所属部门</th>
                             <th style={{ padding: '16px 24px' }}>角色</th>
-                            <th style={{ padding: '16px 24px' }}>创建于</th>
-                            <th style={{ padding: '16px 24px' }}>状态</th>
+                            <th style={{ padding: '16px 24px' }}>个人空间</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -362,13 +361,23 @@ const UserManagement: React.FC = () => {
                                         {u.role === 'Admin' ? '系统管理员' : u.role === 'Lead' ? '部门主管' : '普通成员'}
                                     </div>
                                 </td>
-                                <td style={{ padding: '16px 24px' }} className="hint">
-                                    {u.created_at ? format(new Date(u.created_at), 'yyyy-MM-dd') : '--'}
-                                </td>
                                 <td style={{ padding: '16px 24px' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#34c759', fontSize: '0.85rem' }}>
-                                        <CheckCircle size={14} /> 活跃
-                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Assuming we have access to navigation or can perform a hard redirect/state change
+                                            // Since we lack useNavigate instance here in this context, we will add it in the next step or assume passed via context specific way.
+                                            // But wait, I can use window.location.href as fallback or I need to import useNavigate.
+                                            // I'll use window.location.assign as a safe bet if I don't want to mess with imports yet, but properly I should add imports.
+                                            // Actually let's just use window.location for now or I will use a separate step to add imports.
+                                            // Wait, I can do multi_replace to add imports and the hook.
+                                            window.location.href = `/?path=Members/${u.username}`;
+                                        }}
+                                        className="btn-glass"
+                                        style={{ fontSize: '0.8rem', padding: '4px 12px', height: 'auto' }}
+                                    >
+                                        <Folder size={14} style={{ marginRight: 4 }} /> 查看空间
+                                    </button>
                                 </td>
                             </tr>
                         ))}

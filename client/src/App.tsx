@@ -210,12 +210,8 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
         {role === 'Admin' && (
           <>
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
-            <Link to="/members" className={`sidebar-item ${location.pathname === '/members' ? 'active' : ''}`} onClick={onClose}>
-              <Users size={20} />
-              <span>成员空间</span>
-            </Link>
             <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v10M23 12h-6m-6 0H1" /></svg>
+              <Users size={20} />
               <span>系统后台</span>
             </Link>
           </>
