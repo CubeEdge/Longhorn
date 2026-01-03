@@ -17,8 +17,8 @@ const AdminPanel: React.FC = () => {
 
     const menuItems = [
         { id: 'dashboard', label: '概览仪表盘', icon: LayoutDashboard },
-        { id: 'users', label: '成员账号管理', icon: UsersIcon },
-        { id: 'depts', label: '组织与权限控制', icon: Network },
+        { id: 'users', label: '成员账号', icon: UsersIcon },
+        { id: 'depts', label: '部门和权限', icon: Network },
         { id: 'settings', label: '系统设置', icon: Settings },
     ];
 

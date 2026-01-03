@@ -73,9 +73,9 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
 
               {/* Personal & Department Spaces */}
-              <Route path="/dept/members/:username/*" element={<FileBrowser />} />
-              <Route path="/dept/:deptCode/*" element={<FileBrowser />} />
-              <Route path="/dept/:deptCode" element={<FileBrowser />} />
+              <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
+              <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
+              <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
 
               {/* Admin */}
               <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
@@ -136,7 +136,7 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
   };
 
   const menuItems = [
-    { path: `/dept/members/${user.username}`, label: '个人空间', icon: User },
+    { path: '/personal', label: '个人空间', icon: User },
     { path: '/files', label: '所有文件', icon: HardDrive },
     { path: '/recent', label: '最近访问', icon: Clock },
     { path: '/starred', label: '星标文件', icon: Star },
@@ -172,10 +172,6 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Quick Access */}
-        <Link to="/search" className={`sidebar-item ${location.pathname === '/search' ? 'active' : ''}`} onClick={onClose}>
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-          <span>搜索全部文件</span>
-        </Link>
         <Link to="/starred" className={`sidebar-item ${location.pathname === '/starred' ? 'active' : ''}`} onClick={onClose}>
           <Star size={20} />
           <span>星标文件</span>
@@ -189,7 +185,7 @@ const Sidebar: React.FC<{ user: any, role: string, onLogout: () => void, isOpen:
         <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
 
         {/* Personal Space */}
-        <Link to={`/dept/members/${user.username}`} className={`sidebar-item ${location.pathname === `/dept/members/${user.username}` ? 'active' : ''}`} onClick={onClose}>
+        <Link to="/personal" className={`sidebar-item ${location.pathname === '/personal' ? 'active' : ''}`} onClick={onClose}>
           <User size={20} />
           <span>个人空间</span>
         </Link>
@@ -277,7 +273,7 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   };
 
   // Always render, show loading state if needed
-  const displayStats = stats || { uploadCount: '-', storageUsed: 0, starredCount: '-' };
+  const displayStats = stats || { uploadCount: '-', storageUsed: 0, shareCount: '-' };
 
   return (
     <div
@@ -304,7 +300,7 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>文件</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>上传文件</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{displayStats.uploadCount}</div>
       </div>
       <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
@@ -314,8 +310,8 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       </div>
       <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>星标</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{displayStats.starredCount}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>分享</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{displayStats.shareCount || 0}</div>
       </div>
     </div>
   );
@@ -397,11 +393,39 @@ const TopBar: React.FC<{ user: any, role: string, onMenuClick: () => void }> = (
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }} className="hidden-mobile">
-          <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{user.username}</span>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-            {user.role === 'Admin' ? '系统管理员' : user.role === 'Lead' ? '部门主管' : '普通用户'}
-          </span>
+        <button
+          onClick={() => navigate('/search')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '8px',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            e.currentTarget.style.color = 'var(--accent-blue)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+        </button>
+
+        <div className="hidden-mobile">
+          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{user.username}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {user.role === 'Admin' ? '系统管理员' : user.role === 'Lead' ? '部门主管' : '普通用户'}
+            </span>
+          </div>
         </div>
         <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'var(--accent-blue)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800, boxShadow: 'var(--shadow-sm)' }}>
           {user?.username?.substring(0, 1).toUpperCase() || '?'}

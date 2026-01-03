@@ -15,7 +15,7 @@ interface Props {
     onClose: () => void;
 }
 
-const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onClose }) => {
+const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, currentPath, onSelect, onClose, username }) => {
     // Auto-expand current path and parent paths
     const getInitialExpandedPaths = () => {
         const paths = new Set<string>(['']); // Always expand root
@@ -52,6 +52,43 @@ const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onC
         }
     };
 
+    const processedTree = React.useMemo(() => {
+        if (!folderTree.length) return [];
+        // The API returns [{ path: '', name: '根目录', children: [...] }]
+        // We want to reconstruct the top-level list displayed to the user.
+        // 1. Get the actual children of the root
+        const rootNode = folderTree[0];
+        const actualRoots = rootNode.children || [];
+
+        if (!username) return actualRoots;
+
+        const newTree: FolderNode[] = [];
+        const membersNode = actualRoots.find(n => n.path.toLowerCase() === 'members');
+
+        // Add all non-members nodes from the root's children
+        actualRoots.forEach(node => {
+            if (node.path.toLowerCase() !== 'members') {
+                newTree.push(node);
+            }
+        });
+
+        // Hoist personal space
+        if (membersNode && membersNode.children) {
+            const personalNode = membersNode.children.find(n => n.name.toLowerCase() === username.toLowerCase());
+            if (personalNode) {
+                // Determine if we should rename or keep as is. User asked for "username".
+                // It is already named "username".
+                newTree.unshift({ ...personalNode }); // Add to top
+            }
+        } else if (!membersNode) {
+            // If Members node is not found in root's children, maybe I AM the Members node? 
+            // Unlikely given API structure.
+            // But if specific user permissions are set, maybe personal folder IS at root? (No, structure is fixed)
+        }
+
+        return newTree;
+    }, [folderTree, username]);
+
     const toggleExpand = (path: string) => {
         const newExpanded = new Set(expandedPaths);
         if (newExpanded.has(path)) {
@@ -87,11 +124,11 @@ const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onC
                         padding: '10px 12px',
                         paddingLeft: `${12 + level * 20}px`,
                         cursor: 'pointer',
-                        background: isSelected ? 'rgba(0, 122, 255, 0.2)' : 'transparent',
-                        color: isSelected ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.9)',
+                        background: isSelected ? 'rgba(255, 210, 0, 0.1)' : 'transparent',
+                        color: isSelected ? '#FFD700' : 'rgba(255, 255, 255, 0.9)',
                         borderRadius: '8px',
                         marginBottom: '4px',
-                        border: isSelected ? '2px solid var(--accent-blue)' : 'none',
+                        border: isSelected ? '1px solid #FFD700' : '1px solid transparent',
                         transition: 'all 0.2s',
                         fontWeight: isSelected ? 600 : 400
                     }}
@@ -166,22 +203,47 @@ const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onC
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div style={{ marginBottom: '20px' }}>
-                    <h2 style={{
-                        fontSize: '1.5rem',
-                        fontWeight: 700,
-                        margin: 0,
-                        color: '#FFFFFF'
-                    }}>
-                        选择目标文件夹
-                    </h2>
-                    <p style={{
-                        fontSize: '0.9rem',
-                        color: 'rgba(255, 255, 255, 0.6)',
-                        margin: '8px 0 0 0'
-                    }}>
-                        选择要移动到的文件夹位置
-                    </p>
+                <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h2 style={{
+                            fontSize: '1.5rem',
+                            fontWeight: 700,
+                            margin: 0,
+                            color: '#FFFFFF'
+                        }}>
+                            选择目标文件夹
+                        </h2>
+                        <p style={{
+                            fontSize: '0.9rem',
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            margin: '8px 0 0 0'
+                        }}>
+                            选择要移动到的文件夹位置
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '32px',
+                            height: '32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: '#fff',
+                            transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
 
                 {/* Tree Container */}
@@ -205,7 +267,7 @@ const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onC
                             加载中...
                         </div>
                     ) : (
-                        folderTree.map(node => renderNode(node))
+                        processedTree.map(node => renderNode(node))
                     )}
                 </div>
 
@@ -244,22 +306,12 @@ const FolderTreeSelector: React.FC<Props> = ({ token, currentPath, onSelect, onC
                                 ? 'var(--accent-blue)'
                                 : 'rgba(255, 255, 255, 0.1)',
                             color: selectedPath && selectedPath !== currentPath
-                                ? '#FFF'
+                                ? '#000'
                                 : 'rgba(255, 255, 255, 0.3)',
-                            fontWeight: 600,
+                            fontWeight: 700,
                             fontSize: '0.95rem',
                             cursor: selectedPath && selectedPath !== currentPath ? 'pointer' : 'not-allowed',
                             transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            if (selectedPath && selectedPath !== currentPath) {
-                                e.currentTarget.style.background = '#0066CC';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (selectedPath && selectedPath !== currentPath) {
-                                e.currentTarget.style.background = 'var(--accent-blue)';
-                            }
                         }}
                     >
                         确定移动

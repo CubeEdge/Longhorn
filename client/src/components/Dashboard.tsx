@@ -224,7 +224,7 @@ export const Dashboard: React.FC = () => {
                         </div>
                         <div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>星标文件</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.starredCount}</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.starredCount || 0}</div>
                         </div>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

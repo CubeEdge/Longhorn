@@ -668,7 +668,29 @@ const UserManagement: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
+
+
+            {/* Hint Section */}
+            <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 20, borderRadius: 16 }}>
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Shield size={18} color="var(--accent-blue)" /> 权限说明</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>系统管理员</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>拥有系统所有权限，包括用户管理、部门设置、全局文件访问等。</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>部门主管</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>拥有所辖部门文件夹的完全控制权，可查看本部门成员列表。</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>普通成员</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>仅拥有个人空间和被授权文件夹的访问权限。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div >
     );
 };
 

@@ -17,20 +17,26 @@ import {
     LayoutGrid,
     List,
     X,
+    Search,
+    Home,
+    Users,
+    Settings,
+    ChevronDown,
     Download,
     FileText,
     Table as TableIcon,
     MoreHorizontal,
     Info,
     Trash2,
-    FolderPlus,
     Eye,
     User,
     Clock,
     ChevronRight,
     Star,
     Link2,
-    Copy
+    Copy,
+    Move,
+    FolderPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
@@ -62,7 +68,7 @@ interface MenuAnchor {
 }
 
 interface FileBrowserProps {
-    mode?: 'all' | 'recent' | 'starred';
+    mode?: 'all' | 'recent' | 'starred' | 'personal';
 }
 
 const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
@@ -115,8 +121,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [sharePassword, setSharePassword] = useState('');
     const [shareExpires, setShareExpires] = useState('7');
     const [shareLink, setShareLink] = useState('');
+    const [isCreatingShare, setIsCreatingShare] = useState(false);
+    const [starredFiles, setStarredFiles] = useState<string[]>([]);
 
-    const { deptCode } = useParams();
+    // const { deptCode } = useParams(); // Removed in favor of params usage below
     const { token } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const docContainerRef = useRef<HTMLDivElement>(null);
@@ -130,6 +138,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data && Array.isArray(res.data.items)) {
+                console.log("Fetch Files:", path, "Result:", res.data.items.length);
                 setFiles(res.data.items);
                 setCanWrite(res.data.userCanWrite);
                 setCurrentPath(path);
@@ -144,14 +153,73 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         }
     };
 
+    const effectiveMode = React.useMemo(() => {
+        return mode;
+    }, [mode]);
+
+    const params = useParams();
+
     useEffect(() => {
-        if (mode === 'all') {
-            fetchFiles(deptCode || '');
+        if (effectiveMode === 'personal') {
+            const user = useAuthStore.getState().user;
+            if (user && user.username) {
+                fetchFiles(`Members/${user.username}`);
+            }
+        } else if (effectiveMode === 'all') {
+            let path = params.deptCode || '';
+            if (params['*']) {
+                const subPath = params['*'];
+                path = path ? `${path}/${subPath}` : subPath;
+            }
+            fetchFiles(path);
         } else {
             fetchFiles('');
         }
-        setSelectedPaths([]); // Reset selection on folder change
-    }, [deptCode, token, mode]);
+        setSelectedPaths([]);
+    }, [params.deptCode, params['*'], token, effectiveMode]);
+
+    // Fetch starred files
+    useEffect(() => {
+        if (token) {
+            axios.get('/api/starred', {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                setStarredFiles(res.data.map((item: any) => item.file_path));
+            }).catch(err => console.error('Failed to fetch starred:', err));
+        }
+    }, [token]);
+
+    const handleStar = async (item: FileItem) => {
+        const isStarred = starredFiles.includes(item.path);
+
+        try {
+            if (isStarred) {
+                // Unstar: find the starred file ID first
+                const check = await axios.get(`/api/starred/check?path=${encodeURIComponent(item.path)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (check.data.id) {
+                    await axios.delete(`/api/starred/${check.data.id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setStarredFiles(starredFiles.filter(p => p !== item.path));
+                    alert('✅ 已取消星标');
+                }
+            } else {
+                // Star
+                await axios.post('/api/starred', {
+                    path: item.path
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setStarredFiles([...starredFiles, item.path]);
+                alert('⭐ 已添加星标');
+            }
+        } catch (err: any) {
+            console.error('Failed to toggle star:', err);
+            alert('❌ 操作失败：' + (err.response?.data?.error || err.message));
+        }
+    };
 
     useEffect(() => {
         const fetchDepts = async () => {
@@ -352,10 +420,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
-    const handleDownload = async (item: any) => {
-        if (!window.confirm(`确定要删除 ${file.name} 吗？`)) return;
+    const handleDelete = async (item: any) => {
+        if (!window.confirm(`确定要删除 ${item.name} 吗？`)) return;
         try {
-            await axios.delete(`/api/files?path=${file.path}`, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.delete(`/api/files?path=${item.path}`, { headers: { Authorization: `Bearer ${token}` } });
             fetchFiles(currentPath);
             setMenuAnchor(null);
         } catch (err) { alert("删除失败"); }
@@ -416,6 +484,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleCreateShareLink = async () => {
         if (!shareItem) return;
 
+        setIsCreatingShare(true);
         try {
             const res = await axios.post('/api/shares', {
                 path: shareItem.path,
@@ -427,10 +496,18 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
             if (res.data.shareUrl) {
                 setShareLink(res.data.shareUrl);
+                // Auto copy to clipboard
+                navigator.clipboard.writeText(res.data.shareUrl);
+                alert('✅ 分享链接已生成并复制到剪贴板！');
+            } else {
+                alert('❌ 生成失败：服务器未返回链接');
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to create share link:', err);
-            alert('创建分享链接失败');
+            const errorMsg = err.response?.data?.error || err.message || '未知错误';
+            alert(`❌ 创建分享链接失败：${errorMsg}`);
+        } finally {
+            setIsCreatingShare(false);
         }
     };
 
@@ -467,32 +544,95 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
 
             {/* Batch Action Bar */}
+            {/* Batch Action Bar */}
             {selectedPaths.length > 0 && (
                 <div style={{
                     position: 'sticky',
                     top: 0,
                     zIndex: 100,
-                    background: 'var(--accent-blue)',
-                    color: '#000',
+                    background: 'rgba(32, 32, 32, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
                     padding: '12px 24px',
-                    borderRadius: '12px',
+                    borderRadius: '16px',
                     marginBottom: 20,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 8px 32px rgba(255, 210, 0, 0.3)',
-                    animation: 'slideDown 0.3s ease'
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(0,0,0,0.1)' }}><X size={18} color="#000" /></button>
-                        <span style={{ fontWeight: 800 }}>已选中 {selectedPaths.length} 个项目</span>
+                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                            <X size={18} />
+                        </button>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedPaths.length}</span> 个项目</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
-                        <button onClick={() => setIsMoveModalOpen(true)} style={{ background: '#000', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            移动到...
-                        </button>
-                        <button onClick={handleBulkDelete} style={{ background: '#FF3B30', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            批量删除
+                        {[
+                            { icon: Star, label: '星标', onClick: () => selectedPaths.forEach(async (path) => { const file = files.find(f => f.path === path); if (file) await handleStar(file); }) },
+                            { icon: Share2, label: '分享', onClick: () => alert('批量分享功能开发中') },
+                            { icon: Move, label: '移动', onClick: () => setIsMoveModalOpen(true) }
+                        ].map((action, idx) => (
+                            <button
+                                key={idx}
+                                onClick={action.onClick}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    color: '#fff',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    padding: '8px 16px',
+                                    borderRadius: '10px',
+                                    fontWeight: 600,
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    transition: 'all 0.2s',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                                }}
+                            >
+                                <action.icon size={16} strokeWidth={2.5} color="var(--accent-blue)" /> {action.label}
+                            </button>
+                        ))}
+                        <button
+                            onClick={handleBulkDelete}
+                            style={{
+                                background: 'rgba(255, 59, 48, 0.1)',
+                                color: '#FF3B30',
+                                border: '1px solid rgba(255, 59, 48, 0.3)',
+                                padding: '8px 16px',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 59, 48, 0.2)';
+                                e.currentTarget.style.borderColor = '#FF3B30';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)';
+                                e.currentTarget.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                            }}
+                        >
+                            删除
                         </button>
                     </div>
                 </div>
@@ -507,7 +647,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 (<>
                                     {/* Breadcrumb with integrated back button */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        {currentPath && (
+                                        {currentPath && !(effectiveMode === 'personal' && currentPath.toLowerCase() === `members/${useAuthStore.getState().user?.username.toLowerCase()}`) && (
                                             <button
                                                 onClick={handleBack}
                                                 style={{
@@ -541,6 +681,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         )}
                                         <span style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Kinefinity</span>
                                         {currentPath.split('/').filter(Boolean).map((part, idx, arr) => {
+                                            // Handle "Members" hiding in breadcrumb
+                                            if (part.toLowerCase() === 'members' && effectiveMode === 'personal') return null;
+
+                                            // Map department codes to full names
+                                            let displayName = decodeURIComponent(part);
+                                            if (idx === 0 && part.length <= 2) {
+                                                // First level with 2-letter code
+                                                const deptMap: { [key: string]: string } = {
+                                                    'OP': '运营部 (OP)',
+                                                    'MS': '市场部 (MS)',
+                                                    'RD': '研发中心 (RD)',
+                                                    'GE': '综合管理 (GE)'
+                                                };
+                                                displayName = deptMap[part] || displayName;
+                                            }
+
                                             // Calculate path up to this segment
                                             const pathUpTo = arr.slice(0, idx + 1).join('/');
                                             const isLast = idx === arr.length - 1;
@@ -568,7 +724,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                             if (!isLast) e.currentTarget.style.color = 'var(--text-secondary)';
                                                         }}
                                                     >
-                                                        {decodeURIComponent(part)}
+                                                        {displayName}
                                                     </span>
                                                 </React.Fragment>
                                             );
@@ -583,7 +739,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         <button className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}><LayoutGrid size={18} /></button>
                         <button className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}><List size={18} /></button>
                     </div>
-                    {canWrite && mode === 'all' && (
+                    {canWrite && (effectiveMode === 'all' || effectiveMode === 'personal') && (
                         <>
                             <button className="btn-icon-only" onClick={() => setIsCreatingFolder(true)} title="新建文件夹">
                                 <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
@@ -596,29 +752,31 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 </div>
             </div>
 
-            {isCreatingFolder && (
-                <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--accent-blue)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', boxShadow: 'var(--shadow-lg)' }}>
-                    <Folder color="var(--accent-blue)" size={24} />
-                    <input
-                        type="text"
-                        autoFocus
-                        placeholder="文件夹名称"
-                        value={newFolderName}
-                        onChange={e => setNewFolderName(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
-                        style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent-blue)', color: 'var(--text-main)', outline: 'none', padding: '4px 0', fontSize: '1rem' }}
-                    />
-                    <button className="btn-primary" onClick={handleCreateFolder} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>创建</button>
-                    <button onClick={() => setIsCreatingFolder(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
-                </div>
-            )}
+            {
+                isCreatingFolder && (
+                    <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--accent-blue)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', boxShadow: 'var(--shadow-lg)' }}>
+                        <Folder color="var(--accent-blue)" size={24} />
+                        <input
+                            type="text"
+                            autoFocus
+                            placeholder="文件夹名称"
+                            value={newFolderName}
+                            onChange={e => setNewFolderName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
+                            style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent-blue)', color: 'var(--text-main)', outline: 'none', padding: '4px 0', fontSize: '1rem' }}
+                        />
+                        <button className="btn-primary" onClick={handleCreateFolder} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>创建</button>
+                        <button onClick={() => setIsCreatingFolder(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
+                    </div>
+                )
+            }
 
             {uploadStatus === 'success' && <div style={{ background: '#ecfdf5', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> 上传成功</div>}
 
-            {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>正在读取文件库...</span></div>
-            ) : files.length > 0 ? (
-                viewMode === 'grid' ? (
+            {
+                loading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>正在读取文件库...</span></div>
+                ) : viewMode === 'grid' ? (
                     <div className="file-grid">
                         {Array.isArray(files) && formattedSortedFiles.map((file) => (
                             <div key={file.path} className={`file-item ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)} onContextMenu={(e) => handleContextMenu(e, file)} style={{ position: 'relative' }}>
@@ -632,15 +790,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <span className="file-name">{file.name}</span>
                             </div>
                         ))}
-                        <div className="file-item" onClick={handleUploadClick} style={{ border: '2px dashed var(--glass-border)', background: 'transparent' }}>
-                            <Plus size={40} color="var(--glass-border)" />
-                        </div>
+                        {/* Upload button in grid view */}
+                        {canWrite && (mode === 'all' || mode === 'personal') && (
+                            <div className="file-item" onClick={handleUploadClick} style={{ border: '2px dashed var(--glass-border)', background: 'transparent' }}>
+                                <Plus size={40} color="var(--glass-border)" />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="file-list">
+                        {/* List Header - Always Visible */}
                         <div className="file-list-header">
                             <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                                {selectedPaths.length > 0 && selectedPaths.length === files.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                {files.length > 0 && selectedPaths.length === files.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
                             </div>
                             <div className="col-name" onClick={() => { setSortKey('name'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>名称</div>
                             <div className="col-uploader hidden-mobile" onClick={() => { setSortKey('uploader'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>上传者</div>
@@ -649,105 +811,127 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             <div className="col-stats" onClick={() => { setSortKey('accessCount'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>访问次数</div>
                             <div style={{ width: 40 }}></div>
                         </div>
-                        {Array.isArray(files) && formattedSortedFiles.map((file) => (
-                            <div key={file.path} className={`file-list-row ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)}>
-                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.path)}>
-                                    {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
-                                </div>
-                                <div className="col-name">
-                                    <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>{file.isDirectory ? <Folder size={20} fill="var(--accent-blue)" color="var(--accent-blue)" /> : getIcon(file, 20)}</div>
-                                    <span>{file.name}</span>
-                                </div>
-                                <div className="col-uploader hidden-mobile" title={file.uploader}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} opacity={0.5} color="var(--accent-blue)" /> {file.uploader || 'system'}</div>
-                                </div>
-                                <div className="col-date hidden-mobile">{format(new Date(file.mtime), 'yyyy-MM-dd HH:mm')}</div>
-                                <div className="col-size">{file.isDirectory ? '--' : formatSize(file.size)}</div>
-                                <div className="col-stats" onClick={(e) => { e.stopPropagation(); fetchStats(file); }}>
-                                    {file.isDirectory ? '--' : <><Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" /> {file.accessCount || 0}</>}
-                                </div>
-                                <div className="list-more-btn" onClick={(e) => handleOpenMenu(e, file)}>
-                                    <MoreHorizontal size={18} />
-                                </div>
+
+                        {/* List Items or Empty State */}
+                        {files.length === 0 ? (
+                            <div className="empty-hint" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                文件夹为空
                             </div>
-                        ))}
+                        ) : (
+                            Array.isArray(files) && formattedSortedFiles.map((file) => (
+                                <div key={file.path} className={`file-list-row ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)}>
+                                    <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.path)}>
+                                        {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                    </div>
+                                    <div className="col-name">
+                                        <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>{file.isDirectory ? <Folder size={20} fill="var(--accent-blue)" color="var(--accent-blue)" /> : getIcon(file, 20)}</div>
+                                        <span>{file.name}</span>
+                                    </div>
+                                    <div className="col-uploader hidden-mobile" title={file.uploader}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} opacity={0.5} color="var(--accent-blue)" /> {file.uploader || 'system'}</div>
+                                    </div>
+                                    <div className="col-date hidden-mobile">{format(new Date(file.mtime), 'yyyy-MM-dd HH:mm')}</div>
+                                    <div className="col-size">{formatSize(file.size)}</div>
+                                    <div className="col-stats" onClick={(e) => { e.stopPropagation(); fetchStats(file); }}>
+                                        {file.isDirectory ? '--' : <><Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" /> {file.accessCount || 0}</>}
+                                    </div>
+                                    <div className="list-more-btn" onClick={(e) => handleOpenMenu(e, file)}>
+                                        <MoreHorizontal size={18} />
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 )
-            ) : null}
+            }
 
             {/* Stats Modal */}
-            {statsFile && (
-                <div className="modal-overlay" onClick={() => setStatsFile(null)}>
-                    <div className="modal-content fade-in" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Eye size={20} color="var(--accent-blue)" /> 访问分析</h3>
-                            <button onClick={() => setStatsFile(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
-                        </div>
-                        <div style={{ marginBottom: 20, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 12 }}>
-                            <div className="hint" style={{ marginBottom: 4 }}>项目名称</div>
-                            <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{statsFile.name}</div>
-                        </div>
-                        <div className="stats-history-list">
-                            {accessHistory.length > 0 ? accessHistory.map((log, i) => (
-                                <div key={i} className="stats-history-item">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,210,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <User size={16} color="var(--accent-blue)" />
-                                        </div>
-                                        <div>
-                                            <div className="stats-user">{log.username}</div>
-                                            <div className="hint" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                <Clock size={12} color="var(--accent-blue)" /> {format(new Date(log.last_access), 'yyyy-MM-dd HH:mm')}
+            {
+                statsFile && (
+                    <div className="modal-overlay" onClick={() => setStatsFile(null)}>
+                        <div className="modal-content fade-in" onClick={e => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Eye size={20} color="var(--accent-blue)" /> 访问分析</h3>
+                                <button onClick={() => setStatsFile(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
+                            </div>
+                            <div style={{ marginBottom: 20, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 12 }}>
+                                <div className="hint" style={{ marginBottom: 4 }}>项目名称</div>
+                                <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{statsFile.name}</div>
+                            </div>
+                            <div className="stats-history-list">
+                                {accessHistory.length > 0 ? accessHistory.map((log, i) => (
+                                    <div key={i} className="stats-history-item">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,210,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <User size={16} color="var(--accent-blue)" />
+                                            </div>
+                                            <div>
+                                                <div className="stats-user">{log.username}</div>
+                                                <div className="hint" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <Clock size={12} color="var(--accent-blue)" /> {format(new Date(log.last_access), 'yyyy-MM-dd HH:mm')}
+                                                </div>
                                             </div>
                                         </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{log.count}</div>
+                                            <div className="hint" style={{ fontSize: '0.7rem' }}>次访问</div>
+                                        </div>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{log.count}</div>
-                                        <div className="hint" style={{ fontSize: '0.7rem' }}>次访问</div>
-                                    </div>
-                                </div>
-                            )) : <div style={{ textAlign: 'center', padding: 20, opacity: 0.5 }}>暂无详细记录</div>}
+                                )) : <div style={{ textAlign: 'center', padding: 20, opacity: 0.5 }}>暂无详细记录</div>}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Context Menu Overlay */}
-            {menuAnchor && (
-                <div
-                    ref={menuRef}
-                    className="context-menu"
-                    style={{
-                        left: Math.min(menuAnchor.x, window.innerWidth - 240),
-                        top: Math.min(menuAnchor.y, window.innerHeight - 380)
-                    }}
-                >
-                    <div className="context-menu-item" onClick={() => { setPreviewFile(menuAnchor.file); setMenuAnchor(null); }}>
-                        <Info size={16} color="var(--accent-blue)" /> 显示简介
-                    </div>
-                    <a
-                        href={`/preview/${menuAnchor.file.path}`}
-                        download={menuAnchor.file.name}
-                        className="context-menu-item"
-                        style={{ textDecoration: 'none' }}
-                        onClick={() => { recordAccess(menuAnchor.file); setMenuAnchor(null); }}
+            {
+                menuAnchor && (
+                    <div
+                        ref={menuRef}
+                        className="context-menu"
+                        style={{
+                            left: Math.min(menuAnchor.x, window.innerWidth - 240),
+                            top: Math.min(menuAnchor.y, window.innerHeight - 380)
+                        }}
                     >
-                        <Download size={16} color="var(--accent-blue)" /> 下载副本...
-                    </a>
-                    <div className="context-menu-separator" />
-                    <div className="context-menu-item" onClick={() => handleShare(menuAnchor.file)}>
-                        <Share2 size={16} color="var(--accent-blue)" /> 与其他人协作...
+                        <div className="context-menu-item" onClick={() => { setPreviewFile(menuAnchor.file); setMenuAnchor(null); }}>
+                            <Info size={16} color="var(--accent-blue)" /> 显示简介
+                        </div>
+                        <a
+                            href={`/preview/${menuAnchor.file.path}`}
+                            download={menuAnchor.file.name}
+                            className="context-menu-item"
+                            style={{ textDecoration: 'none' }}
+                            onClick={() => { recordAccess(menuAnchor.file); setMenuAnchor(null); }}
+                        >
+                            <Download size={16} color="var(--accent-blue)" /> 下载副本...
+                        </a>
+                        <div className="context-menu-separator" />
+                        <div className="context-menu-item" onClick={() => { handleStar(menuAnchor.file); setMenuAnchor(null); }}>
+                            <Star size={16} color="var(--accent-blue)" /> 添加星标
+                        </div>
+                        <div className="context-menu-item" onClick={() => handleShare(menuAnchor.file)}>
+                            <Share2 size={16} color="var(--accent-blue)" /> 分享
+                        </div>
+                        <div className="context-menu-item" onClick={() => {
+                            setSelectedPaths([menuAnchor.file.path]);
+                            setIsMoveModalOpen(true);
+                            setMenuAnchor(null);
+                        }}>
+                            <Move size={16} color="var(--accent-blue)" /> 移动到...
+                        </div>
+                        {canWrite && (
+                            <>
+                                <div className="context-menu-separator" />
+                                <div className="context-menu-item danger" onClick={() => handleDelete(menuAnchor.file)}>
+                                    <Trash2 size={16} /> 删除
+                                </div>
+                            </>
+                        )}
                     </div>
-                    {canWrite && (
-                        <>
-                            <div className="context-menu-separator" />
-                            <div className="context-menu-item danger" onClick={() => handleBulkDelete([menuAnchor.file.path])}>
-                                <Trash2 size={16} /> 删除所选项
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
+                )
+            }
 
             {/* Context Menu */}
             {
@@ -813,102 +997,167 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                             >
                                 <Link2 size={16} />
-                                创建分享链接
+                                分享
                             </button>
                         )}
+                        <button
+                            onClick={() => {
+                                setSelectedPaths([contextMenu.item.path]);
+                                setIsMoveModalOpen(true);
+                                setContextMenu(null);
+                            }}
+                            style={{
+                                width: '100%',
+                                padding: '10px 16px',
+                                border: 'none',
+                                background: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '0.9rem'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,210,0,0.1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                        >
+                            <Move size={16} />
+                            移动到...
+                        </button>
                     </div>
                 )
             }
 
             {/* Share Dialog */}
-            {showShareDialog && shareItem && (
-                <div className="modal-overlay" onClick={() => setShowShareDialog(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Link2 size={24} color="var(--accent-blue)" />
-                            创建分享链接
-                        </h3>
+            {
+                showShareDialog && shareItem && (
+                    <div className="modal-overlay" onClick={() => setShowShareDialog(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                                    <Link2 size={24} color="var(--accent-blue)" />
+                                    创建分享链接
+                                </h3>
+                                <button
+                                    onClick={() => setShowShareDialog(false)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
 
-                        <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>文件:</div>
-                            <div style={{
-                                padding: '12px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                color: 'var(--text-main)'
-                            }}>
-                                {shareItem.name}
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>文件:</div>
+                                <div style={{
+                                    padding: '12px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem',
+                                    color: 'var(--text-main)'
+                                }}>
+                                    {shareItem.name}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
+                                    访问密码 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(可选)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={sharePassword}
+                                    onChange={(e) => setSharePassword(e.target.value)}
+                                    placeholder="留空则无需密码"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.95rem',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        color: 'var(--text-main)',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>有效期:</label>
+                                <select
+                                    value={shareExpires}
+                                    onChange={(e) => setShareExpires(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.95rem',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        color: 'var(--text-main)',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="1" style={{ background: '#2a2a2a', color: '#fff' }}>1天</option>
+                                    <option value="7" style={{ background: '#2a2a2a', color: '#fff' }}>7天</option>
+                                    <option value="30" style={{ background: '#2a2a2a', color: '#fff' }}>30天</option>
+                                    <option value="never" style={{ background: '#2a2a2a', color: '#fff' }}>永久</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    onClick={() => {
+                                        setShowShareDialog(false);
+                                        setShareLink('');
+                                        setSharePassword('');
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '8px',
+                                        color: 'var(--text-main)',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.95rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={handleCreateShareLink}
+                                    className="btn-primary"
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        height: '48px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Link2 size={18} style={{ marginRight: '6px' }} />
+                                    生成链接
+                                </button>
                             </div>
                         </div>
-
-                        <div style={{ marginBottom: '16px' }}>
-                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                访问密码 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(可选)</span>
-                            </label>
-                            <input
-                                type="text"
-                                value={sharePassword}
-                                onChange={(e) => setSharePassword(e.target.value)}
-                                placeholder="留空则无需密码"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    border: '1px solid var(--glass-border)',
-                                    borderRadius: '8px',
-                                    fontSize: '0.95rem',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    color: 'var(--text-main)',
-                                    outline: 'none'
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '24px' }}>
-                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>有效期:</label>
-                            <select
-                                value={shareExpires}
-                                onChange={(e) => setShareExpires(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    border: '1px solid var(--glass-border)',
-                                    borderRadius: '8px',
-                                    fontSize: '0.95rem',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    color: 'var(--text-main)',
-                                    outline: 'none',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <option value="1" style={{ background: '#2a2a2a', color: '#fff' }}>1天</option>
-                                <option value="7" style={{ background: '#2a2a2a', color: '#fff' }}>7天</option>
-                                <option value="30" style={{ background: '#2a2a2a', color: '#fff' }}>30天</option>
-                                <option value="never" style={{ background: '#2a2a2a', color: '#fff' }}>永久</option>
-                            </select>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <button
-                                onClick={() => setShowShareDialog(false)}
-                                className="btn-secondary"
-                                style={{ flex: 1, padding: '12px' }}
-                            >
-                                取消
-                            </button>
-                            <button
-                                onClick={handleCreateShareLink}
-                                className="btn-primary"
-                                style={{ flex: 1, padding: '12px' }}
-                            >
-                                <Link2 size={18} style={{ marginRight: '6px' }} />
-                                生成链接
-                            </button>
-                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Preview Modal */}
             {
@@ -938,8 +1187,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             {
                 isMoveModalOpen && (
                     <FolderTreeSelector
-                        token={token}
+                        token={token || ''}
                         currentPath={currentPath}
+                        username={useAuthStore.getState().user?.username}
                         onSelect={(targetPath) => {
                             handleBulkMove(targetPath);
                             setIsMoveModalOpen(false);
@@ -953,15 +1203,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 )
             }
 
-            {
-                files.length === 0 && !loading && (
-                    <div className="upload-zone" onClick={handleUploadClick}>
-                        <Upload size={48} style={{ color: 'var(--accent-blue)', marginBottom: 16 }} />
-                        <h3>文件夹为空</h3>
-                        <p className="hint">点击或拖拽上传</p>
-                    </div>
-                )
-            }
+
         </div >
     );
 };

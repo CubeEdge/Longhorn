@@ -29,16 +29,20 @@ const DEPT_CODE_MAP = {
 function resolvePath(requestPath) {
     if (!requestPath) return '';
 
-    // Handle members personal space: members/pepper → Members/pepper
-    if (requestPath.startsWith('members/')) {
-        const username = requestPath.replace('members/', '');
+    // Handle members personal space: members/pepper or Members/pepper → Members/pepper
+    const lowerPath = requestPath.toLowerCase();
+    if (lowerPath.startsWith('members/')) {
+        const username = requestPath.substring('members/'.length);
         return `Members/${username}`;
     }
 
-    // Handle department codes
+    // Handle department codes (case-insensitive)
     const segments = requestPath.split('/').filter(Boolean);
-    if (segments.length > 0 && DEPT_CODE_MAP[segments[0]]) {
-        segments[0] = DEPT_CODE_MAP[segments[0]];
+    if (segments.length > 0) {
+        const firstSegmentUpper = segments[0].toUpperCase();
+        if (DEPT_CODE_MAP[firstSegmentUpper]) {
+            segments[0] = DEPT_CODE_MAP[firstSegmentUpper];
+        }
     }
     return segments.join('/');
 }
@@ -51,8 +55,21 @@ fs.ensureDirSync(RECYCLE_DIR);
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const requestedPath = req.query.path || '';
-        const resolvedPath = resolvePath(requestedPath);  // Resolve department codes (e.g., OP -> 运营部 (OP))
+        let resolvedPath = resolvePath(requestedPath);
+
+        // If path resolves to empty, default to user's personal space
+        if (!resolvedPath || resolvedPath === '') {
+            resolvedPath = `Members/${req.user.username}`;
+        }
+
+        // Auto-fix: If resolving to "Members" (root) and user is not Admin,
+        // force it to their personal directory.
+        if (resolvedPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
+            resolvedPath = `Members/${req.user.username}`;
+        }
+
         const targetDir = path.join(DISK_A, resolvedPath);
+        console.log(`[Multer] Requested: "${requestedPath}" → Resolved: "${resolvedPath}" → Target: "${targetDir}"`);
         fs.ensureDirSync(targetDir);
         cb(null, targetDir);
     },
@@ -189,16 +206,17 @@ const defaultDepts = [
 defaultDepts.forEach(dept => {
     try {
         db.prepare('INSERT OR IGNORE INTO departments (name) VALUES (?)').run(dept.name);
-        // Ensure Dept and Members folders exist
+        // Ensure Department folders exist (but not Members subfolders)
         const deptPath = path.join(DISK_A, dept.name);
         fs.ensureDirSync(deptPath);
-        fs.ensureDirSync(path.join(deptPath, 'Members'));
+        // Members folders removed - only use top-level Members/ for personal spaces
     } catch (e) { }
 });
 
 const ensureUserFolders = (user) => {
-    if (user.role === 'Admin' || !user.department_name) return;
-    const personalPath = path.join(DISK_A, user.department_name, 'Members', user.username);
+    if (user.role === 'Admin') return;
+    // Personal folders now under top-level Members/ directory only
+    const personalPath = path.join(DISK_A, 'Members', user.username);
     fs.ensureDirSync(personalPath);
 };
 
@@ -235,22 +253,37 @@ const authenticate = (req, res, next) => {
 };
 
 const hasPermission = (user, folderPath, accessType = 'Read') => {
+    try {
+        fs.appendFileSync(path.join(__dirname, 'debug_perm.txt'), `User=${user.username} Path=${folderPath} Norm=${folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')} Access=${accessType}\n`);
+    } catch (e) { }
+
     if (user.role === 'Admin') return true;
 
     const normalizedPath = folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
     const deptName = user.department_name;
 
-    // 1. Check departmental logic
+    // 1. Check personal space: Members/username (top-level)
+    // Use case-insensitive comparison to handle potential casing mismatches (e.g. orange vs Orange)
+    const personalPath = `members/${user.username.toLowerCase()}`;
+    const normalizedLower = normalizedPath.toLowerCase();
+
+    if (normalizedLower === personalPath || normalizedLower.startsWith(personalPath + '/')) {
+        return true; // Full access to own personal space
+    }
+
+    // 2. Check departmental logic
     if (deptName) {
+        const deptNameLower = deptName.toLowerCase();
+
         // Lead has full access to their department
-        if (user.role === 'Lead' && (normalizedPath === deptName || normalizedPath.startsWith(deptName + '/'))) {
+        if (user.role === 'Lead' && (normalizedLower === deptNameLower || normalizedLower.startsWith(deptNameLower + '/'))) {
             return true;
         }
         // Member has read access to department
-        if (user.role === 'Member' && (normalizedPath === deptName || normalizedPath.startsWith(deptName + '/'))) {
-            // Check if it's their own member folder (Full access)
-            const personalPath = `${deptName}/Members/${user.username}`;
-            if (normalizedPath === personalPath || normalizedPath.startsWith(personalPath + '/')) {
+        if (user.role === 'Member' && (normalizedLower === deptNameLower || normalizedLower.startsWith(deptNameLower + '/'))) {
+            // Check if it's their own member folder (Full access) - Legacy support
+            const legacyPersonalPath = `${deptNameLower}/members/${user.username.toLowerCase()}`;
+            if (normalizedLower === legacyPersonalPath || normalizedLower.startsWith(legacyPersonalPath + '/')) {
                 return true;
             }
             // Otherwise, only Read access for Member in department
@@ -258,7 +291,7 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
         }
     }
 
-    // 2. Check extended permissions table
+    // 3. Check extended permissions table
     const permissions = db.prepare(`
         SELECT access_type, expires_at FROM permissions 
         WHERE user_id = ? AND (folder_path = ? OR ? LIKE folder_path || '/%')
@@ -382,7 +415,22 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
 // Upload Route
 app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
     const requestedPath = req.query.path || '';
-    const subPath = resolvePath(requestedPath);
+    let subPath = resolvePath(requestedPath);
+
+    // If path resolves to empty (root), default to user's personal space
+    if (!subPath || subPath === '') {
+        subPath = `Members/${req.user.username}`;
+    }
+
+    // Auto-fix: If resolving to "Members" (root) and user is not Admin,
+    // force it to their personal directory.
+    if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
+        subPath = `Members/${req.user.username}`;
+    }
+
+    // Ensure the target directory exists before upload
+    const uploadTargetDir = path.join(DISK_A, subPath);
+    fs.ensureDirSync(uploadTargetDir);
 
     if (!hasPermission(req.user, subPath, 'Full')) {
         return res.status(403).json({ error: 'No write permission for this folder' });
@@ -400,7 +448,12 @@ app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {
     const { username, password, role, department_id } = req.body;
     const hash = bcrypt.hashSync(password, 10);
     try {
-        db.prepare('INSERT INTO users (username, password, role, department_id) VALUES (?, ?, ?, ?)').run(username, hash, role || 'Member', department_id);
+        const result = db.prepare('INSERT INTO users (username, password, role, department_id) VALUES (?, ?, ?, ?)').run(username, hash, role || 'Member', department_id);
+
+        // Create personal folder for new user
+        const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+        ensureUserFolders(newUser);
+
         res.json({ success: true });
     } catch (err) {
         res.status(400).json({ error: 'User already exists' });
@@ -423,7 +476,26 @@ app.get('/api/admin/users', authenticate, (req, res) => {
     }
 
     const users = db.prepare(query).all(...params);
-    res.json(users);
+
+    // Append stats for each user
+    const usersWithStats = users.map(user => {
+        // Calculate stats from file_stats table for Members/<username> directory
+        // We use LIKE 'Members/username/%' to count all files recursively
+        // Note: This assumes file_stats path starts with Members/... 
+        const stats = db.prepare(`
+            SELECT COUNT(*) as count, SUM(size) as total_size 
+            FROM file_stats 
+            WHERE path LIKE ? OR path = ?
+        `).get(`Members/${user.username}/%`, `Members/${user.username}`);
+
+        return {
+            ...user,
+            file_count: stats.count || 0,
+            total_size: stats.total_size || 0
+        };
+    });
+
+    res.json(usersWithStats);
 });
 
 app.put('/api/admin/users/:id', authenticate, (req, res) => {
@@ -831,31 +903,36 @@ app.get('/api/user/stats', authenticate, (req, res) => {
     try {
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
 
-        // Count uploaded files in user's personal space
+        // Count all files uploaded by this user across all directories
         let uploadCount = 0;
         let storageUsed = 0;
-        const personalPath = path.join(DISK_A, 'Members', user.username);
 
-        if (fs.existsSync(personalPath)) {
-            const countFiles = (dir) => {
-                try {
-                    const items = fs.readdirSync(dir);
-                    items.forEach(item => {
-                        const fullPath = path.join(dir, item);
-                        const stats = fs.statSync(fullPath);
-                        if (stats.isDirectory()) {
-                            countFiles(fullPath);
-                        } else {
+        const scanAllFiles = (dir) => {
+            try {
+                if (!fs.existsSync(dir)) return;
+                const items = fs.readdirSync(dir);
+                items.forEach(item => {
+                    const fullPath = path.join(dir, item);
+                    const stats = fs.statSync(fullPath);
+                    if (stats.isDirectory()) {
+                        scanAllFiles(fullPath);
+                    } else {
+                        // Get relative path from DISK_A
+                        const relativePath = path.relative(DISK_A, fullPath);
+                        // Check if this file was uploaded by current user
+                        const fileInfo = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(relativePath);
+                        if (fileInfo && fileInfo.uploader_id === user.id) {
                             uploadCount++;
                             storageUsed += stats.size;
                         }
-                    });
-                } catch (err) {
-                    // Skip inaccessible directories
-                }
-            };
-            countFiles(personalPath);
-        }
+                    }
+                });
+            } catch (err) {
+                // Skip inaccessible directories
+            }
+        };
+
+        scanAllFiles(DISK_A);
 
         // Count starred files
         const starredCount = db.prepare(
@@ -868,6 +945,7 @@ app.get('/api/user/stats', authenticate, (req, res) => {
         ).get(user.id).count;
 
         res.json({
+            fileCount: uploadCount,  // Add this for Dashboard compatibility
             uploadCount,
             storageUsed,
             starredCount,
@@ -1051,11 +1129,110 @@ app.post('/share/:token/verify', async (req, res) => {
     }
 });
 
+// Cleaner share URL alias - server-rendered page
+app.get('/s/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.query;
+        const shareLink = db.prepare('SELECT * FROM share_links WHERE share_token = ?').get(token);
+
+        if (!shareLink) {
+            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>链接不存在</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ 分享链接不存在</h1><p>该链接可能已被删除或无效</p></body></html>`);
+        }
+        if (shareLink.expires_at && new Date(shareLink.expires_at) < new Date()) {
+            return res.status(410).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>链接已过期</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>⏰ 分享链接已过期</h1><p>该链接已超过有效期</p></body></html>`);
+        }
+        if (shareLink.password) {
+            if (!password) {
+                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>需要密码</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}</style></head><body><h2>🔒 该文件需要密码访问</h2><form method="GET"><input type="password" name="password" placeholder="请输入访问密码" required><button type="submit">访问</button></form></body></html>`);
+            }
+            if (!bcrypt.compareSync(password, shareLink.password)) {
+                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>密码错误</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}.error{color:red;}</style></head><body><h2>🔒 该文件需要密码访问</h2><p class="error">❌ 密码错误，请重试</p><form method="GET"><input type="password" name="password" placeholder="请输入访问密码" required><button type="submit">访问</button></form></body></html>`);
+            }
+        }
+        db.prepare('UPDATE share_links SET access_count = access_count + 1, last_accessed = datetime(\'now\') WHERE id = ?').run(shareLink.id);
+        const fileName = path.basename(shareLink.file_path);
+        const filePath = path.join(DISK_A, shareLink.file_path);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>文件不存在</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ 文件不存在</h1><p>原文件可能已被移动或删除</p></body></html>`);
+        }
+
+        // Determine file type
+        const ext = path.extname(fileName).toLowerCase();
+        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic'].includes(ext);
+        const isVideo = ['.mp4', '.webm', '.mov', '.avi', '.mkv'].includes(ext);
+
+        let previewHTML = '';
+        if (isImage) {
+            previewHTML = `<div style="margin: 30px 0;"><img src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" alt="${fileName}"></div>`;
+        } else if (isVideo) {
+            previewHTML = `<div style="margin: 30px 0;"><video controls style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"><source src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" type="video/${ext.substring(1)}">您的浏览器不支持视频播放</video></div>`;
+        }
+
+        res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${fileName}</title><style>body{font-family:sans-serif;max-width:800px;margin:50px auto;padding:20px;text-align:center;background:#1a1a1a;color:#fff;}.file-icon{font-size:64px;margin:20px 0;}.filename{font-size:24px;font-weight:bold;margin:20px 0;word-break:break-all;}.info{color:#999;margin:10px 0;font-size:14px;}button{background:#FFD200;color:#000;border:none;padding:15px 30px;font-size:16px;font-weight:bold;cursor:pointer;border-radius:8px;margin:10px;transition:all 0.2s;}button:hover{background:#FFC100;transform:translateY(-2px);}button.secondary{background:#444;color:#fff;}button.secondary:hover{background:#555;}</style></head><body><div class="file-icon">📄</div><div class="filename">${fileName}</div><div class="info">访问次数: ${shareLink.access_count + 1}</div>${shareLink.expires_at ? `<div class="info">过期时间: ${new Date(shareLink.expires_at).toLocaleString('zh-CN')}</div>` : ''}${previewHTML}<div style="margin-top:30px;"><button onclick="window.location.href='/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}'">⬇️ 下载文件</button></div></body></html>`);
+    } catch (err) {
+        console.error('[Share /s] Full error:', err);
+        console.error('[Share /s] Error message:', err.message);
+        console.error('[Share /s] Error stack:', err.stack);
+        res.status(500).send('服务器错误: ' + err.message);
+    }
+});
+
+app.get('/api/download-share/:token', (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.query;
+        const shareLink = db.prepare('SELECT * FROM share_links WHERE share_token = ?').get(token);
+        if (!shareLink || (shareLink.expires_at && new Date(shareLink.expires_at) < new Date())) {
+            return res.status(404).json({ error: 'Link not found or expired' });
+        }
+        if (shareLink.password && (!password || !bcrypt.compareSync(password, shareLink.password))) {
+            return res.status(403).json({ error: 'Invalid password' });
+        }
+        const filePath = path.join(DISK_A, shareLink.file_path);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+        res.download(filePath);
+    } catch (err) {
+        console.error('[Share Download] Error:', err);
+        res.status(500).json({ error: 'Download failed' });
+    }
+});
+
+// File Routes
+// Helper to calculate folder size recursively
+const getFolderSize = (dirPath) => {
+    let size = 0;
+    try {
+        const files = fs.readdirSync(dirPath);
+        for (const file of files) {
+            const filePath = path.join(dirPath, file);
+            const stats = fs.statSync(filePath);
+            if (stats.isDirectory()) {
+                size += getFolderSize(filePath);
+            } else {
+                size += stats.size;
+            }
+        }
+    } catch (err) {
+        // Ignore errors (e.g., permission denied)
+    }
+    return size;
+};
+
 // File Routes
 app.get('/api/files', authenticate, async (req, res) => {
     const requestedPath = req.query.path || '';
-    const subPath = resolvePath(requestedPath);
+    let subPath = resolvePath(requestedPath);
+
+    // Auto-fix: If resolving to "Members" (root) and user is not Admin,
+    // force it to their personal directory.
+    if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
+        subPath = `Members/${req.user.username}`;
+    }
+
     const fullPath = path.join(DISK_A, subPath);
+
+    console.log(`[/api/files] Requested: "${requestedPath}" → Resolved: "${subPath}" → Full: "${fullPath}"`);
 
     // Check Read permissions for the subPath
     if (!hasPermission(req.user, subPath, 'Read')) {
@@ -1067,19 +1244,23 @@ app.get('/api/files', authenticate, async (req, res) => {
         const items = await fs.readdir(fullPath, { withFileTypes: true });
         const result = items.map(item => {
             const itemPath = path.join(subPath, item.name);
-            const stats = fs.statSync(path.join(fullPath, item.name));
+            const fullItemPath = path.join(fullPath, item.name);
+            const stats = fs.statSync(fullItemPath);
             const dbStats = db.prepare(`
                 SELECT s.access_count, u.username as uploader 
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
                 WHERE s.path = ?
-            `).get(itemPath);
+        `).get(itemPath);
+
+            // Calculate folder size if directory
+            const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
 
             return {
                 name: item.name,
                 isDirectory: item.isDirectory(),
                 path: itemPath,
-                size: item.isDirectory() ? 0 : stats.size,
+                size: size,
                 mtime: stats.mtime,
                 accessCount: dbStats ? dbStats.access_count : 0,
                 uploader: dbStats ? dbStats.uploader : 'unknown'
@@ -1096,21 +1277,21 @@ app.post('/api/files/hit', authenticate, (req, res) => {
     try {
         // Global count
         db.prepare(`
-            INSERT INTO file_stats (path, access_count, last_access) 
-            VALUES (?, 1, CURRENT_TIMESTAMP)
-            ON CONFLICT(path) DO UPDATE SET 
-                access_count = access_count + 1,
-                last_access = CURRENT_TIMESTAMP
-        `).run(itemPath);
+            INSERT INTO file_stats(path, access_count, last_access)
+    VALUES(?, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(path) DO UPDATE SET
+    access_count = access_count + 1,
+        last_access = CURRENT_TIMESTAMP
+            `).run(itemPath);
 
         // Per-user log
         db.prepare(`
-            INSERT INTO access_logs (path, user_id, count, last_access)
-            VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+            INSERT INTO access_logs(path, user_id, count, last_access)
+    VALUES(?, ?, 1, CURRENT_TIMESTAMP)
             ON CONFLICT(path, user_id) DO UPDATE SET
-                count = count + 1,
-                last_access = CURRENT_TIMESTAMP
-        `).run(itemPath, req.user.id);
+    count = count + 1,
+        last_access = CURRENT_TIMESTAMP
+            `).run(itemPath, req.user.id);
 
         res.json({ success: true });
     } catch (err) {
@@ -1142,6 +1323,8 @@ app.post('/api/folders', authenticate, async (req, res) => {
     const fullPath = path.join(DISK_A, targetPath);
     try {
         await fs.ensureDir(fullPath);
+        // Track folder creator
+        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploader_id) VALUES (?, ?)').run(targetPath, req.user.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1156,7 +1339,9 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
             const nodes = [];
 
             if (!fs.existsSync(fullPath)) return nodes;
-            if (!hasPermission(req.user, dirPath, 'Read')) return nodes;
+            // Allow recursion into 'Members' folder specifically to find personal space
+            // Also allow Root ('') to list initial folders
+            if (dirPath !== '' && dirPath.toLowerCase() !== 'members' && !hasPermission(req.user, dirPath, 'Read')) return nodes;
 
             const items = fs.readdirSync(fullPath);
 
@@ -1168,13 +1353,18 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
                     const stat = fs.statSync(itemFullPath);
                     if (stat.isDirectory()) {
                         // Only include if user has write permission (can move files here)
-                        if (hasPermission(req.user, itemPath, 'Full')) {
+                        // OR if it is 'Members' folder (to allow navigation to personal space)
+                        const isMembers = itemPath.toLowerCase() === 'members';
+                        if (hasPermission(req.user, itemPath, 'Full') || isMembers) {
                             const node = {
                                 path: itemPath,
                                 name: item,
                                 children: buildTree(itemPath)
                             };
-                            nodes.push(node);
+                            // If it's Members folder, only add if it has children (user's folder)
+                            if (!isMembers || node.children.length > 0) {
+                                nodes.push(node);
+                            }
                         }
                     }
                 } catch (err) {

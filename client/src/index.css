@@ -275,13 +275,16 @@ body {
 }
 
 .file-list-header div,
-.file-list-row div {
+.file-list-row>div {
   flex-shrink: 0;
   padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .col-name {
-  flex: 2.5;
+  flex: 3;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -306,17 +309,22 @@ body {
 }
 
 .col-size {
-  flex: 0.8;
+  width: 100px;
+  flex-shrink: 0;
   color: var(--text-secondary);
   font-size: 0.8rem;
   text-align: right;
 }
 
 .col-stats {
-  flex: 0.8;
-  text-align: right;
+  width: 110px;
+  flex-shrink: 0;
+  text-align: center;
   cursor: pointer;
   padding-right: 20px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .col-stats:hover {
@@ -931,4 +939,23 @@ select.form-control option {
 
 .scale-in {
   animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Modal Close Button */
+.modal-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  transform: scale(1.05);
 }
