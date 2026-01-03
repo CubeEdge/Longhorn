@@ -67,6 +67,12 @@ graph TD
 | **`cloudflared access`** | SSH 代理插件 | **安全握手**。作为 SSH 的 ProxyCommand 插件，实现跨外网的 22 端口建立连接。 |
 | **`Git (Local)`** | 命令行工具 | **版本管理**。负责本地代码提交 (Commit) 与推送 (Push)。 |
 
+### 3. 标准路径 (Standard Paths)
+| 机器 | 角色 | 根目录路径 |
+| :--- | :--- | :--- |
+| **MBAir** | 开发机 | `/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn` |
+| **Mac mini** | 服务器 | `/Users/admin/Documents/server/Longhorn` |
+
 ---
 
 ## �🕒 时间线与核心动作

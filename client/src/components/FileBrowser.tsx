@@ -100,6 +100,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [sharePassword, setSharePassword] = useState('');
     const [shareExpires, setShareExpires] = useState('7');
     const [starredFiles, setStarredFiles] = useState<string[]>([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     // const { deptCode } = useParams(); // Removed in favor of params usage below
     const { token } = useAuthStore();
@@ -281,11 +282,16 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
         setUploading(true);
+        setUploadProgress(0);
         const formData = new FormData();
         Array.from(e.target.files).forEach(f => formData.append('files', f));
         try {
             await axios.post(`/api/upload?path=${currentPath}`, formData, {
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+                    setUploadProgress(percentCompleted);
+                }
             });
             setUploadStatus('success');
             fetchFiles(currentPath);
@@ -706,7 +712,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 )
             }
 
-            {uploadStatus === 'success' && <div style={{ background: '#ecfdf5', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> 上传成功</div>}
+            {uploading && (
+                <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, boxShadow: 'var(--shadow-lg)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.9rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Upload size={16} color="var(--accent-blue)" />
+                            <span style={{ fontWeight: 600 }}>正在上传文件...</span>
+                        </div>
+                        <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{uploadProgress}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 0.2s ease-out' }} />
+                    </div>
+                </div>
+            )}
+
+            {uploadStatus === 'success' && <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> ✅ 成功上传了文件</div>}
 
             {
                 loading ? (
