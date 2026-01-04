@@ -992,7 +992,145 @@ app.get('/api/shares', authenticate, (req, res) => {
     }
 });
 
-// Create share link
+// ==================== DEPARTMENT DASHBOARD API ====================
+
+// Helper to get user's department info
+const getUserDepartment = (userId) => {
+    const row = db.prepare(`
+        SELECT d.id, d.name, d.code 
+        FROM users u 
+        JOIN departments d ON u.department_id = d.id 
+        WHERE u.id = ?
+    `).get(userId);
+    return row;
+};
+
+// Get Department Overview Stats
+app.get('/api/department/stats', authenticate, (req, res) => {
+    if (req.user.role !== 'Lead' && req.user.role !== 'Admin') {
+        return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    try {
+        const dept = getUserDepartment(req.user.id);
+        if (!dept) {
+            return res.status(404).json({ error: 'Department not found' });
+        }
+
+        // 1. Member stats
+        const members = db.prepare('SELECT id, username, last_login FROM users WHERE department_id = ?').all(dept.id);
+        const totalMembers = members.length;
+
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const activeMembers = members.filter(m => m.last_login && new Date(m.last_login) > oneWeekAgo).length;
+
+        // 2. File stats (using file_stats table is faster)
+        // Match paths starting with DeptName/
+        const deptPrefix = dept.name + '/%';
+        const fileStats = db.prepare(`
+            SELECT COUNT(*) as totalFiles, SUM(size) as totalSize 
+            FROM file_stats 
+            WHERE path LIKE ?
+        `).get(deptPrefix);
+
+        // 3. Storage by Member (Top 5)
+        const storageByMember = db.prepare(`
+            SELECT u.username, COUNT(f.path) as fileCount, SUM(f.size) as size
+            FROM file_stats f
+            JOIN users u ON f.uploader_id = u.id
+            WHERE f.path LIKE ?
+            GROUP BY u.username
+            ORDER BY size DESC
+            LIMIT 5
+        `).all(deptPrefix);
+
+        // 4. Recent Activity (Mockup or simple file uploads)
+        const recentActivity = db.prepare(`
+            SELECT u.username as user, 'uploaded' as action, f.path as file, f.uploaded_at as time
+            FROM file_stats f
+            JOIN users u ON f.uploader_id = u.id
+            WHERE f.path LIKE ?
+            ORDER BY f.uploaded_at DESC
+            LIMIT 10
+        `).all(deptPrefix);
+
+        res.json({
+            department: { name: dept.name, code: dept.code },
+            totalMembers,
+            activeMembers,
+            totalFiles: fileStats.totalFiles || 0,
+            totalSize: fileStats.totalSize || 0,
+            storageByMember: storageByMember.map(s => ({ ...s, size: s.size || 0 })),
+            recentActivity
+        });
+    } catch (err) {
+        console.error('[Dept Stats] Error:', err);
+        res.status(500).json({ error: 'Failed to fetch department stats' });
+    }
+});
+
+// Get Department Members
+app.get('/api/department/members', authenticate, (req, res) => {
+    if (req.user.role !== 'Lead' && req.user.role !== 'Admin') {
+        return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    try {
+        const dept = getUserDepartment(req.user.id);
+        if (!dept) return res.status(404).json({ error: 'Department not found' });
+
+        const members = db.prepare(`
+            SELECT id, username, role, last_login 
+            FROM users 
+            WHERE department_id = ?
+        `).all(dept.id);
+
+        const memberData = members.map(m => {
+            const usage = db.prepare(`
+                SELECT COUNT(*) as count, SUM(size) as size 
+                FROM file_stats 
+                WHERE uploader_id = ?
+            `).get(m.id);
+            return {
+                ...m,
+                fileCount: usage.count || 0,
+                storageUsed: usage.size || 0
+            };
+        });
+
+        res.json(memberData);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Department Permissions
+app.get('/api/department/permissions', authenticate, (req, res) => {
+    if (req.user.role !== 'Lead' && req.user.role !== 'Admin') {
+        return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    try {
+        const dept = getUserDepartment(req.user.id);
+        if (!dept) return res.status(404).json({ error: 'Department not found' });
+
+        const perms = db.prepare(`
+            SELECT p.*, u.username, g.username as granted_by_name
+            FROM permissions p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN users g ON p.granted_by = g.id
+            WHERE p.folder_path = ? OR p.folder_path LIKE ?
+            ORDER BY p.created_at DESC
+        `).all(dept.name, dept.name + '/%');
+
+        res.json(perms);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== SHARE LINKS API ====================
 app.post('/api/shares', authenticate, (req, res) => {
     try {
         const { path, password, expiresIn } = req.body;
