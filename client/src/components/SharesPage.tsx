@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Link2, Copy, Trash2, Lock, Eye, MoreHorizontal, File, Check, X, Clock, User, Calendar } from 'lucide-react';
+import { Link2, Copy, Trash2, Lock, Eye, MoreHorizontal, File, Check, X, Clock, User, Calendar, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ShareLink {
@@ -15,16 +15,48 @@ interface ShareLink {
     has_password: boolean;
 }
 
+interface ShareCollection {
+    id: number;
+    token: string;
+    name: string;
+    expires_at: string | null;
+    access_count: number;
+    created_at: string;
+    item_count: number;
+}
+
+// Unified interface for displaying both types
+interface UnifiedShareItem {
+    id: number;
+    type: 'file' | 'collection';
+    created_at: string;
+    // For file shares
+    file_path?: string;
+    share_token?: string;
+    has_password?: boolean;
+    last_accessed?: string | null;
+    // For collections
+    token?: string;
+    name?: string;
+    item_count?: number;
+    // Common
+    expires_at: string | null;
+    access_count: number;
+}
+
 export const SharesPage: React.FC = () => {
     const [shares, setShares] = useState<ShareLink[]>([]);
+    const [collections, setCollections] = useState<ShareCollection[]>([]);
     const [loading, setLoading] = useState(true);
     const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number; share: ShareLink } | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>([]);
     const [detailShare, setDetailShare] = useState<ShareLink | null>(null);
     const { token } = useAuthStore();
 
     useEffect(() => {
         fetchShares();
+        fetchCollections();
     }, []);
 
     const fetchShares = async () => {
@@ -40,10 +72,27 @@ export const SharesPage: React.FC = () => {
         }
     };
 
+    const fetchCollections = async () => {
+        try {
+            const res = await axios.get('/api/my-share-collections', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCollections(res.data);
+        } catch (err) {
+            console.error('Failed to fetch share collections:', err);
+        }
+    };
+
     const copyShareLink = (shareToken: string) => {
         const url = `${window.location.origin}/s/${shareToken}`;
         navigator.clipboard.writeText(url);
         alert('✅ 链接已复制到剪贴板！');
+    };
+
+    const copyCollectionLink = (token: string) => {
+        const url = `${window.location.origin}/share-collection/${token}`;
+        navigator.clipboard.writeText(url);
+        alert('✅ 批量分享链接已复制到剪贴板！');
     };
 
     const deleteShare = async (id: number) => {
@@ -57,6 +106,21 @@ export const SharesPage: React.FC = () => {
             setSelectedIds(selectedIds.filter(sid => sid !== id));
             setDetailShare(null);
             alert('✅ 分享链接已删除');
+        } catch (err) {
+            alert('❌ 删除失败');
+        }
+    };
+
+    const deleteCollection = async (id: number) => {
+        if (!confirm('确定要删除此批量分享吗？')) return;
+
+        try {
+            await axios.delete(`/api/share-collection/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCollections(collections.filter(c => c.id !== id));
+            setSelectedCollectionIds(selectedCollectionIds.filter(cid => cid !== id));
+            alert('✅ 批量分享已删除');
         } catch (err) {
             alert('❌ 删除失败');
         }
@@ -113,6 +177,36 @@ export const SharesPage: React.FC = () => {
     const getFileName = (path: string) => path.split('/').pop() || '';
     const getDirPath = (path: string) => path.split('/').slice(0, -1).join('/');
 
+    // Merge and sort shares and collections by creation time (newest first)
+    const allShares = useMemo(() => {
+        const fileShares: UnifiedShareItem[] = shares.map(s => ({
+            id: s.id,
+            type: 'file' as const,
+            created_at: s.created_at,
+            file_path: s.file_path,
+            share_token: s.share_token,
+            has_password: s.has_password,
+            expires_at: s.expires_at,
+            access_count: s.access_count,
+            last_accessed: s.last_accessed
+        }));
+
+        const collectionShares: UnifiedShareItem[] = collections.map(c => ({
+            id: c.id,
+            type: 'collection' as const,
+            created_at: c.created_at,
+            token: c.token,
+            name: c.name,
+            item_count: c.item_count,
+            expires_at: c.expires_at,
+            access_count: c.access_count
+        }));
+
+        return [...fileShares, ...collectionShares].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }, [shares, collections]);
+
     if (loading) {
         return <div style={{ padding: '40px', textAlign: 'center' }}>加载中...</div>;
     }
@@ -125,37 +219,71 @@ export const SharesPage: React.FC = () => {
                     我的分享
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    {shares.length} 个分享链接
+                    {shares.length} 个文件分享 · {collections.length} 个批量分享
                 </p>
             </div>
 
             {/* Bulk Action Bar */}
             {selectedIds.length > 0 && (
                 <div style={{
-                    background: 'var(--accent-blue)',
-                    borderRadius: '12px',
-                    padding: '16px 24px',
-                    marginBottom: '20px',
-                    color: '#000',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 100,
+                    background: 'rgba(32, 32, 32, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    marginBottom: 20,
                     display: 'flex',
-                    alignItems: 'center',
                     justifyContent: 'space-between',
-                    boxShadow: '0 4px 20px rgba(255, 210, 0, 0.3)',
-                    animation: 'slideDown 0.3s ease'
+                    alignItems: 'center',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(0,0,0,0.1)' }}><X size={18} color="#000" /></button>
-                        <span style={{ fontWeight: 800 }}>已选中 {selectedIds.length} 个链接</span>
+                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                            <X size={18} />
+                        </button>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span> 个项目</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
-                        <button onClick={bulkDelete} style={{ background: '#FF3B30', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Trash2 size={16} /> 批量删除
+                        <button
+                            onClick={bulkDelete}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: '#fff',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                padding: '8px 16px',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                            }}
+                        >
+                            <Trash2 size={16} strokeWidth={2.5} color="var(--accent-blue)" /> 批量删除
                         </button>
                     </div>
                 </div>
             )}
 
-            {shares.length === 0 && (
+            {allShares.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-secondary)' }}>
                     <Link2 size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
                     <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>还没有分享链接</h3>
@@ -163,73 +291,87 @@ export const SharesPage: React.FC = () => {
                 </div>
             )}
 
-            {shares.length > 0 && (
+            {allShares.length > 0 && (
                 <div className="file-list">
                     <div className="file-list-header">
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                            {selectedIds.length > 0 && selectedIds.length === shares.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                            {selectedIds.length > 0 && selectedIds.length === shares.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                         </div>
-                        <div className="col-name">文件名</div>
+                        <div className="col-name">名称</div>
                         <div className="col-stats">访问次数</div>
-                        <div className="col-date">过期时间</div>
+                        <div className="col-date">创建时间</div>
                         <div style={{ width: 140, textAlign: 'center' }}>操作</div>
                         <div style={{ width: 40 }}></div>
                     </div>
-                    {shares.map((share) => (
-                        <div
-                            key={share.id}
-                            className={`file-list-row ${selectedIds.includes(share.id) ? 'selected' : ''}`}
-                            style={{ opacity: isExpired(share.expires_at) ? 0.5 : 1 }}
-                            onClick={() => handleRowClick(share)}
-                        >
-                            <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, share.id)}>
-                                {selectedIds.includes(share.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
-                            </div>
-                            <div className="col-name">
-                                <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
-                                    <File size={20} color="var(--accent-blue)" />
+                    {allShares.map((item) => {
+                        const isFile = item.type === 'file';
+                        const isCollection = item.type === 'collection';
+                        
+                        return (
+                            <div
+                                key={`${item.type}-${item.id}`}
+                                className={`file-list-row ${selectedIds.includes(item.id) ? 'selected' : ''}`}
+                                style={{ opacity: isExpired(item.expires_at) ? 0.5 : 1 }}
+                                onClick={() => isFile ? handleRowClick({ ...item, file_path: item.file_path!, share_token: item.share_token!, has_password: item.has_password! } as ShareLink) : undefined}
+                            >
+                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id)}>
+                                    {selectedIds.includes(item.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'hidden' }}>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getFileName(share.file_path)}</span>
-                                    {Boolean(share.has_password) && <Lock size={14} color="var(--accent-blue)" style={{ flexShrink: 0 }} />}
+                                <div className="col-name">
+                                    <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+                                        {isFile ? <File size={20} color="var(--accent-blue)" /> : <Package size={20} color="var(--accent-blue)" />}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'hidden' }}>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCollection ? 600 : 400 }}>
+                                            {isFile ? getFileName(item.file_path!) : (item.name || `分享 - ${format(new Date(item.created_at), 'yyyy-MM-dd')}`)}
+                                        </span>
+                                        {isFile && Boolean(item.has_password) && <Lock size={14} color="var(--accent-blue)" style={{ flexShrink: 0 }} />}
+                                        {isCollection && <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: 4 }}>({item.item_count} 项)</span>}
+                                    </div>
+                                </div>
+                                <div className="col-stats">
+                                    <Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" />
+                                    {item.access_count || 0}
+                                </div>
+                                <div className="col-date">
+                                    {format(new Date(item.created_at), 'yyyy-MM-dd HH:mm')}
+                                </div>
+                                <div style={{ width: 140, display: 'flex', gap: '8px', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        onClick={() => isFile ? copyShareLink(item.share_token!) : copyCollectionLink(item.token!)}
+                                        style={{
+                                            padding: '6px 12px',
+                                            background: 'var(--accent-blue)',
+                                            color: '#000',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        <Copy size={14} /> 复制
+                                    </button>
+                                </div>
+                                <div className="list-more-btn" onClick={(e) => {
+                                    if (isFile) {
+                                        handleOpenMenu(e, { ...item, file_path: item.file_path!, share_token: item.share_token!, has_password: item.has_password! } as ShareLink);
+                                    } else {
+                                        e.stopPropagation();
+                                        deleteCollection(item.id);
+                                    }
+                                }}>
+                                    {isFile ? <MoreHorizontal size={18} /> : <Trash2 size={18} />}
                                 </div>
                             </div>
-                            <div className="col-stats">
-                                <Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" />
-                                {share.access_count || 0}
-                            </div>
-                            <div className="col-date" style={{ color: isExpired(share.expires_at) ? '#ff3b30' : 'inherit' }}>
-                                {share.expires_at ? (
-                                    isExpired(share.expires_at) ? '已过期' : format(new Date(share.expires_at), 'yyyy-MM-dd')
-                                ) : '永久'}
-                            </div>
-                            <div style={{ width: 140, display: 'flex', gap: '8px', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                    onClick={() => copyShareLink(share.share_token)}
-                                    style={{
-                                        padding: '6px 12px',
-                                        background: 'var(--accent-blue)',
-                                        color: '#000',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        fontSize: '0.8rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px'
-                                    }}
-                                >
-                                    <Copy size={14} /> 复制
-                                </button>
-                            </div>
-                            <div className="list-more-btn" onClick={(e) => handleOpenMenu(e, share)}>
-                                <MoreHorizontal size={18} />
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
+
 
             {/* Detail Modal */}
             {detailShare && (
@@ -390,6 +532,8 @@ export const SharesPage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+
 
             {/* Context Menu */}
             {menuAnchor && (

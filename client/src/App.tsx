@@ -13,7 +13,8 @@ import {
   Star,
   Clock,
   Trash2,
-  User
+  User,
+  Network
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from './store/useAuthStore';
@@ -28,6 +29,7 @@ import SharesPage from './components/SharesPage';
 import MemberSpacePage from './components/MemberSpacePage';
 import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
+import DepartmentDashboard from './components/DepartmentDashboard';
 
 const App: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -78,6 +80,9 @@ const App: React.FC = () => {
               <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
               <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
 
+              {/* Department Management - Lead only */}
+              <Route path="/department-dashboard" element={user.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
+
               {/* Recycle Bin */}
               <Route path="/recycle-bin" element={<RecycleBin />} />
 
@@ -121,8 +126,8 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
   const deptCodeMap: { [key: string]: string } = {
     '市场部 (MS)': 'MS',
     '运营部 (OP)': 'OP',
-    '研发中心 (RD)': 'RD',
-    '综合管理 (GE)': 'GE'
+    '研发部 (RD)': 'RD',
+    '通用台面 (GE)': 'GE'
   };
 
   const deptIcons: { [key: string]: any } = {
@@ -203,13 +208,24 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
           );
         })}
 
-        {/* Admin */}
+        {/*Admin */}
         {role === 'Admin' && (
           <>
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
             <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
               <Users size={20} />
               <span>系统后台</span>
+            </Link>
+          </>
+        )}
+
+        {/* Department Management - For Lead Users */}
+        {role === 'Lead' && (
+          <>
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+            <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''}`} onClick={onClose}>
+              <Network size={20} />
+              <span>部门管理</span>
             </Link>
           </>
         )}
@@ -327,7 +343,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
         <UserStatsCard onClick={() => navigate('/dashboard')} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <button
           onClick={() => navigate('/search')}
           style={{
@@ -351,19 +367,35 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
             e.currentTarget.style.color = 'var(--text-secondary)';
           }}
         >
-          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
         </button>
 
-        <div className="hidden-mobile">
-          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{user.username}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {user.role === 'Admin' ? '系统管理员' : user.role === 'Lead' ? '部门主管' : '普通用户'}
-            </span>
+        <div
+          className="hidden-mobile-flex"
+          onClick={() => navigate('/dashboard')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 12px', borderRadius: '10px', transition: 'background 0.2s' }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
+          <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
+            {user.role === 'Admin' ? '系统管理员' : user.role === 'Lead' ? '部门主管' : '普通用户'}
+          </span>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '10px',
+            background: 'var(--accent-blue)',
+            color: '#000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.1rem',
+            fontWeight: 800,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+          }}>
+            {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
-        </div>
-        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'var(--accent-blue)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800, boxShadow: 'var(--shadow-sm)' }}>
-          {user?.username?.substring(0, 1).toUpperCase() || '?'}
         </div>
       </div>
     </header>

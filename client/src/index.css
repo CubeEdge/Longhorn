@@ -555,9 +555,17 @@ select.form-control option {
   display: none !important;
 }
 
+.hidden-mobile-flex {
+  display: none !important;
+}
+
 @media (min-width: 769px) {
   .hidden-mobile {
     display: block !important;
+  }
+
+  .hidden-mobile-flex {
+    display: flex !important;
   }
 }
 
@@ -940,6 +948,7 @@ select.form-control option {
 .scale-in {
   animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 /* Modal Close Button */
 .modal-close-btn {
   background: rgba(255, 255, 255, 0.1);

@@ -575,11 +575,75 @@ const UserManagement: React.FC = () => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
                                     <div>
-                                        <label className="hint">权限等级</label>
-                                        <select className="form-control" value={grantType} onChange={e => setGrantType(e.target.value)}>
-                                            <option value="Read">只读浏览 (Read)</option>
-                                            <option value="Full">完全控制 (Full)</option>
-                                        </select>
+                                        <label className="hint" style={{ marginBottom: 8, display: 'block' }}>权限类型</label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setGrantType('Read')}
+                                                className="btn-glass"
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px 4px',
+                                                    fontSize: '0.9rem',
+                                                    height: 'auto',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                    background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    fontWeight: grantType === 'Read' ? 700 : 600
+                                                }}
+                                            >
+                                                只读
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setGrantType('Contribute')}
+                                                className="btn-glass"
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px 4px',
+                                                    fontSize: '0.9rem',
+                                                    height: 'auto',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                    background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    fontWeight: grantType === 'Contribute' ? 700 : 600
+                                                }}
+                                            >
+                                                贡献
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setGrantType('Full')}
+                                                className="btn-glass"
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px 4px',
+                                                    fontSize: '0.9rem',
+                                                    height: 'auto',
+                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                    borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                    background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    fontWeight: grantType === 'Full' ? 700 : 600
+                                                }}
+                                            >
+                                                完全
+                                            </button>
+                                        </div>
+                                        <div style={{
+                                            marginTop: '12px',
+                                            padding: '10px 12px',
+                                            background: 'rgba(255, 210, 0, 0.08)',
+                                            border: '1px solid rgba(255, 210, 0, 0.2)',
+                                            borderRadius: '8px',
+                                            fontSize: '0.8rem',
+                                            color: 'rgba(255, 255, 255, 0.8)',
+                                            lineHeight: 1.5
+                                        }}>
+                                            <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--accent-blue)' }}>💡 权限说明</div>
+                                            <div><strong>只读</strong>：仅可查看和下载文件</div>
+                                            <div><strong>贡献</strong>：可上传文件、创建文件夹，但只能修改/删除自己上传的内容</div>
+                                            <div><strong>完全</strong>：可修改/删除任意文件，包括他人上传的内容</div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="hint">有效期</label>
@@ -594,8 +658,17 @@ const UserManagement: React.FC = () => {
                                                             setGrantExpiry(format(new Date(), 'yyyy-MM-dd'));
                                                         }
                                                     }}
-                                                    className={expiryPreset === label ? 'btn-primary' : 'btn-glass'}
-                                                    style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem', height: 'auto', border: expiryPreset === label ? '1px solid var(--accent-blue)' : '1px solid var(--glass-border)' }}
+                                                    className="btn-glass"
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '8px 4px',
+                                                        fontSize: '0.85rem',
+                                                        height: 'auto',
+                                                        border: '1px solid var(--glass-border)',
+                                                        borderLeft: expiryPreset === label ? '4px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+                                                        background: expiryPreset === label ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                        fontWeight: expiryPreset === label ? 700 : 600
+                                                    }}
                                                 >
                                                     {label}
                                                 </button>

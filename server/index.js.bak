@@ -21,9 +21,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 const DEPT_CODE_MAP = {
     'MS': '市场部 (MS)',
     'OP': '运营部 (OP)',
-    'RD': '研发部 (RD)',
-    'RE': '通用台面 (RE)',
-    'GE': '通用台面 (RE)' // Alias for backward compatibility
+    'RD': '研发中心 (RD)',
+    'GE': '综合管理 (GE)'
 };
 
 // Resolve frontend paths like '/MS' or '/MS/ProjectA' to physical paths '/市场部 (MS)' or '/市场部 (MS)/ProjectA'
@@ -200,8 +199,8 @@ db.prepare('INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?,
 const defaultDepts = [
     { name: '市场部 (MS)', code: 'MS' },
     { name: '运营部 (OP)', code: 'OP' },
-    { name: '研发部 (RD)', code: 'RD' },
-    { name: '通用台面 (RE)', code: 'RE' }
+    { name: '研发中心 (RD)', code: 'RD' },
+    { name: '综合管理 (GE)', code: 'GE' }
 ];
 
 defaultDepts.forEach(dept => {
@@ -288,7 +287,7 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
                 return true;
             }
             // Otherwise, only Read access for Member in department
-            if (accessType === 'Read' || accessType === 'Contributor') return true;
+            if (accessType === 'Read') return true;
         }
     }
 
@@ -433,7 +432,7 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
     const uploadTargetDir = path.join(DISK_A, subPath);
     fs.ensureDirSync(uploadTargetDir);
 
-    if (!hasPermission(req.user, subPath, 'Full') && !hasPermission(req.user, subPath, 'Contributor')) {
+    if (!hasPermission(req.user, subPath, 'Full')) {
         return res.status(403).json({ error: 'No write permission for this folder' });
     }
 
@@ -940,16 +939,10 @@ app.get('/api/user/stats', authenticate, (req, res) => {
             'SELECT COUNT(*) as count FROM starred_files WHERE user_id = ?'
         ).get(user.id).count;
 
-        // Count share links (both single files and collections)
-        const fileShareCount = db.prepare(
+        // Count share links
+        const shareCount = db.prepare(
             'SELECT COUNT(*) as count FROM share_links WHERE user_id = ?'
         ).get(user.id).count;
-
-        const collectionShareCount = db.prepare(
-            'SELECT COUNT(*) as count FROM share_collections WHERE user_id = ?'
-        ).get(user.id).count;
-
-        const shareCount = fileShareCount + collectionShareCount;
 
         res.json({
             fileCount: uploadCount,  // Add this for Dashboard compatibility
@@ -1247,8 +1240,7 @@ app.get('/api/files', authenticate, async (req, res) => {
     }
 
     try {
-        // Check write permissions - both Full and Contributor can write
-        const canWrite = hasPermission(req.user, subPath, 'Full') || hasPermission(req.user, subPath, 'Contributor');
+        const canWrite = hasPermission(req.user, subPath, 'Full');
         const items = await fs.readdir(fullPath, { withFileTypes: true });
         const result = items.map(item => {
             const itemPath = path.join(subPath, item.name);
@@ -1324,7 +1316,7 @@ app.post('/api/folders', authenticate, async (req, res) => {
     const resolvedSubPath = resolvePath(requestedSubPath || '');
     const targetPath = path.join(resolvedSubPath, name);
 
-    if (!hasPermission(req.user, targetPath, 'Full') && !hasPermission(req.user, targetPath, 'Contributor')) {
+    if (!hasPermission(req.user, targetPath, 'Full')) {
         return res.status(403).json({ error: 'No permission to create folder here' });
     }
 
@@ -1363,7 +1355,7 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
                         // Only include if user has write permission (can move files here)
                         // OR if it is 'Members' folder (to allow navigation to personal space)
                         const isMembers = itemPath.toLowerCase() === 'members';
-                        if (hasPermission(req.user, itemPath, 'Full') || hasPermission(req.user, itemPath, 'Contributor') || isMembers) {
+                        if (hasPermission(req.user, itemPath, 'Full') || isMembers) {
                             const node = {
                                 path: itemPath,
                                 name: item,
@@ -1422,19 +1414,13 @@ app.post('/api/files/bulk-delete', authenticate, async (req, res) => {
     const { paths } = req.body;
     if (!Array.isArray(paths)) return res.status(400).json({ error: 'Paths array required' });
 
-    const failedItems = [];
-    let deletedCount = 0;
-
     try {
         for (const subPath of paths) {
             if (hasPermission(req.user, subPath, 'Full')) {
                 await moveItemToRecycle(subPath, req.user.id);
-                deletedCount++;
-            } else {
-                failedItems.push(path.basename(subPath));
             }
         }
-        res.json({ success: true, deletedCount, failedItems });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1446,29 +1432,13 @@ app.post('/api/files/bulk-move', authenticate, async (req, res) => {
 
     const targetDir = resolvePath(requestedTargetDir);
 
-    if (!hasPermission(req.user, targetDir, 'Full') && !hasPermission(req.user, targetDir, 'Contributor')) {
+    if (!hasPermission(req.user, targetDir, 'Full')) {
         return res.status(403).json({ error: 'No write permission for target directory' });
     }
 
     try {
-        const failedItems = [];
-        let movedCount = 0;
-
         for (const subPath of paths) {
-            let canMove = false;
-            // 1. Admin/Full permission always allows move
             if (hasPermission(req.user, subPath, 'Full')) {
-                canMove = true;
-            }
-            // 2. Contributor permission + Ownership check
-            else if (hasPermission(req.user, subPath, 'Contributor')) {
-                const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(subPath);
-                if (fileStat && fileStat.uploader_id === req.user.id) {
-                    canMove = true;
-                }
-            }
-
-            if (canMove) {
                 const fileName = path.basename(subPath);
                 const oldFullPath = path.join(DISK_A, subPath);
                 const newSubPath = path.join(targetDir, fileName);
@@ -1479,12 +1449,11 @@ app.post('/api/files/bulk-move', authenticate, async (req, res) => {
                 // Update database records
                 db.prepare('UPDATE file_stats SET path = ? WHERE path = ?').run(newSubPath, subPath);
                 db.prepare('UPDATE access_logs SET path = ? WHERE path = ?').run(newSubPath, subPath);
-                movedCount++;
-            } else {
-                failedItems.push(path.basename(subPath));
+                // For directories, handle internal paths (simplified: just exact match here, complex recursion might be needed for stats)
+                // In this system, we mostly move single files or shallow folders.
             }
         }
-        res.json({ success: true, movedCount, failedItems });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1623,161 +1592,10 @@ async function cleanupRecycleBin() {
 cleanupRecycleBin();
 setInterval(cleanupRecycleBin, 24 * 3600 * 1000); // Daily
 
-// Serve share collection view page
-app.get('/share-collection/:token', (req, res) => {
-    const viewPath = path.join(__dirname, 'public/share-view.html');
-    if (fs.existsSync(viewPath)) {
-        res.sendFile(viewPath);
-    } else {
-        res.status(404).send('Share view page not found');
-    }
-});
-
 // Serve Frontend Static Files (Production)
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Fallback to SPA for any non-API routes - Using a general middleware to bypass path-to-regexp version issues
-// ====== Share Collections APIs (Batch Share) ======
-
-// Create Share Collection
-app.post('/api/share-collection', authenticate, async (req, res) => {
-    try {
-        const { paths, name, password, expiresIn } = req.body;
-        if (!paths || !Array.isArray(paths) || paths.length === 0) {
-            return res.status(400).json({ error: 'No paths provided' });
-        }
-        const token = crypto.randomBytes(16).toString('hex');
-        let expiresAt = null;
-        if (expiresIn) {
-            const days = parseInt(expiresIn);
-            if (!isNaN(days) && days > 0) {
-                expiresAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
-            }
-        }
-        const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
-        const result = db.prepare(`INSERT INTO share_collections (user_id, token, name, password, expires_at) VALUES (?, ?, ?, ?, ?)`).run(req.user.id, token, name || '分享集合', hashedPassword, expiresAt);
-        const collectionId = result.lastInsertRowid;
-        const insertItem = db.prepare(`INSERT INTO share_collection_items (collection_id, file_path, is_directory) VALUES (?, ?, ?)`);
-        for (const p of paths) {
-            const resolvedPath = resolvePath(p);
-            const fullPath = path.join(DISK_A, resolvedPath);
-            if (!fs.existsSync(fullPath)) continue;
-            const isDir = fs.statSync(fullPath).isDirectory();
-            insertItem.run(collectionId, resolvedPath, isDir ? 1 : 0);
-        }
-        const shareUrl = `${req.protocol}://${req.get('host')}/share-collection/${token}`;
-        console.log(`[Share Collection] Created by ${req.user.username}: ${paths.length} items`);
-        res.json({ success: true, shareUrl, token });
-    } catch (err) {
-        console.error('[Share Collection] Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Access Share Collection (Public)
-app.get('/api/share-collection/:token', async (req, res) => {
-    try {
-        const { token } = req.params;
-        const { password } = req.query;
-        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
-        if (!collection) return res.status(404).json({ error: 'Share not found' });
-        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
-            return res.status(410).json({ error: 'Share expired' });
-        }
-        if (collection.password) {
-            if (!password) return res.status(401).json({ error: 'Password required', needsPassword: true });
-            if (!bcrypt.compareSync(password, collection.password)) {
-                return res.status(401).json({ error: 'Invalid password', needsPassword: true });
-            }
-        }
-        const items = db.prepare(`SELECT file_path, is_directory FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
-        const fileInfo = items.map(item => {
-            const fullPath = path.join(DISK_A, item.file_path);
-            let size = 0;
-            if (fs.existsSync(fullPath)) {
-                const stats = fs.statSync(fullPath);
-                size = item.is_directory ? 0 : stats.size;
-            }
-            return {
-                path: item.file_path,
-                name: path.basename(item.file_path),
-                isDirectory: item.is_directory === 1,
-                size: size
-            };
-        });
-        db.prepare(`UPDATE share_collections SET access_count = access_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = ?`).run(collection.id);
-        res.json({ name: collection.name, items: fileInfo, createdAt: collection.created_at, accessCount: collection.access_count + 1 });
-    } catch (err) {
-        console.error('[Share Collection] Error accessing:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Download Share Collection as Zip (Public)
-app.get('/api/share-collection/:token/download', async (req, res) => {
-    try {
-        const { token } = req.params;
-        const { password } = req.query;
-        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
-        if (!collection) return res.status(404).json({ error: 'Share not found' });
-        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
-            return res.status(410).json({ error: 'Share expired' });
-        }
-        if (collection.password && (!password || !bcrypt.compareSync(password, collection.password))) {
-            return res.status(401).json({ error: 'Invalid password' });
-        }
-        const items = db.prepare(`SELECT file_path FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
-        const archive = archiver('zip', { zlib: { level: 9 } });
-        res.attachment(`${collection.name || 'share'}.zip`);
-        archive.pipe(res);
-        for (const item of items) {
-            const fullPath = path.join(DISK_A, item.file_path);
-            if (!fs.existsSync(fullPath)) continue;
-            const stats = fs.statSync(fullPath);
-            const basename = path.basename(item.file_path);
-            if (stats.isDirectory()) {
-                archive.directory(fullPath, basename);
-            } else {
-                archive.file(fullPath, { name: basename });
-            }
-        }
-        await archive.finalize();
-        console.log(`[Share Collection] Downloaded: ${token}`);
-    } catch (err) {
-        console.error('[Share Collection] Download error:', err);
-        if (!res.headersSent) res.status(500).json({ error: err.message });
-    }
-});
-
-// Get My Share Collections
-app.get('/api/my-share-collections', authenticate, (req, res) => {
-    try {
-        const collections = db.prepare(`
-            SELECT c.id, c.token, c.name, c.expires_at, c.access_count, c.created_at, COUNT(i.id) as item_count 
-            FROM share_collections c 
-            LEFT JOIN share_collection_items i ON c.id = i.collection_id 
-            WHERE c.user_id = ? 
-            GROUP BY c.id 
-            ORDER BY c.created_at DESC
-        `).all(req.user.id);
-        res.json(collections);
-    } catch (err) {
-        console.error('[Share Collection] Error listing:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Delete Share Collection
-app.delete('/api/share-collection/:id', authenticate, (req, res) => {
-    try {
-        const result = db.prepare(`DELETE FROM share_collections WHERE id = ? AND user_id = ?`).run(req.params.id, req.user.id);
-        if (result.changes === 0) return res.status(404).json({ error: 'Share collection not found' });
-        res.json({ success: true });
-    } catch (err) {
-        console.error('[Share Collection] Error deleting:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
 app.use((req, res) => {
     // If it's an API route that reached here, it's a 404
     if (req.path.startsWith('/api')) {
@@ -1792,149 +1610,6 @@ app.use((req, res) => {
     }
 });
 
-
-// ====== Share Collections APIs (Batch Share) ======
-
-// Create Share Collection
-app.post('/api/share-collection', authenticate, async (req, res) => {
-    try {
-        const { paths, name, password, expiresIn } = req.body;
-        if (!paths || !Array.isArray(paths) || paths.length === 0) {
-            return res.status(400).json({ error: 'No paths provided' });
-        }
-        const token = crypto.randomBytes(16).toString('hex');
-        let expiresAt = null;
-        if (expiresIn) {
-            const days = parseInt(expiresIn);
-            if (!isNaN(days) && days > 0) {
-                expiresAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
-            }
-        }
-        const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
-        const result = db.prepare(`INSERT INTO share_collections (user_id, token, name, password, expires_at) VALUES (?, ?, ?, ?, ?)`).run(req.user.id, token, name || '分享集合', hashedPassword, expiresAt);
-        const collectionId = result.lastInsertRowid;
-        const insertItem = db.prepare(`INSERT INTO share_collection_items (collection_id, file_path, is_directory) VALUES (?, ?, ?)`);
-        for (const p of paths) {
-            const resolvedPath = resolvePath(p);
-            const fullPath = path.join(DISK_A, resolvedPath);
-            if (!fs.existsSync(fullPath)) continue;
-            const isDir = fs.statSync(fullPath).isDirectory();
-            insertItem.run(collectionId, resolvedPath, isDir ? 1 : 0);
-        }
-        const shareUrl = `${req.protocol}://${req.get('host')}/share-collection/${token}`;
-        console.log(`[Share Collection] Created by ${req.user.username}: ${paths.length} items`);
-        res.json({ success: true, shareUrl, token });
-    } catch (err) {
-        console.error('[Share Collection] Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Access Share Collection (Public)
-app.get('/api/share-collection/:token', async (req, res) => {
-    try {
-        const { token } = req.params;
-        const { password } = req.query;
-        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
-        if (!collection) return res.status(404).json({ error: 'Share not found' });
-        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
-            return res.status(410).json({ error: 'Share expired' });
-        }
-        if (collection.password) {
-            if (!password) return res.status(401).json({ error: 'Password required', needsPassword: true });
-            if (!bcrypt.compareSync(password, collection.password)) {
-                return res.status(401).json({ error: 'Invalid password', needsPassword: true });
-            }
-        }
-        const items = db.prepare(`SELECT file_path, is_directory FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
-        const fileInfo = items.map(item => {
-            const fullPath = path.join(DISK_A, item.file_path);
-            let size = 0;
-            if (fs.existsSync(fullPath)) {
-                const stats = fs.statSync(fullPath);
-                size = item.is_directory ? 0 : stats.size;
-            }
-            return {
-                path: item.file_path,
-                name: path.basename(item.file_path),
-                isDirectory: item.is_directory === 1,
-                size: size
-            };
-        });
-        db.prepare(`UPDATE share_collections SET access_count = access_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = ?`).run(collection.id);
-        res.json({ name: collection.name, items: fileInfo, createdAt: collection.created_at, accessCount: collection.access_count + 1 });
-    } catch (err) {
-        console.error('[Share Collection] Error accessing:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Download Share Collection as Zip (Public)
-app.get('/api/share-collection/:token/download', async (req, res) => {
-    try {
-        const { token } = req.params;
-        const { password } = req.query;
-        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
-        if (!collection) return res.status(404).json({ error: 'Share not found' });
-        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
-            return res.status(410).json({ error: 'Share expired' });
-        }
-        if (collection.password && (!password || !bcrypt.compareSync(password, collection.password))) {
-            return res.status(401).json({ error: 'Invalid password' });
-        }
-        const items = db.prepare(`SELECT file_path FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
-        const archive = archiver('zip', { zlib: { level: 9 } });
-        res.attachment(`${collection.name || 'share'}.zip`);
-        archive.pipe(res);
-        for (const item of items) {
-            const fullPath = path.join(DISK_A, item.file_path);
-            if (!fs.existsSync(fullPath)) continue;
-            const stats = fs.statSync(fullPath);
-            const basename = path.basename(item.file_path);
-            if (stats.isDirectory()) {
-                archive.directory(fullPath, basename);
-            } else {
-                archive.file(fullPath, { name: basename });
-            }
-        }
-        await archive.finalize();
-        console.log(`[Share Collection] Downloaded: ${token}`);
-    } catch (err) {
-        console.error('[Share Collection] Download error:', err);
-        if (!res.headersSent) res.status(500).json({ error: err.message });
-    }
-});
-
-// Get My Share Collections
-app.get('/api/my-share-collections', authenticate, (req, res) => {
-    try {
-        const collections = db.prepare(`
-            SELECT c.id, c.token, c.name, c.expires_at, c.access_count, c.created_at, COUNT(i.id) as item_count 
-            FROM share_collections c 
-            LEFT JOIN share_collection_items i ON c.id = i.collection_id 
-            WHERE c.user_id = ? 
-            GROUP BY c.id 
-            ORDER BY c.created_at DESC
-        `).all(req.user.id);
-        res.json(collections);
-    } catch (err) {
-        console.error('[Share Collection] Error listing:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Delete Share Collection
-app.delete('/api/share-collection/:id', authenticate, (req, res) => {
-    try {
-        const result = db.prepare(`DELETE FROM share_collections WHERE id = ? AND user_id = ?`).run(req.params.id, req.user.id);
-        if (result.changes === 0) return res.status(404).json({ error: 'Share collection not found' });
-        res.json({ success: true });
-    } catch (err) {
-        console.error('[Share Collection] Error deleting:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.listen(PORT, () => {
-
+    console.log(`Server running on port ${PORT}`);
 });

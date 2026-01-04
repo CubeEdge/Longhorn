@@ -102,7 +102,7 @@ export const Dashboard: React.FC = () => {
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Activity size={32} color="var(--accent-blue)" />
-                    个人Dashboard
+                    个人空间概览
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                     欢迎回来，{stats.username} · {stats.role === 'Admin' ? '管理员' : '用户'}
@@ -112,7 +112,7 @@ export const Dashboard: React.FC = () => {
             {/* Stats Grid */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '20px',
                 marginBottom: '32px'
             }}>
@@ -334,13 +334,17 @@ export const Dashboard: React.FC = () => {
                         onClick={() => navigate('/starred')}
                         style={{
                             padding: '12px 24px',
-                            background: 'var(--glass-bg)',
-                            border: '1px solid var(--glass-border)',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
                             borderRadius: '8px',
                             fontWeight: 600,
                             cursor: 'pointer',
-                            fontSize: '0.95rem'
+                            fontSize: '0.95rem',
+                            color: '#fff',
+                            transition: 'all 0.2s'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
                     >
                         查看星标文件
                     </button>
@@ -348,13 +352,17 @@ export const Dashboard: React.FC = () => {
                         onClick={() => navigate('/search')}
                         style={{
                             padding: '12px 24px',
-                            background: 'var(--glass-bg)',
-                            border: '1px solid var(--glass-border)',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
                             borderRadius: '8px',
                             fontWeight: 600,
                             cursor: 'pointer',
-                            fontSize: '0.95rem'
+                            fontSize: '0.95rem',
+                            color: '#fff',
+                            transition: 'all 0.2s'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
                     >
                         搜索文件
                     </button>

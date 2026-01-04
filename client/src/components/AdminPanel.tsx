@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     LayoutDashboard,
     Users as UsersIcon,
@@ -6,17 +6,23 @@ import {
     Settings,
     ChevronRight
 } from 'lucide-react';
-import Dashboard from './Dashboard';
+import SystemDashboard from './SystemDashboard';
 import UserManagement from './UserManagement';
 import DepartmentManagement from './DepartmentManagement';
 
 type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings';
 
 const AdminPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+    const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+        return (localStorage.getItem('adminActiveTab') as AdminTab) || 'dashboard';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('adminActiveTab', activeTab);
+    }, [activeTab]);
 
     const menuItems = [
-        { id: 'dashboard', label: '概览仪表盘', icon: LayoutDashboard },
+        { id: 'dashboard', label: '概览', icon: LayoutDashboard },
         { id: 'users', label: '成员账号', icon: UsersIcon },
         { id: 'depts', label: '部门和权限', icon: Network },
         { id: 'settings', label: '系统设置', icon: Settings },
@@ -24,7 +30,7 @@ const AdminPanel: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'dashboard': return <Dashboard />;
+            case 'dashboard': return <SystemDashboard />;
             case 'users': return <UserManagement />;
             case 'depts': return <DepartmentManagement />;
             case 'settings': return (
@@ -32,7 +38,7 @@ const AdminPanel: React.FC = () => {
                     <p className="hint">更多系统配置项正在集成中...</p>
                 </div>
             );
-            default: return <Dashboard />;
+            default: return <SystemDashboard />;
         }
     };
 
@@ -57,11 +63,13 @@ const AdminPanel: React.FC = () => {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '12px 16px',
+                            paddingLeft: activeTab === item.id ? '12px' : '16px',
                             borderRadius: 12,
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            background: activeTab === item.id ? 'var(--accent-blue)' : 'transparent',
-                            color: activeTab === item.id ? 'black' : 'var(--text-secondary)',
+                            background: activeTab === item.id ? 'rgba(255, 210, 0, 0.15)' : 'transparent',
+                            borderLeft: activeTab === item.id ? '4px solid var(--accent-blue)' : '4px solid transparent',
+                            color: activeTab === item.id ? 'var(--text-main)' : 'var(--text-secondary)',
                             fontWeight: activeTab === item.id ? 700 : 500
                         }}
                     >

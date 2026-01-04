@@ -27,8 +27,8 @@ export const RootDirectoryView: React.FC = () => {
     const deptCodeMap: { [key: string]: string } = {
         '市场部 (MS)': 'MS',
         '运营部 (OP)': 'OP',
-        '研发中心 (RD)': 'RD',
-        '综合管理 (GE)': 'GE'
+        '研发部 (RD)': 'RD',
+        '通用台面 (GE)': 'GE'
     };
 
     return (

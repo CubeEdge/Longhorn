@@ -218,7 +218,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             color: 'rgba(255, 255, 255, 0.6)',
                             margin: '8px 0 0 0'
                         }}>
-                            选择要移动到的文件夹位置
+                            选择目标位置
                         </p>
                     </div>
                     <button
@@ -314,7 +314,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             transition: 'all 0.2s'
                         }}
                     >
-                        确定移动
+                        确定
                     </button>
                 </div>
             </div>

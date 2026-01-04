@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享查看 - Longhorn</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #000000;
+            --bg-sidebar: #1C1C1E;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #FFD200;
+            --accent-hover: #E6BD00;
+            --text-main: #FFFFFF;
+            --text-secondary: #9CA3AF;
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .share-container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--bg-sidebar);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .share-header {
+            padding: 32px;
+            border-bottom: 1px solid var(--glass-border);
+            background: linear-gradient(135deg, rgba(255, 210, 0, 0.05) 0%, rgba(255, 210, 0, 0.02) 100%);
+        }
+
+        .share-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .share-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .share-count {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .password-section {
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .password-section h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        .password-input {
+            width: 100%;
+            max-width: 320px;
+            padding: 14px 18px;
+            background: var(--bg-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 15px;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(255, 210, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: var(--bg-main);
+            border: none;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 210, 0, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .file-list-container {
+            padding: 24px 32px;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .file-card {
+            background: var(--bg-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .file-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 16px rgba(255, 210, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-thumbnail {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: rgba(255, 210, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .file-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 210, 0, 0.1);
+            border-radius: 8px;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-info h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .download-actions {
+            display: flex;
+            gap: 12px;
+            padding: 24px 32px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .btn-download {
+            flex: 1;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-download-all {
+            background: rgba(255, 210, 0, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(255, 210, 0, 0.3);
+        }
+
+        .btn-download-all:hover {
+            background: rgba(255, 210, 0, 0.25);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* Image Preview Modal */
+        .preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .preview-modal.active {
+            display: flex;
+        }
+
+        .preview-content {
+            max-width: 90%;
+            max-height: 90%;
+            position: relative;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .preview-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .preview-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .error-section {
+            padding: 60px 40px;
+            text-align: center;
+            color: #EF4444;
+        }
+
+        .error-section h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .file-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .download-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="share-container">
+        <div class="share-header">
+            <h1 class="share-title" id="shareName">加载中...</h1>
+            <p class="share-subtitle">共 <span class="share-count" id="itemCount">0</span> 个项目</p>
+        </div>
+
+        <!-- Password Input Section -->
+        <div id="passwordSection" class="password-section" style="display:none;">
+            <h3>🔒 此分享需要密码</h3>
+            <input type="password" id="passwordInput" class="password-input" placeholder="请输入访问密码" />
+            <br>
+            <button class="btn-primary" onclick="loadShare()">访问分享</button>
+        </div>
+
+        <!-- File List Section -->
+        <div id="fileListContainer" style="display:none;">
+            <div class="file-list-container">
+                <div id="fileGrid" class="file-list"></div>
+            </div>
+
+            <div class="download-actions">
+                <button class="btn-download btn-download-all" onclick="downloadAll()">
+                    📦 下载全部为ZIP
+                </button>
+                <button class="btn-download btn-secondary" onclick="window.location.href='/'">
+                    ← 返回首页
+                </button>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorSection" class="error-section" style="display:none;">
+            <h3>⚠️ 加载失败</h3>
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="previewModal" class="preview-modal" onclick="closePreview()">
+        <div class="preview-content" onclick="event.stopPropagation()">
+            <button class="preview-close" onclick="closePreview()">✕ 关闭</button>
+            <img id="previewImage" class="preview-image" src="" alt="预览">
+        </div>
+    </div>
+
+    <script>
+        const token = window.location.pathname.split('/').pop();
+        let password = '';
+
+        async function loadShare() {
+            const pwd = document.getElementById('passwordInput')?.value || password;
+            password = pwd;
+
+            try {
+                const url = `/api/share-collection/${token}${pwd ? '?password=' + encodeURIComponent(pwd) : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.status === 401 && data.needsPassword) {
+                    document.getElementById('passwordSection').style.display = 'block';
+                    document.getElementById('fileListContainer').style.display = 'none';
+                    document.getElementById('errorSection').style.display = 'none';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || '加载失败');
+                }
+
+                // Update header
+                document.getElementById('shareName').textContent = data.name;
+                document.getElementById('itemCount').textContent = data.items.length;
+
+                // Show file list
+                document.getElementById('passwordSection').style.display = 'none';
+                document.getElementById('fileListContainer').style.display = 'block';
+                document.getElementById('errorSection').style.display = 'none';
+
+                // Render files
+                const fileGrid = document.getElementById('fileGrid');
+                fileGrid.innerHTML = '';
+
+                data.items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'file-card';
+
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(item.name);
+
+                    if (isImage) {
+                        card.onclick = () => previewImage(item.path);
+                        card.innerHTML = `
+                            <img src="/preview/${item.path}" class="file-thumbnail" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="file-icon-wrapper" style="display:none;">🖼️</div>
+                            <div class="file-info">
+                                <h4>${item.name}</h4>
+                                <div class="file-size">${formatSize(item.size)}</div>
+                            </div>
+                        `;
+                    } else if (!item.isDirectory) {
+                        card.onclick = () => downloadFile(item.path);
+                        card.innerHTML = `
+                            <div class="file-icon-wrapper">${getFileIcon(item.name)}</div>
+                            <div class="file-info">
+                                <h4>${item.name}</h4>
+                                <div class="file-size">${formatSize(item.size)}</div>
+                            </div>
+                        `;
+                    } else {
+                        card.innerHTML = `
+                            <div class="file-icon-wrapper">📁</div>
+                            <div class="file-info">
+                                <h4>${item.name}</h4>
+                                <div class="file-size">${formatSize(item.size)}</div>
+                            </div>
+                        `;
+                    }
+
+                    fileGrid.appendChild(card);
+                });
+            } catch (err) {
+                document.getElementById('errorSection').style.display = 'block';
+                document.getElementById('errorMessage').textContent = err.message;
+                document.getElementById('fileListContainer').style.display = 'none';
+                document.getElementById('passwordSection').style.display = 'none';
+            }
+        }
+
+        function previewImage(path) {
+            const modal = document.getElementById('previewModal');
+            const img = document.getElementById('previewImage');
+            img.src = `/preview/${path}`;
+            modal.classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+                'mp4': '🎬', 'mov': '🎬', 'avi': '🎬',
+                'pdf': '📕', 'doc': '📘', 'docx': '📘',
+                'zip': '📦', 'rar': '📦',
+                'txt': '📝', 'md': '📝'
+            };
+            return icons[ext] || '📄';
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function downloadFile(path) {
+            window.location.href = `/preview/${path}`;
+        }
+
+        function downloadAll() {
+            const url = `/api/share-collection/${token}/download${password ? '?password=' + encodeURIComponent(password) : ''}`;
+            window.location.href = url;
+        }
+
+        // Auto load
+        loadShare();
+    </script>
+</body>
+
+</html>

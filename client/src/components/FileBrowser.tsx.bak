@@ -386,23 +386,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleBulkDelete = async () => {
         if (!window.confirm(`确定要删除选中的 ${selectedPaths.length} 个项目吗？`)) return;
         try {
-            const res = await axios.post('/api/files/bulk-delete', { paths: selectedPaths }, {
+            await axios.post('/api/files/bulk-delete', { paths: selectedPaths }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            if (res.data.failedItems && res.data.failedItems.length > 0) {
-                const successCount = res.data.deletedCount;
-                const failCount = res.data.failedItems.length;
-                alert(`⚠️ 操作部分完成\n\n✅ 成功删除: ${successCount} 个\n❌ 删除失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可删除)`);
-            } else {
-                alert('✅ 已全部删除');
-            }
-
             setSelectedPaths([]);
             fetchFiles(currentPath);
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '批量删除失败';
-            alert(`❌ ${errorMsg}`);
+            alert(errorMsg);
         }
     };
 
@@ -414,26 +405,16 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         }
 
         try {
-            const res = await axios.post('/api/files/bulk-move', {
-                paths: selectedPaths,
-                targetDir: finalTarget
+            await axios.post('/api/move-batch', {
+                sources: selectedPaths,
+                destination: finalTarget
             }, { headers: { Authorization: `Bearer ${token}` } });
-
-            if (res.data.failedItems && res.data.failedItems.length > 0) {
-                const successCount = res.data.movedCount;
-                const failCount = res.data.failedItems.length;
-                alert(`⚠️ 操作部分完成\n\n✅ 成功移动: ${successCount} 个\n❌ 移动失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可移动)`);
-            } else {
-                alert('✅ 已全部成功移动');
-            }
-
             fetchFiles(currentPath);
             setSelectedPaths([]);
             setMoveTargetDir('');
-            setIsMoveModalOpen(false); // Close modal on success
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '移动失败';
-            alert(`❌ ${errorMsg}`);
+            alert(errorMsg);
         }
     };
 
@@ -497,26 +478,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             );
 
             if (response.data.shareUrl) {
-                // Fallback clipboard method for better compatibility
-                try {
-                    await navigator.clipboard.writeText(response.data.shareUrl);
-                } catch (clipboardErr) {
-                    // Fallback method using textarea
-                    const textArea = document.createElement('textarea');
-                    textArea.value = response.data.shareUrl;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-999999px';
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                    } catch (e) {
-                        console.warn('Failed to copy to clipboard:', e);
-                    }
-                    document.body.removeChild(textArea);
-                }
-
-                alert(`✅ 分享链接已创建！\n\n${response.data.shareUrl}\n\n${batchSharePassword ? '密码: ' + batchSharePassword : '无密码保护'}\n\n链接已复制到剪贴板（如果复制失败请手动复制）`);
+                await navigator.clipboard.writeText(response.data.shareUrl);
+                alert(`✅ 分享链接已创建并复制到剪贴板！\n\n${response.data.shareUrl}\n\n${batchSharePassword ? '密码: ' + batchSharePassword : '无密码保护'}`);
                 setShowBatchShareDialog(false);
                 setSelectedPaths([]);
                 setBatchShareName('');
@@ -1363,229 +1326,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     />
                 )
             }
-
-            {/* Batch Share Dialog */}
-            {
-                showBatchShareDialog && (
-                    <div className="modal-overlay" onClick={() => setShowBatchShareDialog(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                                    <Link2 size={24} color="var(--accent-blue)" />
-                                    批量分享
-                                </h3>
-                                <button
-                                    onClick={() => setShowBatchShareDialog(false)}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'var(--text-secondary)',
-                                        cursor: 'pointer',
-                                        padding: '4px',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}
-                                >
-                                    <X size={24} />
-                                </button>
-                            </div>
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>已选择 {selectedPaths.length} 个项目</div>
-                            </div>
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    分享名称 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(可选)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={batchShareName}
-                                    onChange={(e) => setBatchShareName(e.target.value)}
-                                    placeholder={`分享 - ${new Date().toLocaleDateString()}`}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '8px',
-                                        fontSize: '0.95rem',
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        color: 'var(--text-main)',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    访问密码 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(可选)</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={batchSharePassword}
-                                    onChange={(e) => setBatchSharePassword(e.target.value)}
-                                    placeholder="留空则无需密码"
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '8px',
-                                        fontSize: '0.95rem',
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        color: 'var(--text-main)',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ marginBottom: '24px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '12px', display: 'block', color: 'var(--text-main)' }}>有效期:</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setBatchShareExpires('7')}
-                                        style={{
-                                            padding: '12px',
-                                            background: batchShareExpires === '7' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontWeight: batchShareExpires === '7' ? 700 : 600,
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                        }}
-                                    >
-                                        7天
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setBatchShareExpires('30')}
-                                        style={{
-                                            padding: '12px',
-                                            background: batchShareExpires === '30' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontWeight: batchShareExpires === '30' ? 700 : 600,
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            transition: ' 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                        }}
-                                    >
-                                        1个月
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setBatchShareExpires('never')}
-                                        style={{
-                                            padding: '12px',
-                                            background: batchShareExpires === 'never' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontWeight: batchShareExpires === 'never' ? 700 : 600,
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                        }}
-                                    >
-                                        永久
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const days = prompt('请输入有效天数:', '1');
-                                            if (days && !isNaN(parseInt(days))) {
-                                                setBatchShareExpires(days);
-                                            }
-                                        }}
-                                        style={{
-                                            padding: '12px',
-                                            background: !['7', '30', 'never'].includes(batchShareExpires) ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: !['7', '30', 'never'].includes(batchShareExpires) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontWeight: !['7', '30', 'never'].includes(batchShareExpires) ? 700 : 600,
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                        }}
-                                    >
-                                        自定义
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button
-                                    onClick={() => {
-                                        setShowBatchShareDialog(false);
-                                        setBatchSharePassword('');
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        background: 'rgba(255, 255, 255, 0.08)',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '8px',
-                                        color: 'var(--text-main)',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                        fontSize: '0.95rem',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                                >
-                                    取消
-                                </button>
-                                <button
-                                    onClick={handleBatchShare}
-                                    className="btn-primary"
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        fontSize: '0.95rem',
-                                        fontWeight: 700
-                                    }}
-                                >
-                                    生成链接
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
 
 
         </div >

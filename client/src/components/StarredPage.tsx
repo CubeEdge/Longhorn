@@ -161,24 +161,58 @@ export const StarredPage: React.FC = () => {
             {/* Bulk Action Bar */}
             {selectedIds.length > 0 && (
                 <div style={{
-                    background: 'var(--accent-blue)',
-                    borderRadius: '12px',
-                    padding: '16px 24px',
-                    marginBottom: '20px',
-                    color: '#000',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 100,
+                    background: 'rgba(32, 32, 32, 0.95)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    marginBottom: 20,
                     display: 'flex',
-                    alignItems: 'center',
                     justifyContent: 'space-between',
-                    boxShadow: '0 4px 20px rgba(255, 210, 0, 0.3)',
-                    animation: 'slideDown 0.3s ease'
+                    alignItems: 'center',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(0,0,0,0.1)' }}><X size={18} color="#000" /></button>
-                        <span style={{ fontWeight: 800 }}>已选中 {selectedIds.length} 个文件</span>
+                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                            <X size={18} />
+                        </button>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span> 个项目</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
-                        <button onClick={bulkUnstar} style={{ background: '#000', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Star size={16} /> 批量取消星标
+                        <button
+                            onClick={bulkUnstar}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: '#fff',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                padding: '8px 16px',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                            }}
+                        >
+                            <Star size={16} strokeWidth={2.5} color="var(--accent-blue)" /> 批量取消星标
                         </button>
                     </div>
                 </div>
@@ -196,7 +230,7 @@ export const StarredPage: React.FC = () => {
                 <div className="file-list">
                     <div className="file-list-header">
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                            {selectedIds.length > 0 && selectedIds.length === starredFiles.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                            {selectedIds.length > 0 && selectedIds.length === starredFiles.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                         </div>
                         <div className="col-name">文件名</div>
                         <div className="col-size">大小</div>
@@ -213,7 +247,7 @@ export const StarredPage: React.FC = () => {
                                 onClick={() => handleRowClick(file)}
                             >
                                 <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.id)}>
-                                    {selectedIds.includes(file.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                    {selectedIds.includes(file.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                                 </div>
                                 <div className="col-name">
                                     <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>

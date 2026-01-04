@@ -1,0 +1,120 @@
+
+// ====== Share Collections APIs (Batch Share) ======
+
+// Create Share Collection
+app.post('/api/share-collection', authenticate, async (req, res) => {
+    try {
+        const { paths, name, password, expiresIn } = req.body;
+        if (!paths || !Array.isArray(paths) || paths.length === 0) {
+            return res.status(400).json({ error: 'No paths provided' });
+        }
+        const token = crypto.randomBytes(16).toString('hex');
+        let expiresAt = null;
+        if (expiresIn) {
+            const days = parseInt(expiresIn);
+            if (!isNaN(days) && days > 0) {
+                expiresAt = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
+            }
+        }
+        const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
+        const result = db.prepare(`INSERT INTO share_collections (user_id, token, name, password, expires_at) VALUES (?, ?, ?, ?, ?)`).run(req.user.id, token, name || '分享集合', hashedPassword, expiresAt);
+        const collectionId = result.lastInsertRowid;
+        const insertItem = db.prepare(`INSERT INTO share_collection_items (collection_id, file_path, is_directory) VALUES (?, ?, ?)`);
+        for (const p of paths) {
+            const resolvedPath = resolvePath(p);
+            const fullPath = path.join(DISK_A, resolvedPath);
+            if (!fs.existsSync(fullPath)) continue;
+            const isDir = fs.statSync(fullPath).isDirectory();
+            insertItem.run(collectionId, resolvedPath, isDir ? 1 : 0);
+        }
+        const shareUrl = `${req.protocol}://${req.get('host')}/share-collection/${token}`;
+        res.json({ success: true, shareUrl, token });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Access Share Collection (Public)
+app.get('/api/share-collection/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.query;
+        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
+        if (!collection) return res.status(404).json({ error: 'Share not found' });
+        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
+            return res.status(410).json({ error: 'Share expired' });
+        }
+        if (collection.password) {
+            if (!password) return res.status(401).json({ error: 'Password required', needsPassword: true });
+            if (!bcrypt.compareSync(password, collection.password)) {
+                return res.status(401).json({ error: 'Invalid password', needsPassword: true });
+            }
+        }
+        const items = db.prepare(`SELECT file_path, is_directory FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
+        const fileInfo = items.map(item => ({
+            path: item.file_path,
+            name: path.basename(item.file_path),
+            isDirectory: item.is_directory === 1
+        }));
+        db.prepare(`UPDATE share_collections SET access_count = access_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = ?`).run(collection.id);
+        res.json({ name: collection.name, items: fileInfo, createdAt: collection.created_at });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Download Share Collection as Zip (Public)
+app.get('/api/share-collection/:token/download', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.query;
+        const collection = db.prepare(`SELECT * FROM share_collections WHERE token = ?`).get(token);
+        if (!collection) return res.status(404).json({ error: 'Share not found' });
+        if (collection.expires_at && new Date(collection.expires_at) < new Date()) {
+            return res.status(410).json({ error: 'Share expired' });
+        }
+        if (collection.password && (!password || !bcrypt.compareSync(password, collection.password))) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+        const items = db.prepare(`SELECT file_path FROM share_collection_items WHERE collection_id = ?`).all(collection.id);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        res.attachment(`${collection.name || 'share'}.zip`);
+        archive.pipe(res);
+        for (const item of items) {
+            const fullPath = path.join(DISK_A, item.file_path);
+            if (!fs.existsSync(fullPath)) continue;
+            const stats = fs.statSync(fullPath);
+            const basename = path.basename(item.file_path);
+            if (stats.isDirectory()) {
+                archive.directory(fullPath, basename);
+            } else {
+                archive.file(fullPath, { name: basename });
+            }
+        }
+        await archive.finalize();
+    } catch (err) {
+        if (!res.headersSent) res.status(500).json({ error: err.message });
+    }
+});
+
+// Get My Share Collections
+app.get('/api/my-share-collections', authenticate, (req, res) => {
+    try {
+        const collections = db.prepare(`SELECT c.id, c.token, c.name, c.expires_at, c.access_count, c.created_at, COUNT(i.id) as item_count FROM share_collections c LEFT JOIN share_collection_items i ON c.id = i.collection_id WHERE c.user_id = ? GROUP BY c.id ORDER BY c.created_at DESC`).all(req.user.id);
+        res.json(collections);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Share Collection
+app.delete('/api/share-collection/:id', authenticate, (req, res) => {
+    try {
+        const result = db.prepare(`DELETE FROM share_collections WHERE id = ? AND user_id = ?`).run(req.params.id, req.user.id);
+        if (result.changes === 0) return res.status(404).json({ error: 'Share collection not found' });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+

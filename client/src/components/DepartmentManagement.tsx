@@ -110,29 +110,202 @@ const DepartmentManagement: React.FC = () => {
                                 <FolderPlus size={16} color="var(--accent-blue)" />
                             </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div>
-                                <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 4, display: 'block' }}>权限</label>
-                                <select
-                                    value={grantType}
-                                    onChange={e => setGrantType(e.target.value)}
-                                    style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: 8, color: 'white' }}
+                        <div>
+                            <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 8, display: 'block' }}>权限类型</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: 12 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantType('Read')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantType === 'Read' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantType !== 'Read') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantType !== 'Read') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
                                 >
-                                    <option value="Read">只读</option>
-                                    <option value="Full">读写</option>
-                                </select>
+                                    只读
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantType('Contribute')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantType === 'Contribute' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                >
+                                    贡献
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantType('Full')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantType === 'Full' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantType !== 'Full') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantType !== 'Full') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                >
+                                    完全
+                                </button>
                             </div>
-                            <div>
-                                <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 4, display: 'block' }}>有效期</label>
-                                <select
-                                    value={grantExpiry}
-                                    onChange={e => setGrantExpiry(e.target.value)}
-                                    style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: 8, color: 'white' }}
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '10px 12px',
+                                background: 'rgba(255, 210, 0, 0.08)',
+                                border: '1px solid rgba(255, 210, 0, 0.2)',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                lineHeight: 1.5
+                            }}>
+                                <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-blue)', fontSize: '0.8rem' }}>💡 权限说明</div>
+                                <div><strong>只读</strong>：仅可查看和下载</div>
+                                <div><strong>贡献</strong>：可上传/创建，但只能修改自己的内容</div>
+                                <div><strong>完全</strong>：可修改/删除任意文件</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 8, display: 'block' }}>有效期</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantExpiry('7days')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantExpiry === '7days' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantExpiry === '7days' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantExpiry === '7days' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
                                 >
-                                    <option value="permanent">永久</option>
-                                    <option value="7days">7 天</option>
-                                    <option value="1month">1 月</option>
-                                </select>
+                                    7天
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantExpiry('1month')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantExpiry === '1month' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantExpiry === '1month' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantExpiry === '1month' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                >
+                                    1个月
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGrantExpiry('permanent')}
+                                    style={{
+                                        padding: '10px',
+                                        background: grantExpiry === 'permanent' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: grantExpiry === 'permanent' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: grantExpiry === 'permanent' ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                >
+                                    永久
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const custom = prompt('请输入自定义有效期（如：3months, 10days）:', '3months');
+                                        if (custom) {
+                                            setGrantExpiry(custom);
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '10px',
+                                        background: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 700 : 600,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }}
+                                >
+                                    自定义
+                                </button>
                             </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -176,20 +349,22 @@ const DepartmentManagement: React.FC = () => {
                         ))}
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Folder Selector Modal */}
-            {isFolderSelectorOpen && (
-                <FolderTreeSelector
-                    token={token || ''}
-                    currentPath={grantPath}
-                    onSelect={(path) => {
-                        setGrantPath(path);
-                        setIsFolderSelectorOpen(false);
-                    }}
-                    onClose={() => setIsFolderSelectorOpen(false)}
-                />
-            )}
+            {
+                isFolderSelectorOpen && (
+                    <FolderTreeSelector
+                        token={token || ''}
+                        currentPath={grantPath}
+                        onSelect={(path) => {
+                            setGrantPath(path);
+                            setIsFolderSelectorOpen(false);
+                        }}
+                        onClose={() => setIsFolderSelectorOpen(false)}
+                    />
+                )
+            }
 
             {/* Hint Section - Moved to Bottom & Compact */}
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
@@ -214,7 +389,7 @@ const DepartmentManagement: React.FC = () => {
                     </p>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

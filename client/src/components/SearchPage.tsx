@@ -151,9 +151,10 @@ export const SearchPage: React.FC = () => {
                                 onClick={() => setTypeFilter(type)}
                                 style={{
                                     padding: '8px 16px',
-                                    background: typeFilter === type ? 'var(--accent-blue)' : 'rgba(0,0,0,0.05)',
-                                    color: typeFilter === type ? '#000' : 'var(--text-main)',
-                                    border: 'none',
+                                    background: typeFilter === type ? 'rgba(255, 210, 0, 0.15)' : 'rgba(0,0,0,0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    borderLeft: typeFilter === type ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                    color: 'var(--text-main)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
                                     fontWeight: typeFilter === type ? 700 : 500,
