@@ -21,7 +21,7 @@ echo ""
 
 # 3. 自动登录获取 Token
 echo "🔄 正在登录..."
-LOGIN_RES=$(curl -s -X POST "$SERVER_URL/api/auth/login" \
+LOGIN_RES=$(curl -s -X POST "$SERVER_URL/api/login" \
   -H "Content-Type: application/json" \
   -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
