@@ -995,13 +995,20 @@ app.get('/api/shares', authenticate, (req, res) => {
 // ==================== DEPARTMENT DASHBOARD API ====================
 
 // Helper to get user's department info
+// Helper to get user's department info
 const getUserDepartment = (userId) => {
     const row = db.prepare(`
-        SELECT d.id, d.name, d.code 
+        SELECT d.id, d.name 
         FROM users u 
         JOIN departments d ON u.department_id = d.id 
         WHERE u.id = ?
     `).get(userId);
+
+    if (row) {
+        // Extract code from name "DeepartmentName (CODE)"
+        const match = row.name.match(/\(([^)]+)\)$/);
+        row.code = match ? match[1] : null;
+    }
     return row;
 };
 
