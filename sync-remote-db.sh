@@ -38,15 +38,16 @@ echo "✅ 登录成功！"
 
 # 4. 上传数据库
 echo "🚀 正在通过隧道上传数据库..."
-curl -X POST "$SERVER_URL/api/admin/restore-db" \
+RESPONSE=$(curl -s -X POST "$SERVER_URL/api/admin/restore-db" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "database=@server/longhorn.db"
+  -F "database=@server/longhorn.db")
 
+echo "📄 服务器响应: $RESPONSE"
 echo ""
-echo "------------------------------------------------"
-if [ $? -eq 0 ]; then
-    echo "✅ 上传命令已发送。如果服务器返回 success，则同步完成。"
-    echo "服务器可能会自动重启，请稍等片刻后刷新网页验证。"
+
+if [[ "$RESPONSE" == *"success"* ]]; then
+    echo "✅ 数据库同步成功！"
+    echo "服务器正在重启，请稍等 10-20 秒后刷新网页。"
 else
-    echo "❌ 上传失败，请检查网络。"
+    echo "❌ 上传失败，请查看上方错误信息。"
 fi

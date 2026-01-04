@@ -196,12 +196,6 @@ try {
 const adminPassword = bcrypt.hashSync('admin123', 10);
 db.prepare('INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', adminPassword, 'Admin');
 
-// [EMERGENCY FIX] Check if we need to force reset (User forgot password)
-// Uncomment this locally, deploy, then comment it out later.
-// For now, I will enable it to help the user.
-db.prepare('UPDATE users SET password = ? WHERE username = ?').run(adminPassword, 'admin');
-console.log('[Security] Admin password forced to: admin123');
-
 // Pre-seed departments
 const defaultDepts = [
     { name: '市场部 (MS)', code: 'MS' },
