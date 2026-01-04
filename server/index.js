@@ -1633,6 +1633,44 @@ app.get('/share-collection/:token', (req, res) => {
     }
 });
 
+// Database Restore Endpoint
+app.post('/api/admin/restore-db', authenticate, upload.single('database'), async (req, res) => {
+    if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Admins only' });
+    if (!req.file) return res.status(400).json({ error: 'No database file uploaded' });
+
+    console.log('[Admin] Database restore requested from:', req.ip);
+
+    try {
+        // 1. Close current connection
+        db.close();
+        console.log('[Admin] Database connection closed.');
+
+        // 2. Backup existing
+        const backupPath = `${DB_PATH}.bak-${Date.now()}`;
+        if (await fs.pathExists(DB_PATH)) {
+            await fs.move(DB_PATH, backupPath);
+            console.log(`[Admin] Backup created at: ${backupPath}`);
+        }
+
+        // 3. Move new DB into place
+        await fs.move(req.file.path, DB_PATH, { overwrite: true });
+        console.log('[Admin] New database installed.');
+
+        res.json({ success: true, message: 'Database restored. Server restarting...' });
+
+        // 4. Restart Process (PM2 will handle this)
+        setTimeout(() => {
+            console.log('[Admin] Exiting process to trigger restart...');
+            process.exit(0);
+        }, 1000);
+
+    } catch (err) {
+        console.error('[Admin] Restore failed:', err);
+        res.status(500).json({ error: err.message });
+        setTimeout(() => process.exit(1), 2000); // Fail safe restart
+    }
+});
+
 // Serve Frontend Static Files (Production)
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
