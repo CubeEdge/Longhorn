@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   Users,
   Share2,
@@ -55,41 +55,7 @@ const MainLayout: React.FC<{ user: any, logout: () => void }> = ({ user, logout 
       <main className="main-content">
         <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
         <div className="content-area">
-          <Routes>
-            <Route path="/" element={<HomeRedirect user={user} />} />
-
-            {/* Root Directory (Admin) */}
-            <Route path="/root" element={user.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
-
-            {/* Quick Access */}
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/starred" element={<StarredPage />} />
-            <Route path="/recent" element={<RecentPage />} />
-            <Route path="/shares" element={<SharesPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-
-            {/* Personal & Department Spaces */}
-            <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
-            <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
-            <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
-
-            {/* Admin */}
-            <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
-            <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
-
-            {/* Department Management - Lead only */}
-            <Route path="/department-dashboard" element={user.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
-
-            {/* Recycle Bin */}
-            <Route path="/recycle-bin" element={<RecycleBin />} />
-
-            {/* Legacy routes - redirect */}
-            <Route path="/files" element={<Navigate to="/" />} />
-            <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
-            <Route path="/shared" element={<Navigate to="/shares" />} />
-
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+          <Outlet />
         </div>
       </main>
     </div>
@@ -105,14 +71,51 @@ const App: React.FC = () => {
         {/* Public Routes */}
         <Route path="/share-collection/:token" element={<ShareCollectionPage />} />
 
+        {/* Login Route */}
+        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+
         {/* Protected Routes */}
-        <Route path="/*" element={
+        <Route element={
           (!user || typeof user !== 'object' || !user.role) ? (
             <Login />
           ) : (
             <MainLayout user={user} logout={logout} />
           )
-        } />
+        }>
+          <Route path="/" element={<HomeRedirect user={user} />} />
+
+          {/* Root Directory (Admin) */}
+          <Route path="/root" element={user?.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
+
+          {/* Quick Access */}
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/starred" element={<StarredPage />} />
+          <Route path="/recent" element={<RecentPage />} />
+          <Route path="/shares" element={<SharesPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Personal & Department Spaces */}
+          <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
+          <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
+          <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
+
+          {/* Admin */}
+          <Route path="/members" element={user?.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
+          <Route path="/admin/*" element={user?.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
+
+          {/* Department Management - Lead only */}
+          <Route path="/department-dashboard" element={user?.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
+
+          {/* Recycle Bin */}
+          <Route path="/recycle-bin" element={<RecycleBin />} />
+
+          {/* Legacy routes - redirect */}
+          <Route path="/files" element={<Navigate to="/" />} />
+          <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
+          <Route path="/shared" element={<Navigate to="/shares" />} />
+
+          <Route path="*" element={<Navigate to="/" />} />
+        </Route>
       </Routes>
     </Router>
   );
