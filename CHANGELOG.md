@@ -1,5 +1,20 @@
 # Changelog
 
+## [11.3.0] - 2026-01-05
+### Added
+- **Global Loading States**: 全面实现操作等待状态，包括：
+    - **Share Generation**: 生成分享链接时禁用按钮并显示"生成中..."。
+    - **Bulk Actions**: 批量删除、下载、移动操作增加加载中（Loading）反馈。
+    - **Folder Creation**: 创建文件夹时显示旋转加载图标。
+    - **Move Modal**: 移动确认按钮支持 Async 等待状态，防止弹窗过早关闭。
+### Changed
+- **Terminology**: 优化系统提示语，将技术性词汇（如"读取文件库"）替换为更友好的表达（"更新列表"）。
+- **Share Logic**: 批量分享与单文件分享统一使用标准化的 `ShareResultModal` 结果页。
+### Fixed
+- **Deployment**: 优化部署脚本 `deploy-watch.sh`，增加 `git reset --hard` 以自动解决部署时的本地文件冲突。
+- **Routing**: 修复 URL 路径无限叠加问题，重构 App 路由为 Layout Pattern。
+- **Build**: 修复 `FileBrowser.tsx` 中因 JSX 闭合标签缺失导致的前端构建失败问题。
+
 ## [11.2.0] - 2026-01-04
 ### Added
 - **Contribute Permission**: 引入三级权限体系（只读Read、贡献Contribute、完全Full），Member在部门内默认拥有Contribute权限（可创建文件夹/上传文件，但只能修改/删除自己的内容）。
