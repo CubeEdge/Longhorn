@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs-extra');
@@ -222,9 +223,15 @@ const ensureUserFolders = (user) => {
     fs.ensureDirSync(personalPath);
 };
 
+
+app.use(compression()); // Enable gzip compression
 app.use(cors());
 app.use(express.json());
-app.use('/preview', express.static(DISK_A));
+app.use('/preview', express.static(DISK_A, {
+    maxAge: '1d',  // Cache images for 1 day
+    etag: true,
+    lastModified: true
+}));
 
 // Health Check Route (Moved down to avoid blocking UI)
 app.get('/api/status', (req, res) => {
@@ -1818,7 +1825,11 @@ app.post('/api/admin/restore-db', authenticate, upload.single('database'), async
 });
 
 // Serve Frontend Static Files (Production)
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static(path.join(__dirname, '../client/dist'), {
+    maxAge: '1h',  // Cache static assets for 1 hour
+    etag: true,
+    lastModified: true
+}));
 
 // Fallback to SPA for any non-API routes - Using a general middleware to bypass path-to-regexp version issues
 // ====== Share Collections APIs (Batch Share) ======

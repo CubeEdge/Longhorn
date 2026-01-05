@@ -221,6 +221,10 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Performance: limit rendered size to reduce browser workload */
+  max-width: 800px;
+  max-height: 800px;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 /* Fix for list view thumbnails */
