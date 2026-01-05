@@ -497,26 +497,43 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             );
 
             if (response.data.shareUrl) {
-                // Fallback clipboard method for better compatibility
+                // Improved clipboard copy with success tracking
+                let copySuccess = false;
+
+                // Method 1: Modern Clipboard API
                 try {
                     await navigator.clipboard.writeText(response.data.shareUrl);
-                } catch (clipboardErr) {
-                    // Fallback method using textarea
-                    const textArea = document.createElement('textarea');
-                    textArea.value = response.data.shareUrl;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-999999px';
-                    document.body.appendChild(textArea);
-                    textArea.select();
+                    copySuccess = true;
+                } catch (err1) {
+                    console.warn('Clipboard API failed, trying fallback...', err1);
+
+                    // Method 2: execCommand with textarea (more compatible)
                     try {
-                        document.execCommand('copy');
-                    } catch (e) {
-                        console.warn('Failed to copy to clipboard:', e);
+                        const textArea = document.createElement('textarea');
+                        textArea.value = response.data.shareUrl;
+                        textArea.style.position = 'fixed';
+                        textArea.style.top = '0';
+                        textArea.style.left = '0';
+                        textArea.style.width = '2em';
+                        textArea.style.height = '2em';
+                        textArea.style.padding = '0';
+                        textArea.style.border = 'none';
+                        textArea.style.outline = 'none';
+                        textArea.style.boxShadow = 'none';
+                        textArea.style.background = 'transparent';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+
+                        copySuccess = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                    } catch (err2) {
+                        console.warn('execCommand copy also failed', err2);
                     }
-                    document.body.removeChild(textArea);
                 }
 
-                alert(`✅ 分享链接已创建！\n\n${response.data.shareUrl}\n\n${batchSharePassword ? '密码: ' + batchSharePassword : '无密码保护'}\n\n链接已复制到剪贴板（如果复制失败请手动复制）`);
+                const copyHint = copySuccess ? '✅ 链接已复制到剪贴板' : '⚠️ 自动复制失败，请手动复制链接';
+                alert(`✅ 分享链接已创建！\n\n${response.data.shareUrl}\n\n${batchSharePassword ? '密码: ' + batchSharePassword : '无密码保护'}\n\n${copyHint}`);
                 setShowBatchShareDialog(false);
                 setSelectedPaths([]);
                 setBatchShareName('');
