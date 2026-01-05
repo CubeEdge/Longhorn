@@ -76,12 +76,12 @@ const storage = multer.diskStorage({
         cb(null, targetDir);
     },
     filename: (req, file, cb) => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const datePrefix = `${year}${month}${day}`;
-        cb(null, `${datePrefix}_${file.originalname}`);
+        // [User Request] Keep original filename, no date prefix
+        // Handle filename encoding for Chinese characters manually if needed, 
+        // but Multer typically handles originalname UTF8 correctly in modern Node.
+        // We ensure it's decoded properly.
+        const name = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        cb(null, name || file.originalname);
     }
 });
 const upload = multer({ storage });
@@ -1962,19 +1962,7 @@ app.delete('/api/share-collection/:id', authenticate, (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-app.use((req, res) => {
-    // If it's an API route that reached here, it's a 404
-    if (req.path.startsWith('/api')) {
-        return res.status(404).json({ error: 'API endpoint not found' });
-    }
-    // Otherwise serve the built index.html
-    const indexPath = path.join(__dirname, '../client/dist/index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('Frontend not built. Run npm run build in client directory.');
-    }
-});
+// (Moved to bottom)
 
 
 // ====== Share Collections APIs (Batch Share) ======
@@ -2116,6 +2104,20 @@ app.delete('/api/share-collection/:id', authenticate, (req, res) => {
     } catch (err) {
         console.error('[Share Collection] Error deleting:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+// Fallback to SPA for any non-API routes
+app.use((req, res) => {
+    // If it's an API route that reached here, it's a 404
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    // Otherwise serve the built index.html
+    const indexPath = path.join(__dirname, '../client/dist/index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Frontend not built. Run npm run build in client directory.');
     }
 });
 

@@ -805,7 +805,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     </div>
                     {canWrite && (effectiveMode === 'all' || effectiveMode === 'personal') && (
                         <>
-                            <button className="btn-icon-only" onClick={() => setIsCreatingFolder(true)} title="新建文件夹">
+                            <button className="btn-icon-only" onClick={() => {
+                                setIsCreatingFolder(true);
+                                const now = new Date();
+                                const dateStr = now.getFullYear() +
+                                    String(now.getMonth() + 1).padStart(2, '0') +
+                                    String(now.getDate()).padStart(2, '0');
+                                setNewFolderName(dateStr);
+                            }} title="新建文件夹">
                                 <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
                             </button>
                             <button className="btn-primary" onClick={handleUploadClick} disabled={uploading}>
