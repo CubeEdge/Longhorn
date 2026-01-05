@@ -30,4 +30,7 @@
 - [x] 代码已推送到 GitHub
 - [x] 验证前端构建通过
 - [x] 验证服务器启动正常
-- [x] **[NEW] 解决服务器 Git 冲突**（指导用户 Stash 更改）
+- [x] 解决服务器 Git 冲突（指导用户 Stash 更改）
+- [x] **[NEW] 永久解决部署冲突**：
+    - 停止追踪 `debug_perm.txt`
+    - 更新 `deploy-watch.sh` 为强制同步模式 (`reset --hard`)

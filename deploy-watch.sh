@@ -18,6 +18,8 @@ while true; do
     echo "----------------------------------------------------"
     
     # 执行一键部署
+    # 强制重置本地修改，确保更新成功 (Fix Git Conflicts)
+    git reset --hard HEAD
     git pull
     npm run deploy
     
