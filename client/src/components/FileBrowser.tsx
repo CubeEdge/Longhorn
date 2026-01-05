@@ -29,9 +29,7 @@ import {
     Star,
     Link2,
     Move,
-    FolderPlus,
-    CheckCircle,
-    Copy
+    FolderPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
@@ -502,12 +500,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
             if (response.data.shareUrl) {
                 // Improved clipboard copy with success tracking
-                let copySuccess = false;
+
 
                 // Method 1: Modern Clipboard API
                 try {
                     await navigator.clipboard.writeText(response.data.shareUrl);
-                    copySuccess = true;
+
                 } catch (err1) {
                     console.warn('Clipboard API failed, trying fallback...', err1);
 
@@ -529,14 +527,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         textArea.focus();
                         textArea.select();
 
-                        copySuccess = document.execCommand('copy');
+                        document.execCommand('copy');
                         document.body.removeChild(textArea);
                     } catch (err2) {
                         console.warn('execCommand copy also failed', err2);
                     }
                 }
 
-                const copyHint = copySuccess ? '✅ 链接已复制到剪贴板' : '⚠️ 自动复制失败，请手动复制链接';
+
                 setShareResult({ url: response.data.shareUrl, password: batchSharePassword || "", expires: batchShareExpires === "never" ? "永久" : `${batchShareExpires}天` });
                 setShowBatchShareDialog(false);
                 setSelectedPaths([]);
@@ -1361,52 +1359,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 )
             }
 
-
-                        </div>
-
-                        <button
-                            onClick={() => {
-                                const textArea = document.createElement('textarea');
-                                textArea.value = shareResult.url;
-                                textArea.style.position = 'fixed';
-                                textArea.style.top = '0';
-                                textArea.style.left = '0';
-                                textArea.style.opacity = '0';
-                                document.body.appendChild(textArea);
-                                textArea.focus();
-                                textArea.select();
-
-                                let success = false;
-                                try {
-                                    success = document.execCommand('copy');
-                                } catch (e) {
-                                    console.error('Copy failed:', e);
-                                }
-
-                                document.body.removeChild(textArea);
-
-                                if (success) {
-                                    alert("✅ 链接已复制到剪贴板！"); setShareResult(null);
-                                } else {
-                                    alert('⚠️ 复制失败，请手动复制链接');
-                                }
-                            }}
-                            className="btn-primary"
-                            style={{
-                                width: '100%',
-                                padding: '14px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                fontSize: '1rem'
-                            }}
-                        >
-                            <Copy size={20} />
-                            复制链接
-                        </button>
-                    </div>
-                </div>
+            {/* Share Result Modal */}
+            {shareResult && (
+                <ShareResultModal
+                    result={shareResult}
+                    onClose={() => setShareResult(null)}
+                />
             )}
 
             {/* Preview Modal */}

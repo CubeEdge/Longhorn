@@ -236,15 +236,15 @@ export const SharesPage: React.FC = () => {
     };
 
     const handleRowClick = (share: ShareLink | UnifiedShareItem) => {
-        if ('file_path' in share && share.type !== 'collection') {
-            setDetailShare(share as ShareLink);
-        } else {
+        if ('type' in share && share.type === 'collection') {
             // It's a collection or unified item
             setShareResult({
-                url: `${window.location.origin}/share-collection/${(share as UnifiedShareItem).token}`,
+                url: `${window.location.origin}/share-collection/${share.token}`,
                 expires: share.expires_at ? `${Math.ceil((new Date(share.expires_at).getTime() - Date.now()) / (1000 * 3600 * 24))}天` : '永久',
                 password: '******'
             });
+        } else {
+            setDetailShare(share as ShareLink);
         }
     };
 

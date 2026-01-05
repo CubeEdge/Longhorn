@@ -8,9 +8,7 @@ import {
     Folder,
     Lock,
     AlertCircle,
-    CheckCircle,
-    Package,
-    ArrowLeft
+    Package
 } from 'lucide-react';
 import { format } from 'date-fns';
 
