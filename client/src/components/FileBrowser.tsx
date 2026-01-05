@@ -29,7 +29,9 @@ import {
     Star,
     Link2,
     Move,
-    FolderPlus
+    FolderPlus,
+    CheckCircle,
+    Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
@@ -99,6 +101,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [shareItem, setShareItem] = useState<any>(null);
     const [sharePassword, setSharePassword] = useState('');
     const [shareExpires, setShareExpires] = useState('7');
+    const [shareResult, setShareResult] = useState<{ url: string, password: string, expires: string } | null>(null);
     const [showBatchShareDialog, setShowBatchShareDialog] = useState(false);
     const [batchShareName, setBatchShareName] = useState('');
     const [batchSharePassword, setBatchSharePassword] = useState('');
@@ -533,7 +536,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 }
 
                 const copyHint = copySuccess ? '✅ 链接已复制到剪贴板' : '⚠️ 自动复制失败，请手动复制链接';
-                alert(`✅ 分享链接已创建！\n\n${response.data.shareUrl}\n\n${batchSharePassword ? '密码: ' + batchSharePassword : '无密码保护'}\n\n${copyHint}`);
+                setShareResult({ url: response.data.shareUrl, password: batchSharePassword || "", expires: batchShareExpires === "never" ? "永久" : `${batchShareExpires}天` });
                 setShowBatchShareDialog(false);
                 setSelectedPaths([]);
                 setBatchShareName('');
@@ -578,9 +581,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             });
 
             if (res.data.shareUrl) {
-                // Auto copy to clipboard
-                navigator.clipboard.writeText(res.data.shareUrl);
-                alert('✅ 分享链接已生成并复制到剪贴板！');
+                setShareResult({
+                    url: res.data.shareUrl,
+                    password: sharePassword || '',
+                    expires: shareExpires === 'never' ? '永久' : `${shareExpires}天`
+                });
+                setShowShareDialog(false);
+                setSharePassword('');
             } else {
                 alert('❌ 生成失败：服务器未返回链接');
             }
@@ -1352,6 +1359,131 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     </div>
                 )
             }
+
+
+            {/* Share Result Panel */}
+            {shareResult && (
+                <div className="modal-overlay" onClick={() => setShareResult(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, color: 'var(--accent-blue)' }}>
+                                <CheckCircle size={28} />
+                                分享链接已生成！
+                            </h3>
+                            <button
+                                onClick={() => setShareResult(null)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
+                                分享链接:
+                            </label>
+                            <div style={{
+                                padding: '12px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem',
+                                color: 'var(--accent-blue)',
+                                wordBreak: 'break-all',
+                                fontFamily: 'monospace'
+                            }}>
+                                {shareResult.url}
+                            </div>
+                        </div>
+
+                        {shareResult.password && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
+                                    访问密码:
+                                </label>
+                                <div style={{
+                                    padding: '12px',
+                                    background: 'rgba(255, 210, 0, 0.1)',
+                                    border: '1px solid rgba(255, 210, 0, 0.3)',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    color: 'var(--accent-blue)',
+                                    fontFamily: 'monospace',
+                                    fontWeight: 700
+                                }}>
+                                    {shareResult.password}
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
+                                有效期:
+                            </label>
+                            <div style={{
+                                padding: '12px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                {shareResult.expires}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                const textArea = document.createElement('textarea');
+                                textArea.value = shareResult.url;
+                                textArea.style.position = 'fixed';
+                                textArea.style.top = '0';
+                                textArea.style.left = '0';
+                                textArea.style.opacity = '0';
+                                document.body.appendChild(textArea);
+                                textArea.focus();
+                                textArea.select();
+                                
+                                let success = false;
+                                try {
+                                    success = document.execCommand('copy');
+                                } catch (e) {
+                                    console.error('Copy failed:', e);
+                                }
+                                
+                                document.body.removeChild(textArea);
+                                
+                                if (success) {
+                                    alert('✅ 链接已复制到剪贴板！');
+                                } else {
+                                    alert('⚠️ 复制失败，请手动复制链接');
+                                }
+                            }}
+                            className="btn-primary"
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                fontSize: '1rem'
+                            }}
+                        >
+                            <Copy size={20} />
+                            复制链接
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Preview Modal */}
             {

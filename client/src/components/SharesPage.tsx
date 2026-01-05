@@ -83,60 +83,62 @@ export const SharesPage: React.FC = () => {
         }
     };
 
-    const copyShareLink = async (shareToken: string) => {
+    const copyShareLink = (shareToken: string) => {
         const url = `${window.location.origin}/s/${shareToken}`;
-        let success = false;
 
+        // Safari requires synchronous execution - use execCommand directly
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '1px';
+        textArea.style.height = '1px';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        let success = false;
         try {
-            await navigator.clipboard.writeText(url);
-            success = true;
-        } catch (err) {
-            // Safari fallback
-            const textArea = document.createElement('textarea');
-            textArea.value = url;
-            textArea.style.position = 'fixed';
-            textArea.style.top = '0';
-            textArea.style.left = '0';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                success = document.execCommand('copy');
-            } catch (e) {
-                console.error('Copy failed:', e);
-            }
-            document.body.removeChild(textArea);
+            success = document.execCommand('copy');
+            console.log('[copyShareLink] execCommand result:', success);
+        } catch (e) {
+            console.error('[copyShareLink] execCommand failed:', e);
         }
 
-        alert(success ? '✅ 链接已复制到剪贴板！' : '❌ 复制失败，请手动复制');
+        document.body.removeChild(textArea);
+
+        alert(success ? '✅ 链接已复制到剪贴板！' : '⚠️ 请手动复制链接');
     };
 
-    const copyCollectionLink = async (token: string) => {
+    const copyCollectionLink = (token: string) => {
         const url = `${window.location.origin}/share-collection/${token}`;
-        let success = false;
 
+        // Safari requires synchronous execution - use execCommand directly
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '1px';
+        textArea.style.height = '1px';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        let success = false;
         try {
-            await navigator.clipboard.writeText(url);
-            success = true;
-        } catch (err) {
-            // Safari fallback
-            const textArea = document.createElement('textarea');
-            textArea.value = url;
-            textArea.style.position = 'fixed';
-            textArea.style.top = '0';
-            textArea.style.left = '0';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                success = document.execCommand('copy');
-            } catch (e) {
-                console.error('Copy failed:', e);
-            }
-            document.body.removeChild(textArea);
+            success = document.execCommand('copy');
+            console.log('[copyCollectionLink] execCommand result:', success);
+        } catch (e) {
+            console.error('[copyCollectionLink] execCommand failed:', e);
         }
 
-        alert(success ? '✅ 批量分享链接已复制到剪贴板！' : '❌ 复制失败，请手动复制');
+        document.body.removeChild(textArea);
+
+        alert(success ? '✅ 批量分享链接已复制到剪贴板！' : '⚠️ 请手动复制链接');
     };
 
     const deleteShare = async (id: number) => {
@@ -171,36 +173,53 @@ export const SharesPage: React.FC = () => {
     };
 
     const bulkDelete = async () => {
+        console.log('[bulkDelete] Starting...');
+        console.log('[bulkDelete] selectedIds:', selectedIds);
+        console.log('[bulkDelete] selectedCollectionIds:', selectedCollectionIds);
+
         const totalSelected = selectedIds.length + selectedCollectionIds.length;
-        if (totalSelected === 0) return;
-        if (!confirm(`确定要删除选中的 ${totalSelected} 个分享吗？`)) return;
+        console.log('[bulkDelete] totalSelected:', totalSelected);
 
-        try {
-            // Delete file shares
-            const fileDeletePromises = selectedIds.map(id =>
-                axios.delete(`/api/shares/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
-            );
-
-            // Delete share collections
-            const collectionDeletePromises = selectedCollectionIds.map(id =>
-                axios.delete(`/api/share-collection/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
-            );
-
-            await Promise.all([...fileDeletePromises, ...collectionDeletePromises]);
-
-            setShares(shares.filter(s => !selectedIds.includes(s.id)));
-            setCollections(collections.filter(c => !selectedCollectionIds.includes(c.id)));
-            setSelectedIds([]);
-            setSelectedCollectionIds([]);
-            alert('✅ 已删除选中的分享');
-        } catch (err) {
-            console.error('Bulk delete error:', err);
-            alert('❌ 批量删除失败，请重试');
+        if (totalSelected === 0) {
+            console.log('[bulkDelete] No items selected, returning');
+            return;
         }
+
+        // Use setTimeout to prevent event bubbling from closing the confirm dialog
+        setTimeout(async () => {
+            const confirmed = confirm(`确定要删除选中的 ${totalSelected} 个分享吗？`);
+            console.log('[bulkDelete] User confirmed:', confirmed);
+            if (!confirmed) return;
+
+            try {
+                console.log('[bulkDelete] Starting deletion...');
+                // Delete file shares
+                const fileDeletePromises = selectedIds.map(id =>
+                    axios.delete(`/api/shares/${id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                );
+
+                // Delete share collections
+                const collectionDeletePromises = selectedCollectionIds.map(id =>
+                    axios.delete(`/api/share-collection/${id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                );
+
+                await Promise.all([...fileDeletePromises, ...collectionDeletePromises]);
+                console.log('[bulkDelete] Deletion successful');
+
+                setShares(shares.filter(s => !selectedIds.includes(s.id)));
+                setCollections(collections.filter(c => !selectedCollectionIds.includes(c.id)));
+                setSelectedIds([]);
+                setSelectedCollectionIds([]);
+                alert('✅ 已删除选中的分享');
+            } catch (err) {
+                console.error('[bulkDelete] Error:', err);
+                alert('❌ 批量删除失败，请重试');
+            }
+        }, 0);
     };
 
     const isExpired = (expiresAt: string | null) => {
@@ -321,7 +340,7 @@ export const SharesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
-                            onClick={bulkDelete}
+                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); bulkDelete(); }}
                             style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
                                 color: '#fff',
