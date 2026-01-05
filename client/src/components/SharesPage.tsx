@@ -53,7 +53,7 @@ export const SharesPage: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>([]);
     const [shareResult, setShareResult] = useState<{ url: string, password?: string, expires: string } | null>(null);
-    const [detailShare, setDetailShare] = useState<ShareLink | null>(null);
+    const [detailShare, setDetailShare] = useState<ShareLink | UnifiedShareItem | null>(null);
     const { token } = useAuthStore();
 
     useEffect(() => {
@@ -236,16 +236,7 @@ export const SharesPage: React.FC = () => {
     };
 
     const handleRowClick = (share: ShareLink | UnifiedShareItem) => {
-        if ('type' in share && share.type === 'collection') {
-            // It's a collection or unified item
-            setShareResult({
-                url: `${window.location.origin}/share-collection/${share.token}`,
-                expires: share.expires_at ? `${Math.ceil((new Date(share.expires_at).getTime() - Date.now()) / (1000 * 3600 * 24))}天` : '永久',
-                password: '******'
-            });
-        } else {
-            setDetailShare(share as ShareLink);
-        }
+        setDetailShare(share);
     };
 
     const toggleSelect = (e: React.MouseEvent, id: number, type: 'file' | 'collection') => {
@@ -481,7 +472,7 @@ export const SharesPage: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                             <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                                 <Link2 size={24} color="var(--accent-blue)" />
-                                分享详情
+                                {'type' in detailShare && detailShare.type === 'collection' ? '批量分享详情' : '分享详情'}
                             </h3>
                             <button
                                 onClick={() => setDetailShare(null)}
@@ -493,15 +484,28 @@ export const SharesPage: React.FC = () => {
 
                         <div style={{ marginBottom: '24px' }}>
                             <div style={{ fontWeight: 600, marginBottom: '12px', color: 'var(--text-main)', fontSize: '1.1rem' }}>
-                                {getFileName(detailShare.file_path)}
+                                {'type' in detailShare && detailShare.type === 'collection' ? detailShare.name : getFileName(detailShare.file_path!)}
                             </div>
                             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                                {getDirPath(detailShare.file_path)}
+                                {'type' in detailShare && detailShare.type === 'collection' ?
+                                    `共 ${detailShare.item_count} 个文件` :
+                                    getDirPath(detailShare.file_path!)
+                                }
                             </div>
 
-                            {/* File Preview */}
+                            {/* Preview Area */}
                             {(() => {
-                                const ext = getFileName(detailShare.file_path).split('.').pop()?.toLowerCase();
+                                if ('type' in detailShare && detailShare.type === 'collection') {
+                                    return (
+                                        <div style={{ marginBottom: '20px', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '32px' }}>
+                                            <Package size={64} style={{ opacity: 0.5, marginBottom: 16 }} />
+                                            <div style={{ color: 'var(--text-secondary)' }}>包含多个文件的集合</div>
+                                        </div>
+                                    );
+                                }
+
+                                // File Preview Logic
+                                const ext = getFileName(detailShare.file_path!).split('.').pop()?.toLowerCase();
                                 const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '');
                                 const isVideo = ['mp4', 'webm', 'mov'].includes(ext || '');
 
@@ -510,7 +514,7 @@ export const SharesPage: React.FC = () => {
                                         <div style={{ marginBottom: '20px', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '16px' }}>
                                             <img
                                                 src={`/preview/${detailShare.file_path}`}
-                                                alt={getFileName(detailShare.file_path)}
+                                                alt={getFileName(detailShare.file_path!)}
                                                 style={{
                                                     maxWidth: '100%',
                                                     maxHeight: '400px',
@@ -572,12 +576,12 @@ export const SharesPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {detailShare.last_accessed && (
+                                {('last_accessed' in detailShare && detailShare.last_accessed) && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                         <User size={18} color="var(--accent-blue)" />
                                         <div>
                                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>最后访问</div>
-                                            <div style={{ fontWeight: 600 }}>{format(new Date(detailShare.last_accessed), 'yyyy-MM-dd HH:mm')}</div>
+                                            <div style={{ fontWeight: 600 }}>{format(new Date(detailShare.last_accessed!), 'yyyy-MM-dd HH:mm')}</div>
                                         </div>
                                     </div>
                                 )}
@@ -596,7 +600,7 @@ export const SharesPage: React.FC = () => {
 
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                             <button
-                                onClick={() => copyShareLink(detailShare.share_token)}
+                                onClick={() => ('type' in detailShare && detailShare.type === 'collection') ? copyCollectionLink(detailShare.token!) : copyShareLink(detailShare.share_token!)}
                                 style={{
                                     padding: '12px 24px',
                                     background: 'var(--accent-blue)',
@@ -613,7 +617,7 @@ export const SharesPage: React.FC = () => {
                                 <Copy size={16} /> 复制链接
                             </button>
                             <button
-                                onClick={() => deleteShare(detailShare.id)}
+                                onClick={() => ('type' in detailShare && detailShare.type === 'collection') ? deleteCollection(detailShare.id) : deleteShare(detailShare.id)}
                                 style={{
                                     padding: '12px 24px',
                                     background: 'rgba(255,0,0,0.1)',
