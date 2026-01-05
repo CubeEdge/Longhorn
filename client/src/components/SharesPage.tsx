@@ -83,16 +83,60 @@ export const SharesPage: React.FC = () => {
         }
     };
 
-    const copyShareLink = (shareToken: string) => {
+    const copyShareLink = async (shareToken: string) => {
         const url = `${window.location.origin}/s/${shareToken}`;
-        navigator.clipboard.writeText(url);
-        alert('✅ 链接已复制到剪贴板！');
+        let success = false;
+
+        try {
+            await navigator.clipboard.writeText(url);
+            success = true;
+        } catch (err) {
+            // Safari fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                success = document.execCommand('copy');
+            } catch (e) {
+                console.error('Copy failed:', e);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        alert(success ? '✅ 链接已复制到剪贴板！' : '❌ 复制失败，请手动复制');
     };
 
-    const copyCollectionLink = (token: string) => {
+    const copyCollectionLink = async (token: string) => {
         const url = `${window.location.origin}/share-collection/${token}`;
-        navigator.clipboard.writeText(url);
-        alert('✅ 批量分享链接已复制到剪贴板！');
+        let success = false;
+
+        try {
+            await navigator.clipboard.writeText(url);
+            success = true;
+        } catch (err) {
+            // Safari fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                success = document.execCommand('copy');
+            } catch (e) {
+                console.error('Copy failed:', e);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        alert(success ? '✅ 批量分享链接已复制到剪贴板！' : '❌ 复制失败，请手动复制');
     };
 
     const deleteShare = async (id: number) => {
@@ -127,20 +171,35 @@ export const SharesPage: React.FC = () => {
     };
 
     const bulkDelete = async () => {
-        if (selectedIds.length === 0) return;
-        if (!confirm(`确定要删除选中的 ${selectedIds.length} 个分享链接吗？`)) return;
+        const totalSelected = selectedIds.length + selectedCollectionIds.length;
+        if (totalSelected === 0) return;
+        if (!confirm(`确定要删除选中的 ${totalSelected} 个分享吗？`)) return;
 
         try {
-            await Promise.all(selectedIds.map(id =>
+            // Delete file shares
+            const fileDeletePromises = selectedIds.map(id =>
                 axios.delete(`/api/shares/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
-            ));
+            );
+
+            // Delete share collections
+            const collectionDeletePromises = selectedCollectionIds.map(id =>
+                axios.delete(`/api/share-collection/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            );
+
+            await Promise.all([...fileDeletePromises, ...collectionDeletePromises]);
+
             setShares(shares.filter(s => !selectedIds.includes(s.id)));
+            setCollections(collections.filter(c => !selectedCollectionIds.includes(c.id)));
             setSelectedIds([]);
-            alert('✅ 已删除选中的分享链接');
+            setSelectedCollectionIds([]);
+            alert('✅ 已删除选中的分享');
         } catch (err) {
-            alert('❌ 批量删除失败');
+            console.error('Bulk delete error:', err);
+            alert('❌ 批量删除失败，请重试');
         }
     };
 
@@ -306,7 +365,7 @@ export const SharesPage: React.FC = () => {
                     {allShares.map((item) => {
                         const isFile = item.type === 'file';
                         const isCollection = item.type === 'collection';
-                        
+
                         return (
                             <div
                                 key={`${item.type}-${item.id}`}
