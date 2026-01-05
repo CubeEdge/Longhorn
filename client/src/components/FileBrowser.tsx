@@ -636,7 +636,16 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         {[
                             { icon: Download, label: '下载', onClick: handleBatchDownload },
                             { icon: Star, label: '星标', onClick: () => selectedPaths.forEach(async (path) => { const file = files.find(f => f.path === path); if (file) await handleStar(file); }) },
-                            { icon: Share2, label: '分享', onClick: () => setShowBatchShareDialog(true) },
+                            {
+                                icon: Share2, label: '分享', onClick: () => {
+                                    setShowBatchShareDialog(true);
+                                    const now = new Date();
+                                    const dateStr = now.getFullYear() +
+                                        String(now.getMonth() + 1).padStart(2, '0') +
+                                        String(now.getDate()).padStart(2, '0');
+                                    setBatchShareName(dateStr);
+                                }
+                            },
                             { icon: Move, label: '移动', onClick: () => setIsMoveModalOpen(true) }
                         ].map((action, idx) => (
                             <button
