@@ -218,18 +218,30 @@ export const SharesPage: React.FC = () => {
         setDetailShare(share);
     };
 
-    const toggleSelect = (e: React.MouseEvent, id: number) => {
+    const toggleSelect = (e: React.MouseEvent, id: number, type: 'file' | 'collection') => {
         e.stopPropagation();
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-        );
+        if (type === 'file') {
+            setSelectedIds(prev =>
+                prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+            );
+        } else {
+            setSelectedCollectionIds(prev =>
+                prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+            );
+        }
     };
 
     const selectAll = () => {
-        if (selectedIds.length === shares.length) {
+        const totalFiles = shares.length;
+        const totalCollections = collections.length;
+        const allSelected = (selectedIds.length === totalFiles) && (selectedCollectionIds.length === totalCollections);
+
+        if (allSelected) {
             setSelectedIds([]);
+            setSelectedCollectionIds([]);
         } else {
             setSelectedIds(shares.map(s => s.id));
+            setSelectedCollectionIds(collections.map(c => c.id));
         }
     };
 
@@ -283,7 +295,7 @@ export const SharesPage: React.FC = () => {
             </div>
 
             {/* Bulk Action Bar */}
-            {selectedIds.length > 0 && (
+            {(selectedIds.length > 0 || selectedCollectionIds.length > 0) && (
                 <div style={{
                     position: 'sticky',
                     top: 0,
@@ -302,10 +314,10 @@ export const SharesPage: React.FC = () => {
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                        <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
                             <X size={18} />
                         </button>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span> 个项目</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length + selectedCollectionIds.length}</span> 个项目</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
@@ -354,7 +366,7 @@ export const SharesPage: React.FC = () => {
                 <div className="file-list">
                     <div className="file-list-header">
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                            {selectedIds.length > 0 && selectedIds.length === shares.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                            {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                         </div>
                         <div className="col-name">名称</div>
                         <div className="col-stats">访问次数</div>
@@ -369,12 +381,12 @@ export const SharesPage: React.FC = () => {
                         return (
                             <div
                                 key={`${item.type}-${item.id}`}
-                                className={`file-list-row ${selectedIds.includes(item.id) ? 'selected' : ''}`}
+                                className={`file-list-row ${(isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id)) ? 'selected' : ''}`}
                                 style={{ opacity: isExpired(item.expires_at) ? 0.5 : 1 }}
                                 onClick={() => isFile ? handleRowClick({ ...item, file_path: item.file_path!, share_token: item.share_token!, has_password: item.has_password! } as ShareLink) : undefined}
                             >
-                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id)}>
-                                    {selectedIds.includes(item.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id, item.type)}>
+                                    {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                                 </div>
                                 <div className="col-name">
                                     <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
