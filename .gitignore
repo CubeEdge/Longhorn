@@ -12,3 +12,4 @@ server/data/.recycle/*
 .vite/
 *.zip
 *.log
+server/debug_perm.txt
