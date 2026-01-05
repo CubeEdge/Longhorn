@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
+import ShareResultModal from './ShareResultModal';
 
 interface FileItem {
     name: string;
@@ -1361,83 +1362,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             }
 
 
-            {/* Share Result Panel */}
-            {shareResult && (
-                <div className="modal-overlay" onClick={() => setShareResult(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, color: 'var(--accent-blue)' }}>
-                                <CheckCircle size={28} />
-                                分享链接已生成！
-                            </h3>
-                            <button
-                                onClick={() => setShareResult(null)}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    padding: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                }}
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                分享链接:
-                            </label>
-                            <div style={{
-                                padding: '12px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                color: 'var(--accent-blue)',
-                                wordBreak: 'break-all',
-                                fontFamily: 'monospace'
-                            }}>
-                                {shareResult.url}
-                            </div>
-                        </div>
-
-                        {shareResult.password && (
-                            <div style={{ marginBottom: '20px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    访问密码:
-                                </label>
-                                <div style={{
-                                    padding: '12px',
-                                    background: 'rgba(255, 210, 0, 0.1)',
-                                    border: '1px solid rgba(255, 210, 0, 0.3)',
-                                    borderRadius: '8px',
-                                    fontSize: '1rem',
-                                    color: 'var(--accent-blue)',
-                                    fontFamily: 'monospace',
-                                    fontWeight: 700
-                                }}>
-                                    {shareResult.password}
-                                </div>
-                            </div>
-                        )}
-
-                        <div style={{ marginBottom: '24px' }}>
-                            <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                有效期:
-                            </label>
-                            <div style={{
-                                padding: '12px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                color: 'var(--text-secondary)'
-                            }}>
-                                {shareResult.expires}
-                            </div>
                         </div>
 
                         <button
@@ -1451,18 +1375,18 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 document.body.appendChild(textArea);
                                 textArea.focus();
                                 textArea.select();
-                                
+
                                 let success = false;
                                 try {
                                     success = document.execCommand('copy');
                                 } catch (e) {
                                     console.error('Copy failed:', e);
                                 }
-                                
+
                                 document.body.removeChild(textArea);
-                                
+
                                 if (success) {
-                                    alert('✅ 链接已复制到剪贴板！');
+                                    alert("✅ 链接已复制到剪贴板！"); setShareResult(null);
                                 } else {
                                     alert('⚠️ 复制失败，请手动复制链接');
                                 }

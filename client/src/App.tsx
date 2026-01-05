@@ -31,71 +31,89 @@ import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
 
-const App: React.FC = () => {
-  const { user, logout } = useAuthStore();
+import ShareCollectionPage from './components/ShareCollectionPage';
+
+// Main Layout Component for authenticated users
+const MainLayout: React.FC<{ user: any, logout: () => void }> = ({ user, logout }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  if (!user || typeof user !== 'object' || !user.role) {
-    return <Login />;
-  }
+  return (
+    <div className="app-container fade-in">
+      {/* Mobile Overlay */}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <Sidebar
+        role={user.role}
+        onLogout={logout}
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      <main className="main-content">
+        <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
+        <div className="content-area">
+          <Routes>
+            <Route path="/" element={<HomeRedirect user={user} />} />
+
+            {/* Root Directory (Admin) */}
+            <Route path="/root" element={user.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
+
+            {/* Quick Access */}
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/starred" element={<StarredPage />} />
+            <Route path="/recent" element={<RecentPage />} />
+            <Route path="/shares" element={<SharesPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Personal & Department Spaces */}
+            <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
+            <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
+            <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
+
+            {/* Admin */}
+            <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
+            <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
+
+            {/* Department Management - Lead only */}
+            <Route path="/department-dashboard" element={user.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
+
+            {/* Recycle Bin */}
+            <Route path="/recycle-bin" element={<RecycleBin />} />
+
+            {/* Legacy routes - redirect */}
+            <Route path="/files" element={<Navigate to="/" />} />
+            <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
+            <Route path="/shared" element={<Navigate to="/shares" />} />
+
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const { user, logout } = useAuthStore();
 
   return (
     <Router>
-      <div className="app-container fade-in">
-        {/* Mobile Overlay */}
-        <div
-          className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
-          onClick={() => setSidebarOpen(false)}
-        />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/share-collection/:token" element={<ShareCollectionPage />} />
 
-        <Sidebar
-          role={user.role}
-          onLogout={logout}
-          isOpen={isSidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-
-        <main className="main-content">
-          <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
-          <div className="content-area">
-            <Routes>
-              <Route path="/" element={<HomeRedirect user={user} />} />
-
-              {/* Root Directory (Admin) */}
-              <Route path="/root" element={user.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
-
-              {/* Quick Access */}
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/starred" element={<StarredPage />} />
-              <Route path="/recent" element={<RecentPage />} />
-              <Route path="/shares" element={<SharesPage />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-
-              {/* Personal & Department Spaces */}
-              <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
-              <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
-              <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
-
-              {/* Admin */}
-              <Route path="/members" element={user.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
-              <Route path="/admin/*" element={user.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
-
-              {/* Department Management - Lead only */}
-              <Route path="/department-dashboard" element={user.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
-
-              {/* Recycle Bin */}
-              <Route path="/recycle-bin" element={<RecycleBin />} />
-
-              {/* Legacy routes - redirect */}
-              <Route path="/files" element={<Navigate to="/" />} />
-              <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
-              <Route path="/shared" element={<Navigate to="/shares" />} />
-
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
+        {/* Protected Routes */}
+        <Route path="/*" element={
+          (!user || typeof user !== 'object' || !user.role) ? (
+            <Login />
+          ) : (
+            <MainLayout user={user} logout={logout} />
+          )
+        } />
+      </Routes>
     </Router>
   );
 };

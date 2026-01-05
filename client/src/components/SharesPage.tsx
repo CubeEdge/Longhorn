@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { Link2, Copy, Trash2, Lock, Eye, MoreHorizontal, File, Check, X, Clock, User, Calendar, Package } from 'lucide-react';
 import { format } from 'date-fns';
+import ShareResultModal from './ShareResultModal';
 
 interface ShareLink {
     id: number;
@@ -51,6 +52,7 @@ export const SharesPage: React.FC = () => {
     const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number; share: ShareLink } | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>([]);
+    const [shareResult, setShareResult] = useState<{ url: string, password?: string, expires: string } | null>(null);
     const [detailShare, setDetailShare] = useState<ShareLink | null>(null);
     const { token } = useAuthStore();
 
@@ -233,8 +235,17 @@ export const SharesPage: React.FC = () => {
         setMenuAnchor({ x: e.clientX, y: e.clientY, share });
     };
 
-    const handleRowClick = (share: ShareLink) => {
-        setDetailShare(share);
+    const handleRowClick = (share: ShareLink | UnifiedShareItem) => {
+        if ('file_path' in share && share.type !== 'collection') {
+            setDetailShare(share as ShareLink);
+        } else {
+            // It's a collection or unified item
+            setShareResult({
+                url: `${window.location.origin}/share-collection/${(share as UnifiedShareItem).token}`,
+                expires: share.expires_at ? `${Math.ceil((new Date(share.expires_at).getTime() - Date.now()) / (1000 * 3600 * 24))}天` : '永久',
+                password: '******'
+            });
+        }
     };
 
     const toggleSelect = (e: React.MouseEvent, id: number, type: 'file' | 'collection') => {
@@ -402,7 +413,7 @@ export const SharesPage: React.FC = () => {
                                 key={`${item.type}-${item.id}`}
                                 className={`file-list-row ${(isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id)) ? 'selected' : ''}`}
                                 style={{ opacity: isExpired(item.expires_at) ? 0.5 : 1 }}
-                                onClick={() => isFile ? handleRowClick({ ...item, file_path: item.file_path!, share_token: item.share_token!, has_password: item.has_password! } as ShareLink) : undefined}
+                                onClick={() => handleRowClick(item)}
                             >
                                 <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id, item.type)}>
                                     {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
@@ -650,6 +661,13 @@ export const SharesPage: React.FC = () => {
                         </div>
                     </div>
                 </>
+            )}
+
+            {shareResult && (
+                <ShareResultModal
+                    result={shareResult}
+                    onClose={() => setShareResult(null)}
+                />
             )}
         </div>
     );
