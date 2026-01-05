@@ -4025,3 +4025,8 @@ User=admin Path=Members/admin Norm=Members/admin Access=Read
 User=admin Path=Members/admin Norm=Members/admin Access=Full
 User=admin Path=市场部 (MS)/dept/MS Norm=市场部 (MS)/dept/MS Access=Read
 User=admin Path=市场部 (MS)/dept/MS Norm=市场部 (MS)/dept/MS Access=Full
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Read
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Full
+User=Pepper Path=市场部 (MS) Norm=市场部 (MS) Access=Read
+User=Pepper Path=市场部 (MS) Norm=市场部 (MS) Access=Full
+User=Pepper Path=市场部 (MS) Norm=市场部 (MS) Access=Contributor
