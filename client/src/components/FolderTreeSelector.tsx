@@ -13,9 +13,10 @@ interface Props {
     currentPath: string;
     onSelect: (path: string) => void;
     onClose: () => void;
+    isProcessing?: boolean;
 }
 
-const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, currentPath, onSelect, onClose, username }) => {
+const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, currentPath, onSelect, onClose, username, isProcessing }) => {
     // Auto-expand current path and parent paths
     const getInitialExpandedPaths = () => {
         const paths = new Set<string>(['']); // Always expand root
@@ -107,7 +108,17 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
         if (selectedPath !== currentPath) {
             onSelect(selectedPath);
         }
-        onClose();
+        // Don't close immediately if we want to show loading state. 
+        // The parent component should handle closing on success.
+        if (!isProcessing) {
+            // If parent doesn't pass isProcessing (legacy), close immediately.
+            // But if we want consistent behavior, we rely on parent.
+            // For now, let's keep onClose() if isProcessing is undefined, 
+            // but if it IS defined, we expect parent to close it.
+            if (typeof isProcessing === 'undefined') {
+                onClose();
+            }
+        }
     };
 
     const renderNode = (node: FolderNode, level: number = 0) => {
@@ -186,7 +197,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                 zIndex: 1000,
                 backdropFilter: 'blur(4px)'
             }}
-            onClick={onClose}
+            onClick={isProcessing ? undefined : onClose}
         >
             <div
                 style={{
@@ -223,6 +234,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                     </div>
                     <button
                         onClick={onClose}
+                        disabled={isProcessing}
                         style={{
                             background: 'rgba(255, 255, 255, 0.1)',
                             border: 'none',
@@ -232,12 +244,13 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            cursor: 'pointer',
+                            cursor: isProcessing ? 'not-allowed' : 'pointer',
                             color: '#fff',
-                            transition: 'background 0.2s'
+                            transition: 'background 0.2s',
+                            opacity: isProcessing ? 0.5 : 1
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                        onMouseEnter={e => !isProcessing && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+                        onMouseLeave={e => !isProcessing && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -275,29 +288,31 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                     <button
                         onClick={onClose}
+                        disabled={isProcessing}
                         style={{
                             padding: '12px 24px',
                             borderRadius: '10px',
                             border: '1px solid rgba(255, 255, 255, 0.2)',
                             background: 'transparent',
                             color: 'rgba(255, 255, 255, 0.8)',
-                            cursor: 'pointer',
+                            cursor: isProcessing ? 'not-allowed' : 'pointer',
                             fontSize: '0.95rem',
                             fontWeight: 500,
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            opacity: isProcessing ? 0.5 : 1
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            if (!isProcessing) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
+                            if (!isProcessing) e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         取消
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={!selectedPath || selectedPath === currentPath}
+                        disabled={!selectedPath || selectedPath === currentPath || isProcessing}
                         style={{
                             padding: '12px 24px',
                             borderRadius: '10px',
@@ -310,11 +325,15 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                                 : 'rgba(255, 255, 255, 0.3)',
                             fontWeight: 700,
                             fontSize: '0.95rem',
-                            cursor: selectedPath && selectedPath !== currentPath ? 'pointer' : 'not-allowed',
-                            transition: 'all 0.2s'
+                            cursor: selectedPath && selectedPath !== currentPath && !isProcessing ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            opacity: isProcessing ? 0.7 : 1
                         }}
                     >
-                        确定
+                        {isProcessing ? <><div className="loading-spinner-sm" style={{ width: 14, height: 14, borderLeftColor: '#000' }}></div>移动中...</> : '确定'}
                     </button>
                 </div>
             </div>

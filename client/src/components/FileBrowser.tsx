@@ -107,6 +107,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [batchShareExpires, setBatchShareExpires] = useState('7');
     const [starredFiles, setStarredFiles] = useState<string[]>([]);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isSharing, setIsSharing] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false); // General loading state for file ops
 
     // const { deptCode } = useParams(); // Removed in favor of params usage below
     const { token } = useAuthStore();
@@ -306,6 +308,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
+        if (isProcessing) return;
+        setIsProcessing(true);
         try {
             await axios.post('/api/folders', { path: currentPath, name: newFolderName }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -315,6 +319,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             fetchFiles(currentPath);
         } catch (err) {
             alert("创建文件夹失败");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -387,6 +393,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleBulkDelete = async () => {
         if (!window.confirm(`确定要删除选中的 ${selectedPaths.length} 个项目吗？`)) return;
+        if (isProcessing) return;
+        setIsProcessing(true);
+
         try {
             const res = await axios.post('/api/files/bulk-delete', { paths: selectedPaths }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -405,6 +414,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '批量删除失败';
             alert(`❌ ${errorMsg}`);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -414,6 +425,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             alert("请选择目标文件夹");
             return;
         }
+
+        if (isProcessing) return;
+        setIsProcessing(true);
 
         try {
             const res = await axios.post('/api/files/bulk-move', {
@@ -436,6 +450,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '移动失败';
             alert(`❌ ${errorMsg}`);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -444,6 +460,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             alert('请先选择要下载的文件');
             return;
         }
+
+        if (isProcessing) return;
+        setIsProcessing(true);
 
         try {
             const response = await axios.post('/api/download-batch',
@@ -484,6 +503,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             alert('请先选择要分享的文件');
             return;
         }
+
+        if (isSharing) return;
+        setIsSharing(true);
 
         try {
             const response = await axios.post('/api/share-collection',
@@ -545,6 +567,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '创建分享失败';
             alert(`❌ ${errorMsg}`);
+        } finally {
+            setIsSharing(false);
         }
     };
 
@@ -569,6 +593,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleCreateShareLink = async () => {
         if (!shareItem) return;
+        if (isSharing) return;
+        setIsSharing(true);
 
         try {
             const res = await axios.post('/api/shares', {
@@ -594,6 +620,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             console.error('Failed to create share link:', err);
             const errorMsg = err.response?.data?.error || err.message || '未知错误';
             alert(`❌ 创建分享链接失败：${errorMsg}`);
+        } finally {
+            setIsSharing(false);
         }
     };
 
@@ -674,6 +702,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             <button
                                 key={idx}
                                 onClick={action.onClick}
+                                disabled={isProcessing}
                                 style={{
                                     background: 'rgba(255, 255, 255, 0.1)',
                                     color: '#fff',
@@ -682,29 +711,35 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     borderRadius: '10px',
                                     fontWeight: 600,
                                     fontSize: '0.9rem',
-                                    cursor: 'pointer',
+                                    cursor: isProcessing ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 6,
                                     transition: 'all 0.2s',
-                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                    opacity: isProcessing ? 0.7 : 1
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                    if (!isProcessing) {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                    }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                                    if (!isProcessing) {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                                    }
                                 }}
                             >
-                                <action.icon size={16} strokeWidth={2.5} color="var(--accent-blue)" /> {action.label}
+                                {isProcessing && action.label === '下载' ? <div className="loading-spinner-sm" style={{ width: 14, height: 14 }}></div> : <action.icon size={16} strokeWidth={2.5} color="var(--accent-blue)" />} {action.label}
                             </button>
                         ))}
                         <button
                             onClick={handleBulkDelete}
+                            disabled={isProcessing}
                             style={{
                                 background: 'rgba(255, 59, 48, 0.1)',
                                 color: '#FF3B30',
@@ -713,26 +748,35 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 borderRadius: '10px',
                                 fontWeight: 600,
                                 fontSize: '0.9rem',
-                                cursor: 'pointer',
+                                cursor: isProcessing ? 'not-allowed' : 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                opacity: isProcessing ? 0.7 : 1
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 59, 48, 0.2)';
-                                e.currentTarget.style.borderColor = '#FF3B30';
+                                if (!isProcessing) {
+                                    e.currentTarget.style.background = 'rgba(255, 59, 48, 0.2)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 59, 48, 0.3)';
+                                }
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)';
-                                e.currentTarget.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                                if (!isProcessing) {
+                                    e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }
                             }}
                         >
-                            删除
+                            {isProcessing ? <><div className="loading-spinner-sm" style={{ width: 14, height: 14, borderLeftColor: '#FF3B30' }}></div>删除中...</> : <><Trash2 size={16} strokeWidth={2.5} /> 批量删除</>}
                         </button>
+
                     </div>
                 </div>
             )}
+
 
             {/* Top Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
@@ -868,32 +912,36 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
                             style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: '2px solid var(--accent-blue)', color: 'var(--text-main)', outline: 'none', padding: '4px 0', fontSize: '1rem' }}
                         />
-                        <button className="btn-primary" onClick={handleCreateFolder} style={{ padding: '6px 16px', fontSize: '0.85rem' }}>创建</button>
-                        <button onClick={() => setIsCreatingFolder(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
+                        <button className="btn-primary" onClick={handleCreateFolder} disabled={isProcessing} style={{ padding: '6px 16px', fontSize: '0.85rem', opacity: isProcessing ? 0.7 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center' }}>
+                            {isProcessing ? <><div className="loading-spinner-sm" style={{ marginRight: 6 }}></div>创建中...</> : '创建'}
+                        </button>
+                        <button onClick={() => setIsCreatingFolder(false)} disabled={isProcessing} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', opacity: isProcessing ? 0.5 : 1 }}><X size={20} /></button>
                     </div>
                 )
             }
 
-            {uploading && (
-                <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, boxShadow: 'var(--shadow-lg)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.9rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Upload size={16} color="var(--accent-blue)" />
-                            <span style={{ fontWeight: 600 }}>正在上传文件...</span>
+            {
+                uploading && (
+                    <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '16px 20px', borderRadius: '12px', marginBottom: 20, boxShadow: 'var(--shadow-lg)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.9rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Upload size={16} color="var(--accent-blue)" />
+                                <span style={{ fontWeight: 600 }}>正在上传文件...</span>
+                            </div>
+                            <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{uploadProgress}%</span>
                         </div>
-                        <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{uploadProgress}%</span>
+                        <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 0.2s ease-out' }} />
+                        </div>
                     </div>
-                    <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 0.2s ease-out' }} />
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {uploadStatus === 'success' && <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} /> 成功上传了文件</div>}
 
             {
                 loading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>正在读取文件库...</span></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>正在更新列表，请稍等...</span></div>
                 ) : viewMode === 'grid' ? (
                     <div className="file-grid">
                         {Array.isArray(files) && formattedSortedFiles.map((file) => (
@@ -1341,17 +1389,29 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <button
                                     onClick={handleCreateShareLink}
                                     className="btn-primary"
+                                    disabled={isSharing}
                                     style={{
                                         flex: 1,
                                         padding: '12px',
                                         height: '48px',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        opacity: isSharing ? 0.7 : 1,
+                                        cursor: isSharing ? 'not-allowed' : 'pointer'
                                     }}
                                 >
-                                    <Link2 size={18} style={{ marginRight: '6px' }} />
-                                    生成链接
+                                    {isSharing ? (
+                                        <>
+                                            <div className="loading-spinner-sm" style={{ marginRight: 8 }}></div>
+                                            生成中...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Link2 size={18} style={{ marginRight: '6px' }} />
+                                            生成链接
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -1360,12 +1420,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             }
 
             {/* Share Result Modal */}
-            {shareResult && (
-                <ShareResultModal
-                    result={shareResult}
-                    onClose={() => setShareResult(null)}
-                />
-            )}
+            {
+                shareResult && (
+                    <ShareResultModal
+                        result={shareResult}
+                        onClose={() => setShareResult(null)}
+                    />
+                )
+            }
 
             {/* Preview Modal */}
             {
@@ -1398,14 +1460,16 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         token={token || ''}
                         currentPath={currentPath}
                         username={useAuthStore.getState().user?.username}
+                        isProcessing={isProcessing}
                         onSelect={(targetPath) => {
+                            // Only trigger the move. Let logic in handleBulkMove close the modal on success.
                             handleBulkMove(targetPath);
-                            setIsMoveModalOpen(false);
-                            setSelectedPaths([]);
                         }}
                         onClose={() => {
-                            setIsMoveModalOpen(false);
-                            setSelectedPaths([]);
+                            if (!isProcessing) {
+                                setIsMoveModalOpen(false);
+                                setSelectedPaths([]);
+                            }
                         }}
                     />
                 )
@@ -1618,14 +1682,27 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <button
                                     onClick={handleBatchShare}
                                     className="btn-primary"
+                                    disabled={isSharing}
                                     style={{
                                         flex: 1,
                                         padding: '12px',
                                         fontSize: '0.95rem',
-                                        fontWeight: 700
+                                        fontWeight: 700,
+                                        opacity: isSharing ? 0.7 : 1,
+                                        cursor: isSharing ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                     }}
                                 >
-                                    生成链接
+                                    {isSharing ? (
+                                        <>
+                                            <div className="loading-spinner-sm" style={{ marginRight: 8 }}></div>
+                                            生成中...
+                                        </>
+                                    ) : (
+                                        '生成链接'
+                                    )}
                                 </button>
                             </div>
                         </div>
