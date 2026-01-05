@@ -7,6 +7,7 @@ const Database = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
+const archiver = require('archiver');
 
 dotenv.config();
 

@@ -3770,3 +3770,23 @@ User=admin Path=运营部 (OP) Norm=运营部 (OP) Access=Read
 User=admin Path=运营部 (OP) Norm=运营部 (OP) Access=Full
 User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Read
 User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Full
+User=Pepper Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Pepper Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Full
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Full
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Read
+User=Orange Path=运营部 (OP) Norm=运营部 (OP) Access=Full
+User=admin Path=Members/admin Norm=Members/admin Access=Read
+User=admin Path=Members/admin Norm=Members/admin Access=Full
+User=admin Path=Members/admin Norm=Members/admin Access=Read
+User=admin Path=Members/admin Norm=Members/admin Access=Full
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Read
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Full
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Read
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Full
+User=admin Path=市场部 (MS)/123 Norm=市场部 (MS)/123 Access=Read
+User=admin Path=市场部 (MS)/123 Norm=市场部 (MS)/123 Access=Full
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Read
+User=admin Path=市场部 (MS) Norm=市场部 (MS) Access=Full
