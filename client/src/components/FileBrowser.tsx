@@ -634,9 +634,24 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         if (item.isDirectory) return <Folder size={size} fill="var(--accent-blue)" color="var(--accent-blue)" opacity={0.9} />;
         const ext = item.name.split('.').pop()?.toLowerCase();
         if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext || '')) {
+            // Use thumbnail API for faster loading (200px WebP)
             return (
                 <div className="thumbnail-box">
-                    <img src={`/preview/${item.path}`} className="thumbnail-img" alt="" loading="lazy" onError={(e) => { (e.target as any).style.display = 'none'; }} />
+                    <img
+                        src={`/api/thumbnail?path=${encodeURIComponent(item.path)}&size=200`}
+                        className="thumbnail-img"
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => {
+                            // Fallback to full preview on thumbnail error
+                            const target = e.target as HTMLImageElement;
+                            if (!target.src.includes('/preview/')) {
+                                target.src = `/preview/${item.path}`;
+                            } else {
+                                target.style.display = 'none';
+                            }
+                        }}
+                    />
                 </div>
             );
         }

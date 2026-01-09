@@ -346,13 +346,67 @@ app.get('/api/status', (req, res) => {
     res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
 });
 
-// Thumbnail API - TEMPORARILY DISABLED due to Express 5 route syntax issues
-// TODO: Fix Express 5 wildcard route pattern and re-enable
-/*
-app.get('/api/thumbnail/:filePath', async (req, res) => {
-    // ... thumbnail generation code ...
+// Thumbnail API - generates and caches small WebP thumbnails for faster loading
+// Uses query parameter instead of path parameter for Express 5 compatibility
+app.get('/api/thumbnail', async (req, res) => {
+    try {
+        const filePath = req.query.path;
+        if (!filePath) {
+            return res.status(400).json({ error: 'Missing path parameter' });
+        }
+
+        const decodedPath = decodeURIComponent(filePath);
+        const size = parseInt(req.query.size) || 200; // Default 200px
+
+        // Validate file extension
+        const ext = path.extname(decodedPath).toLowerCase();
+        const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+        if (!supportedFormats.includes(ext)) {
+            return res.status(400).json({ error: 'Unsupported format for thumbnails' });
+        }
+
+        const sourcePath = path.join(DISK_A, decodedPath);
+        if (!fs.existsSync(sourcePath)) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Generate cache key based on file path and size
+        const cacheKey = `${decodedPath.replace(/[\/\\]/g, '_')}_${size}.webp`;
+        const cachePath = path.join(THUMB_DIR, cacheKey);
+
+        // Check if cached thumbnail exists and is newer than source
+        if (fs.existsSync(cachePath)) {
+            const sourceStat = fs.statSync(sourcePath);
+            const cacheStat = fs.statSync(cachePath);
+            if (cacheStat.mtime > sourceStat.mtime) {
+                // Serve cached thumbnail
+                res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+                res.set('Content-Type', 'image/webp');
+                return res.sendFile(cachePath);
+            }
+        }
+
+        // Generate thumbnail
+        const thumbnail = await sharp(sourcePath)
+            .resize(size, size, { fit: 'cover', position: 'center' })
+            .webp({ quality: 75 })
+            .toBuffer();
+
+        // Save to cache (async, don't wait)
+        fs.writeFile(cachePath, thumbnail, (err) => {
+            if (err) console.error('[Thumbnail] Cache write error:', err.message);
+        });
+
+        // Respond with thumbnail
+        res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+        res.set('Content-Type', 'image/webp');
+        res.send(thumbnail);
+
+    } catch (err) {
+        console.error('[Thumbnail] Error:', err.message);
+        res.status(500).json({ error: 'Thumbnail generation failed' });
+    }
 });
-*/
 
 // Middleware & Helpers
 const authenticate = (req, res, next) => {
