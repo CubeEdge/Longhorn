@@ -404,16 +404,6 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
         </button>
 
-        {/* Version Badge */}
-        <span style={{
-          fontSize: '0.7rem',
-          color: 'rgba(255,255,255,0.35)',
-          fontWeight: 500,
-          letterSpacing: '0.5px'
-        }}>
-          v11.3
-        </span>
-
         <div
           ref={dropdownRef}
           className="hidden-mobile-flex"
@@ -463,12 +453,13 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
               border: '1px solid rgba(255, 255, 255, 0.1)',
               borderRadius: '12px',
               padding: '6px',
-              minWidth: '160px',
+              minWidth: '180px',
               boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
               zIndex: 9999,
               backdropFilter: 'blur(20px)',
               overflow: 'hidden'
             }}>
+              {/* Language Selector */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -499,6 +490,37 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
                   </button>
                 ))}
               </div>
+
+              {/* Personal Space Entry */}
+              <button
+                onClick={() => {
+                  navigate('/personal');
+                  setShowDropdown(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.9)',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <User size={16} />
+                {t('sidebar.personal')}
+              </button>
+
+              {/* Logout */}
               <button
                 onClick={handleLogout}
                 style={{
@@ -523,6 +545,18 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
                 <LogOut size={16} />
                 {t('auth.logout')}
               </button>
+
+              {/* Version Info */}
+              <div style={{
+                padding: '8px 12px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                marginTop: '4px',
+                fontSize: '0.75rem',
+                color: 'rgba(255,255,255,0.35)',
+                textAlign: 'center'
+              }}>
+                Longhorn v11.3.0
+              </div>
             </div>
           )}
         </div>
