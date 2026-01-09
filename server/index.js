@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const archiver = require('archiver');
+const sharp = require('sharp');
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
 const DISK_A = process.env.DISK_A || path.join(__dirname, 'data/DiskA');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
+const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
 // Department code mapping for frontend shortcuts (MS -> 市场部 (MS))
@@ -151,6 +153,7 @@ function resolvePath(requestPath) {
 // Ensure base directories exist (Department folders are handled by defaultDepts loop below)
 fs.ensureDirSync(DISK_A);
 fs.ensureDirSync(RECYCLE_DIR);
+fs.ensureDirSync(THUMB_DIR);
 
 // Multer Configuration for Uploads
 const storage = multer.diskStorage({
@@ -341,6 +344,68 @@ app.use('/preview', express.static(DISK_A, {
 // Health Check Route (Moved down to avoid blocking UI)
 app.get('/api/status', (req, res) => {
     res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
+});
+
+// Thumbnail API - generates and caches small WebP thumbnails for faster loading
+app.get('/api/thumbnail/*', async (req, res) => {
+    try {
+        const filePath = decodeURIComponent(req.params[0]);
+        const size = parseInt(req.query.size) || 200; // Default 200px
+
+        // Validate file extension
+        const ext = path.extname(filePath).toLowerCase();
+        const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+        if (!supportedFormats.includes(ext)) {
+            return res.status(400).json({ error: 'Unsupported format for thumbnails' });
+        }
+
+        const sourcePath = path.join(DISK_A, filePath);
+        if (!fs.existsSync(sourcePath)) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Generate cache key based on file path and size
+        const cacheKey = `${filePath.replace(/[\/\\]/g, '_')}_${size}.webp`;
+        const cachePath = path.join(THUMB_DIR, cacheKey);
+
+        // Check if cached thumbnail exists and is newer than source
+        if (fs.existsSync(cachePath)) {
+            const sourceStat = fs.statSync(sourcePath);
+            const cacheStat = fs.statSync(cachePath);
+            if (cacheStat.mtime > sourceStat.mtime) {
+                // Serve cached thumbnail
+                res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+                res.set('Content-Type', 'image/webp');
+                return res.sendFile(cachePath);
+            }
+        }
+
+        // Generate thumbnail
+        const thumbnail = await sharp(sourcePath)
+            .resize(size, size, { fit: 'cover', position: 'center' })
+            .webp({ quality: 75 })
+            .toBuffer();
+
+        // Save to cache (async, don't wait)
+        fs.writeFile(cachePath, thumbnail, (err) => {
+            if (err) console.error('[Thumbnail] Cache write error:', err.message);
+        });
+
+        // Respond with thumbnail
+        res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+        res.set('Content-Type', 'image/webp');
+        res.send(thumbnail);
+
+    } catch (err) {
+        console.error('[Thumbnail] Error:', err.message);
+        // Fallback to original file if thumbnail generation fails
+        const filePath = decodeURIComponent(req.params[0]);
+        const sourcePath = path.join(DISK_A, filePath);
+        if (fs.existsSync(sourcePath)) {
+            return res.sendFile(sourcePath);
+        }
+        res.status(500).json({ error: 'Thumbnail generation failed' });
+    }
 });
 
 // Middleware & Helpers
