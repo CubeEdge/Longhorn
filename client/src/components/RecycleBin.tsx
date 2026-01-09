@@ -159,16 +159,16 @@ const RecycleBin: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '32px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="recycle-bin-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div className="recycle-bin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: 16 }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
                         <Trash2 size={32} color="var(--accent-blue)" />
                         {t('recycle.title')}
                     </h1>
 
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {/* View Mode Toggle */}
                         <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.05)', padding: '4px', borderRadius: '8px' }}>
                             <button

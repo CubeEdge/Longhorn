@@ -33,47 +33,29 @@ const AdminPanel: React.FC = () => {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100%', gap: 32 }}>
+        <div className="admin-panel-container">
             {/* 二级侧边导航 */}
-            <div style={{
-                width: 200,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                padding: '0 8px',
-                borderRight: '1px solid var(--glass-border)'
-            }}>
-                <div className="hint" style={{ padding: '0 16px 16px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: 1 }}>{t('admin.control_panel')}</div>
-                {menuItems.map(item => (
-                    <div
-                        key={item.id}
-                        onClick={() => setActiveTab(item.id as AdminTab)}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            paddingLeft: activeTab === item.id ? '12px' : '16px',
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            background: activeTab === item.id ? 'rgba(255, 210, 0, 0.15)' : 'transparent',
-                            borderLeft: activeTab === item.id ? '4px solid var(--accent-blue)' : '4px solid transparent',
-                            color: activeTab === item.id ? 'var(--text-main)' : 'var(--text-secondary)',
-                            fontWeight: activeTab === item.id ? 700 : 500
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <item.icon size={18} />
-                            <span style={{ fontSize: '0.9rem' }}>{item.label}</span>
+            <div className="admin-sidebar">
+                <div className="hint admin-sidebar-title">{t('admin.control_panel')}</div>
+                <div className="admin-menu">
+                    {menuItems.map(item => (
+                        <div
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id as AdminTab)}
+                            className={`admin-menu-item ${activeTab === item.id ? 'active' : ''}`}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <item.icon size={18} />
+                                <span style={{ fontSize: '0.9rem' }}>{item.label}</span>
+                            </div>
+                            {activeTab === item.id && <ChevronRight size={14} className="hidden-mobile" />}
                         </div>
-                        {activeTab === item.id && <ChevronRight size={14} />}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* 主内容区 */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: 10 }}>
+            <div className="admin-content">
                 {renderContent()}
             </div>
         </div>

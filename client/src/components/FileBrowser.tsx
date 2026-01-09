@@ -140,6 +140,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [batchShareLanguage, setBatchShareLanguage] = useState<'zh' | 'en' | 'de' | 'ja'>('zh');
     const [starredFiles, setStarredFiles] = useState<string[]>([]);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadSpeed, setUploadSpeed] = useState<string>('');
     const [isSharing, setIsSharing] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false); // General loading state for file ops
 
@@ -323,6 +324,17 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 onUploadProgress: (progressEvent) => {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
                     setUploadProgress(percentCompleted);
+                    // Calculate speed from rate (bytes per second)
+                    if (progressEvent.rate) {
+                        const rate = progressEvent.rate;
+                        if (rate >= 1024 * 1024) {
+                            setUploadSpeed(`${(rate / (1024 * 1024)).toFixed(1)} MB/s`);
+                        } else if (rate >= 1024) {
+                            setUploadSpeed(`${(rate / 1024).toFixed(0)} KB/s`);
+                        } else {
+                            setUploadSpeed(`${rate} B/s`);
+                        }
+                    }
                 }
             });
             setUploadStatus('success');
@@ -698,9 +710,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             <input type="file" multiple ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
 
             {/* Batch Action Bar */}
-            {/* Batch Action Bar */}
             {selectedPaths.length > 0 && (
-                <div style={{
+                <div className="batch-action-bar" style={{
                     position: 'sticky',
                     top: 0,
                     zIndex: 100,
@@ -715,7 +726,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                    animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    flexWrap: 'wrap',
+                    gap: 12
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
@@ -723,7 +736,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedPaths.length}</span>{t('browser.items_count')}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div className="batch-action-buttons" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                         {[
                             { icon: Download, label: t('action.download'), onClick: handleBatchDownload },
                             { icon: Star, label: t('action.star'), onClick: () => selectedPaths.forEach(async (path) => { const file = files.find(f => f.path === path); if (file) await handleStar(file); }) },
@@ -819,7 +832,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
 
             {/* Top Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
+            <div className="file-browser-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {mode === 'recent' ? '最近访问' :
@@ -943,7 +956,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
                             </button>
                             <button className="btn-primary" onClick={handleUploadClick} disabled={uploading}>
-                                {uploading ? '上传中...' : <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> <span style={{ fontWeight: 600 }}>{t('common.upload')}</span></div>}
+                                {uploading ? <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> {uploadProgress}% {uploadSpeed && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>({uploadSpeed})</span>}</div> : <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> <span style={{ fontWeight: 600 }}>{t('common.upload')}</span></div>}
                             </button>
                         </>
                     )}

@@ -250,6 +250,42 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
 
         {/* Recycle Bin - Bottom */}
         <div style={{ marginTop: 'auto' }} />
+
+        {/* Language Selector - Mobile Only */}
+        <div className="hidden-desktop" style={{ padding: '8px 16px', marginBottom: '8px' }}>
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            background: 'rgba(255,255,255,0.05)',
+            padding: '8px',
+            borderRadius: '10px',
+            justifyContent: 'center'
+          }}>
+            {(['zh', 'en', 'de', 'ja'] as const).map((lang) => {
+              const langEmoji: { [key: string]: string } = { zh: '🇨🇳', en: '🇺🇸', de: '🇩🇪', ja: '🇯🇵' };
+              const { language: currentLanguage, setLanguage } = useLanguage();
+              return (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  style={{
+                    background: currentLanguage === lang ? 'var(--accent-blue)' : 'transparent',
+                    color: currentLanguage === lang ? '#000' : 'var(--text-secondary)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
+                >
+                  {langEmoji[lang]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
         <Link to="/recycle-bin" className={`sidebar-item ${location.pathname === '/recycle-bin' ? 'active' : ''}`} onClick={onClose}>
           <Trash2 size={20} />
@@ -370,10 +406,14 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <Menu size={24} />
         </button>
 
-        <UserStatsCard onClick={() => navigate('/dashboard')} />
+        {/* Stats card hidden on mobile to save space */}
+        <div className="hidden-mobile">
+          <UserStatsCard onClick={() => navigate('/dashboard')} />
+        </div>
+
       </div>
 
-      {/* Center: Daily Word */}
+      {/* Center: Daily Word - always centered, visible on all screens */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <DailyWordBadge />
       </div>

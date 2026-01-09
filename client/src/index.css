@@ -339,6 +339,32 @@ body {
   background: rgba(255, 210, 0, 0.03);
 }
 
+/* Mobile: Hide secondary columns, show only name (like Shares page) */
+@media (max-width: 768px) {
+
+  .col-uploader,
+  .col-date,
+  .col-size,
+  .col-stats {
+    display: none !important;
+  }
+
+  .col-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-list-header div,
+  .file-list-row>div {
+    padding: 0 6px;
+  }
+
+  /* Make file list horizontally scrollable for more actions */
+  .file-list {
+    min-width: 100%;
+  }
+}
+
 /* Buttons */
 .btn-primary {
   background: var(--accent-blue);
@@ -570,6 +596,29 @@ select.form-control option {
 
   .hidden-mobile-flex {
     display: flex !important;
+  }
+}
+
+/* Mobile Landscape Mode - shorter topbar */
+@media (max-height: 500px) and (orientation: landscape) {
+  .top-bar {
+    height: 48px;
+    padding: 0 12px;
+  }
+
+  .content-area {
+    padding: 8px;
+  }
+}
+
+/* Hidden on Desktop */
+.hidden-desktop {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .hidden-desktop {
+    display: none !important;
   }
 }
 
@@ -971,4 +1020,168 @@ select.form-control option {
   background: rgba(255, 255, 255, 0.2);
   color: var(--text-main);
   transform: scale(1.05);
+}
+
+/* Admin Panel Responsive Layout */
+.admin-panel-container {
+  display: flex;
+  height: 100%;
+  gap: 32px;
+}
+
+.admin-sidebar {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px;
+  border-right: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.admin-sidebar-title {
+  padding: 0 16px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.admin-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  border-left: 4px solid transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.admin-menu-item.active {
+  background: rgba(255, 210, 0, 0.15);
+  border-left-color: var(--accent-blue);
+  color: var(--text-main);
+  font-weight: 700;
+  padding-left: 12px;
+}
+
+.admin-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Mobile: Stack admin layout */
+@media (max-width: 768px) {
+  .admin-panel-container {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0 0 12px 0;
+  }
+
+  .admin-sidebar-title {
+    padding: 0 12px 8px;
+  }
+
+  .admin-menu {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .admin-menu-item {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+    font-size: 0.85rem;
+  }
+
+  .admin-menu-item.active {
+    border-left: none;
+    border-bottom-color: var(--accent-blue);
+    padding-left: 12px;
+  }
+
+  .admin-content {
+    padding: 0 8px;
+  }
+}
+
+/* Mobile: Batch Action Bar Compact */
+@media (max-width: 768px) {
+  .batch-action-bar {
+    padding: 8px 12px !important;
+  }
+
+  .batch-action-buttons button {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Folder title smaller on mobile */
+  h2 {
+    font-size: 1.1rem !important;
+  }
+
+  /* Upload button - show icon only on narrow screens */
+  .btn-primary span {
+    display: none;
+  }
+
+  .btn-primary {
+    padding: 0 12px !important;
+    min-width: 40px;
+  }
+
+  /* File browser header: toolbar on separate row */
+  .file-browser-header>div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .file-browser-header h2 {
+    margin: 0;
+  }
+
+  /* Recycle Bin Mobile */
+  .recycle-bin-container {
+    padding: 16px !important;
+  }
+
+  .recycle-bin-header>div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .recycle-bin-header h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .recycle-bin-header h1 svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Desktop default for Recycle Bin */
+.recycle-bin-container {
+  padding: 32px;
 }

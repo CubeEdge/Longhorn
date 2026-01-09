@@ -382,83 +382,85 @@ export const SharesPage: React.FC = () => {
             )}
 
             {allShares.length > 0 && (
-                <div className="file-list">
-                    <div className="file-list-header">
-                        <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                            {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
-                        </div>
-                        <div className="col-name">{t('label.name')}</div>
-                        <div className="col-stats">{t('label.access_count')}</div>
-                        <div className="col-date">{t('label.created_time')}</div>
-                        <div style={{ width: 140, textAlign: 'center' }}>{t('common.actions')}</div>
-                        <div style={{ width: 40 }}></div>
-                    </div>
-                    {allShares.map((item) => {
-                        const isFile = item.type === 'file';
-                        const isCollection = item.type === 'collection';
-
-                        return (
-                            <div
-                                key={`${item.type}-${item.id}`}
-                                className={`file-list-row ${(isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id)) ? 'selected' : ''}`}
-                                style={{ opacity: isExpired(item.expires_at) ? 0.5 : 1 }}
-                                onClick={() => handleRowClick(item)}
-                            >
-                                <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id, item.type)}>
-                                    {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
-                                </div>
-                                <div className="col-name">
-                                    <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
-                                        {isFile ? <File size={20} color="var(--accent-blue)" /> : <Package size={20} color="var(--accent-blue)" />}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'hidden' }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCollection ? 600 : 400 }}>
-                                            {isFile ? getFileName(item.file_path!) : (item.name || `分享 - ${format(new Date(item.created_at), 'yyyy-MM-dd')}`)}
-                                        </span>
-                                        {isFile && Boolean(item.has_password) && <Lock size={14} color="var(--accent-blue)" style={{ flexShrink: 0 }} />}
-                                        {isCollection && <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: 4 }}>({item.item_count} 项)</span>}
-                                    </div>
-                                </div>
-                                <div className="col-stats">
-                                    <Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" />
-                                    {item.access_count || 0}
-                                </div>
-                                <div className="col-date">
-                                    {format(new Date(item.created_at), 'yyyy-MM-dd HH:mm')}
-                                </div>
-                                <div style={{ width: 140, display: 'flex', gap: '8px', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                        onClick={() => isFile ? copyShareLink(item.share_token!) : copyCollectionLink(item.token!)}
-                                        style={{
-                                            padding: '6px 12px',
-                                            background: 'var(--accent-blue)',
-                                            color: '#000',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
-                                            fontSize: '0.8rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                    >
-                                        <Copy size={14} /> {t('my_shares.copy')}
-                                    </button>
-                                </div>
-                                <div className="list-more-btn" onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isFile) {
-                                        deleteShare(item.id);
-                                    } else {
-                                        deleteCollection(item.id);
-                                    }
-                                }}>
-                                    <Trash2 size={18} color="var(--text-secondary)" />
-                                </div>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <div className="file-list" style={{ minWidth: 600 }}>
+                        <div className="file-list-header">
+                            <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
+                                {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                             </div>
-                        );
-                    })}
+                            <div className="col-name">{t('label.name')}</div>
+                            <div className="col-stats">{t('label.access_count')}</div>
+                            <div className="col-date">{t('label.created_time')}</div>
+                            <div style={{ width: 140, textAlign: 'center' }}>{t('common.actions')}</div>
+                            <div style={{ width: 40 }}></div>
+                        </div>
+                        {allShares.map((item) => {
+                            const isFile = item.type === 'file';
+                            const isCollection = item.type === 'collection';
+
+                            return (
+                                <div
+                                    key={`${item.type}-${item.id}`}
+                                    className={`file-list-row ${(isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id)) ? 'selected' : ''}`}
+                                    style={{ opacity: isExpired(item.expires_at) ? 0.5 : 1 }}
+                                    onClick={() => handleRowClick(item)}
+                                >
+                                    <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id, item.type)}>
+                                        {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                                    </div>
+                                    <div className="col-name">
+                                        <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
+                                            {isFile ? <File size={20} color="var(--accent-blue)" /> : <Package size={20} color="var(--accent-blue)" />}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, overflow: 'hidden' }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCollection ? 600 : 400 }}>
+                                                {isFile ? getFileName(item.file_path!) : (item.name || `分享 - ${format(new Date(item.created_at), 'yyyy-MM-dd')}`)}
+                                            </span>
+                                            {isFile && Boolean(item.has_password) && <Lock size={14} color="var(--accent-blue)" style={{ flexShrink: 0 }} />}
+                                            {isCollection && <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: 4 }}>({item.item_count} 项)</span>}
+                                        </div>
+                                    </div>
+                                    <div className="col-stats">
+                                        <Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" />
+                                        {item.access_count || 0}
+                                    </div>
+                                    <div className="col-date">
+                                        {format(new Date(item.created_at), 'yyyy-MM-dd HH:mm')}
+                                    </div>
+                                    <div style={{ width: 140, display: 'flex', gap: '8px', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => isFile ? copyShareLink(item.share_token!) : copyCollectionLink(item.token!)}
+                                            style={{
+                                                padding: '6px 12px',
+                                                background: 'var(--accent-blue)',
+                                                color: '#000',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <Copy size={14} /> {t('my_shares.copy')}
+                                        </button>
+                                    </div>
+                                    <div className="list-more-btn" onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isFile) {
+                                            deleteShare(item.id);
+                                        } else {
+                                            deleteCollection(item.id);
+                                        }
+                                    }}>
+                                        <Trash2 size={18} color="var(--text-secondary)" />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 

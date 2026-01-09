@@ -22,7 +22,8 @@ ssh -t $SERVER_USER@$SERVER_HOST "
 
     echo '🔄 Restarting server...'
     cd ../server
-    pm2 restart index
+    # Try restart, if fails (process not found), then start
+    pm2 restart index || pm2 start index.js --name index
 
     echo '✅ Remote deployment commands executed successfully!'
 "

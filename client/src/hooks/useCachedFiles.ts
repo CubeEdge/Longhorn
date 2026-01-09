@@ -21,6 +21,7 @@ interface CacheOptions {
     revalidateOnFocus?: boolean;
     revalidateOnReconnect?: boolean;
     dedupingInterval?: number;
+    refreshInterval?: number;
 }
 
 const fetcher = async (url: string, token: string): Promise<FilesResponse> => {
@@ -41,7 +42,8 @@ export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' 
     const {
         revalidateOnFocus = false,
         revalidateOnReconnect = false,
-        dedupingInterval = 5000   // 5 seconds deduping (low cost due to ETag)
+        dedupingInterval = 5000,   // 5 seconds deduping (low cost due to ETag)
+        refreshInterval = 5000    // Poll every 5 seconds (ETag makes this cheap)
     } = options;
 
     // Build URL based on mode
@@ -60,6 +62,7 @@ export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' 
             revalidateOnFocus,
             revalidateOnReconnect,
             dedupingInterval,
+            refreshInterval,
             keepPreviousData: true, // Show stale data while revalidating
         }
     );
