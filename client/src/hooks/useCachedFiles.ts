@@ -83,19 +83,16 @@ export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' 
 }
 
 /**
- * Prefetch multiple directories (e.g., subdirectories visible in current view)
- * Call this when rendering to pre-warm cache for folders user might click
+ * Prefetch multiple directories (NOT a hook - can be called anywhere)
+ * Call this to pre-warm cache for folders user might click
  */
-export function usePrefetchDirectories(directories: string[], parentPath: string) {
-    const { token } = useAuthStore();
+export function prefetchDirectories(directories: string[], parentPath: string, token: string | null) {
+    if (!token || directories.length === 0) return;
 
-    // Use effect to prefetch when directories change
-    if (token && directories.length > 0) {
-        directories.forEach(dir => {
-            const fullPath = parentPath ? `${parentPath}/${dir}` : dir;
-            const url = `/api/files?path=${encodeURIComponent(fullPath)}`;
-            // Pre-warm cache without triggering re-render
-            globalMutate([url, token], fetcher(url, token).catch(() => null), { revalidate: false });
-        });
-    }
+    directories.forEach(dir => {
+        const fullPath = parentPath ? `${parentPath}/${dir}` : dir;
+        const url = `/api/files?path=${encodeURIComponent(fullPath)}`;
+        // Pre-warm cache without triggering re-render
+        globalMutate([url, token], fetcher(url, token).catch(() => null), { revalidate: false });
+    });
 }

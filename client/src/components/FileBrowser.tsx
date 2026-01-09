@@ -35,7 +35,7 @@ import {
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
 import ShareResultModal from './ShareResultModal';
-import { usePrefetchDirectories } from '../hooks/useCachedFiles';
+import { prefetchDirectories } from '../hooks/useCachedFiles';
 
 interface FileItem {
     name: string;
@@ -184,7 +184,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     useEffect(() => {
         if (files.length > 0 && token) {
             const subdirs = files.filter(f => f.isDirectory).map(f => f.name).slice(0, 5); // Prefetch first 5 subdirs
-            usePrefetchDirectories(subdirs, currentPath);
+            prefetchDirectories(subdirs, currentPath, token);
         }
     }, [files, currentPath, token]);
 
