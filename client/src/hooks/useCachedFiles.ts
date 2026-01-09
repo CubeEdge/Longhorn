@@ -1,14 +1,20 @@
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
 interface FileItem {
     name: string;
     isDirectory: boolean;
-    size?: number;
-    modified?: string;
-    uploader?: string;
+    path: string;
+    size: number;
+    mtime: string;
     accessCount?: number;
+    uploader?: string;
+}
+
+interface FilesResponse {
+    items: FileItem[];
+    userCanWrite: boolean;
 }
 
 interface CacheOptions {
@@ -17,7 +23,7 @@ interface CacheOptions {
     dedupingInterval?: number;
 }
 
-const fetcher = async (url: string, token: string) => {
+const fetcher = async (url: string, token: string): Promise<FilesResponse> => {
     const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -27,19 +33,28 @@ const fetcher = async (url: string, token: string) => {
 /**
  * Cached file listing hook using SWR
  * - Automatically caches directory listings
- * - Deduplicates requests within 5 seconds
- * - Revalidates on window focus (optional)
+ * - Deduplicates requests within 10 seconds
+ * - Shows stale data while revalidating (instant navigation feel)
  */
-export function useCachedFiles(path: string, options: CacheOptions = {}) {
+export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' | 'personal' = 'all', options: CacheOptions = {}) {
     const { token } = useAuthStore();
     const {
         revalidateOnFocus = false,
         revalidateOnReconnect = false,
-        dedupingInterval = 5000
+        dedupingInterval = 10000  // 10 seconds deduping
     } = options;
 
-    const { data, error, isLoading, mutate } = useSWR<FileItem[]>(
-        token ? [`/api/files?path=${encodeURIComponent(path)}`, token] : null,
+    // Build URL based on mode
+    const url = mode === 'recent'
+        ? '/api/files/recent'
+        : mode === 'starred'
+            ? '/api/files/starred'
+            : `/api/files?path=${encodeURIComponent(path)}`;
+
+    const cacheKey = token ? [url, token] : null;
+
+    const { data, error, isLoading, mutate } = useSWR<FilesResponse>(
+        cacheKey,
         ([url, tok]) => fetcher(url, tok as string),
         {
             revalidateOnFocus,
@@ -50,24 +65,37 @@ export function useCachedFiles(path: string, options: CacheOptions = {}) {
     );
 
     return {
-        files: data || [],
+        files: data?.items || [],
+        userCanWrite: data?.userCanWrite || false,
         isLoading,
         isError: !!error,
         error,
         refresh: () => mutate(),
+        // Prefetch a subdirectory without blocking
         prefetch: (subPath: string) => {
-            // Prefetch a subdirectory without blocking
+            if (!token) return;
             const fullPath = path ? `${path}/${subPath}` : subPath;
-            fetcher(`/api/files?path=${encodeURIComponent(fullPath)}`, token!).catch(() => { });
+            const prefetchUrl = `/api/files?path=${encodeURIComponent(fullPath)}`;
+            // Warm the cache
+            globalMutate([prefetchUrl, token], fetcher(prefetchUrl, token), { revalidate: false });
         }
     };
 }
 
 /**
- * Prefetch multiple directories (e.g., subdirectories)
+ * Prefetch multiple directories (e.g., subdirectories visible in current view)
+ * Call this when rendering to pre-warm cache for folders user might click
  */
-export function prefetchDirectories(paths: string[], token: string) {
-    paths.forEach(p => {
-        fetcher(`/api/files?path=${encodeURIComponent(p)}`, token).catch(() => { });
-    });
+export function usePrefetchDirectories(directories: string[], parentPath: string) {
+    const { token } = useAuthStore();
+
+    // Use effect to prefetch when directories change
+    if (token && directories.length > 0) {
+        directories.forEach(dir => {
+            const fullPath = parentPath ? `${parentPath}/${dir}` : dir;
+            const url = `/api/files?path=${encodeURIComponent(fullPath)}`;
+            // Pre-warm cache without triggering re-render
+            globalMutate([url, token], fetcher(url, token).catch(() => null), { revalidate: false });
+        });
+    }
 }

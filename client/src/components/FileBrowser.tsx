@@ -35,6 +35,7 @@ import {
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
 import ShareResultModal from './ShareResultModal';
+import { usePrefetchDirectories } from '../hooks/useCachedFiles';
 
 interface FileItem {
     name: string;
@@ -178,6 +179,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             }).catch(err => console.error('Failed to fetch starred:', err));
         }
     }, [token]);
+
+    // Prefetch visible subdirectories for faster navigation
+    useEffect(() => {
+        if (files.length > 0 && token) {
+            const subdirs = files.filter(f => f.isDirectory).map(f => f.name).slice(0, 5); // Prefetch first 5 subdirs
+            usePrefetchDirectories(subdirs, currentPath);
+        }
+    }, [files, currentPath, token]);
 
     const handleStar = async (item: FileItem) => {
         const isStarred = starredFiles.includes(item.path);
