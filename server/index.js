@@ -1599,6 +1599,7 @@ const getFolderSize = (dirPath) => {
 };
 
 // File Routes
+// File Routes
 app.get('/api/files', authenticate, async (req, res) => {
     const requestedPath = req.query.path || '';
     let subPath = resolvePath(requestedPath);
@@ -1622,6 +1623,25 @@ app.get('/api/files', authenticate, async (req, res) => {
         // Check write permissions - both Full and Contributor can write
         const canWrite = hasPermission(req.user, subPath, 'Full') || hasPermission(req.user, subPath, 'Contributor');
         const items = await fs.readdir(fullPath, { withFileTypes: true });
+
+        // Generate ETag source data (names + mtime + size)
+        // Note: For deep folders, getFolderSize is expensive, so we exclude folder sizes from ETag calculation for speed
+        const etagData = items.map(item => {
+            const fullItemPath = path.join(fullPath, item.name);
+            const stats = fs.statSync(fullItemPath);
+            return `${item.name}-${stats.mtime.getTime()}-${item.isDirectory() ? 'dir' : stats.size}`;
+        }).join('|');
+
+        // Simple hash for ETag
+        const etag = 'W/"' + require('crypto').createHash('md5').update(etagData).digest('hex') + '"';
+
+        // Check If-None-Match
+        if (req.headers['if-none-match'] === etag) {
+            return res.status(304).end();
+        }
+
+        res.setHeader('ETag', etag);
+
         const result = items.map(item => {
             const itemPath = path.join(subPath, item.name);
             const fullItemPath = path.join(fullPath, item.name);
@@ -1634,6 +1654,7 @@ app.get('/api/files', authenticate, async (req, res) => {
                     `).get(itemPath);
 
             // Calculate folder size if directory
+            // Optimized: only calculate folder size if not 304'd (which we aren't here)
             const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
 
             return {

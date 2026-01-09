@@ -740,6 +740,7 @@ export const translations = {
         'browser.no_detailed_records': 'No detailed records',
         'browser.list_view': 'List View',
         'browser.grid_view': 'Grid View',
+        'browser.empty_folder': 'Folder is empty',
 
         // Common
         'common.upload': 'Upload',

@@ -41,7 +41,7 @@ export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' 
     const {
         revalidateOnFocus = false,
         revalidateOnReconnect = false,
-        dedupingInterval = 60000  // 60 seconds deduping
+        dedupingInterval = 5000   // 5 seconds deduping (low cost due to ETag)
     } = options;
 
     // Build URL based on mode
