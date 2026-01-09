@@ -35,7 +35,7 @@ import {
 import { format } from 'date-fns';
 import FolderTreeSelector from './FolderTreeSelector';
 import ShareResultModal from './ShareResultModal';
-import { prefetchDirectories } from '../hooks/useCachedFiles';
+import { useCachedFiles, prefetchDirectories } from '../hooks/useCachedFiles';
 
 interface FileItem {
     name: string;
@@ -69,15 +69,41 @@ interface FileBrowserProps {
 
 const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const { t } = useLanguage();
-    const [files, setFiles] = useState<FileItem[]>([]);
-    const [currentPath, setCurrentPath] = useState('');
-    const [loading, setLoading] = useState(true);
+    const params = useParams();
+
+    // Calculate effective path based on router params and mode
+    const effectivePath = React.useMemo(() => {
+        if (mode === 'personal') {
+            const user = useAuthStore.getState().user;
+            return user && user.username ? `Members/${user.username}` : '';
+        } else if (mode === 'all') {
+            let path = params.deptCode || '';
+            if (params['*']) {
+                const subPath = params['*'];
+                path = path ? `${path}/${subPath}` : subPath;
+            }
+            return path;
+        }
+        return '';
+    }, [mode, params.deptCode, params['*']]);
+
+    // Use SWR hook for file listing
+    const {
+        files,
+        userCanWrite: canWrite,
+        isLoading: isFilesLoading,
+        refresh
+    } = useCachedFiles(effectivePath, mode);
+
+    // Derived state for current path
+    const currentPath = effectivePath;
+
+    // Other UI states
     const [uploading, setUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [viewMode, setViewMode] = useState<ViewMode>('list');
     const [sortKey, setSortKey] = useState<SortKey>('name');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-    const [canWrite, setCanWrite] = useState(false);
 
     // Preview & Menu State
     const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
@@ -121,53 +147,20 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const docContainerRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const fetchFiles = async (path: string) => {
-        setLoading(true);
-        try {
-            const url = mode === 'recent' ? '/api/files/recent' : (mode === 'starred' ? '/api/files/starred' : `/api/files?path=${path}`);
-            const res = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data && Array.isArray(res.data.items)) {
-                console.log("Fetch Files:", path, "Result:", res.data.items.length);
-                setFiles(res.data.items);
-                setCanWrite(res.data.userCanWrite);
-                setCurrentPath(path);
-            } else {
-                console.error("Invalid API response structure", res.data);
-                setFiles([]);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+    // Wrapper for manual refresh (used by other actions)
+    const fetchFiles = async (_path?: string) => {
+        // path argument is ignored because SWR handles it via props
+        await refresh();
     };
 
     const effectiveMode = React.useMemo(() => {
         return mode;
     }, [mode]);
 
-    const params = useParams();
-
+    // Cleanup selection when path changes
     useEffect(() => {
-        if (effectiveMode === 'personal') {
-            const user = useAuthStore.getState().user;
-            if (user && user.username) {
-                fetchFiles(`Members/${user.username}`);
-            }
-        } else if (effectiveMode === 'all') {
-            let path = params.deptCode || '';
-            if (params['*']) {
-                const subPath = params['*'];
-                path = path ? `${path}/${subPath}` : subPath;
-            }
-            fetchFiles(path);
-        } else {
-            fetchFiles('');
-        }
         setSelectedPaths([]);
-    }, [params.deptCode, params['*'], token, effectiveMode]);
+    }, [currentPath]);
 
     // Fetch starred files
     useEffect(() => {
@@ -250,7 +243,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             await axios.post('/api/files/hit', { path: file.path }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setFiles(prev => prev.map(f => f.path === file.path ? { ...f, accessCount: (f.accessCount || 0) + 1 } : f));
+            await refresh(); // Revalidate to get new hit count
         } catch (err) {
             console.error("Failed to record access", err);
         }
@@ -968,7 +961,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             {uploadStatus === 'success' && <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 16px', borderRadius: '10px', marginBottom: 20, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 10 }}><Check size={18} />{t('message.upload_success')}</div>}
 
             {
-                loading ? (
+                isFilesLoading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 100, gap: 16 }}><div className="loading-spinner"></div><span>{t('status.updating_list')}</span></div>
                 ) : viewMode === 'grid' ? (
                     <div className="file-grid">
