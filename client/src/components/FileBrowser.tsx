@@ -347,8 +347,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
         let isCancelled = false;
 
+        // Use VITE_UPLOAD_BASE_URL to bypass Cloudflare timeout on production
+        const uploadBaseUrl = import.meta.env.VITE_UPLOAD_BASE_URL || '';
         try {
-            await axios.post(`/api/upload?path=${currentPath}`, formData, {
+            await axios.post(`${uploadBaseUrl}/api/upload?path=${currentPath}`, formData, {
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
                 signal: controller.signal,
                 onUploadProgress: (progressEvent) => {
