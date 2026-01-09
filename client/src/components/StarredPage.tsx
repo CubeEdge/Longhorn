@@ -1,31 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Star, MoreHorizontal, File, Eye, User, FileText, Image, Film, Check, X, Calendar, Clock } from 'lucide-react';
+import { Star, MoreHorizontal, File, Eye, FileText, Image, Check, X, Folder, Download, Share2, Video, Table as TableIcon } from 'lucide-react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { format } from 'date-fns';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface StarredFile {
     id: number;
     file_path: string;
     starred_at: string;
+    name?: string;
+    size?: number;
+    mtime?: string;
+    accessCount?: number;
+    uploader?: string;
+    isDirectory?: boolean;
 }
 
-interface FileStats {
-    name: string;
-    size: number;
-    mtime: string;
-    accessCount: number;
-    uploader?: string;
-}
+const DEPT_NAME_MAP: { [key: string]: string } = {
+    // Department mappings moved to App.tsx
+};
 
 export const StarredPage: React.FC = () => {
     const [starredFiles, setStarredFiles] = useState<StarredFile[]>([]);
-    const [fileStats, setFileStats] = useState<Map<string, FileStats>>(new Map());
     const [loading, setLoading] = useState(true);
     const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number; file: StarredFile } | null>(null);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [detailFile, setDetailFile] = useState<StarredFile | null>(null);
-    const { token } = useAuthStore();
+    const [previewFile, setPreviewFile] = useState<StarredFile | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const { token, user } = useAuthStore();
+    const navigate = useNavigate();
+    const { t } = useLanguage();
 
     useEffect(() => {
         fetchStarredFiles();
@@ -37,22 +44,6 @@ export const StarredPage: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStarredFiles(res.data);
-
-            // Fetch stats for each file
-            const statsMap = new Map();
-            for (const item of res.data) {
-                try {
-                    const statsRes = await axios.get(`/api/files/stats?path=${encodeURIComponent(item.file_path)}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (statsRes.data) {
-                        statsMap.set(item.file_path, statsRes.data);
-                    }
-                } catch (err) {
-                    console.error(`Failed to fetch stats for ${item.file_path}`);
-                }
-            }
-            setFileStats(statsMap);
         } catch (err) {
             console.error('Failed to fetch starred files:', err);
         } finally {
@@ -67,16 +58,16 @@ export const StarredPage: React.FC = () => {
             });
             setStarredFiles(starredFiles.filter(f => f.id !== id));
             setSelectedIds(selectedIds.filter(sid => sid !== id));
-            setDetailFile(null);
-            alert('✅ 已取消星标');
+            if (previewFile?.id === id) setPreviewFile(null);
+            alert(`✅ 已${t('starred.unstar')}`);
         } catch (err) {
-            alert('❌ 取消星标失败');
+            alert(`❌ ${t('starred.unstar')}失败`);
         }
     };
 
     const bulkUnstar = async () => {
         if (selectedIds.length === 0) return;
-        if (!confirm(`确定要取消选中的 ${selectedIds.length} 个文件的星标吗？`)) return;
+        if (!confirm(t('starred.confirm_unstar', { count: selectedIds.length }))) return;
 
         try {
             await Promise.all(selectedIds.map(id =>
@@ -86,9 +77,9 @@ export const StarredPage: React.FC = () => {
             ));
             setStarredFiles(starredFiles.filter(f => !selectedIds.includes(f.id)));
             setSelectedIds([]);
-            alert('✅ 已取消选中文件的星标');
+            alert(`✅ 已${t('starred.batch_unstar')}`);
         } catch (err) {
-            alert('❌ 批量取消星标失败');
+            alert(`❌ ${t('starred.batch_unstar')}失败`);
         }
     };
 
@@ -98,9 +89,7 @@ export const StarredPage: React.FC = () => {
         setMenuAnchor({ x: e.clientX, y: e.clientY, file });
     };
 
-    const handleRowClick = (file: StarredFile) => {
-        setDetailFile(file);
-    };
+
 
     const toggleSelect = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
@@ -118,7 +107,72 @@ export const StarredPage: React.FC = () => {
     };
 
     const getFileName = (path: string) => path.split('/').pop() || '';
-    const getDirPath = (path: string) => path.split('/').slice(0, -1).join('/');
+
+    const handleItemClick = (file: StarredFile) => {
+        if (!file.file_path) return;
+
+        if (file.isDirectory) {
+            // Navigation Logic
+            const path = file.file_path;
+
+            // 1. Personal Space
+            if (path.startsWith('Members/')) {
+                const parts = path.split('/');
+                if (parts.length >= 2) {
+                    const username = parts[1];
+                    const relPath = parts.slice(2).join('/');
+                    if (username === user?.username) {
+                        navigate('/personal' + (relPath ? `?path=${encodeURIComponent(relPath)}` : ''));
+                        return;
+                    }
+                    // Viewing other's space (if allowed) - currently mapped to admin members or we can use dept route logic if members is treated as a dept
+                    // For now, let's assume /dept/Members is not a standard route for users, usually it's /personal
+                    // If regular user accessing others, maybe fallback to direct navigation if supported? 
+                    // Actually FileBrowser handles "Members/username" if we pass it? 
+                    // The App routes are /dept/:deptCode. 
+                    // If we navigate to /dept/Members/username/relPath?
+                    // Let's try to map to accessible departments
+                }
+            }
+
+            // 2. Departments
+            const firstSegment = path.split('/')[0]; // "市场部 (MS)"
+            if (DEPT_NAME_MAP[firstSegment]) {
+                const code = DEPT_NAME_MAP[firstSegment];
+                const relPath = path.substring(firstSegment.length + 1); // +1 for slash
+                navigate(`/dept/${code}/${relPath}`);
+                return;
+            }
+
+            // Fallback for known system folders or just try direct path?
+            // If unknown, maybe just alert or try finding closest match
+            console.warn('Cannot map path to route:', path);
+        } else {
+            // Preview
+            setPreviewFile(file);
+        }
+    };
+
+    const renderPreviewContent = (file: StarredFile) => {
+        if (!file.file_path) return null;
+        const name = getFileName(file.file_path);
+        const ext = name.split('.').pop()?.toLowerCase();
+        const url = `/preview/${file.file_path}`;
+
+        if (ext?.match(/(mp4|mov|m4v|hevc|h265)$/i)) return <video controls autoPlay className="preview-media" onClick={e => e.stopPropagation()}><source src={url} /></video>;
+        if (ext === 'pdf') return <iframe src={url} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} style={{ width: '100%', height: '80vh', border: 'none', background: '#fff' }} />;
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return <img src={url} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />;
+
+        // Simple fallback
+        return (
+            <div style={{ textAlign: 'center', color: '#fff', padding: 40 }}>
+                <File size={64} style={{ opacity: 0.5, marginBottom: 20 }} />
+                <h3>{t('starred.cannot_preview')}</h3>
+                <p>{t('starred.download_to_view')}</p>
+                <a href={url} download={name} style={{ display: 'inline-block', marginTop: 20, padding: '10px 20px', background: 'var(--accent-blue)', color: '#000', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>{t('common.download_file')}</a>
+            </div>
+        );
+    };
 
     const formatSize = (bytes: number) => {
         if (bytes === 0) return '0 B';
@@ -128,34 +182,103 @@ export const StarredPage: React.FC = () => {
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     };
 
-    const getIcon = (path: string) => {
+    const getIcon = (path: string, size: number = 20) => {
+        if (!path) return <File size={size} color="var(--accent-blue)" />;
         const ext = path.split('.').pop()?.toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext || '')) {
-            return <Image size={20} color="var(--accent-blue)" />;
+
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext || '')) {
+            return (
+                <div className="thumbnail-box" style={{ width: size > 30 ? '100%' : size, height: size > 30 ? '100%' : size, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 4 }}>
+                    <img
+                        src={`/preview/${path}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = renderToStaticMarkup(<Image size={size} color="var(--accent-blue)" />);
+                        }}
+                    />
+                </div>
+            );
         }
-        if (['mp4', 'mov', 'avi', 'mkv'].includes(ext || '')) {
-            return <Film size={20} color="var(--accent-blue)" />;
+        if (['mp4', 'mov', 'avi', 'mkv', 'm4v'].includes(ext || '')) {
+            return <Video size={size} color="var(--accent-blue)" />;
         }
         if (['doc', 'docx', 'pdf', 'txt'].includes(ext || '')) {
-            return <FileText size={20} color="var(--accent-blue)" />;
+            return <FileText size={size} color="var(--accent-blue)" />;
         }
-        return <File size={20} color="var(--accent-blue)" />;
+        if (['xlsx', 'xls'].includes(ext || '')) {
+            return <TableIcon size={size} color="#1D6F42" />;
+        }
+        return <File size={size} color="var(--accent-blue)" />;
     };
 
     if (loading) {
-        return <div style={{ padding: '40px', textAlign: 'center' }}>加载中...</div>;
+        return <div style={{ padding: '40px', textAlign: 'center' }}>{t('status.loading')}</div>;
     }
 
     return (
         <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
-            <div style={{ marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Star size={32} color="var(--accent-blue)" />
-                    我的星标
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    {starredFiles.length} 个已星标文件
-                </p>
+            <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Star size={32} color="var(--accent-blue)" />
+                        {t('browser.starred')}
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                        {t('browser.starred_files', { count: starredFiles.length })}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <button
+                        onClick={() => setViewMode('grid')}
+                        style={{
+                            padding: '8px',
+                            background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: viewMode === 'grid' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        title={t('starred.grid_view')}
+                    >
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, width: 16, height: 16 }}>
+                            <div style={{ background: 'currentColor', borderRadius: 1 }} />
+                            <div style={{ background: 'currentColor', borderRadius: 1 }} />
+                            <div style={{ background: 'currentColor', borderRadius: 1 }} />
+                            <div style={{ background: 'currentColor', borderRadius: 1 }} />
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('list')}
+                        style={{
+                            padding: '8px',
+                            background: viewMode === 'list' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: viewMode === 'list' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        title={t('starred.list_view')}
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: 16, height: 16 }}>
+                            <div style={{ background: 'currentColor', height: 2, borderRadius: 1, width: '100%' }} />
+                            <div style={{ background: 'currentColor', height: 2, borderRadius: 1, width: '100%' }} />
+                            <div style={{ background: 'currentColor', height: 2, borderRadius: 1, width: '100%' }} />
+                            <div style={{ background: 'currentColor', height: 2, borderRadius: 1, width: '60%' }} />
+                        </div>
+                    </button>
+                </div>
             </div>
 
             {/* Bulk Action Bar */}
@@ -181,7 +304,7 @@ export const StarredPage: React.FC = () => {
                         <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
                             <X size={18} />
                         </button>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span> 个项目</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span>{t('browser.items_count')}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
@@ -212,7 +335,7 @@ export const StarredPage: React.FC = () => {
                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                             }}
                         >
-                            <Star size={16} strokeWidth={2.5} color="var(--accent-blue)" /> 批量取消星标
+                            <Star size={16} strokeWidth={2.5} color="var(--accent-blue)" /> {t('starred.batch_unstar')}
                         </button>
                     </div>
                 </div>
@@ -221,49 +344,51 @@ export const StarredPage: React.FC = () => {
             {starredFiles.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-secondary)' }}>
                     <Star size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>还没有星标文件</h3>
-                    <p>在文件浏览器中右键文件，选择"添加星标"</p>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{t('starred.no_files')}</h3>
+                    <p>{t('starred.add_hint')}</p>
                 </div>
             )}
 
-            {starredFiles.length > 0 && (
+            {starredFiles.length > 0 && viewMode === 'list' && (
                 <div className="file-list">
                     <div className="file-list-header">
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
                             {selectedIds.length > 0 && selectedIds.length === starredFiles.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                         </div>
-                        <div className="col-name">文件名</div>
-                        <div className="col-size">大小</div>
-                        <div className="col-stats">访问次数</div>
-                        <div className="col-date">星标时间</div>
+                        <div className="col-name">{t('browser.col_name')}</div>
+                        <div className="col-size">{t('browser.col_size')}</div>
+                        <div className="col-stats">{t('browser.col_access')}</div>
+                        <div className="col-date">{t('browser.starred_at')}</div>
                         <div style={{ width: 40 }}></div>
                     </div>
                     {starredFiles.map((file) => {
-                        const stats = fileStats.get(file.file_path);
                         return (
                             <div
                                 key={file.id}
                                 className={`file-list-row ${selectedIds.includes(file.id) ? 'selected' : ''}`}
-                                onClick={() => handleRowClick(file)}
+                                onClick={() => handleItemClick(file)}
                             >
                                 <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.id)}>
                                     {selectedIds.includes(file.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                                 </div>
                                 <div className="col-name">
                                     <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
-                                        {getIcon(file.file_path)}
+                                        {file.isDirectory ?
+                                            <Folder size={20} fill="var(--accent-blue)" color="var(--accent-blue)" opacity={0.9} /> :
+                                            getIcon(file.file_path)
+                                        }
                                     </div>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getFileName(file.file_path)}</span>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getFileName(file.file_path || '')}</span>
                                 </div>
                                 <div className="col-size">
-                                    {stats ? formatSize(stats.size) : '--'}
+                                    {file.isDirectory ? '-' : formatSize(file.size || 0)}
                                 </div>
                                 <div className="col-stats">
                                     <Eye size={14} style={{ marginBottom: -2, marginRight: 4 }} color="var(--accent-blue)" />
-                                    {stats?.accessCount || 0}
+                                    {file.accessCount || 0}
                                 </div>
                                 <div className="col-date">
-                                    {format(new Date(file.starred_at), 'yyyy-MM-dd HH:mm')}
+                                    {file.starred_at ? format(new Date(file.starred_at), 'yyyy-MM-dd HH:mm') : '-'}
                                 </div>
                                 <div className="list-more-btn" onClick={(e) => handleOpenMenu(e, file)}>
                                     <MoreHorizontal size={18} />
@@ -274,101 +399,114 @@ export const StarredPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Detail Modal */}
-            {detailFile && (
-                <div className="modal-overlay" onClick={() => setDetailFile(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                                <Star size={24} color="var(--accent-blue)" />
-                                星标详情
-                            </h3>
-                            <button
-                                onClick={() => setDetailFile(null)}
-                                className="modal-close-btn"
+            {starredFiles.length > 0 && viewMode === 'grid' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
+                    {starredFiles.map((file) => (
+                        <div
+                            key={file.id}
+                            className={`file-grid-item ${selectedIds.includes(file.id) ? 'selected' : ''}`}
+                            onClick={() => handleItemClick(file)}
+                            style={{
+                                position: 'relative',
+                                background: selectedIds.includes(file.id) ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.03)',
+                                border: selectedIds.includes(file.id) ? '1px solid var(--accent-blue)' : '1px solid rgba(255,255,255,0.05)',
+                                borderRadius: '12px',
+                                padding: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                aspectRatio: '1/1.1'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!selectedIds.includes(file.id)) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!selectedIds.includes(file.id)) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }
+                            }}
+                        >
+                            <div
+                                onClick={(e) => toggleSelect(e, file.id)}
+                                style={{
+                                    position: 'absolute',
+                                    top: 10,
+                                    left: 10,
+                                    zIndex: 2,
+                                    opacity: selectedIds.includes(file.id) ? 1 : 0.5
+                                }}
                             >
-                                <X size={20} />
+                                {selectedIds.includes(file.id) ? <div style={{ width: 18, height: 18, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={14} color="#000" strokeWidth={3} /></div> : <div className="grid-select-circle" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderRadius: 6 }} />}
+                            </div>
+
+                            <button
+                                onClick={(e) => handleOpenMenu(e, file)}
+                                style={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8,
+                                    padding: 4,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    opacity: 0.7
+                                }}
+                            >
+                                <MoreHorizontal size={20} />
                             </button>
-                        </div>
 
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontWeight: 600, marginBottom: '12px', color: 'var(--text-main)', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {getIcon(detailFile.file_path)}
-                                {getFileName(detailFile.file_path)}
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                                <div style={{ transform: 'scale(1.2)' }}>
+                                    {file.isDirectory ?
+                                        <Folder size={48} fill="var(--accent-blue)" color="var(--accent-blue)" opacity={0.9} /> :
+                                        getIcon(file.file_path, 48)
+                                    }
+                                </div>
                             </div>
-                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-                                {getDirPath(detailFile.file_path)}
-                            </div>
 
-                            <div style={{ display: 'grid', gap: '16px' }}>
-                                {fileStats.get(detailFile.file_path) ? (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                            <File size={18} color="var(--accent-blue)" />
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>文件大小</div>
-                                                <div style={{ fontWeight: 600 }}>{formatSize(fileStats.get(detailFile.file_path)!.size)}</div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                            <Eye size={18} color="var(--accent-blue)" />
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>访问次数</div>
-                                                <div style={{ fontWeight: 600 }}>{fileStats.get(detailFile.file_path)!.accessCount || 0} 次</div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                            <User size={18} color="var(--accent-blue)" />
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>上传者</div>
-                                                <div style={{ fontWeight: 600 }}>{fileStats.get(detailFile.file_path)!.uploader || 'system'}</div>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                                            <Clock size={18} color="var(--accent-blue)" />
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>修改时间</div>
-                                                <div style={{ fontWeight: 600 }}>{format(new Date(fileStats.get(detailFile.file_path)!.mtime), 'yyyy-MM-dd HH:mm')}</div>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                        正在加载文件信息...
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,210,0,0.1)', borderRadius: '8px' }}>
-                                    <Calendar size={18} color="var(--accent-blue)" />
-                                    <div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>星标时间</div>
-                                        <div style={{ fontWeight: 600 }}>{format(new Date(detailFile.starred_at), 'yyyy-MM-dd HH:mm')}</div>
-                                    </div>
+                            <div style={{ width: '100%', textAlign: 'center' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
+                                    {getFileName(file.file_path || '')}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    {file.isDirectory ?
+                                        <span>{t('starred.folder')}</span> :
+                                        <span>{formatSize(file.size || 0)}</span>
+                                    }
                                 </div>
                             </div>
                         </div>
+                    ))}
+                </div>
+            )}
 
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={() => unstarFile(detailFile.id)}
-                                style={{
-                                    padding: '12px 24px',
-                                    background: 'rgba(255,0,0,0.1)',
-                                    color: '#ff3b30',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}
-                            >
-                                <Star size={16} /> 取消星标
-                            </button>
+            {/* Preview Modal */}
+            {previewFile && (
+                <div className="preview-overlay" onClick={() => setPreviewFile(null)}>
+                    <div className="preview-header" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={24} /></button>
+                            <span style={{ fontWeight: 600 }}>{getFileName(previewFile.file_path || '')}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <a href={`/preview/${previewFile.file_path}`} download={getFileName(previewFile.file_path || '')} className="btn-preview"><Download size={18} />{t('common.download')}</a>
+                            <button className="btn-preview primary" onClick={() => alert('功能开发中')}><Share2 size={18} />{t('common.share')}</button>
+                        </div>
+                    </div>
+
+                    <div className="preview-content">{renderPreviewContent(previewFile)}</div>
+
+                    <div className="preview-actions">
+                        <div className="hint" style={{ color: 'white', opacity: 0.6 }}>
+                            {formatSize(previewFile.size || 0)} • {t('browser.uploader_label')} {previewFile.uploader || 'unknown'} • {t('browser.access_label')} {previewFile.accessCount || 0}
                         </div>
                     </div>
                 </div>
@@ -387,12 +525,12 @@ export const StarredPage: React.FC = () => {
                             zIndex: 1000
                         }}
                     >
-                        <div className="context-menu-item" onClick={() => { setDetailFile(menuAnchor.file); setMenuAnchor(null); }}>
-                            <Eye size={16} color="var(--accent-blue)" /> 查看详情
+                        <div className="context-menu-item" onClick={() => { handleItemClick(menuAnchor.file); setMenuAnchor(null); }}>
+                            <Eye size={16} color="var(--accent-blue)" /> {t('starred.view_preview')}
                         </div>
                         <div className="context-menu-separator" />
                         <div className="context-menu-item danger" onClick={() => { unstarFile(menuAnchor.file.id); setMenuAnchor(null); }}>
-                            <Star size={16} /> 取消星标
+                            <Star size={16} /> {t('starred.unstar')}
                         </div>
                     </div>
                 </>

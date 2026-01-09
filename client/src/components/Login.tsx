@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLanguage } from '../i18n/useLanguage';
 import { Lock, User, ShieldCheck } from 'lucide-react';
 
 const Login: React.FC = () => {
+    const { t } = useLanguage();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -18,7 +20,7 @@ const Login: React.FC = () => {
             const res = await axios.post('/api/login', { username, password });
             setAuth(res.data.user, res.data.token);
         } catch (err: any) {
-            setError(err.response?.data?.error || '登录失败，请检查用户名或密码');
+            setError(err.response?.data?.error || t('login.error_default'));
         } finally {
             setLoading(false);
         }
@@ -62,7 +64,7 @@ const Login: React.FC = () => {
                         <ShieldCheck size={32} color="#000" />
                     </div>
                     <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent-blue)', letterSpacing: '-1.5px', marginBottom: '4px' }}>Longhorn</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>像空气一样自由流动</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('common.motto')}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -70,7 +72,7 @@ const Login: React.FC = () => {
                         <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', zIndex: 10 }} />
                         <input
                             type="text"
-                            placeholder="用户名"
+                            placeholder={t('login.username_placeholder')}
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
@@ -93,7 +95,7 @@ const Login: React.FC = () => {
                         <Lock size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', zIndex: 10 }} />
                         <input
                             type="password"
-                            placeholder="密码"
+                            placeholder={t('login.password_placeholder')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
@@ -128,7 +130,7 @@ const Login: React.FC = () => {
                             fontWeight: 700
                         }}
                     >
-                        {loading ? '验证中...' : '即刻访问'}
+                        {loading ? t('login.submitting') : t('login.submit_btn')}
                     </button>
                 </form>
 

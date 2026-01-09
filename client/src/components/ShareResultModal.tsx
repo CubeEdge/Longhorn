@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle, X, Copy } from 'lucide-react';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface ShareResultModalProps {
     result: {
@@ -11,13 +12,14 @@ interface ShareResultModalProps {
 }
 
 const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) => {
+    const { t } = useLanguage();
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, color: 'var(--accent-blue)' }}>
                         <CheckCircle size={28} />
-                        分享链接已生成！
+                        {t('share.link_created_title')}
                     </h3>
                     <button
                         onClick={onClose}
@@ -37,7 +39,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
 
                 <div style={{ marginBottom: '20px' }}>
                     <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                        分享链接:
+                        {t('share.share_link_label')}
                     </label>
                     <div style={{
                         padding: '12px',
@@ -56,7 +58,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                 {result.password && (
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                            访问密码:
+                            {t('share.access_password')}
                         </label>
                         <div style={{
                             padding: '12px',
@@ -75,7 +77,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
 
                 <div style={{ marginBottom: '24px' }}>
                     <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                        有效期:
+                        {t('share.expiry_label')}
                     </label>
                     <div style={{
                         padding: '12px',
@@ -85,7 +87,9 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                         fontSize: '0.9rem',
                         color: 'var(--text-secondary)'
                     }}>
-                        {result.expires}
+                        {typeof result.expires === 'number'
+                            ? t('time.days_count', { days: result.expires })
+                            : result.expires}
                     </div>
                 </div>
 
@@ -111,10 +115,10 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                         document.body.removeChild(textArea);
 
                         if (success) {
-                            alert('✅ 链接已复制到剪贴板！');
+                            alert(t('share.copy_success'));
                             onClose();
                         } else {
-                            alert('⚠️ 复制失败，请手动复制链接');
+                            alert(t('share.copy_failed'));
                         }
                     }}
                     className="btn-primary"
@@ -129,7 +133,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                     }}
                 >
                     <Copy size={20} />
-                    复制链接
+                    {t('share.copy_link_btn')}
                 </button>
             </div>
         </div>

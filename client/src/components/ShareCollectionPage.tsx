@@ -11,6 +11,7 @@ import {
     Package
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface ShareItem {
     path: string;
@@ -24,6 +25,7 @@ interface ShareData {
     items: ShareItem[];
     createdAt: string;
     accessCount: number;
+    language?: string;
 }
 
 const ShareCollectionPage: React.FC = () => {
@@ -34,6 +36,9 @@ const ShareCollectionPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [data, setData] = useState<ShareData | null>(null);
 
+    // Hooks
+    const { t, language: currentLanguage, setLanguage } = useLanguage();
+
     const fetchShare = async (pwd?: string) => {
         try {
             setLoading(true);
@@ -43,11 +48,16 @@ const ShareCollectionPage: React.FC = () => {
             });
             setData(res.data);
             setNeedsPassword(false);
+
+            // Set initial language from data if available
+            if (res.data.language) {
+                setLanguage(res.data.language as any);
+            }
         } catch (err: any) {
             if (err.response?.status === 401 && err.response?.data?.needsPassword) {
                 setNeedsPassword(true);
             } else {
-                setError(err.response?.data?.error || '加载分享失败');
+                setError(err.response?.data?.error || t('share_page.load_error'));
             }
         } finally {
             setLoading(false);
@@ -91,18 +101,18 @@ const ShareCollectionPage: React.FC = () => {
                     <div className="icon-wrapper">
                         <Lock size={48} color="var(--accent-blue)" />
                     </div>
-                    <h2>此分享受密码保护</h2>
-                    <p>请输入密码以访问分享内容</p>
+                    <h2>{t('share_page.password_required')}</h2>
+                    <p>{t('share_page.enter_password')}</p>
                     <form onSubmit={handlePasswordSubmit}>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="请输入访问密码"
+                            placeholder={t('auth.password')}
                             autoFocus
                         />
                         <button type="submit" className="btn-primary">
-                            解锁访问
+                            {t('action.unlock')}
                         </button>
                     </form>
                     {error && <div className="error-msg">{error}</div>}
@@ -116,7 +126,7 @@ const ShareCollectionPage: React.FC = () => {
             <div className="share-page-container flex-center">
                 <div className="error-card fade-in">
                     <AlertCircle size={48} color="var(--accent-red)" />
-                    <h2>访问失败</h2>
+                    <h2>{t('share_page.access_failed')}</h2>
                     <p>{error}</p>
                 </div>
             </div>
@@ -135,21 +145,45 @@ const ShareCollectionPage: React.FC = () => {
                     </div>
                     <div className="share-info">
                         <h2>{data.name}</h2>
-                        <span>{data.items.length} 个项目 • {format(new Date(data.createdAt), 'yyyy-MM-dd')}</span>
+                        <span>{t('share_page.items', { count: data.items.length })} • {format(new Date(data.createdAt), 'yyyy-MM-dd')}</span>
                     </div>
                 </div>
                 <button onClick={downloadCollection} className="btn-primary download-btn">
                     <Download size={20} />
-                    下载全部
+                    {t('action.download_all')}
                 </button>
             </header>
+
+            {/* Language Switcher - Top Right */}
+            <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }}>
+                <select
+                    value={currentLanguage}
+                    onChange={(e) => setLanguage(e.target.value as any)}
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        color: 'var(--text-main)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        backdropFilter: 'blur(10px)'
+                    }}
+                >
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="en">🇺🇸 English</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                </select>
+            </div>
 
             <main className="share-content">
                 <div className="file-list-container">
                     <div className="file-list-header">
-                        <div className="col-name">名称</div>
-                        <div className="col-size">大小</div>
-                        <div className="col-action">操作</div>
+                        <div className="col-name">{t('share.name')}</div>
+                        <div className="col-size">Size</div>
+                        <div className="col-action">{t('action.download')}</div>
                     </div>
                     <div className="file-list-body">
                         {data.items.map((item, index) => (
@@ -171,11 +205,7 @@ const ShareCollectionPage: React.FC = () => {
                                             className="icon-btn"
                                             title="下载"
                                             onClick={() => {
-                                                // Individual file download logic if API supports it
-                                                // Currently API zips everything, so maybe just show zip?
-                                                // Or we can add single file download API later.
-                                                // For now, let's just disable or show generic msg if no API
-                                                alert('请使用上方"下载全部"按钮下载整个集合');
+                                                alert(t('share_page.password_required') ? '请使用上方"下载全部"按钮下载整个集合' : 'Please use "Download All" button');
                                             }}
                                         >
                                             <Download size={18} />

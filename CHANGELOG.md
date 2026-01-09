@@ -1,5 +1,25 @@
 # Changelog
 
+## [11.5.0] - 2026-01-06
+### Added
+- **Multi-Language Support**: 全面支持中文、英语、德语、日语 (CN/EN/DE/JA)。
+    - **UI Switcher**: 顶部栏用户头像下拉菜单集成语言切换功能。
+    - **Share Page**: 分享页右上角新增独立语言切换器（非白色下拉框风格）。
+    - **Smart Defaults**: 分享页默认加载创建者设定的语言偏好。
+- **Share Options**: 创建分享/批量分享弹窗新增“默认语言”选项，支持指定分享内容的显示语言。
+- **Backend Schema**: 数据库 `shares`, `share_links`, `share_collections` 新增 `language` 字段。
+- **Batch Download Naming**: 批量下载压缩包采用 `{FirstFileName}_and_{others}.zip` 命名策略。
+- **Grid Thumbnails**: 星标页网格视图现在支持视频和图片缩略图显示。
+
+## [11.4.0] - 2026-01-06
+### Fixed
+- **Starred Metadata**: 修复星标文件列表中的“大小”和“访问次数”显示为 `NaN` 的问题，通过优化 `/api/starred` 返回完整元数据并移除前端 N+1 请求。
+### Added
+- **Smart Share**: 引入智能分享逻辑，单选文件自动触发单文件分享，多选触发批量打包分享。
+- **Logout UI**: 重构退出登录入口，从侧边栏底部移除，整合至顶部栏用户头像下拉菜单中，提升界面整洁度。
+### Changed
+- **Batch Action Bar**: 统一批量操作栏（分享、移动、下载、删除）的图标与文案，与单文件右键菜单保持视觉一致性。
+
 ## [11.3.0] - 2026-01-05
 ### Added
 - **Global Loading States**: 全面实现操作等待状态，包括：
@@ -9,80 +29,3 @@
     - **Move Modal**: 移动确认按钮支持 Async 等待状态，防止弹窗过早关闭。
 ### Changed
 - **Terminology**: 优化系统提示语，将技术性词汇（如"读取文件库"）替换为更友好的表达（"更新列表"）。
-- **Share Logic**: 批量分享与单文件分享统一使用标准化的 `ShareResultModal` 结果页。
-### Fixed
-- **Deployment**: 优化部署脚本 `deploy-watch.sh`，增加 `git reset --hard` 以自动解决部署时的本地文件冲突。
-- **Routing**: 修复 URL 路径无限叠加问题，重构 App 路由为 Layout Pattern。
-- **Build**: 修复 `FileBrowser.tsx` 中因 JSX 闭合标签缺失导致的前端构建失败问题。
-
-## [11.2.0] - 2026-01-04
-### Added
-- **Contribute Permission**: 引入三级权限体系（只读Read、贡献Contribute、完全Full），Member在部门内默认拥有Contribute权限（可创建文件夹/上传文件，但只能修改/删除自己的内容）。
-- **Detailed Error Messages**: 权限错误提示信息大幅增强，现在包含用户名、当前权限类型、文件/目录路径、失败原因以及如何获取权限的指导建议。
-### Fixed
-- **Dashboard Layout**: 修复个人空间概览页卡片布局 3+1 问题，改为固定 2x2 网格布局 (2 列)。
-- **Dashboard Buttons**: 修复快速操作区域按钮显示问题，后两个按钮之前因背景色与页面背景相同而不可见，现已增加明确的半透明背景和边框。
-- **Expiration UI**: 统一有效期选择交互方式，将"创建分享链接"和"文件夹授权"对话框中的下拉框改为与"新增访问授权"一致的4按钮样式（7天、1个月、永久、自定义）。
-### Changed
-- **Selection Button Design**: 优化选择型按钮视觉设计，选中状态从黄色背景改为左侧粗黄色竖线+淡黄色背景，更好地区分选择型按钮和行动型按钮（如"执行授权"）。
-- **Permission Selector UI**: 统一权限选择交互体验，将下拉框改为按钮式选择（与有效期选择一致），标签统一为"权限类型"，三个选项：只读、贡献、完全。
-- **TopBar**: 优化顶部栏右上角用户信息布局，缩小字体以与系统其他文字协调，调整间距和头像尺寸。
-- **Admin Panel**: 实现后台面板标签页持久化 (localStorage)，刷新后自动返回上次访问的子页面。
-- **Admin Panel**: 重命名"概览仪表盘"为"概览"，并创建全新的 SystemDashboard 组件展示系统级数据。
-- **Dashboard**: 个人仪表盘标题更新为"个人空间概览"，与系统概览区分。
-- **Department Names**: 全局更新部门名称：'研发中心 (RD)' → '研发部 (RD)'，'综合管理 (GE)' → '通用台面 (GE)'，同步更新代码、数据库和物理存储路径。
-
-## [11.1.0] - 2026-01-04
-### Fixed
-- **Move Functionality**: 修复移动文件功能，解决目标文件夹列表为空的问题 (Root/Members 权限修正)，支持个人空间置顶及显示用户名。
-- **Context Menu**: 修复右键菜单“删除”误触发批量删除的逻辑，现在正确指向单文件删除。
-- **Personal Space**: 修复个人空间 (Members) 后面包屑显示、空文件夹显示异常及返回按钮逻辑。
-### Changed
-- **UI/UX**: 重构批量操作栏 (Batch Action Bar) 为深色磨砂风格 (Dark Glass)，统一黄色 Icon 视觉语言。
-- **UI/UX**: 优化移动目标选择弹窗的选中态样式 (去除深蓝背景，保留黄色边框与高亮)。
-- **Feature**: 重构成员空间管理页面 (Admin)，采用表格布局，新增个人空间“已用容量”与“文件数量”统计列。
-
-## [11.0.0] - 2026-01-02
-### Added
-- **终端发布工具链**：新增 `publish.sh` 脚本，实现 MBAir 一键自动化 Git 提交与推送。
-- **个人空间快捷入口**：侧边栏新增“个人空间”入口，直达 `/dept/members/{username}`。
-- **动态面包屑导航**：顶部状态栏与文件浏览器标题区实现动态路径感知，增强深度目录导航体验。
-### Fixed
-- 修复了侧边栏在不同路由下的激活状态一致性。
-- 修正了 `App.tsx` 中的类型定义与阵列语法错误。
-
-## [10.0.0] - 2026-01-02
-### Fixed
-- **UI**: 重构回收站界面，修复排版乱序与图标重复问题，引入毛玻璃审美。
-- **Core**: 修复软删除逻辑，支持跨 DISK_A 和 DISK_B 的文件检测与移动。
-- **Logic**: 执行部门目录合并脚本，清理冗余的英文名称目录（如 MS/GE），统一为官方中文名称。
-- **DB**: 同步更新 `file_stats` 和 `access_logs` 中的物理路径映射。
-
-## [9.1.2] - 2026-01-02
-### Added
-- 在 `FULL_DEPLOYMENT_RECAP.md` 中补充 MBAir 与 Mac mini 的服务运行清单。
-
-## [9.1.1] - 2026-01-02
-### Added
-- 在 `FULL_DEPLOYMENT_RECAP.md` 中集成全系统架构图（Mermaid）与核心角色角色定义。
-
-## [9.1.0] - 2026-01-02
-### Added
-- 建立双日志体系：`PROMPT_LOG.md` 用于指令溯源，`CHANGELOG.md` 用于版本变更记录。
-- 集成 AI 自动化发布流程说明至开发指引。
-
-## [9.0.0] - 2026-01-02
-### Added
-- 实现回收站 (Recycle Bin) 功能，软删除文件保留 30 天。
-- 新增 `recycle_bin` 数据库表及辅助函数。
-- 新增前端 `RecycleBin.tsx` 管理界面。
-- 部署 30 天自动物理清理后台任务。
-- 构建独立 Git 仓库及 GitHub 远程关联。
-
-## [8.0.0] - 2026-01-02
-### Added
-- 深度用户权限管理体系，支持文件夹授权、Lead 角色管理隔离及密码重置。
-
-## [7.0.0] - 2026-01-02
-### Added
-- 个人空间 (Members 目录) 自动同步与 UI 规范化。

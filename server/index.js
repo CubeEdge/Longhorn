@@ -28,6 +28,104 @@ const DEPT_CODE_MAP = {
     'GE': '通用台面 (RE)' // Alias for backward compatibility
 };
 
+// I18n for share pages
+const SHARE_I18N = {
+    zh: {
+        linkNotFound: '链接不存在',
+        shareLinkNotFound: '分享链接不存在',
+        linkDeletedOrInvalid: '该链接可能已被删除或无效',
+        linkExpired: '链接已过期',
+        shareLinkExpired: '分享链接已过期',
+        linkExpiredDesc: '该链接已超过有效期',
+        needsPassword: '需要密码',
+        fileNeedsPassword: '该文件需要密码访问',
+        enterPassword: '请输入访问密码',
+        access: '访问',
+        wrongPassword: '密码错误',
+        wrongPasswordRetry: '密码错误，请重试',
+        fileNotFound: '文件不存在',
+        fileMovedOrDeleted: '原文件可能已被移动或删除',
+        viewCount: '访问次数',
+        expiryTime: '过期时间',
+        downloadFile: '下载文件',
+        browserNoVideo: '您的浏览器不支持视频播放',
+        serverError: '服务器错误',
+        days: '天',
+        forever: '永久'
+    },
+    en: {
+        linkNotFound: 'Link Not Found',
+        shareLinkNotFound: 'Share Link Not Found',
+        linkDeletedOrInvalid: 'This link may have been deleted or is invalid',
+        linkExpired: 'Link Expired',
+        shareLinkExpired: 'Share Link Expired',
+        linkExpiredDesc: 'This link has passed its expiration date',
+        needsPassword: 'Password Required',
+        fileNeedsPassword: 'This file requires a password',
+        enterPassword: 'Enter access password',
+        access: 'Access',
+        wrongPassword: 'Wrong Password',
+        wrongPasswordRetry: 'Wrong password, please try again',
+        fileNotFound: 'File Not Found',
+        fileMovedOrDeleted: 'The original file may have been moved or deleted',
+        viewCount: 'Views',
+        expiryTime: 'Expires',
+        downloadFile: 'Download File',
+        browserNoVideo: 'Your browser does not support video playback',
+        serverError: 'Server Error',
+        days: 'days',
+        forever: 'Forever'
+    },
+    de: {
+        linkNotFound: 'Link nicht gefunden',
+        shareLinkNotFound: 'Freigabe-Link nicht gefunden',
+        linkDeletedOrInvalid: 'Dieser Link wurde möglicherweise gelöscht oder ist ungültig',
+        linkExpired: 'Link abgelaufen',
+        shareLinkExpired: 'Freigabe-Link abgelaufen',
+        linkExpiredDesc: 'Dieser Link ist abgelaufen',
+        needsPassword: 'Passwort erforderlich',
+        fileNeedsPassword: 'Für diese Datei ist ein Passwort erforderlich',
+        enterPassword: 'Zugangskennwort eingeben',
+        access: 'Zugriff',
+        wrongPassword: 'Falsches Passwort',
+        wrongPasswordRetry: 'Falsches Passwort, bitte erneut versuchen',
+        fileNotFound: 'Datei nicht gefunden',
+        fileMovedOrDeleted: 'Die Originaldatei wurde möglicherweise verschoben oder gelöscht',
+        viewCount: 'Aufrufe',
+        expiryTime: 'Läuft ab',
+        downloadFile: 'Datei herunterladen',
+        browserNoVideo: 'Ihr Browser unterstützt keine Videowiedergabe',
+        serverError: 'Serverfehler',
+        days: 'Tage',
+        forever: 'Für immer'
+    },
+    ja: {
+        linkNotFound: 'リンクが見つかりません',
+        shareLinkNotFound: '共有リンクが見つかりません',
+        linkDeletedOrInvalid: 'このリンクは削除されたか無効です',
+        linkExpired: 'リンク期限切れ',
+        shareLinkExpired: '共有リンクの有効期限が切れました',
+        linkExpiredDesc: 'このリンクの有効期限が切れています',
+        needsPassword: 'パスワードが必要',
+        fileNeedsPassword: 'このファイルにはパスワードが必要です',
+        enterPassword: 'アクセスパスワードを入力',
+        access: 'アクセス',
+        wrongPassword: 'パスワードが間違っています',
+        wrongPasswordRetry: 'パスワードが間違っています。もう一度お試しください',
+        fileNotFound: 'ファイルが見つかりません',
+        fileMovedOrDeleted: '元のファイルが移動または削除された可能性があります',
+        viewCount: '閲覧数',
+        expiryTime: '有効期限',
+        downloadFile: 'ファイルをダウンロード',
+        browserNoVideo: 'お使いのブラウザは動画再生に対応していません',
+        serverError: 'サーバーエラー',
+        days: '日',
+        forever: '永久'
+    }
+};
+
+const getShareI18n = (lang = 'zh') => SHARE_I18N[lang] || SHARE_I18N.zh;
+
 // Resolve frontend paths like '/MS' or '/MS/ProjectA' to physical paths '/市场部 (MS)' or '/市场部 (MS)/ProjectA'
 function resolvePath(requestPath) {
     if (!requestPath) return '';
@@ -109,6 +207,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     path TEXT,
     expires_at DATETIME,
+    language TEXT DEFAULT 'zh',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -183,12 +282,18 @@ try {
             expires_at DATETIME,
             access_count INTEGER DEFAULT 0,
             last_accessed DATETIME,
+            language TEXT DEFAULT 'zh',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id)
         );
         CREATE INDEX IF NOT EXISTS idx_share_token ON share_links(share_token);
         CREATE INDEX IF NOT EXISTS idx_share_user ON share_links(user_id);
     `);
+
+    // Migration for language column
+    try { db.exec("ALTER TABLE share_links ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
+    try { db.exec("ALTER TABLE shares ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
+    try { db.exec("ALTER TABLE share_collections ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
     console.log('[Database] Phase 2 tables created successfully');
 } catch (e) {
     console.log('[Database] Phase 2 tables might already exist:', e.message);
@@ -387,20 +492,25 @@ app.post('/api/login', (req, res) => {
 // Get user's accessible departments
 app.get('/api/user/accessible-departments', authenticate, (req, res) => {
     try {
+        // Admin can see all departments
         if (req.user.role === 'Admin') {
             const allDepts = db.prepare('SELECT * FROM departments').all();
+            console.log('[API] Admin accessible-departments:', allDepts);
             return res.json(allDepts);
         }
 
+        // For Lead/Member users
         const accessibleDepts = [];
 
-        if (req.user.department_name) {
-            const dept = db.prepare('SELECT * FROM departments WHERE name = ?').get(req.user.department_name);
+        // Add user's own department
+        if (req.user.department_id) {
+            const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.user.department_id);
             if (dept) {
                 accessibleDepts.push(dept);
             }
         }
 
+        // Add departments from explicit permissions
         const explicitPerms = db.prepare(`
             SELECT DISTINCT d.* 
             FROM permissions p
@@ -414,9 +524,10 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
             }
         });
 
+        console.log('[API] Member/Lead accessible-departments:', accessibleDepts);
         res.json(accessibleDepts);
     } catch (err) {
-        console.error('Accessible depts error:', err);
+        console.error('[API] Accessible depts error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -852,7 +963,44 @@ app.get('/api/starred', authenticate, (req, res) => {
             SELECT id, file_path, starred_at FROM starred_files 
             WHERE user_id = ? ORDER BY starred_at DESC
         `).all(req.user.id);
-        res.json(starred);
+
+        const result = starred.map(item => {
+            const fullPath = path.join(DISK_A, item.file_path);
+            let stats = { size: 0, mtime: item.starred_at, isDirectory: false };
+
+            try {
+                if (fs.existsSync(fullPath)) {
+                    const fsStats = fs.statSync(fullPath);
+                    stats = {
+                        size: fsStats.isDirectory() ? getFolderSize(fullPath) : fsStats.size,
+                        mtime: fsStats.mtime,
+                        isDirectory: fsStats.isDirectory()
+                    };
+                }
+            } catch (e) { console.error('Stat error', e); }
+
+            const dbStats = db.prepare(`
+                SELECT s.access_count, u.username as uploader 
+                FROM file_stats s 
+                LEFT JOIN users u ON s.uploader_id = u.id 
+                WHERE s.path = ?
+            `).get(item.file_path);
+
+            return {
+                id: item.id,
+                name: path.basename(item.file_path),
+                path: item.file_path,
+                file_path: item.file_path, // Maintain backward compatibility
+                size: stats.size,
+                mtime: stats.mtime,
+                isDirectory: stats.isDirectory,
+                starredAt: item.starred_at,
+                accessCount: dbStats ? dbStats.access_count : 0,
+                uploader: dbStats ? dbStats.uploader : 'unknown'
+            };
+        });
+
+        res.json(result);
     } catch (err) {
         console.error('[Starred] Error:', err);
         res.status(500).json({ error: 'Failed to fetch starred files' });
@@ -1148,11 +1296,12 @@ app.get('/api/department/permissions', authenticate, (req, res) => {
 // ==================== SHARE LINKS API ====================
 app.post('/api/shares', authenticate, (req, res) => {
     try {
-        const { path, password, expiresIn } = req.body;
+        const { path, password, expiresIn, language } = req.body;
         if (!path) return res.status(400).json({ error: 'Path is required' });
 
         const token = generateShareToken();
         let expiresAt = null;
+        const shareLang = language || 'zh'; // Default to Chinese
 
         if (expiresIn) {
             const days = parseInt(expiresIn);
@@ -1164,9 +1313,9 @@ app.post('/api/shares', authenticate, (req, res) => {
         const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
 
         const result = db.prepare(`
-            INSERT INTO share_links (user_id, file_path, share_token, password, expires_at)
-            VALUES (?, ?, ?, ?, ?)
-        `).run(req.user.id, path, token, hashedPassword, expiresAt);
+            INSERT INTO share_links (user_id, file_path, share_token, password, expires_at, language)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(req.user.id, path, token, hashedPassword, expiresAt, shareLang);
 
         res.json({
             success: true,
@@ -1296,25 +1445,29 @@ app.get('/s/:token', async (req, res) => {
         const { password } = req.query;
         const shareLink = db.prepare('SELECT * FROM share_links WHERE share_token = ?').get(token);
 
+        // Get language from shareLink or default to 'zh'
+        const lang = shareLink?.language || 'zh';
+        const i18n = getShareI18n(lang);
+
         if (!shareLink) {
-            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>链接不存在</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ 分享链接不存在</h1><p>该链接可能已被删除或无效</p></body></html>`);
+            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${i18n.linkNotFound}</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ ${i18n.shareLinkNotFound}</h1><p>${i18n.linkDeletedOrInvalid}</p></body></html>`);
         }
         if (shareLink.expires_at && new Date(shareLink.expires_at) < new Date()) {
-            return res.status(410).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>链接已过期</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>⏰ 分享链接已过期</h1><p>该链接已超过有效期</p></body></html>`);
+            return res.status(410).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${i18n.linkExpired}</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>⏰ ${i18n.shareLinkExpired}</h1><p>${i18n.linkExpiredDesc}</p></body></html>`);
         }
         if (shareLink.password) {
             if (!password) {
-                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>需要密码</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}</style></head><body><h2>🔒 该文件需要密码访问</h2><form method="GET"><input type="password" name="password" placeholder="请输入访问密码" required><button type="submit">访问</button></form></body></html>`);
+                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${i18n.needsPassword}</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}</style></head><body><h2>🔒 ${i18n.fileNeedsPassword}</h2><form method="GET"><input type="password" name="password" placeholder="${i18n.enterPassword}" required><button type="submit">${i18n.access}</button></form></body></html>`);
             }
             if (!bcrypt.compareSync(password, shareLink.password)) {
-                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>密码错误</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}.error{color:red;}</style></head><body><h2>🔒 该文件需要密码访问</h2><p class="error">❌ 密码错误，请重试</p><form method="GET"><input type="password" name="password" placeholder="请输入访问密码" required><button type="submit">访问</button></form></body></html>`);
+                return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${i18n.wrongPassword}</title><style>body{font-family:sans-serif;max-width:500px;margin:100px auto;padding:20px;}input,button{padding:12px;font-size:16px;width:100%;margin:10px 0;border-radius:8px;box-sizing:border-box;}button{background:#FFD200;border:none;cursor:pointer;font-weight:bold;}.error{color:red;}</style></head><body><h2>🔒 ${i18n.fileNeedsPassword}</h2><p class="error">❌ ${i18n.wrongPasswordRetry}</p><form method="GET"><input type="password" name="password" placeholder="${i18n.enterPassword}" required><button type="submit">${i18n.access}</button></form></body></html>`);
             }
         }
         db.prepare('UPDATE share_links SET access_count = access_count + 1, last_accessed = datetime(\'now\') WHERE id = ?').run(shareLink.id);
         const fileName = path.basename(shareLink.file_path);
         const filePath = path.join(DISK_A, shareLink.file_path);
         if (!fs.existsSync(filePath)) {
-            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>文件不存在</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ 文件不存在</h1><p>原文件可能已被移动或删除</p></body></html>`);
+            return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${i18n.fileNotFound}</title><style>body{font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center;padding:20px;}</style></head><body><h1>❌ ${i18n.fileNotFound}</h1><p>${i18n.fileMovedOrDeleted}</p></body></html>`);
         }
 
         // Determine file type
@@ -1326,15 +1479,16 @@ app.get('/s/:token', async (req, res) => {
         if (isImage) {
             previewHTML = `<div style="margin: 30px 0;"><img src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" alt="${fileName}"></div>`;
         } else if (isVideo) {
-            previewHTML = `<div style="margin: 30px 0;"><video controls style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"><source src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" type="video/${ext.substring(1)}">您的浏览器不支持视频播放</video></div>`;
+            previewHTML = `<div style="margin: 30px 0;"><video controls style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"><source src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" type="video/${ext.substring(1)}">${i18n.browserNoVideo}</video></div>`;
         }
 
-        res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${fileName}</title><style>body{font-family:sans-serif;max-width:800px;margin:50px auto;padding:20px;text-align:center;background:#1a1a1a;color:#fff;}.file-icon{font-size:64px;margin:20px 0;}.filename{font-size:24px;font-weight:bold;margin:20px 0;word-break:break-all;}.info{color:#999;margin:10px 0;font-size:14px;}button{background:#FFD200;color:#000;border:none;padding:15px 30px;font-size:16px;font-weight:bold;cursor:pointer;border-radius:8px;margin:10px;transition:all 0.2s;}button:hover{background:#FFC100;transform:translateY(-2px);}button.secondary{background:#444;color:#fff;}button.secondary:hover{background:#555;}</style></head><body><div class="file-icon">📄</div><div class="filename">${fileName}</div><div class="info">访问次数: ${shareLink.access_count + 1}</div>${shareLink.expires_at ? `<div class="info">过期时间: ${new Date(shareLink.expires_at).toLocaleString('zh-CN')}</div>` : ''}${previewHTML}<div style="margin-top:30px;"><button onclick="window.location.href='/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}'">⬇️ 下载文件</button></div></body></html>`);
+        res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${fileName}</title><style>body{font-family:sans-serif;max-width:800px;margin:50px auto;padding:20px;text-align:center;background:#1a1a1a;color:#fff;}.file-icon{font-size:64px;margin:20px 0;}.filename{font-size:24px;font-weight:bold;margin:20px 0;word-break:break-all;}.info{color:#999;margin:10px 0;font-size:14px;}button{background:#FFD200;color:#000;border:none;padding:15px 30px;font-size:16px;font-weight:bold;cursor:pointer;border-radius:8px;margin:10px;transition:all 0.2s;}button:hover{background:#FFC100;transform:translateY(-2px);}button.secondary{background:#444;color:#fff;}button.secondary:hover{background:#555;}</style></head><body><div class="file-icon">📄</div><div class="filename">${fileName}</div><div class="info">${i18n.viewCount}: ${shareLink.access_count + 1}</div>${shareLink.expires_at ? `<div class="info">${i18n.expiryTime}: ${new Date(shareLink.expires_at).toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'de' ? 'de-DE' : lang === 'ja' ? 'ja-JP' : 'en-US')}</div>` : ''}${previewHTML}<div style="margin-top:30px;"><button onclick="window.location.href='/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}'">⬇️ ${i18n.downloadFile}</button></div></body></html>`);
     } catch (err) {
         console.error('[Share /s] Full error:', err);
         console.error('[Share /s] Error message:', err.message);
         console.error('[Share /s] Error stack:', err.stack);
-        res.status(500).send('服务器错误: ' + err.message);
+        const i18n = getShareI18n('zh');  // Fallback to Chinese
+        res.status(500).send(i18n.serverError + ': ' + err.message);
     }
 });
 
@@ -1387,7 +1541,7 @@ app.get('/api/files', authenticate, async (req, res) => {
     // Auto-fix: If resolving to "Members" (root) and user is not Admin,
     // force it to their personal directory.
     if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
-        subPath = `Members/${req.user.username}`;
+        subPath = `Members / ${req.user.username}`;
     }
 
     const fullPath = path.join(DISK_A, subPath);
@@ -1412,7 +1566,7 @@ app.get('/api/files', authenticate, async (req, res) => {
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
                 WHERE s.path = ?
-        `).get(itemPath);
+                    `).get(itemPath);
 
             // Calculate folder size if directory
             const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
@@ -1442,8 +1596,8 @@ app.post('/api/files/hit', authenticate, (req, res) => {
     VALUES(?, 1, CURRENT_TIMESTAMP)
             ON CONFLICT(path) DO UPDATE SET
     access_count = access_count + 1,
-        last_access = CURRENT_TIMESTAMP
-            `).run(itemPath);
+                    last_access = CURRENT_TIMESTAMP
+                        `).run(itemPath);
 
         // Per-user log
         db.prepare(`
@@ -1451,8 +1605,8 @@ app.post('/api/files/hit', authenticate, (req, res) => {
     VALUES(?, ?, 1, CURRENT_TIMESTAMP)
             ON CONFLICT(path, user_id) DO UPDATE SET
     count = count + 1,
-        last_access = CURRENT_TIMESTAMP
-            `).run(itemPath, req.user.id);
+                    last_access = CURRENT_TIMESTAMP
+                        `).run(itemPath, req.user.id);
 
         res.json({ success: true });
     } catch (err) {
@@ -1467,8 +1621,8 @@ app.get('/api/files/stats', authenticate, (req, res) => {
         FROM access_logs l
         JOIN users u ON l.user_id = u.id
         WHERE l.path = ?
-        ORDER BY l.last_access DESC
-    `).all(itemPath);
+                    ORDER BY l.last_access DESC
+                    `).all(itemPath);
     res.json(history);
 });
 
@@ -1593,6 +1747,61 @@ app.post('/api/files/bulk-delete', authenticate, async (req, res) => {
     }
 });
 
+app.post('/api/download-batch', authenticate, (req, res) => {
+    const { paths } = req.body;
+    if (!Array.isArray(paths) || paths.length === 0) {
+        return res.status(400).json({ error: 'Paths array required' });
+    }
+
+    // Filter valid paths and check permissions
+    const validFiles = [];
+    for (const subPath of paths) {
+        if (!hasPermission(req.user, subPath, 'Read')) continue;
+        const fullPath = path.join(DISK_A, subPath);
+        if (fs.existsSync(fullPath)) {
+            validFiles.push({
+                fullPath,
+                name: path.basename(subPath)
+            });
+        }
+    }
+
+    if (validFiles.length === 0) {
+        return res.status(404).json({ error: 'No valid files found to download' });
+    }
+
+    res.attachment('batch_download.zip');
+    const archive = archiver('zip', {
+        zlib: { level: 9 } // Sets the compression level.
+    });
+
+    archive.on('warning', function (err) {
+        if (err.code === 'ENOENT') {
+            console.warn('[Zip Warning]', err);
+        } else {
+            console.error('[Zip Error]', err);
+        }
+    });
+
+    archive.on('error', function (err) {
+        console.error('[Zip Error]', err);
+        if (!res.headersSent) res.status(500).send({ error: err.message });
+    });
+
+    archive.pipe(res);
+
+    validFiles.forEach(file => {
+        const stats = fs.statSync(file.fullPath);
+        if (stats.isDirectory()) {
+            archive.directory(file.fullPath, file.name);
+        } else {
+            archive.file(file.fullPath, { name: file.name });
+        }
+    });
+
+    archive.finalize();
+});
+
 app.post('/api/files/bulk-move', authenticate, async (req, res) => {
     const { paths, targetDir: requestedTargetDir } = req.body;
     if (!Array.isArray(paths) || requestedTargetDir === undefined) return res.status(400).json({ error: 'Paths and targetDir required' });
@@ -1645,10 +1854,10 @@ app.post('/api/files/bulk-move', authenticate, async (req, res) => {
 
 // Sharing
 app.post('/api/share', authenticate, (req, res) => {
-    const { path: filePath, expiryDays } = req.body;
+    const { path: filePath, expiryDays, language = 'zh' } = req.body;
     const id = Math.random().toString(36).substring(2, 10);
     const expiresAt = expiryDays ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString() : null;
-    db.prepare('INSERT INTO shares (id, path, expires_at) VALUES (?, ?, ?)').run(id, filePath, expiresAt);
+    db.prepare('INSERT INTO shares (id, path, expires_at, language) VALUES (?, ?, ?, ?)').run(id, filePath, expiresAt, language);
     res.json({ shareId: id, url: `https://opware.kineraw.com/share/${id}` });
 });
 
@@ -1837,8 +2046,10 @@ app.use(express.static(path.join(__dirname, '../client/dist'), {
 // Create Share Collection
 app.post('/api/share-collection', authenticate, async (req, res) => {
     try {
-        const { paths, name, password, expiresIn } = req.body;
-        if (!paths || !Array.isArray(paths) || paths.length === 0) {
+        const { items, paths, name, password, expiresIn, language } = req.body;
+        // Support both old 'paths' format and new 'items' format
+        const itemsList = items || (paths ? paths.map(p => ({ path: p, isDirectory: false })) : []);
+        if (!itemsList || !Array.isArray(itemsList) || itemsList.length === 0) {
             return res.status(400).json({ error: 'No paths provided' });
         }
         const token = crypto.randomBytes(16).toString('hex');
@@ -1850,14 +2061,14 @@ app.post('/api/share-collection', authenticate, async (req, res) => {
             }
         }
         const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
-        const result = db.prepare(`INSERT INTO share_collections (user_id, token, name, password, expires_at) VALUES (?, ?, ?, ?, ?)`).run(req.user.id, token, name || '分享集合', hashedPassword, expiresAt);
+        const result = db.prepare(`INSERT INTO share_collections (user_id, token, name, password, expires_at, language) VALUES (?, ?, ?, ?, ?, ?)`).run(req.user.id, token, name || '分享集合', hashedPassword, expiresAt, language || 'zh');
         const collectionId = result.lastInsertRowid;
         const insertItem = db.prepare(`INSERT INTO share_collection_items (collection_id, file_path, is_directory) VALUES (?, ?, ?)`);
-        for (const p of paths) {
-            const resolvedPath = resolvePath(p);
+        for (const item of itemsList) {
+            const resolvedPath = resolvePath(item.path);
             const fullPath = path.join(DISK_A, resolvedPath);
             if (!fs.existsSync(fullPath)) continue;
-            const isDir = fs.statSync(fullPath).isDirectory();
+            const isDir = item.isDirectory !== undefined ? item.isDirectory : fs.statSync(fullPath).isDirectory();
             insertItem.run(collectionId, resolvedPath, isDir ? 1 : 0);
         }
         const shareUrl = `${req.protocol}://${req.get('host')}/share-collection/${token}`;
@@ -1901,7 +2112,7 @@ app.get('/api/share-collection/:token', async (req, res) => {
             };
         });
         db.prepare(`UPDATE share_collections SET access_count = access_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = ?`).run(collection.id);
-        res.json({ name: collection.name, items: fileInfo, createdAt: collection.created_at, accessCount: collection.access_count + 1 });
+        res.json({ name: collection.name, items: fileInfo, createdAt: collection.created_at, accessCount: collection.access_count + 1, language: collection.language || 'zh' });
     } catch (err) {
         console.error('[Share Collection] Error accessing:', err);
         res.status(500).json({ error: err.message });

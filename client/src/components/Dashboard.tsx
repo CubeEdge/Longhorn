@@ -12,7 +12,8 @@ import {
     Activity
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { useLanguage } from '../i18n/useLanguage';
+import { getDateLocale } from '../utils/dateLocale';
 
 interface UserStats {
     uploadCount: number;
@@ -31,6 +32,7 @@ export const Dashboard: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const { token } = useAuthStore();
     const navigate = useNavigate();
+    const { t, language } = useLanguage();
 
     useEffect(() => {
         fetchStats();
@@ -46,7 +48,7 @@ export const Dashboard: React.FC = () => {
             setStats(res.data);
         } catch (err: any) {
             console.error('Failed to fetch stats:', err);
-            setError(err.response?.data?.error || err.message || '加载统计数据失败');
+            setError(err.response?.data?.error || err.message || t('error.load_stats_failed'));
         } finally {
             setLoading(false);
         }
@@ -64,7 +66,7 @@ export const Dashboard: React.FC = () => {
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
                 <Activity size={48} style={{ opacity: 0.3, marginBottom: '16px', display: 'block', margin: '0 auto 16px' }} />
-                <p>加载中...</p>
+                <p>{t('dashboard.loading')}</p>
             </div>
         );
     }
@@ -73,7 +75,7 @@ export const Dashboard: React.FC = () => {
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
                 <p style={{ color: '#ff4444', marginBottom: '16px' }}>
-                    ❌ {error || '加载失败'}
+                    ❌ {error || t('dashboard.load_failed')}
                 </p>
                 <button
                     onClick={fetchStats}
@@ -88,7 +90,7 @@ export const Dashboard: React.FC = () => {
                         fontSize: '1rem'
                     }}
                 >
-                    重试
+                    {t('dashboard.retry')}
                 </button>
             </div>
         );
@@ -102,10 +104,10 @@ export const Dashboard: React.FC = () => {
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Activity size={32} color="var(--accent-blue)" />
-                    个人空间概览
+                    {t('dashboard.title')}
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    欢迎回来，{stats.username} · {stats.role === 'Admin' ? '管理员' : '用户'}
+                    {t('dashboard.welcome')}, {stats.username} · {stats.role === 'Admin' ? t('dashboard.role_admin') : t('dashboard.role_user')}
                 </p>
             </div>
 
@@ -142,12 +144,12 @@ export const Dashboard: React.FC = () => {
                             <FileText size={24} color="var(--accent-blue)" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>上传文件</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('dashboard.uploaded')}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.uploadCount}</div>
                         </div>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        点击查看个人空间
+                        {t('dashboard.click_view_space')}
                     </div>
                 </div>
 
@@ -171,7 +173,7 @@ export const Dashboard: React.FC = () => {
                             <HardDrive size={24} color="var(--accent-blue)" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>存储使用</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('dashboard.storage')}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800 }}>{formatBytes(stats.storageUsed)}</div>
                         </div>
                     </div>
@@ -191,7 +193,7 @@ export const Dashboard: React.FC = () => {
                         }} />
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {storagePercent.toFixed(1)}% of 10 GB
+                        {storagePercent.toFixed(1)}% {t('dashboard.storage_quota')}
                     </div>
                 </div>
 
@@ -221,12 +223,12 @@ export const Dashboard: React.FC = () => {
                             <Star size={24} color="var(--accent-blue)" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>星标文件</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('dashboard.starred')}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.starredCount || 0}</div>
                         </div>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        点击查看所有星标
+                        {t('dashboard.click_view_starred')}
                     </div>
                 </div>
 
@@ -256,12 +258,12 @@ export const Dashboard: React.FC = () => {
                             <Link2 size={24} color="var(--accent-blue)" />
                         </div>
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>分享链接</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('dashboard.shares')}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stats.shareCount}</div>
                         </div>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        点击管理分享
+                        {t('dashboard.click_manage_shares')}
                     </div>
                 </div>
             </div>
@@ -281,10 +283,10 @@ export const Dashboard: React.FC = () => {
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                         <Clock size={20} color="var(--accent-blue)" />
-                        <div style={{ fontWeight: 600 }}>最后登录</div>
+                        <div style={{ fontWeight: 600 }}>{t('dashboard.last_login')}</div>
                     </div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>
-                        {formatDistanceToNow(new Date(stats.lastLogin), { addSuffix: true, locale: zhCN })}
+                        {formatDistanceToNow(new Date(stats.lastLogin), { addSuffix: true, locale: getDateLocale(language) })}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         {new Date(stats.lastLogin).toLocaleString('zh-CN')}
@@ -300,10 +302,10 @@ export const Dashboard: React.FC = () => {
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                         <Calendar size={20} color="var(--accent-blue)" />
-                        <div style={{ fontWeight: 600 }}>账户创建</div>
+                        <div style={{ fontWeight: 600 }}>{t('dashboard.account_created')}</div>
                     </div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '4px' }}>
-                        {formatDistanceToNow(new Date(stats.accountCreated), { addSuffix: true, locale: zhCN })}
+                        {formatDistanceToNow(new Date(stats.accountCreated), { addSuffix: true, locale: getDateLocale(language) })}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         {new Date(stats.accountCreated).toLocaleString('zh-CN')}
@@ -313,7 +315,7 @@ export const Dashboard: React.FC = () => {
 
             {/* Quick Actions */}
             <div style={{ marginTop: '32px' }}>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '16px' }}>快速操作</h2>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '16px' }}>{t('dashboard.quick_actions')}</h2>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button
                         onClick={() => navigate(`/dept/members/${stats.username}`)}
@@ -328,7 +330,7 @@ export const Dashboard: React.FC = () => {
                             fontSize: '0.95rem'
                         }}
                     >
-                        前往个人空间
+                        {t('dashboard.goto_space')}
                     </button>
                     <button
                         onClick={() => navigate('/starred')}
@@ -346,7 +348,7 @@ export const Dashboard: React.FC = () => {
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
                     >
-                        查看星标文件
+                        {t('dashboard.view_starred')}
                     </button>
                     <button
                         onClick={() => navigate('/search')}
@@ -364,7 +366,7 @@ export const Dashboard: React.FC = () => {
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
                     >
-                        搜索文件
+                        {t('dashboard.search_files')}
                     </button>
                 </div>
             </div>

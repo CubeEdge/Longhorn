@@ -1,31 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-    LayoutDashboard,
-    Users as UsersIcon,
-    Network,
-    Settings,
-    ChevronRight
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { LayoutDashboard, Users, ShieldCheck, Settings, ChevronRight } from 'lucide-react';
 import SystemDashboard from './SystemDashboard';
 import UserManagement from './UserManagement';
 import DepartmentManagement from './DepartmentManagement';
+import { useLanguage } from '../i18n/useLanguage';
 
 type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings';
 
 const AdminPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<AdminTab>(() => {
-        return (localStorage.getItem('adminActiveTab') as AdminTab) || 'dashboard';
-    });
-
-    useEffect(() => {
-        localStorage.setItem('adminActiveTab', activeTab);
-    }, [activeTab]);
+    const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+    const { t } = useLanguage();
 
     const menuItems = [
-        { id: 'dashboard', label: '概览', icon: LayoutDashboard },
-        { id: 'users', label: '成员账号', icon: UsersIcon },
-        { id: 'depts', label: '部门和权限', icon: Network },
-        { id: 'settings', label: '系统设置', icon: Settings },
+        { id: 'dashboard', label: t('admin.overview'), icon: LayoutDashboard },
+        { id: 'users', label: t('admin.members'), icon: Users },
+        { id: 'depts', label: t('admin.depts_permissions'), icon: ShieldCheck },
+        { id: 'settings', label: t('admin.system_settings'), icon: Settings }
     ];
 
     const renderContent = () => {
@@ -35,7 +25,7 @@ const AdminPanel: React.FC = () => {
             case 'depts': return <DepartmentManagement />;
             case 'settings': return (
                 <div className="fade-in" style={{ padding: 40, textAlign: 'center' }}>
-                    <p className="hint">更多系统配置项正在集成中...</p>
+                    <p className="hint">{t('admin.settings_placeholder')}</p>
                 </div>
             );
             default: return <SystemDashboard />;
@@ -53,7 +43,7 @@ const AdminPanel: React.FC = () => {
                 padding: '0 8px',
                 borderRight: '1px solid var(--glass-border)'
             }}>
-                <div className="hint" style={{ padding: '0 16px 16px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: 1 }}>管理控制台</div>
+                <div className="hint" style={{ padding: '0 16px 16px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: 1 }}>{t('admin.control_panel')}</div>
                 {menuItems.map(item => (
                     <div
                         key={item.id}

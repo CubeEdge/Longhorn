@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLanguage, getCurrentLanguage } from '../i18n/useLanguage';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS, de, ja } from 'date-fns/locale';
 import {
     Trash2, RotateCcw, Trash, FileText, Folder, AlertCircle, Clock,
     LayoutGrid, List, X, Image as ImageIcon, Video as VideoIcon,
@@ -21,12 +22,36 @@ interface RecycleItem {
 }
 
 const RecycleBin: React.FC = () => {
+    const { t } = useLanguage();
     const [items, setItems] = useState<RecycleItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectAll, setSelectAll] = useState(false);
     const [previewItem, setPreviewItem] = useState<RecycleItem | null>(null);
     const { token } = useAuthStore();
+
+    // Helper to translate department names
+    const getDeptDisplayName = (deptName: string): string => {
+        const match = deptName.match(/\(([A-Z]{2,3})\)$/);
+        if (match) {
+            const code = match[1];
+            const deptKey = `dept.${code}` as any;
+            return `${t(deptKey)} (${code})`;
+        }
+        return deptName;
+    };
+
+    // Get date-fns locale based on current language
+    const getDateLocale = () => {
+        const lang = getCurrentLanguage();
+        switch (lang) {
+            case 'en': return enUS;
+            case 'de': return de;
+            case 'ja': return ja;
+            default: return zhCN;
+        }
+    };
 
     useEffect(() => {
         fetchItems();
@@ -46,7 +71,7 @@ const RecycleBin: React.FC = () => {
     };
 
     const handleClearAll = async () => {
-        if (!window.confirm('确定清空整个回收站？此操作不可撤销！')) return;
+        if (!window.confirm(t('recycle.confirm_clear'))) return;
         try {
             await axios.delete('/api/recycle-bin-clear', {
                 headers: { Authorization: `Bearer ${token}` }
@@ -54,7 +79,7 @@ const RecycleBin: React.FC = () => {
             fetchItems();
         } catch (err) {
             console.error('Clear all failed:', err);
-            alert('清空失败');
+            alert(t('recycle.clear_error'));
         }
     };
 
@@ -69,12 +94,12 @@ const RecycleBin: React.FC = () => {
             setSelectedIds([]);
             fetchItems();
         } catch (err) {
-            alert('批量恢复失败');
+            alert(t('recycle.restore_error'));
         }
     };
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(`确定要永久删除选中的 ${selectedIds.length} 项吗？此操作不可撤销！`)) return;
+        if (!window.confirm(t('recycle.delete_confirm', { count: selectedIds.length }))) return;
         try {
             for (const id of selectedIds) {
                 await axios.delete(`/api/recycle-bin/${id}`, {
@@ -84,7 +109,17 @@ const RecycleBin: React.FC = () => {
             setSelectedIds([]);
             fetchItems();
         } catch (err) {
-            alert('批量删除失败');
+            alert(t('recycle.delete_error'));
+        }
+    };
+
+    const handleSelectAll = () => {
+        if (selectAll) {
+            setSelectedIds([]);
+            setSelectAll(false);
+        } else {
+            setSelectedIds(items.map(item => item.id));
+            setSelectAll(true);
         }
     };
 
@@ -130,7 +165,7 @@ const RecycleBin: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h1 style={{ fontSize: '2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
                         <Trash2 size={32} color="var(--accent-blue)" />
-                        回收站
+                        {t('recycle.title')}
                     </h1>
 
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -170,6 +205,19 @@ const RecycleBin: React.FC = () => {
                             </button>
                         </div>
 
+                        {/* Select All */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectAll}
+                                onChange={handleSelectAll}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                {t('common.select_all')}
+                            </span>
+                        </div>
+
                         {/* Bulk Actions */}
                         {selectedIds.length > 0 && (
                             <>
@@ -189,7 +237,7 @@ const RecycleBin: React.FC = () => {
                                     }}
                                 >
                                     <RotateCcw size={16} />
-                                    批量恢复 ({selectedIds.length})
+                                    {t('recycle.restore')} ({selectedIds.length})
                                 </button>
                                 <button
                                     onClick={handleBulkDelete}
@@ -206,9 +254,7 @@ const RecycleBin: React.FC = () => {
                                         gap: '8px'
                                     }}
                                 >
-                                    <Trash size={16} />
-                                    批量删除
-                                </button>
+                                    <Trash size={16} />{t('browser.batch_delete')}</button>
                             </>
                         )}
 
@@ -230,7 +276,7 @@ const RecycleBin: React.FC = () => {
                             }}
                         >
                             <Trash2 size={16} />
-                            清空回收站
+                            {t('recycle.clear_all')}
                         </button>
                     </div>
                 </div>
@@ -238,16 +284,14 @@ const RecycleBin: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'rgba(255, 149, 0, 0.1)', borderRadius: '8px', border: '1px solid rgba(255, 149, 0, 0.3)' }}>
                     <AlertCircle size={16} color="#FF9500" />
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                        删除的文件将保留 30 天，过期后将自动物理销毁
+                        {t('recycle.warning')}
                     </span>
                 </div>
             </div>
 
             {/* Content */}
             {loading ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                    加载中...
-                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>{t('status.loading')}</div>
             ) : items.length === 0 ? (
                 <div style={{
                     flex: 1,
@@ -259,8 +303,8 @@ const RecycleBin: React.FC = () => {
                     color: 'var(--text-secondary)'
                 }}>
                     <Trash2 size={64} style={{ opacity: 0.3 }} />
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>回收站是空的</h3>
-                    <p>删除的文件将显示在这里</p>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{t('recycle.empty_state')}</h3>
+                    <p>{t('recycle.hint')}</p>
                 </div>
             ) : viewMode === 'grid' ? (
                 <div style={{
@@ -354,11 +398,11 @@ const RecycleBin: React.FC = () => {
                                         {item.name}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                                        {item.original_path}
+                                        {item.original_path.split('/').map((part, idx) => idx === 0 ? getDeptDisplayName(part) : part).join('/')}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <Clock size={12} />
-                                        {formatDistanceToNow(new Date(item.deletion_date), { addSuffix: true, locale: zhCN })}
+                                        {formatDistanceToNow(new Date(item.deletion_date), { addSuffix: true, locale: getDateLocale() })}
                                     </div>
                                 </div>
                             </div>
@@ -418,14 +462,14 @@ const RecycleBin: React.FC = () => {
                                         {item.name}
                                     </div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                        {item.original_path}
+                                        {item.original_path.split('/').map((part, idx) => idx === 0 ? getDeptDisplayName(part) : part).join('/')}
                                     </div>
                                 </div>
 
                                 {/* Metadata */}
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
                                     <div style={{ marginBottom: '4px' }}>
-                                        {formatDistanceToNow(new Date(item.deletion_date), { addSuffix: true, locale: zhCN })}
+                                        {formatDistanceToNow(new Date(item.deletion_date), { addSuffix: true, locale: getDateLocale() })}
                                     </div>
                                     <div>by {item.deleted_by}</div>
                                 </div>
@@ -489,7 +533,7 @@ const RecycleBin: React.FC = () => {
                                 }
                                 return (
                                     <div style={{ background: '#FFF', padding: '40px', borderRadius: '12px', textAlign: 'center' }}>
-                                        <p>无法预览此文件类型</p>
+                                        <p>{t('recycle.no_preview')}</p>
                                     </div>
                                 );
                             })()}

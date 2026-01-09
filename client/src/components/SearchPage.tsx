@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, File, Folder, Image, Video, FileText, Filter } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface SearchResult {
     name: string;
@@ -22,6 +23,7 @@ export const SearchPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
     const { token } = useAuthStore();
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
     const handleSearch = async () => {
         if (!query.trim()) return;
@@ -38,7 +40,7 @@ export const SearchPage: React.FC = () => {
             setResults(res.data.results || []);
         } catch (err) {
             console.error('Search failed:', err);
-            alert('搜索失败');
+            alert(t('search.error'));
         } finally {
             setLoading(false);
         }
@@ -72,10 +74,10 @@ export const SearchPage: React.FC = () => {
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Search size={32} color="var(--accent-blue)" />
-                    搜索全部文件
+                    {t('search.title')}
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    在所有有权限的文件夹中搜索
+                    {t('search.subtitle')}
                 </p>
             </div>
 
@@ -87,7 +89,7 @@ export const SearchPage: React.FC = () => {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                        placeholder="输入文件名关键词..."
+                        placeholder={t('search.placeholder')}
                         style={{
                             flex: 1,
                             padding: '14px 18px',
@@ -116,7 +118,7 @@ export const SearchPage: React.FC = () => {
                             opacity: loading ? 0.6 : 1
                         }}
                     >
-                        {loading ? '搜索中...' : '搜索'}
+                        {loading ? t('search.searching') : t('search.button')}
                     </button>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
@@ -144,7 +146,7 @@ export const SearchPage: React.FC = () => {
                         gap: '12px',
                         flexWrap: 'wrap'
                     }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 600, width: '100%' }}>文件类型:</div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, width: '100%' }}>{t('search.file_type')}</div>
                         {['', 'image', 'video', 'document'].map(type => (
                             <button
                                 key={type}
@@ -161,7 +163,7 @@ export const SearchPage: React.FC = () => {
                                     fontSize: '0.85rem'
                                 }}
                             >
-                                {type === '' ? '全部' : type === 'image' ? '图片' : type === 'video' ? '视频' : '文档'}
+                                {type === '' ? t('search.type_all') : type === 'image' ? t('search.type_image') : type === 'video' ? t('search.type_video') : t('search.type_document')}
                             </button>
                         ))}
                     </div>
@@ -172,7 +174,7 @@ export const SearchPage: React.FC = () => {
             {results.length > 0 && (
                 <div>
                     <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                        找到 {results.length} 个结果
+                        {t('search.results_count', { count: results.length })}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {results.map((item, idx) => (
@@ -214,8 +216,8 @@ export const SearchPage: React.FC = () => {
             {!loading && results.length === 0 && query && (
                 <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
                     <Search size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>未找到匹配的文件</h3>
-                    <p>尝试使用不同的关键词</p>
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>{t('search.no_results')}</h3>
+                    <p>{t('search.no_results_hint')}</p>
                 </div>
             )}
         </div>

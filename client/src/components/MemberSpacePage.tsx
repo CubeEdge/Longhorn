@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../i18n/useLanguage';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ const formatSize = (bytes?: number) => {
 };
 
 export const MemberSpacePage: React.FC = () => {
+    const { t } = useLanguage();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -55,9 +57,7 @@ export const MemberSpacePage: React.FC = () => {
 
     if (loading) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                加载中...
-            </div>
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('status.loading')}</div>
         );
     }
 
@@ -67,10 +67,10 @@ export const MemberSpacePage: React.FC = () => {
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Users size={32} color="var(--accent-blue)" />
-                    👥 成员空间管理
+                    {t('member.space_management')}
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    查看和管理所有用户的个人空间
+                    {t('member.view_manage_hint')}
                 </p>
             </div>
 
@@ -78,7 +78,7 @@ export const MemberSpacePage: React.FC = () => {
             <div style={{ marginBottom: '24px' }}>
                 <input
                     type="text"
-                    placeholder="🔍 搜索用户..."
+                    placeholder={t('member.search_users')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
@@ -100,7 +100,7 @@ export const MemberSpacePage: React.FC = () => {
                 fontSize: '0.9rem',
                 padding: '0 16px'
             }}>
-                共 {filteredUsers.length} 位用户
+                {t('member.total_users', { count: filteredUsers.length })}
             </div>
 
             {/* User List - Table Style */}
@@ -121,11 +121,11 @@ export const MemberSpacePage: React.FC = () => {
                     fontWeight: 600,
                     fontSize: '0.9rem'
                 }}>
-                    <div>用户</div>
-                    <div>所属部门</div>
-                    <div>个人空间</div>
-                    <div>文件数</div>
-                    <div style={{ textAlign: 'center' }}>操作</div>
+                    <div>{t('member.table_user')}</div>
+                    <div>{t('member.table_department')}</div>
+                    <div>{t('common.personal_space')}</div>
+                    <div>{t('member.table_file_count')}</div>
+                    <div style={{ textAlign: 'center' }}>{t('member.table_actions')}</div>
                 </div>
 
                 {/* Table Rows */}
@@ -169,7 +169,7 @@ export const MemberSpacePage: React.FC = () => {
 
                         {/* Department */}
                         <div style={{ color: 'var(--text-secondary)' }}>
-                            {user.department || '未分配'}
+                            {user.department || t('member.unassigned')}
                         </div>
 
                         {/* Capacity */}
@@ -209,7 +209,7 @@ export const MemberSpacePage: React.FC = () => {
 
             {filteredUsers.length === 0 && (
                 <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    未找到匹配的用户
+                    {t('member.not_found')}
                 </div>
             )}
         </div>

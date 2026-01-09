@@ -4,6 +4,7 @@ import { format, addDays, addMonths, startOfMonth, endOfMonth, startOfWeek, endO
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLanguage } from '../i18n/useLanguage';
 import {
     UserPlus,
     Shield,
@@ -22,10 +23,11 @@ import {
     Save,
     UserCircle,
     Calendar as CalendarIcon,
-    ChevronLeft
+    ChevronLeft,
+    Plus
 } from 'lucide-react';
 
-const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void }> = ({ value, onChange }) => {
+const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void; t: any }> = ({ value, onChange, t }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
 
@@ -47,7 +49,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void 
                 style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: isOpen ? '2px solid var(--accent-blue)' : '1px solid var(--glass-border)', padding: '0 20px', height: 48 }}
             >
                 <CalendarIcon size={20} color="var(--accent-blue)" />
-                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>{value || '请选择 YYYY-MM-DD'}</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>{value || t('user.select_date')}</span>
             </div>
 
             <AnimatePresence>
@@ -77,7 +79,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void 
                                 <button type="button" onClick={() => setViewDate(addMonths(viewDate, 1))} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.05)' }}><ChevronRight size={20} /></button>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
-                                {['日', '一', '二', '三', '四', '五', '六'].map(d => <div key={d}>{d}</div>)}
+                                {[t('user.weekday_sun'), t('user.weekday_mon'), t('user.weekday_tue'), t('user.weekday_wed'), t('user.weekday_thu'), t('user.weekday_fri'), t('user.weekday_sat')].map(d => <div key={d}>{d}</div>)}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
                                 {days.map(day => {
@@ -111,8 +113,8 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void 
                                 })}
                             </div>
                             <div style={{ borderTop: '2px solid var(--glass-border)', marginTop: 16, paddingTop: 16, display: 'flex', gap: 10 }}>
-                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => handleSelect(new Date())}>今天</button>
-                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => { onChange(''); setIsOpen(false); }}>清除</button>
+                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => handleSelect(new Date())}>{t('time.today')}</button>
+                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => { onChange(''); setIsOpen(false); }}>{t('user.clear_button')}</button>
                             </div>
                         </motion.div>
                     </>
@@ -124,7 +126,9 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void 
 
 const UserManagement: React.FC = () => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [users, setUsers] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreating, setIsCreating] = useState(false);
@@ -157,21 +161,27 @@ const UserManagement: React.FC = () => {
     const [isBrowserOpen, setIsBrowserOpen] = useState(false);
     const [browserFiles, setBrowserFiles] = useState<any[]>([]);
     const [browserPath, setBrowserPath] = useState('');
-    const [expiryPreset, setExpiryPreset] = useState('7天');
+    const [expiryPreset, setExpiryPreset] = useState(t('user.expiry_7days'));
 
-    const fetchData = async () => {
-        const headers = { Authorization: `Bearer ${token}` };
-        try {
-            const [uRes, dRes] = await Promise.all([
-                axios.get('/api/admin/users', { headers }),
-                axios.get('/api/admin/departments', { headers })
-            ]);
-            setUsers(uRes.data);
-            setDepartments(dRes.data);
-        } catch (err) {
-            console.error("Failed to fetch user data", err);
-        }
-    };
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [usersRes, departmentsRes] = await Promise.all([
+                    axios.get('/api/admin/users', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } })
+                ]);
+                setUsers(usersRes.data);
+                setDepartments(departmentsRes.data);
+            } catch (err) {
+                console.error('Failed to fetch user data', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (token) fetchData();
+    }, [token]);
 
     const fetchPermissions = async (userId: number) => {
         try {
@@ -196,8 +206,21 @@ const UserManagement: React.FC = () => {
         }
     };
 
+    const fetchData = async () => {
+        try {
+            const [usersRes, deptsRes] = await Promise.all([
+                axios.get('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            setUsers(usersRes.data);
+            setDepartments(deptsRes.data);
+        } catch (err) {
+            console.error('Failed to fetch data', err);
+        }
+    };
+
     useEffect(() => {
-        fetchData();
+        if (token) fetchData();
     }, [token]);
 
     const handleUserClick = (user: any) => {
@@ -233,9 +256,9 @@ const UserManagement: React.FC = () => {
 
     const handleGrantPermission = async () => {
         let finalExpiry = grantExpiry;
-        if (expiryPreset === '7天') finalExpiry = format(addDays(new Date(), 7), 'yyyy-MM-dd');
-        else if (expiryPreset === '1个月') finalExpiry = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
-        else if (expiryPreset === '永久') finalExpiry = '';
+        if (expiryPreset === t('user.expiry_7days')) finalExpiry = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+        else if (expiryPreset === t('user.expiry_1month')) finalExpiry = format(addMonths(new Date(), 1), 'yyyy-MM-dd');
+        else if (expiryPreset === t('user.expiry_forever')) finalExpiry = '';
 
         if (!grantPath) return;
         try {
@@ -248,7 +271,7 @@ const UserManagement: React.FC = () => {
             });
             setIsGranting(false);
             setGrantPath('');
-            setExpiryPreset('7天');
+            setExpiryPreset(t('user.expiry_7days'));
             fetchPermissions(selectedUser.id);
         } catch (err) {
             alert(`授权失败: ${(err as any).response?.data?.error || (err as any).message}`);
@@ -256,14 +279,14 @@ const UserManagement: React.FC = () => {
     };
 
     const handleRevokePermission = async (permId: number) => {
-        if (!window.confirm("确定要撤销此权限吗？")) return;
+        if (!window.confirm(t('user.revoke_confirm'))) return;
         try {
             await axios.delete(`/api/admin/permissions/${permId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchPermissions(selectedUser.id);
         } catch (err) {
-            alert("撤销失败");
+            alert(t('user.revoke_failed'));
         }
     };
 
@@ -283,7 +306,7 @@ const UserManagement: React.FC = () => {
             setPassword('');
             fetchData();
         } catch (err) {
-            alert("创建失败");
+            alert(t('user.create_failed'));
         }
     };
 
@@ -291,17 +314,33 @@ const UserManagement: React.FC = () => {
         u.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Helper function to translate department name
+    const getDeptDisplayName = (deptName: string | null) => {
+        if (!deptName) return t('user.unassigned');
+        // Extract department code from format like "市场部 (MS)"
+        const match = deptName.match(/\(([A-Z]{2,3})\)$/);
+        if (match) {
+            const code = match[1];
+            return t(`dept.${code}` as any);
+        }
+        return deptName;
+    };
+
+    if (loading) {
+        return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
+    }
+
     return (
         <div className="fade-in">
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
-                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>用户管理</h2>
-                    <p className="hint">管理全系统的访问权限、所属部门以及职能角色。</p>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>{t('user.management')}</h2>
+                    <p className="hint">{t('user.management_desc')}</p>
                 </div>
                 {isAdmin && (
                     <button className="btn-primary" onClick={() => setIsCreating(true)}>
-                        <UserPlus size={18} /> 新增成员
+                        <UserPlus size={18} /> {t('user.new_member_button')}
                     </button>
                 )}
             </div>
@@ -317,21 +356,21 @@ const UserManagement: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: 30, width: 300 }}>
                         <Search size={16} opacity={0.5} />
                         <input
-                            placeholder="搜索用户名..."
+                            placeholder={t('user.search_placeholder')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '100%' }}
                         />
                     </div>
-                    <div className="hint">{filteredUsers.length} 位成员</div>
+                    <div className="hint" style={{ fontSize: '0.85rem' }}>{t('user.member_count', { count: filteredUsers.length })}</div>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'left' }}>
-                            <th style={{ padding: '16px 24px' }}>用户名</th>
-                            <th style={{ padding: '16px 24px' }}>所属部门</th>
-                            <th style={{ padding: '16px 24px' }}>角色</th>
-                            <th style={{ padding: '16px 24px' }}>个人空间</th>
+                            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.username')}</th>
+                            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.department')}</th>
+                            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.role')}</th>
+                            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.personal_space')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -351,15 +390,13 @@ const UserManagement: React.FC = () => {
                                     </div>
                                 </td>
                                 <td style={{ padding: '16px 24px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <Briefcase size={14} opacity={0.5} color="var(--accent-blue)" />
-                                        {u.department_name || '未分配'}
-                                    </div>
+                                    <div className="hint" style={{ fontSize: '0.85rem' }}>{getDeptDisplayName(u.department_name)}</div>
                                 </td>
                                 <td style={{ padding: '16px 24px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <Shield size={14} opacity={0.5} color="var(--accent-blue)" />
-                                        {u.role === 'Admin' ? '系统管理员' : u.role === 'Lead' ? '部门主管' : '普通成员'}
+                                    <div style={{ display: 'inline-flex', padding: '4px 12px', borderRadius: 12, background: 'var(--glass-bg)', fontSize: '0.8rem', fontWeight: 600 }}>
+                                        {u.role === 'Admin' && t('user.role_admin')}
+                                        {u.role === 'Lead' && t('user.role_lead')}
+                                        {u.role === 'Member' && t('user.role_member')}
                                     </div>
                                 </td>
                                 <td style={{ padding: '16px 24px' }}>
@@ -371,7 +408,7 @@ const UserManagement: React.FC = () => {
                                         className="btn-glass"
                                         style={{ fontSize: '0.8rem', padding: '4px 12px', height: 'auto' }}
                                     >
-                                        <Folder size={14} style={{ marginRight: 4 }} /> 查看空间
+                                        <Folder size={14} style={{ marginRight: 4 }} /> {t('user.view_space')}
                                     </button>
                                 </td>
                             </tr>
@@ -385,36 +422,36 @@ const UserManagement: React.FC = () => {
                 isCreating && (
                     <div className="modal-overlay" onClick={() => setIsCreating(false)}>
                         <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
-                            <h3 style={{ marginBottom: 24, fontSize: '1.4rem' }}>创建新账号</h3>
+                            <h3 style={{ marginBottom: 24, fontSize: '1.4rem' }}>{t('user.create_account')}</h3>
                             <form onSubmit={createUser} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                                 <div>
-                                    <label className="hint">用户名</label>
+                                    <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.username_label')}</label>
                                     <input type="text" className="form-control" value={username} onChange={e => setUsername(e.target.value)} required />
                                 </div>
                                 <div>
-                                    <label className="hint">初始密码</label>
+                                    <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.password_label')}<span style={{ marginLeft: 8, opacity: 0.5 }}>({t('user.password_note')})</span></label>
                                     <input type="password" className="form-control" value={password} onChange={e => setPassword(e.target.value)} required />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                     <div>
-                                        <label className="hint">所属部门</label>
+                                        <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.department_label')}</label>
                                         <select className="form-control" value={deptId} onChange={e => setDeptId(e.target.value)}>
-                                            <option value="">未分配</option>
+                                            <option value="">{t('user.unassigned')}</option>
                                             {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="hint">角色</label>
-                                        <select className="form-control" value={role} onChange={e => setRole(e.target.value)}>
-                                            <option value="Member">Member</option>
-                                            <option value="Lead">Lead</option>
-                                            <option value="Admin">Admin</option>
+                                        <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.role_label')}</label>
+                                        <select className="form-control" value={role} onChange={e => setRole(e.target.value as any)}>
+                                            <option value="Member">{t('user.role_member')}</option>
+                                            <option value="Lead">{t('user.role_lead')}</option>
+                                            <option value="Admin">{t('user.role_admin')}</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                                    <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>立即创建</button>
-                                    <button type="button" className="btn-glass" onClick={() => setIsCreating(false)} style={{ flex: 1, justifyContent: 'center' }}>取消</button>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                                    <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{t('user.create_now')}</button>
+                                    <button type="button" className="btn-glass" onClick={() => setIsCreating(false)} style={{ flex: 1, justifyContent: 'center' }}>{t('common.cancel')}</button>
                                 </div>
                             </form>
                         </div>
@@ -438,7 +475,7 @@ const UserManagement: React.FC = () => {
                                             <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}>ID: {selectedUser.id}</span>
                                         </div>
                                         <div className="hint" style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Briefcase size={14} /> {selectedUser.department_name || '无部门'}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Briefcase size={14} /> {selectedUser.department_name ? getDeptDisplayName(selectedUser.department_name) : t('user.no_department')}</span>
                                             <span>•</span>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Shield size={14} /> {selectedUser.role}</span>
                                         </div>
@@ -449,8 +486,9 @@ const UserManagement: React.FC = () => {
                                         <button
                                             onClick={() => setIsEditingInfo(!isEditingInfo)}
                                             className={isEditingInfo ? 'btn-primary' : 'btn-glass'}
+                                            style={{ fontSize: '0.85rem', padding: '8px 14px', whiteSpace: 'nowrap' }}
                                         >
-                                            {isEditingInfo ? <><X size={18} /> 取消编辑</> : <><Settings size={18} /> 编辑账户</>}
+                                            {isEditingInfo ? <><X size={16} /> {t('user.cancel_edit')}</> : <><Settings size={16} /> {t('user.edit_account')}</>}
                                         </button>
                                     )}
                                     <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={24} /></button>
@@ -462,49 +500,54 @@ const UserManagement: React.FC = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                     {isEditingInfo ? (
                                         <div className="fade-in" style={{ background: 'rgba(255,255,255,0.05)', padding: 20, borderRadius: 16, border: '1px solid var(--accent-blue)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><UserCircle size={18} /> 账户运维</h4>
+                                            <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><UserCircle size={18} /> {t('user.account_ops')}</h4>
                                             <div>
-                                                <label className="hint" style={{ fontSize: '0.75rem' }}>修改用户名</label>
+                                                <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.edit')} {t('user.username')}</label>
                                                 <input className="form-control" value={editUsername} onChange={e => setEditUsername(e.target.value)} style={{ marginTop: 6 }} />
                                             </div>
                                             <div>
-                                                <label className="hint" style={{ fontSize: '0.75rem' }}>所属部门</label>
+                                                <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.department')}</label>
                                                 <select className="form-control" value={editDeptId} onChange={e => setEditDeptId(e.target.value)} style={{ marginTop: 6 }}>
-                                                    <option value="">未分配</option>
+                                                    <option value="">{t('user.unassigned')}</option>
                                                     {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="hint" style={{ fontSize: '0.75rem' }}>职能角色</label>
+                                                <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.role')}</label>
                                                 <select className="form-control" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ marginTop: 6 }}>
-                                                    <option value="Member">Member</option>
-                                                    <option value="Lead">Lead</option>
-                                                    <option value="Admin">Admin</option>
+                                                    <option value="Member">{t('user.role_member')}</option>
+                                                    <option value="Lead">{t('user.role_lead')}</option>
+                                                    <option value="Admin">{t('user.role_admin')}</option>
                                                 </select>
                                             </div>
                                             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 16 }}>
-                                                <label className="hint" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>重置登录密码</label>
+                                                <label className="hint" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>{t('user.reset_password')}</label>
                                                 <div style={{ position: 'relative', marginTop: 6 }}>
-                                                    <input type="password" placeholder="留空则不修改" className="form-control" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                                    <input type="password" placeholder={t('user.password_placeholder')} className="form-control" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                                                     <Key size={14} style={{ position: 'absolute', right: 12, top: 16, opacity: 0.3 }} />
                                                 </div>
                                             </div>
-                                            <button className="btn-primary" style={{ marginTop: 10, justifyContent: 'center' }} onClick={handleUpdateUser}>
-                                                <Save size={18} /> 保存更改
+                                            {isAdmin && (
+                                                <button className="btn-glass" style={{ fontSize: '0.75rem', padding: '6px 10px' }} onClick={() => setIsGranting(true)}>
+                                                    <Plus size={14} /> {t('user.add_permission')}
+                                                </button>
+                                            )}
+                                            <button className="btn-primary" style={{ marginTop: 10, justifyContent: 'center', fontSize: '0.9rem' }} onClick={handleUpdateUser}>
+                                                <Save size={16} /> {t('user.save_changes')}
                                             </button>
                                         </div>
                                     ) : (
                                         <>
                                             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
-                                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>个人空间 (Members/{selectedUser.username})</div>
+                                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>{t('user.personal_space')} (Members/{selectedUser.username})</div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent-blue)', fontWeight: 600 }}>
-                                                    <Unlock size={14} /> 自动同步授权 (Full)
+                                                    <Unlock size={14} /> {t('user.auto_sync_permissions')} (Full)
                                                 </div>
                                             </div>
                                             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
-                                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>加入时间</div>
+                                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>{t('user.join_date')}</div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                                                    <Clock size={14} opacity={0.5} /> {selectedUser.created_at && !isNaN(new Date(selectedUser.created_at).getTime()) ? format(new Date(selectedUser.created_at), 'yyyy-MM-dd') : '历史数据'}
+                                                    <Clock size={14} opacity={0.5} /> {selectedUser.created_at && !isNaN(new Date(selectedUser.created_at).getTime()) ? format(new Date(selectedUser.created_at), 'yyyy-MM-dd') : t('user.historical_data')}
                                                 </div>
                                             </div>
                                         </>
@@ -514,9 +557,9 @@ const UserManagement: React.FC = () => {
                                 {/* Right Col: Permissions */}
                                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: 20, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                                        <h4 style={{ fontWeight: 800, fontSize: '1.1rem' }}>动态目录授权</h4>
-                                        <button className="btn-primary" onClick={() => setIsGranting(true)}>
-                                            <FolderPlus size={16} /> 增加授权
+                                        <h4 style={{ fontWeight: 800, fontSize: '1.1rem' }}>{t('user.dynamic_auth')}</h4>
+                                        <button className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => setIsGranting(true)}>
+                                            <FolderPlus size={16} /> {t('user.add_auth')}
                                         </button>
                                     </div>
 
@@ -529,10 +572,10 @@ const UserManagement: React.FC = () => {
                                                     </div>
                                                     <div className="hint" style={{ fontSize: '0.75rem', display: 'flex', gap: 12, marginTop: 4 }}>
                                                         <span style={{ color: p.access_type === 'Full' ? 'var(--accent-blue)' : '#aaa', fontWeight: 600 }}>
-                                                            {p.access_type === 'Full' ? '完全控制' : '只读访问'}
+                                                            {p.access_type === 'Full' ? t('user.full_control') : t('user.read_only')}
                                                         </span>
                                                         <span>•</span>
-                                                        <span>{p.expires_at ? `到期: ${format(new Date(p.expires_at), 'yyyy-MM-dd')}` : '永久'}</span>
+                                                        <span>{p.expires_at ? `{t('user.expires_on')}: ${format(new Date(p.expires_at), 'yyyy-MM-dd')}` : t('user.expiry_forever')}</span>
                                                     </div>
                                                 </div>
                                                 <button onClick={() => handleRevokePermission(p.id)} style={{ background: 'rgba(255,59,48,0.1)', border: 'none', color: '#ff3b30', cursor: 'pointer', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}>
@@ -542,7 +585,7 @@ const UserManagement: React.FC = () => {
                                         )) : (
                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3, padding: 40 }}>
                                                 <Lock size={48} style={{ marginBottom: 12 }} />
-                                                <p>暂无手动授权项目</p>
+                                                <p>{t('user.no_manual_auth')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -558,24 +601,24 @@ const UserManagement: React.FC = () => {
                 isGranting && (
                     <div className="modal-overlay" style={{ zIndex: 2100 }} onClick={() => setIsGranting(false)}>
                         <div className="modal-content scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
-                            <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>新增访问授权</h3>
+                            <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>{t('user.add_access_auth')}</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                                 <div>
-                                    <label className="hint">目标目录</label>
+                                    <label className="hint">{t('user.target_directory')}</label>
                                     <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                                         <input
                                             readOnly
                                             value={grantPath}
-                                            placeholder="点击右侧浏览目录..."
+                                            placeholder={t('user.browse_placeholder')}
                                             style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', padding: '12px 14px', borderRadius: 10, color: 'white' }}
                                         />
-                                        <button className="btn-glass" style={{ background: 'var(--accent-blue)', color: 'black', fontWeight: 700 }} onClick={() => { setIsBrowserOpen(true); fetchBrowserFiles(isLead ? currentUser?.department_name || '' : ''); }}>浏览</button>
+                                        <button className="btn-glass" style={{ background: 'var(--accent-blue)', color: 'black', fontWeight: 700 }} onClick={() => { setIsBrowserOpen(true); fetchBrowserFiles(isLead ? currentUser?.department_name || '' : ''); }}>{t('user.browse_button')}</button>
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
                                     <div>
-                                        <label className="hint" style={{ marginBottom: 8, display: 'block' }}>权限类型</label>
+                                        <label className="hint" style={{ marginBottom: 8, display: 'block' }}>{t('user.permission_type')}</label>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                                             <button
                                                 type="button"
@@ -591,9 +634,7 @@ const UserManagement: React.FC = () => {
                                                     background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                                                     fontWeight: grantType === 'Read' ? 700 : 600
                                                 }}
-                                            >
-                                                只读
-                                            </button>
+                                            >{t('permission.read_only')}</button>
                                             <button
                                                 type="button"
                                                 onClick={() => setGrantType('Contribute')}
@@ -608,9 +649,7 @@ const UserManagement: React.FC = () => {
                                                     background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                                                     fontWeight: grantType === 'Contribute' ? 700 : 600
                                                 }}
-                                            >
-                                                贡献
-                                            </button>
+                                            >{t('permission.contribute')}</button>
                                             <button
                                                 type="button"
                                                 onClick={() => setGrantType('Full')}
@@ -625,9 +664,7 @@ const UserManagement: React.FC = () => {
                                                     background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                                                     fontWeight: grantType === 'Full' ? 700 : 600
                                                 }}
-                                            >
-                                                完全
-                                            </button>
+                                            >{t('permission.full')}</button>
                                         </div>
                                         <div style={{
                                             marginTop: '12px',
@@ -639,22 +676,22 @@ const UserManagement: React.FC = () => {
                                             color: 'rgba(255, 255, 255, 0.8)',
                                             lineHeight: 1.5
                                         }}>
-                                            <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--accent-blue)' }}>💡 权限说明</div>
-                                            <div><strong>只读</strong>：仅可查看和下载文件</div>
-                                            <div><strong>贡献</strong>：可上传文件、创建文件夹，但只能修改/删除自己上传的内容</div>
-                                            <div><strong>完全</strong>：可修改/删除任意文件，包括他人上传的内容</div>
+                                            <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--accent-blue)' }}>{t('user.permission_hint')}</div>
+                                            <div><strong>{t('permission.read_only')}</strong>：{t('user.permission_readonly_desc')}</div>
+                                            <div><strong>{t('permission.contribute')}</strong>：{t('user.permission_contribute_desc')}</div>
+                                            <div><strong>{t('permission.full')}</strong>：{t('user.permission_full_desc')}</div>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="hint">有效期</label>
+                                        <label className="hint">{t('user.expiry')}</label>
                                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                            {['7天', '1个月', '永久', '自定义'].map(label => (
+                                            {[t('user.expiry_7days'), t('user.expiry_1month'), t('user.expiry_forever'), t('user.expiry_custom')].map(label => (
                                                 <button
                                                     key={label}
                                                     type="button"
                                                     onClick={() => {
                                                         setExpiryPreset(label);
-                                                        if (label === '自定义' && !grantExpiry) {
+                                                        if (label === t('user.expiry_custom') && !grantExpiry) {
                                                             setGrantExpiry(format(new Date(), 'yyyy-MM-dd'));
                                                         }
                                                     }}
@@ -674,18 +711,18 @@ const UserManagement: React.FC = () => {
                                                 </button>
                                             ))}
                                         </div>
-                                        {expiryPreset === '自定义' && (
+                                        {expiryPreset === t('user.expiry_custom') && (
                                             <div style={{ marginTop: 12 }} className="fade-in">
-                                                <KineDatePicker value={grantExpiry} onChange={setGrantExpiry} />
-                                                <p className="hint" style={{ marginTop: 8, fontSize: '0.85rem' }}>请选择授权失效的具体日期。</p>
+                                                <KineDatePicker value={grantExpiry} onChange={setGrantExpiry} t={t} />
+                                                <p className="hint" style={{ marginTop: 8, fontSize: '0.85rem' }}>{t('user.select_expiry_date')}。</p>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                                    <button className="btn-primary" style={{ flex: 1, height: 48, justifyContent: 'center' }} onClick={handleGrantPermission}>授权生效</button>
-                                    <button className="btn-glass" style={{ flex: 1, height: 48, justifyContent: 'center' }} onClick={() => setIsGranting(false)}>返回</button>
+                                    <button className="btn-primary" style={{ flex: 1, height: 48, justifyContent: 'center' }} onClick={handleGrantPermission}>{t('user.grant_permission_button')}</button>
+                                    <button className="btn-glass" style={{ flex: 1, height: 48, justifyContent: 'center' }} onClick={() => setIsGranting(false)}>{t('common.back')}</button>
                                 </div>
                             </div>
                         </div>
@@ -699,12 +736,12 @@ const UserManagement: React.FC = () => {
                     <div className="modal-overlay" style={{ zIndex: 2200 }} onClick={() => setIsBrowserOpen(false)}>
                         <div className="modal-content fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, minHeight: 460 }}>
                             <div className="modal-header">
-                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Folder size={22} color="var(--accent-blue)" /> 选择授权文件夹</h3>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Folder size={22} color="var(--accent-blue)" /> {t('user.select_folder_title')}</h3>
                                 <button onClick={() => setIsBrowserOpen(false)} style={{ background: 'none', border: 'none', color: 'gray', cursor: 'pointer' }}><X size={24} /></button>
                             </div>
 
                             <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px 16px', borderRadius: 10, marginBottom: 20, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Clock size={14} opacity={0.5} /> <span className="hint">当前路径:</span> <code style={{ color: 'var(--accent-blue)', fontWeight: 700 }}>{browserPath || '/'}</code>
+                                <Clock size={14} opacity={0.5} /> <span className="hint">{t('common.current_path')}</span> <code style={{ color: 'var(--accent-blue)', fontWeight: 700 }}>{browserPath || '/'}</code>
                             </div>
 
                             <div className="custom-scroll" style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
@@ -718,7 +755,7 @@ const UserManagement: React.FC = () => {
                                             fetchBrowserFiles(segments.join('/'));
                                         }}
                                     >
-                                        <ChevronRight size={18} style={{ transform: 'rotate(180deg)', opacity: 0.5 }} /> <span style={{ fontWeight: 600 }}>返回上级...</span>
+                                        <ChevronRight size={18} style={{ transform: 'rotate(180deg)', opacity: 0.5 }} /> <span style={{ fontWeight: 600 }}>{t('user.back_to_parent')}</span>
                                     </div>
                                 )}
 
@@ -738,14 +775,14 @@ const UserManagement: React.FC = () => {
                                             style={{ height: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: 8 }}
                                             onClick={(e) => { e.stopPropagation(); setGrantPath(f.path); setIsBrowserOpen(false); }}
                                         >
-                                            选定
+                                            {t('user.select_folder')}
                                         </button>
                                     </div>
                                 ))}
                                 {browserFiles.filter(f => f.isDirectory).length === 0 && (
                                     <div style={{ textAlign: 'center', padding: 60, opacity: 0.3 }}>
                                         <FolderPlus size={40} style={{ marginBottom: 12 }} />
-                                        <div>该目录下无可用子目录</div>
+                                        <div>{t('user.no_subdirs')}</div>
                                     </div>
                                 )}
                             </div>
@@ -758,19 +795,19 @@ const UserManagement: React.FC = () => {
             {/* Hint Section */}
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 20, borderRadius: 16 }}>
-                    <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Shield size={18} color="var(--accent-blue)" /> 权限说明</h4>
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Shield size={18} color="var(--accent-blue)" /> {t('user.permission_help_title')}</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>系统管理员</div>
-                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>拥有系统所有权限，包括用户管理、部门设置、全局文件访问等。</div>
+                            <div style={{ minWidth: 120, maxWidth: 120, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem', wordWrap: 'break-word' }}>{t('user.role_admin')}</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>{t('user.permission_note_admin')}{t('user.management')}、{t('user.dept_settings')}、{t('user.global_file_access')}{t('user.etc')}。</div>
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>部门主管</div>
-                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>拥有所辖部门文件夹的完全控制权，可查看本部门成员列表。</div>
+                            <div style={{ minWidth: 120, maxWidth: 120, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem', wordWrap: 'break-word' }}>{t('user.role_lead')}</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>{t('user.permission_note_lead')}{t('user.full_control')}{t('user.permission_note_lead_suffix')}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ width: 80, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem' }}>普通成员</div>
-                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>仅拥有个人空间和被授权文件夹的访问权限。</div>
+                            <div style={{ minWidth: 120, maxWidth: 120, fontWeight: 700, color: 'var(--accent-blue)', fontSize: '0.9rem', wordWrap: 'break-word' }}>{t('user.role_member')}</div>
+                            <div className="hint" style={{ flex: 1, fontSize: '0.85rem' }}>{t('user.permission_note_member')}{t('user.personal_space')}{t('user.permission_note_member_suffix')}</div>
                         </div>
                     </div>
                 </div>

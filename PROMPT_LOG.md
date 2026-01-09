@@ -1,20 +1,47 @@
-# Prompt Log (Reverse Chronological)
+# Prompt Log - Longhorn项目历史记录
 
-## 如何恢复版本
-1. 复制对应任务的 **版本ID** (Git Commit Hash)。
-2. 在终端执行命令：`git checkout <版本ID>`。
-3. 若要回到最新版本，执行：`git checkout main`。
+本文档记录Longhorn项目开发过程中的所有用户prompt，用于追踪需求和问题演进。
 
-| 日期 | 任务名称 | 版本ID | 状态 | 修改说明 |
-| :--- | :--- | :--- | :--- | :--- |
-| 2026-01-05 19:15 | *全局加载状态与路由修复* | `f727054` | `Done` | 全面覆盖网络操作的 Loading 状态（生成链接/批量操作）；修复路由路径叠加 BUG；优化部署脚本自动解决冲突。 |
-| 2026-01-04 11:20 | *Dashboard 布局与后台优化* | `pending` | `Done` | 修复 Dashboard 卡片 3+1 布局问题及按钮可见性；优化 TopBar 用户信息字体和间距；实现 Admin Panel 标签持久化；创建 SystemDashboard 组件；重命名部门名称并同步全系统。 |
-| 2026-01-02 23:45 | *终端发布与导航增强* | `pending` | `Done` | 开发 publish.sh 脚本、集成“个人空间”侧边栏入口及动态面包屑。 |
-| 2026-01-02 23:25 | *回收站与部门逻辑大修* | `73efda3` | `Done` | 重构回收站 UI、修复跨磁盘删除 BUG、物理合并冗余部门目录。 |
-| 2026-01-02 23:20 | *服务清单细化* | `b3064bf` | `Done` | 在 FULL_DEPLOYMENT_RECAP.md 中补充 Mac mini 与 MBAir 的关键服务运行清单。 |
-| 2026-01-02 23:15 | *技术架构复盘可视化* | `54f6aaf` | `Done` | 在 FULL_DEPLOYMENT_RECAP.md 中新增全系统 Mermaid 架构图与各组件角色定义。 |
-| 2026-01-02 23:05 | *日志与发布体系构建* | `3dfdf0e` | `Done` | 建立 CHANGELOG.md 与 PROMPT_LOG.md 双日志闭环，实现“一键发布”功能。 |
-| 2026-01-02 21:55 | *回收站功能 (30天保留)* | `dcc212c` | `Done` | 实现软删除机制、30天自动清理、回收站 UI 界面及 GitHub 独立仓库关联。 |
-| 2026-01-02 11:35 | *黑屏故障修复* | `4c21c25` | `Done` | 修正 App.tsx 样式属性错误、删除冗余导入并同步数据库角色大小写。 |
-| 2026-01-02 11:15 | *权限系统与上传优化* | `c2a74d2` | `Done` | 实现 yyyymmdd_ 重命名、Admin/Lead/Member 角色引擎、部门隔离及动态授权。 |
-| 2026-01-02 10:25 | *iOS 风格按钮精修* | `5a9bf3e` | `Done` | 精修了缩略图和列表视图中的 "More" 按钮，引入 iOS 风格毛玻璃背景和悬停缩放反馈。 |
+---
+
+## 2026-01-09
+
+### 09:30 - FileBrowser和RecycleBin国际化修复（续）
+```
+问题依然存在
+```
+**附图**: `/Users/Kine/.gemini/antigravity/brain/e669b095-be00-4cbe-99a1-8a03fa89b5db/uploaded_image_1767922211753.png`
+显示：FileBrowser表头仍显示"NAME", "UPLOADER", "UPLOAD DATE", "SIZE", "ACCESS COUNT"（英文）
+
+### 09:22 - FileBrowser中文翻译仍未生效
+```
+仍然如此。
+```
+说明：验证编译后JS包含中文翻译，但浏览器显示仍为英文
+
+### 09:15 - FileBrowser和RecycleBin国际化修复
+```
+中文时候，文件浏览器表头成英文了？还有一些按键也是英文，upload, delete, 菜单的delete都是。你仔细看看。修改好
+```
+**附图**: 
+- `/Users/Kine/.gemini/antigravity/brain/e669b095-be00-4cbe-99a1-8a03fa89b5db/uploaded_image_0_1767892001581.png`
+- `/Users/Kine/.gemini/antigravity/brain/e669b095-be00-4cbe-99a1-8a03fa89b5db/uploaded_image_1_1767892001581.png`
+
+显示：FileBrowser表头"NAME"/"UPLOADER"等全为英文，"Selected 2 items", "Batch Delete", "Upload", "Share", "Delete"等按钮也是英文
+
+### 01:04 - RecycleBin时间locale问题
+```
+而不是"3 天前"、"5 天前"。"没有搞定
+无痕窗口打开仍然如此
+```
+**附图**: `/Users/Kine/.gemini/antigravity/brain/e669b095-be00-4cbe-99a1-8a03fa89b5db/uploaded_image_1767891386903.png`
+显示：德语模式下，回收站时间仍显示"3 天前"、"5 天前"而非"vor 3 Tagen"
+
+---
+
+## 2026-01-08
+
+### 14:16:59 - 搜索页面全中文
+```
+搜索页面，全中文。
+```

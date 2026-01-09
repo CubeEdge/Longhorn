@@ -1,8 +1,8 @@
-export const RecentPage = () => (
-    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <h2>🕐 最近访问</h2>
-        <p>即将推出...</p>
-    </div>
-);
+import React from 'react';
+import FileBrowser from './FileBrowser';
+
+const RecentPage: React.FC = () => {
+    return <FileBrowser mode="recent" />;
+};
 
 export default RecentPage;

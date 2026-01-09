@@ -102,13 +102,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const [shareItem, setShareItem] = useState<any>(null);
     const [sharePassword, setSharePassword] = useState('');
     const [shareExpires, setShareExpires] = useState('7');
-    const [shareLanguage, setShareLanguage] = useState<'zh' | 'en' | 'de' | 'ja'>('zh');
     const [shareResult, setShareResult] = useState<{ url: string, password: string, expires: string } | null>(null);
     const [showBatchShareDialog, setShowBatchShareDialog] = useState(false);
     const [batchShareName, setBatchShareName] = useState('');
     const [batchSharePassword, setBatchSharePassword] = useState('');
     const [batchShareExpires, setBatchShareExpires] = useState('7');
-    const [batchShareLanguage, setBatchShareLanguage] = useState<'zh' | 'en' | 'de' | 'ja'>('zh');
     const [starredFiles, setStarredFiles] = useState<string[]>([]);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isSharing, setIsSharing] = useState(false);
@@ -203,7 +201,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setStarredFiles([...starredFiles, item.path]);
-                alert(`⭐ ${t('starred.added')}`);
+                alert('⭐ 已添加星标');
             }
         } catch (err: any) {
             console.error('Failed to toggle star:', err);
@@ -362,12 +360,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 { path: filePath },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            alert(t('starred.added'));
+            alert('已添加星标！');
         } catch (err: any) {
             if (err.response?.status === 409) {
-                alert(t('starred.already_starred'));
+                alert('该文件已经被星标');
             } else {
-                alert(t('starred.add_failed'));
+                alert('添加星标失败');
             }
         }
     };
@@ -410,7 +408,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 const failCount = res.data.failedItems.length;
                 alert(`⚠️ 操作部分完成\n\n✅ 成功删除: ${successCount} 个\n❌ 删除失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可删除)`);
             } else {
-                alert(`✅ ${t('message.delete_success')}`);
+                alert('✅ 已全部删除');
             }
 
             setSelectedPaths([]);
@@ -426,7 +424,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleBulkMove = async (targetPath?: string) => {
         const finalTarget = targetPath || moveTargetDir;
         if (!finalTarget) {
-            alert(t('modal.select_folder_prompt'));
+            alert("请选择目标文件夹");
             return;
         }
 
@@ -444,7 +442,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 const failCount = res.data.failedItems.length;
                 alert(`⚠️ 操作部分完成\n\n✅ 成功移动: ${successCount} 个\n❌ 移动失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可移动)`);
             } else {
-                alert(t('alert.move_success'));
+                alert('✅ 已全部成功移动');
             }
 
             fetchFiles(currentPath);
@@ -461,7 +459,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleBatchDownload = async () => {
         if (selectedPaths.length === 0) {
-            alert(t('alert.select_files_download'));
+            alert('请先选择要下载的文件');
             return;
         }
 
@@ -504,7 +502,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleBatchShare = async () => {
         if (selectedPaths.length === 0) {
-            alert(t('alert.select_files_share'));
+            alert('请先选择要分享的文件');
             return;
         }
 
@@ -512,13 +510,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         setIsSharing(true);
 
         try {
-            const response = await axios.post('/api/share-collection', {
-                paths: selectedPaths,
-                name: batchShareName || `Share_${new Date().toISOString().split('T')[0]}`,
-                password: batchSharePassword || null,
-                expiresIn: batchShareExpires === 'never' ? null : parseInt(batchShareExpires),
-                language: batchShareLanguage
-            },
+            const response = await axios.post('/api/share-collection',
+                {
+                    paths: selectedPaths,
+                    name: batchShareName || t('share.default_name', { date: new Date().toLocaleDateString() }),
+                    password: batchSharePassword || null,
+                    expiresIn: batchShareExpires === 'never' ? null : parseInt(batchShareExpires)
+                },
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
@@ -561,7 +559,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 }
 
 
-                setShareResult({ url: response.data.shareUrl, password: batchSharePassword || "", expires: batchShareExpires === "never" ? t('share.expires_forever') : t('time.days_count', { days: batchShareExpires }) });
+                setShareResult({ url: response.data.shareUrl, password: batchSharePassword || "", expires: batchShareExpires === "never" ? t('share.expires_forever') : `${batchShareExpires}天` });
                 setShowBatchShareDialog(false);
                 setSelectedPaths([]);
                 setBatchShareName('');
@@ -604,8 +602,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             const res = await axios.post('/api/shares', {
                 path: shareItem.path,
                 password: sharePassword || null,
-                expiresIn: shareExpires === 'never' ? null : parseInt(shareExpires),
-                language: shareLanguage
+                expiresIn: shareExpires === 'never' ? null : parseInt(shareExpires)
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -614,7 +611,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 setShareResult({
                     url: res.data.shareUrl,
                     password: sharePassword || '',
-                    expires: shareExpires === 'never' ? t('share.expires_forever') : t('time.days_count', { days: shareExpires })
+                    expires: shareExpires === 'never' ? '永久' : `${shareExpires}天`
                 });
                 setShowShareDialog(false);
                 setSharePassword('');
@@ -690,10 +687,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         {[
-                            { icon: Download, label: t('action.download'), onClick: handleBatchDownload },
-                            { icon: Star, label: t('action.star'), onClick: () => selectedPaths.forEach(async (path) => { const file = files.find(f => f.path === path); if (file) await handleStar(file); }) },
+                            { icon: Download, label: '下载', onClick: handleBatchDownload },
+                            { icon: Star, label: '星标', onClick: () => selectedPaths.forEach(async (path) => { const file = files.find(f => f.path === path); if (file) await handleStar(file); }) },
                             {
-                                icon: Share2, label: t('action.share'), onClick: () => {
+                                icon: Share2, label: '分享', onClick: () => {
                                     setShowBatchShareDialog(true);
                                     const now = new Date();
                                     const dateStr = now.getFullYear() +
@@ -702,7 +699,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     setBatchShareName(dateStr);
                                 }
                             },
-                            { icon: Move, label: t('action.move'), onClick: () => setIsMoveModalOpen(true) }
+                            { icon: Move, label: '移动', onClick: () => setIsMoveModalOpen(true) }
                         ].map((action, idx) => (
                             <button
                                 key={idx}
@@ -739,7 +736,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     }
                                 }}
                             >
-                                {isProcessing && action.label === t('action.download') ? <div className="loading-spinner-sm" style={{ width: 14, height: 14 }}></div> : <action.icon size={16} strokeWidth={2.5} color="var(--accent-blue)" />} {action.label}
+                                {isProcessing && action.label === '下载' ? <div className="loading-spinner-sm" style={{ width: 14, height: 14 }}></div> : <action.icon size={16} strokeWidth={2.5} color="var(--accent-blue)" />} {action.label}
                             </button>
                         ))}
                         <button
@@ -832,11 +829,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             // Map department codes to full names
                                             let displayName = decodeURIComponent(part);
                                             if (idx === 0 && part.length <= 2) {
-                                                // First level with 2-letter code - use translations
+                                                // First level with 2-letter code
                                                 const deptMap: { [key: string]: string } = {
-                                                    'OP': `${t('dept.OP')} (OP)`,
-                                                    'MS': `${t('dept.MS')} (MS)`,
-                                                    'RD': `${t('dept.RD')} (RD)`,
+                                                    'OP': '运营部 (OP)',
+                                                    'MS': '市场部 (MS)',
+                                                    'RD': '研发部 (RD)',
+                                                    'GE': '通用台面 (GE)'
                                                 };
                                                 displayName = deptMap[part] || displayName;
                                             }
@@ -892,7 +890,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     String(now.getMonth() + 1).padStart(2, '0') +
                                     String(now.getDate()).padStart(2, '0');
                                 setNewFolderName(dateStr);
-                            }} title={t("action.new_folder")}>
+                            }} title="新建文件夹">
                                 <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
                             </button>
                             <button className="btn-primary" onClick={handleUploadClick} disabled={uploading}>
@@ -1066,7 +1064,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         }}
                     >
                         <div className="context-menu-item" onClick={() => { setPreviewFile(menuAnchor.file); setMenuAnchor(null); }}>
-                            <Info size={16} strokeWidth={2.5} />{t('menu.show_info')}
+                            <Info size={16} color="var(--accent-blue)" /> 显示简介
                         </div>
                         <a
                             href={`/preview/${menuAnchor.file.path}`}
@@ -1075,11 +1073,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             style={{ textDecoration: 'none' }}
                             onClick={() => { recordAccess(menuAnchor.file); setMenuAnchor(null); }}
                         >
-                            <Download size={16} strokeWidth={2.5} />{t('menu.download_copy')}
+                            <Download size={16} color="var(--accent-blue)" /> 下载副本...
                         </a>
                         <div className="context-menu-separator" />
                         <div className="context-menu-item" onClick={() => { handleStar(menuAnchor.file); setMenuAnchor(null); }}>
-                            <Star size={16} strokeWidth={2.5} />{t('menu.add_star')}
+                            <Star size={16} color="var(--accent-blue)" /> 添加星标
                         </div>
                         <div className="context-menu-item" onClick={() => handleShare(menuAnchor.file)}>
                             <Share2 size={16} color="var(--accent-blue)" />{t('common.share')}</div>
@@ -1088,7 +1086,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             setIsMoveModalOpen(true);
                             setMenuAnchor(null);
                         }}>
-                            <Move size={16} color="var(--accent-blue)" /> {t("menu.move_to")}
+                            <Move size={16} color="var(--accent-blue)" /> 移动到...
                         </div>
                         {canWrite && (
                             <>
@@ -1188,7 +1186,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                         >
                             <Move size={16} />
-                            {t('menu.move_to')}
+                            移动到...
                         </button>
                     </div>
                 )
@@ -1202,7 +1200,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                                     <Link2 size={24} color="var(--accent-blue)" />
-                                    {t('share.create_link_title')}
+                                    创建分享链接
                                 </h3>
                                 <button
                                     onClick={() => setShowShareDialog(false)}
@@ -1236,13 +1234,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
                             <div style={{ marginBottom: '16px' }}>
                                 <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    {t('share.password_label')} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
+                                    访问密码 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={sharePassword}
                                     onChange={(e) => setSharePassword(e.target.value)}
-                                    placeholder={t('share.password_placeholder')}
+                                    placeholder="留空则无需密码"
                                     style={{
                                         width: '100%',
                                         padding: '12px',
@@ -1328,7 +1326,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const days = prompt(t('share.custom_days_prompt'), '1');
+                                            const days = prompt('请输入有效天数:', '1');
                                             if (days && !isNaN(parseInt(days))) {
                                                 setShareExpires(days);
                                             }
@@ -1352,44 +1350,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             if (['7', '30', 'never'].includes(shareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                         }}
                                     >
-                                        {t('time.custom')}
+                                        自定义
                                     </button>
-                                </div>
-                            </div>
-
-                            {/* Language Selector */}
-                            <div style={{ marginBottom: '24px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '12px', display: 'block', color: 'var(--text-main)' }}>
-                                    {t('share.page_language_label')}
-                                </label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                                    {(['zh', 'en', 'de', 'ja'] as const).map(lang => (
-                                        <button
-                                            key={lang}
-                                            type="button"
-                                            onClick={() => setShareLanguage(lang)}
-                                            style={{
-                                                padding: '12px',
-                                                background: shareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderLeft: shareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontWeight: shareLanguage === lang ? 700 : 600,
-                                                cursor: 'pointer',
-                                                fontSize: '0.9rem',
-                                                transition: 'all 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                            }}
-                                        >
-                                            {t(`lang.${lang}`)}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -1432,12 +1394,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     {isSharing ? (
                                         <>
                                             <div className="loading-spinner-sm" style={{ marginRight: 8 }}></div>
-                                            {t('share.generating')}
+                                            生成中...
                                         </>
                                     ) : (
                                         <>
                                             <Link2 size={18} style={{ marginRight: '6px' }} />
-                                            {t('share.generate_link')}
+                                            生成链接
                                         </>
                                     )}
                                 </button>
@@ -1473,8 +1435,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         </div>
                         <div className="preview-content">{renderPreviewContent(previewFile)}</div>
                         <div className="preview-actions">
-                            <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '16px' }}>
-                                {formatSize(previewFile.size)} • {t('file.uploader')}: {previewFile.uploader || 'unknown'} • {t('file.total_access')}: {previewFile.accessCount || 0}
+                            <div className="hint" style={{ color: 'white', opacity: 0.6 }}>
+                                {formatSize(previewFile.size)} • 上传者: {previewFile.uploader || 'unknown'} • 总访问: {previewFile.accessCount || 0}
                             </div>
                         </div>
                     </div>
@@ -1511,7 +1473,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                                     <Link2 size={24} color="var(--accent-blue)" />
-                                    {t('share.batch_share_title')}
+                                    批量分享
                                 </h3>
                                 <button
                                     onClick={() => setShowBatchShareDialog(false)}
@@ -1530,12 +1492,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             </div>
 
                             <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>{t('browser.selected_count_dynamic', { count: selectedPaths.length })}</div>
+                                <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>{t('browser.selected_count_dynamic')}</div>
                             </div>
 
                             <div style={{ marginBottom: '16px' }}>
                                 <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    {t('share.share_name_label')} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
+                                    分享名称 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
                                 </label>
                                 <input
                                     type="text"
@@ -1557,13 +1519,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
                             <div style={{ marginBottom: '16px' }}>
                                 <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block', color: 'var(--text-main)' }}>
-                                    {t('share.password_label')} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
+                                    访问密码 <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{t('common.optional')}</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={batchSharePassword}
                                     onChange={(e) => setBatchSharePassword(e.target.value)}
-                                    placeholder={t('share.password_placeholder')}
+                                    placeholder="留空则无需密码"
                                     style={{
                                         width: '100%',
                                         padding: '12px',
@@ -1649,7 +1611,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const days = prompt(t('share.custom_days_prompt'), '1');
+                                            const days = prompt('请输入有效天数:', '1');
                                             if (days && !isNaN(parseInt(days))) {
                                                 setBatchShareExpires(days);
                                             }
@@ -1673,44 +1635,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                         }}
                                     >
-                                        {t('time.custom')}
+                                        自定义
                                     </button>
-                                </div>
-                            </div>
-
-                            {/* Language Selector */}
-                            <div style={{ marginBottom: '24px' }}>
-                                <label style={{ fontWeight: 600, marginBottom: '12px', display: 'block', color: 'var(--text-main)' }}>
-                                    {t('share.page_language_label')}
-                                </label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                                    {(['zh', 'en', 'de', 'ja'] as const).map(lang => (
-                                        <button
-                                            key={lang}
-                                            type="button"
-                                            onClick={() => setBatchShareLanguage(lang)}
-                                            style={{
-                                                padding: '12px',
-                                                background: batchShareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderLeft: batchShareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontWeight: batchShareLanguage === lang ? 700 : 600,
-                                                cursor: 'pointer',
-                                                fontSize: '0.9rem',
-                                                transition: 'all 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                            }}
-                                        >
-                                            {t(`lang.${lang}`)}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -1754,10 +1680,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     {isSharing ? (
                                         <>
                                             <div className="loading-spinner-sm" style={{ marginRight: 8 }}></div>
-                                            {t('share.generating')}
+                                            生成中...
                                         </>
                                     ) : (
-                                        t('share.generate_link')
+                                        '生成链接'
                                     )}
                                 </button>
                             </div>

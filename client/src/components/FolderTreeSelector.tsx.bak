@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Folder, ChevronRight, ChevronDown } from 'lucide-react';
-import { useLanguage } from '../i18n/useLanguage';
-import { translatePathSegment } from '../utils/pathTranslator';
 
 interface FolderNode {
     path: string;
@@ -173,7 +171,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                     {!hasChildren && <span style={{ width: '24px' }} />}
                     <Folder size={16} style={{ marginRight: '8px' }} />
                     <span style={{ fontWeight: isSelected ? 600 : 400 }}>
-                        {node.name ? translatePathSegment(node.name, t) : t('modal.root_folder')}
+                        {node.name || t('modal.root_folder')}
                     </span>
                 </div>
                 {isExpanded && hasChildren && (
@@ -336,7 +334,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             opacity: isProcessing ? 0.7 : 1
                         }}
                     >
-                        {isProcessing ? <><div className="loading-spinner-sm" style={{ width: 14, height: 14, borderLeftColor: '#000' }}></div>{t('status.moving')}</> : t('modal.confirm')}
+                        {isProcessing ? <><div className="loading-spinner-sm" style={{ width: 14, height: 14, borderLeftColor: '#000' }}></div>移动中...</> : '确定'}
                     </button>
                 </div>
             </div>

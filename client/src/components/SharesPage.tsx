@@ -389,10 +389,10 @@ export const SharesPage: React.FC = () => {
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
                             {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
                         </div>
-                        <div className="col-name">名称</div>
-                        <div className="col-stats">访问次数</div>
-                        <div className="col-date">创建时间</div>
-                        <div style={{ width: 140, textAlign: 'center' }}>操作</div>
+                        <div className="col-name">{t('label.name')}</div>
+                        <div className="col-stats">{t('label.access_count')}</div>
+                        <div className="col-date">{t('label.created_time')}</div>
+                        <div style={{ width: 140, textAlign: 'center' }}>{t('common.actions')}</div>
                         <div style={{ width: 40 }}></div>
                     </div>
                     {allShares.map((item) => {
@@ -551,7 +551,7 @@ export const SharesPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                     <Eye size={18} color="var(--accent-blue)" />
                                     <div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>访问次数</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('label.access_count')}</div>
                                         <div style={{ fontWeight: 600 }}>{detailShare.access_count || 0} 次</div>
                                     </div>
                                 </div>

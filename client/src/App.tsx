@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
-  Users,
   Share2,
   LogOut,
-  HardDrive,
   Camera,
   Film,
   Code,
   Box,
   Menu,
   Star,
-  Clock,
   Trash2,
   User,
   Network
 } from 'lucide-react';
+import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
 import { useAuthStore } from './store/useAuthStore';
 import FileBrowser from './components/FileBrowser';
@@ -30,11 +28,12 @@ import MemberSpacePage from './components/MemberSpacePage';
 import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
+import { DailyWordBadge } from './components/DailyWord';
 
 import ShareCollectionPage from './components/ShareCollectionPage';
 
 // Main Layout Component for authenticated users
-const MainLayout: React.FC<{ user: any, logout: () => void }> = ({ user, logout }) => {
+const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -47,7 +46,6 @@ const MainLayout: React.FC<{ user: any, logout: () => void }> = ({ user, logout 
 
       <Sidebar
         role={user.role}
-        onLogout={logout}
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -63,7 +61,7 @@ const MainLayout: React.FC<{ user: any, logout: () => void }> = ({ user, logout 
 };
 
 const App: React.FC = () => {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   return (
     <Router>
@@ -79,7 +77,7 @@ const App: React.FC = () => {
           (!user || typeof user !== 'object' || !user.role) ? (
             <Login />
           ) : (
-            <MainLayout user={user} logout={logout} />
+            <MainLayout user={user} />
           )
         }>
           <Route path="/" element={<HomeRedirect user={user} />} />
@@ -121,10 +119,11 @@ const App: React.FC = () => {
   );
 };
 
-const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, onClose: () => void }> = ({ role, onLogout, isOpen, onClose }) => {
+const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> = ({ role, isOpen, onClose }) => {
   const location = useLocation();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
+  const { t } = useLanguage();
 
   React.useEffect(() => {
     const fetchDepts = async () => {
@@ -144,64 +143,52 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
     }
   }, [token]);
 
-  const deptCodeMap: { [key: string]: string } = {
-    '市场部 (MS)': 'MS',
-    '运营部 (OP)': 'OP',
-    '研发部 (RD)': 'RD',
-    '通用台面 (GE)': 'GE'
-  };
-
+  // Dept Icons Map (key is the dept CODE)
   const deptIcons: { [key: string]: any } = {
     'MS': Camera,
     'OP': Film,
     'RD': Code,
-    'GE': Box
+    'RE': Box
   };
 
-  const menuItems = [
-    { path: '/personal', label: '个人空间', icon: User },
-    { path: '/files', label: '所有文件', icon: HardDrive },
-    { path: '/recent', label: '最近访问', icon: Clock },
-    { path: '/starred', label: '星标文件', icon: Star },
-  ];
+  // Helper to extract dept code safely
+  const getDeptCode = (name: string): string => {
+    // 1. Try to extract code from parentheses, e.g., "Market (MS)" -> "MS"
+    const match = name.match(/\(([A-Z]+)\)/);
+    if (match) return match[1];
 
-  // Add accessible departments
-  accessibleDepts.forEach(dept => {
-    const code = deptCodeMap[dept.name];
-    if (code) {
-      menuItems.push({
-        path: `/dept/${code}`,
-        label: dept.name,
-        icon: deptIcons[code] || Box
-      });
+    // 2. If name itself is short uppercase (like "MS"), use it
+    if (/^[A-Z]{2,3}$/.test(name)) return name;
+
+    // 3. Fallback map for known Chinese names (Legacy support)
+    const legacyMap: { [key: string]: string } = {
+      '市场部': 'MS', '运营部': 'OP', '研发部': 'RD', '通用台面': 'RE'
+    };
+    // Check if name contains these keywords
+    for (const key in legacyMap) {
+      if (name.includes(key)) return legacyMap[key];
     }
-  });
 
-  menuItems.push(
-    { path: '/shared', label: '共享链接管理', icon: Share2 },
-    { path: '/recycle', label: '回收站', icon: Trash2 }
-  );
-
-  if (role === 'Admin') {
-    menuItems.push({ path: '/admin', label: '系统后台', icon: Users });
-  }
+    // 4. Ultimate fallback: use the name itself (URL encoded later naturally)
+    return name;
+  };
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
-        <h2 className="sidebar-title">Longhorn</h2>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>像空气一样自由流动</p>
+        <h2 className="sidebar-title">{t('app.name')}</h2>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t('app.slogan')}</p>
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Quick Access */}
         <Link to="/starred" className={`sidebar-item ${location.pathname === '/starred' ? 'active' : ''}`} onClick={onClose}>
-          <Star size={20} />
-          <span>星标文件</span>
+          <Star size={18} />
+          <span>{t('sidebar.favorites')}</span>
         </Link>
         <Link to="/shares" className={`sidebar-item ${location.pathname === '/shares' ? 'active' : ''}`} onClick={onClose}>
-          <Share2 size={20} />
-          <span>我的分享</span>
+          <Share2 size={18} />
+          <span>{t('share.my_shares')}</span>
         </Link>
 
         {/* Divider */}
@@ -209,8 +196,8 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
 
         {/* Personal Space */}
         <Link to="/personal" className={`sidebar-item ${location.pathname === '/personal' ? 'active' : ''}`} onClick={onClose}>
-          <User size={20} />
-          <span>个人空间</span>
+          <User size={18} />
+          <span>{t('sidebar.personal')}</span>
         </Link>
 
         {/* Divider */}
@@ -218,13 +205,22 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
 
         {/* Departments */}
         {accessibleDepts.map((dept: any) => {
-          const code = deptCodeMap[dept.name];
-          const Icon = code ? deptIcons[code] : Box;
-          const isActive = location.pathname.startsWith(`/dept/${code}`);
+          const code = getDeptCode(dept.name);
+          const Icon = deptIcons[code] || Box;
+
+          // Translation Logic:
+          // 1. Try to get translation for "dept.CODE"
+          const transKey = `dept.${code}`;
+          const translated = t(transKey as any);
+          // 2. If translation exists (and isn't just the key), format as "Name (CODE)"
+          // 3. Otherwise fall back to original database name (e.g. "Custom Dept (CD)")
+          const displayName = translated !== transKey ? `${translated} (${code})` : dept.name;
+
+          const isActive = location.pathname.startsWith(`/dept/${code}`) || location.pathname.includes(encodeURIComponent(code));
           return (
             <Link key={dept.name} to={`/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''}`} onClick={onClose}>
               <Icon size={20} />
-              <span>{dept.name}</span>
+              <span>{displayName}</span>
             </Link>
           );
         })}
@@ -234,8 +230,8 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
           <>
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
             <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
-              <Users size={20} />
-              <span>系统后台</span>
+              <Network size={18} />
+              <span>{t('sidebar.system_admin')}</span>
             </Link>
           </>
         )}
@@ -246,7 +242,7 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
             <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''}`} onClick={onClose}>
               <Network size={20} />
-              <span>部门管理</span>
+              <span>{t('admin.dept_manage')}</span>
             </Link>
           </>
         )}
@@ -256,16 +252,9 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
         <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
         <Link to="/recycle-bin" className={`sidebar-item ${location.pathname === '/recycle-bin' ? 'active' : ''}`} onClick={onClose}>
           <Trash2 size={20} />
-          <span>回收站</span>
+          <span>{t('browser.recycle')}</span>
         </Link>
       </nav>
-
-      <div style={{ padding: '0 24px 24px' }}>
-        <button onClick={onLogout} className="sidebar-item" style={{ background: 'none', border: 'none', width: '100%', padding: '10px 0' }}>
-          <LogOut size={20} />
-          <span>退出登录</span>
-        </button>
-      </div>
     </aside>
   );
 };
@@ -273,6 +262,7 @@ const Sidebar: React.FC<{ role: string, onLogout: () => void, isOpen: boolean, o
 // User Stats Card Component
 const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const { token } = useAuthStore();
+  const { t } = useLanguage();
   const [stats, setStats] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -330,17 +320,17 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>上传文件</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_files')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{displayStats.uploadCount}</div>
       </div>
       <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>存储</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_storage')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatBytes(displayStats.storageUsed)}</div>
       </div>
       <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>分享</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_shares')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{displayStats.shareCount || 0}</div>
       </div>
     </div>
@@ -350,9 +340,27 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 
 const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenuClick }) => {
   const navigate = useNavigate();
+  const { logout } = useAuthStore();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { language: currentLanguage, setLanguage, t } = useLanguage();
 
-  // Removed unused crumbs and shouldHideBreadcrumb to fix build errors.
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
+  const handleLogout = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    logout();
+  };
 
   return (
     <header className="top-bar">
@@ -362,6 +370,11 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
         </button>
 
         <UserStatsCard onClick={() => navigate('/dashboard')} />
+      </div>
+
+      {/* Center: Daily Word */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        <DailyWordBadge />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
@@ -392,16 +405,27 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
         </button>
 
         <div
+          ref={dropdownRef}
           className="hidden-mobile-flex"
-          onClick={() => navigate('/dashboard')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 12px', borderRadius: '10px', transition: 'background 0.2s' }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          onClick={() => setShowDropdown(!showDropdown)}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '6px 12px',
+            borderRadius: '10px',
+            transition: 'background 0.2s',
+            position: 'relative',
+            background: showDropdown ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+          }}
         >
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
-          <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
-            {user.role === 'Admin' ? '系统管理员' : user.role === 'Lead' ? '部门主管' : '普通用户'}
-          </span>
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
+            <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
+              {user.role === 'Admin' ? t('role.admin') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
+            </span>
+          </div>
           <div style={{
             width: 36,
             height: 36,
@@ -417,6 +441,80 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           }}>
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
+
+          {/* User Dropdown Menu */}
+          {showDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 8,
+              background: 'rgba(28, 28, 30, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '6px',
+              minWidth: '160px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              zIndex: 9999,
+              backdropFilter: 'blur(20px)',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                marginBottom: '4px'
+              }}>
+                {['zh', 'en', 'de', 'ja'].map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setLanguage(lang as any);
+                      setShowDropdown(false);
+                    }}
+                    style={{
+                      background: currentLanguage === lang ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)',
+                      color: currentLanguage === lang ? '#000' : 'rgba(255,255,255,0.8)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    {lang === 'zh' ? t('lang.zh_short') : lang === 'en' ? 'En' : lang === 'de' ? 'De' : 'Ja'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#FF453A',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <LogOut size={16} />
+                {t('auth.logout')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
