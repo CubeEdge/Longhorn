@@ -866,14 +866,26 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
                                             // Map department codes to full names
                                             let displayName = decodeURIComponent(part);
-                                            if (idx === 0 && part.length <= 2) {
-                                                // First level with 2-letter code - use translations
+
+                                            // Check if this is a top-level department folder (either code 'OP' or full name '运营部 (OP)')
+                                            if (idx === 0) {
                                                 const deptMap: { [key: string]: string } = {
                                                     'OP': `${t('dept.OP')} (OP)`,
                                                     'MS': `${t('dept.MS')} (MS)`,
                                                     'RD': `${t('dept.RD')} (RD)`,
                                                 };
-                                                displayName = deptMap[part] || displayName;
+
+                                                // 1. Try direct code match
+                                                if (deptMap[part]) {
+                                                    displayName = deptMap[part];
+                                                }
+                                                // 2. Try extracting code from "Name (CODE)" format
+                                                else {
+                                                    const match = displayName.match(/\(([A-Z]{2})\)$/);
+                                                    if (match && deptMap[match[1]]) {
+                                                        displayName = deptMap[match[1]];
+                                                    }
+                                                }
                                             }
 
                                             // Calculate path up to this segment
