@@ -9,6 +9,9 @@ export const translations = {
         'app.slogan': '像空气一样自由流动',
 
         // Actions
+        'common.select_all': '全选',
+        'browser.batch_delete': '批量删除',
+        'status.processing': '处理中',
         'action.download': '下载',
         'action.download_all': '下载全部',
         'action.share': '分享',
@@ -386,9 +389,7 @@ export const translations = {
         'starred.view_preview': '查看/预览',
         'starred.unstar': '取消星标',
 
-        // Additional Common keys
         'common.motto': '像空气一样自由流动',
-        'common.select_all': '全选',
         'common.download_file': '下载文件',
         'common.personal_space': '个人空间',
 
@@ -401,7 +402,6 @@ export const translations = {
         'starred.list_view': '列表视图',
 
         // Browser keys
-        'browser.batch_delete': '批量删除',
 
         // Share keys
         'share.items': '项',
@@ -1013,6 +1013,7 @@ export const translations = {
         'dashboard.loading': 'Loading...',
         'dashboard.quick_actions': 'Quick Actions',
         'dashboard.retry': 'Retry',
+        'status.processing': 'Processing',
         'dashboard.role_admin': 'Admin',
         'dashboard.role_user': 'User',
         'dashboard.search_files': 'Search Files',
@@ -1595,6 +1596,7 @@ export const translations = {
         'dashboard.loading': 'Wird geladen...',
         'dashboard.quick_actions': 'Schnellaktionen',
         'dashboard.retry': 'Wiederholen',
+        'status.processing': 'Verarbeitung',
         'dashboard.role_admin': 'Administrator',
         'dashboard.role_user': 'Benutzer',
         'dashboard.search_files': 'Dateien suchen',
@@ -2179,6 +2181,7 @@ export const translations = {
         'dashboard.loading': '読み込み中...',
         'dashboard.quick_actions': 'クイックアクション',
         'dashboard.retry': '再試行',
+        'status.processing': '処理中',
         'dashboard.role_admin': '管理者',
         'dashboard.role_user': 'ユーザー',
         'dashboard.search_files': 'ファイルを検索',

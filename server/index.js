@@ -190,6 +190,8 @@ const upload = multer({ storage });
 
 // Database Setup
 const db = new Database(DB_PATH);
+// Enable WAL mode for better concurrency during uploads
+db.pragma('journal_mode = WAL');
 db.exec(`
   CREATE TABLE IF NOT EXISTS departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -599,6 +601,7 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
 
 // Upload Route
 app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
+    const receiveTime = Date.now();
     const requestedPath = req.query.path || '';
     let subPath = resolvePath(requestedPath);
 
@@ -623,9 +626,16 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
 
     req.files.forEach(file => {
         const itemPath = path.join(subPath, file.filename);
-        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploader_id) VALUES (?, ?)').run(itemPath, req.user.id);
+        // Use relative path for DB key to match format
+        const normalizedPath = itemPath.replace(/\\/g, '/');
+
+        db.prepare(`
+            INSERT OR REPLACE INTO file_stats (path, upload_date, uploader_id, access_count, last_access)
+            VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
+        `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
     });
-    console.log(`Uploaded ${req.files.length} files to ${subPath} by user ${req.user.username}`);
+    const uploadTime = Date.now() - receiveTime;
+    console.log(`[Upload] Processed ${req.files.length} files to ${subPath} by ${req.user.username} in ${uploadTime}ms`);
     res.json({ success: true });
 });
 
