@@ -129,7 +129,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
     const fetchDepts = async () => {
       try {
         console.log('[Sidebar] Fetching departments with token:', token?.substring(0, 20) + '...');
-        const res = await axios.get('/api/user/accessible-departments', {
+        const res = await axios.get(`/api/user/accessible-departments?_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         console.log('[Sidebar] Received departments:', res.data);
