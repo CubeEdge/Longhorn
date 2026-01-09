@@ -555,7 +555,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
                 color: 'rgba(255,255,255,0.35)',
                 textAlign: 'center'
               }}>
-                Longhorn v11.3.0
+                Longhorn v{__APP_VERSION__} <span style={{ opacity: 0.6 }}>({__APP_COMMIT__})</span>
               </div>
             </div>
           )}
