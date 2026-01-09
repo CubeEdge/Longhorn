@@ -347,9 +347,10 @@ app.get('/api/status', (req, res) => {
 });
 
 // Thumbnail API - generates and caches small WebP thumbnails for faster loading
-app.get('/api/thumbnail/*', async (req, res) => {
+// Express 5 requires named param pattern instead of just *
+app.get('/api/thumbnail/:filePath(*)', async (req, res) => {
     try {
-        const filePath = decodeURIComponent(req.params[0]);
+        const filePath = decodeURIComponent(req.params.filePath);
         const size = parseInt(req.query.size) || 200; // Default 200px
 
         // Validate file extension
@@ -399,7 +400,7 @@ app.get('/api/thumbnail/*', async (req, res) => {
     } catch (err) {
         console.error('[Thumbnail] Error:', err.message);
         // Fallback to original file if thumbnail generation fails
-        const filePath = decodeURIComponent(req.params[0]);
+        const filePath = decodeURIComponent(req.params.filePath);
         const sourcePath = path.join(DISK_A, filePath);
         if (fs.existsSync(sourcePath)) {
             return res.sendFile(sourcePath);
