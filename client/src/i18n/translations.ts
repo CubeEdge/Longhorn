@@ -1266,43 +1266,9 @@ export const translations = {
         'share.delete_link': 'Delete Share',
     },
     de: {
-
-        // User Roles
-
-
-        // Dashboard
-
-
-
-        'share.generate': 'Link generieren',
-        'share.link_created': 'Freigabe-Link erstellt!',
-
-        // Department Admin
-
-        // Move Dialog
-
-        // Recycl
-
-        // Alert
-        'alert.fill_dept_info': 'Bitte füllen Sie Abteilungsname und Code vollständig aus',
-        'alert.dept_code_format': 'Abteilungscode muss 2-3 Großbuchstaben sein (z.B. MS, HR)',
-
-        // Browser
-        'browser.all_files': 'Alle Dateien',
-        'browser.col_access': 'Zugriffe',
-        'browser.col_date': 'Erstellungsdatum',
-        'browser.col_name': 'Name',
-        'browser.col_size': 'Größe',
-        'browser.col_uploader': 'Hochgeladen von',
-        'browser.create_folder': 'Neuer Ordner',
-        'browser.empty': 'Keine Dateien',
-        'browser.empty_folder': 'Empty folder',
-    },
-    de: {
         // App
         'app.name': 'Longhorn',
         'app.title': 'Longhorn - Dateimanager',
-        'app.slogan': 'Cloud · Auf Knopfdruck',
 
         // Browser
         'browser.empty_folder': 'Ordner ist leer',

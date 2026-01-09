@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Link2, Copy, Trash2, Lock, Eye, MoreHorizontal, File, Check, X, Clock, User, Calendar, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import ShareResultModal from './ShareResultModal';
+import { useTranslation } from 'react-i18next';
 
 interface ShareLink {
     id: number;
@@ -46,6 +47,7 @@ interface UnifiedShareItem {
 }
 
 export const SharesPage: React.FC = () => {
+    const { t } = useTranslation();
     const [shares, setShares] = useState<ShareLink[]>([]);
     const [collections, setCollections] = useState<ShareCollection[]>([]);
     const [loading, setLoading] = useState(true);
