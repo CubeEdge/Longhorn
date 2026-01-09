@@ -93,7 +93,8 @@ const App: React.FC = () => {
           <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Personal & Department Spaces */}
-          <Route path="/personal" element={<FileBrowser key="personal" mode="personal" />} />
+          <Route path="/personal/*" element={<FileBrowser key="personal" mode="personal" />} />
+          <Route path="/personal" element={<FileBrowser key="personal-root" mode="personal" />} />
           <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
           <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
 

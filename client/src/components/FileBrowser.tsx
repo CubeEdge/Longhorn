@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
@@ -70,6 +70,8 @@ interface FileBrowserProps {
 const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const { t } = useLanguage();
     const params = useParams();
+    const navigate = useNavigate();
+    const { user } = useAuthStore();
 
     // Calculate effective path based on router params and mode
     const effectivePath = React.useMemo(() => {
@@ -285,7 +287,23 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         }
     }, [previewFile]);
 
-    const handleFolderClick = (path: string) => fetchFiles(path);
+    const handleFolderClick = (path: string) => {
+        // Handle Personal Space Navigation
+        if (user && path.startsWith(`Members/${user.username}`)) {
+            const prefix = `Members/${user.username}/`;
+            if (path === `Members/${user.username}`) {
+                navigate('/personal');
+            } else {
+                // Ensure we don't end up with /personal/Members/admin/foo
+                const subPath = path.startsWith(prefix) ? path.substring(prefix.length) : path;
+                navigate(`/personal/${subPath}`);
+            }
+            return;
+        }
+
+        // Handle Department/General Navigation
+        navigate(`/dept/${path}`);
+    };
     const handleBack = () => {
         const parts = currentPath.split('/').filter(Boolean);
         parts.pop();
@@ -868,7 +886,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                     <span
                                                         onClick={() => {
                                                             if (!isLast) {
-                                                                fetchFiles(pathUpTo);
+                                                                handleFolderClick(pathUpTo);
                                                             }
                                                         }}
                                                         style={{

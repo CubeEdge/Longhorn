@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Link2, Copy, Trash2, Lock, Eye, MoreHorizontal, File, Check, X, Clock, User, Calendar, Package } from 'lucide-react';
+import { Link2, Copy, Trash2, Lock, Eye, File, Check, X, Clock, User, Calendar, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import ShareResultModal from './ShareResultModal';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface ShareLink {
     id: number;
@@ -47,11 +47,11 @@ interface UnifiedShareItem {
 }
 
 export const SharesPage: React.FC = () => {
-    const { t } = useTranslation();
+    const { t } = useLanguage();
     const [shares, setShares] = useState<ShareLink[]>([]);
     const [collections, setCollections] = useState<ShareCollection[]>([]);
     const [loading, setLoading] = useState(true);
-    const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number; share: ShareLink } | null>(null);
+
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>([]);
     const [shareResult, setShareResult] = useState<{ url: string, password?: string, expires: string } | null>(null);
@@ -155,14 +155,14 @@ export const SharesPage: React.FC = () => {
             setShares(shares.filter(s => s.id !== id));
             setSelectedIds(selectedIds.filter(sid => sid !== id));
             setDetailShare(null);
-            alert('✅ 分享链接已删除');
+            alert(`✅ ${t('my_shares.delete_link_success')}`);
         } catch (err) {
-            alert('❌ 删除失败');
+            alert(`❌ ${t('my_shares.delete_failed')}`);
         }
     };
 
     const deleteCollection = async (id: number) => {
-        if (!confirm('确定要删除此批量分享吗？')) return;
+        if (!confirm(t('my_shares.confirm_delete_collection'))) return;
 
         try {
             await axios.delete(`/api/share-collection/${id}`, {
@@ -170,9 +170,9 @@ export const SharesPage: React.FC = () => {
             });
             setCollections(collections.filter(c => c.id !== id));
             setSelectedCollectionIds(selectedCollectionIds.filter(cid => cid !== id));
-            alert('✅ 批量分享已删除');
+            alert(`✅ ${t('my_shares.collection_deleted')}`);
         } catch (err) {
-            alert('❌ 删除失败');
+            alert(`❌ ${t('my_shares.delete_failed')}`);
         }
     };
 
@@ -191,7 +191,7 @@ export const SharesPage: React.FC = () => {
 
         // Use setTimeout to prevent event bubbling from closing the confirm dialog
         setTimeout(async () => {
-            const confirmed = confirm(`确定要删除选中的 ${totalSelected} 个分享吗？`);
+            const confirmed = confirm(t('my_shares.confirm_bulk_delete', { count: totalSelected }));
             console.log('[bulkDelete] User confirmed:', confirmed);
             if (!confirmed) return;
 
@@ -218,10 +218,10 @@ export const SharesPage: React.FC = () => {
                 setCollections(collections.filter(c => !selectedCollectionIds.includes(c.id)));
                 setSelectedIds([]);
                 setSelectedCollectionIds([]);
-                alert('✅ 已删除选中的分享');
+                alert(`✅ ${t('my_shares.bulk_delete_success')}`);
             } catch (err) {
                 console.error('[bulkDelete] Error:', err);
-                alert('❌ 批量删除失败，请重试');
+                alert(`❌ ${t('my_shares.bulk_delete_failed')}`);
             }
         }, 0);
     };
@@ -231,11 +231,7 @@ export const SharesPage: React.FC = () => {
         return new Date(expiresAt) < new Date();
     };
 
-    const handleOpenMenu = (e: React.MouseEvent, share: ShareLink) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setMenuAnchor({ x: e.clientX, y: e.clientY, share });
-    };
+
 
     const handleRowClick = (share: ShareLink | UnifiedShareItem) => {
         setDetailShare(share);
@@ -302,7 +298,7 @@ export const SharesPage: React.FC = () => {
     }, [shares, collections]);
 
     if (loading) {
-        return <div style={{ padding: '40px', textAlign: 'center' }}>加载中...</div>;
+        return <div style={{ padding: '40px', textAlign: 'center' }}>{t('status.loading')}</div>;
     }
 
     return (
@@ -310,10 +306,10 @@ export const SharesPage: React.FC = () => {
             <div style={{ marginBottom: '32px' }}>
                 <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Link2 size={32} color="var(--accent-blue)" />
-                    我的分享
+                    {t('my_shares.title')}
                 </h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    {shares.length} 个文件分享 · {collections.length} 个批量分享
+                    {t('my_shares.items_count', { count: shares.length, batch: collections.length })}
                 </p>
             </div>
 
@@ -340,7 +336,7 @@ export const SharesPage: React.FC = () => {
                         <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
                             <X size={18} />
                         </button>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>已选中 <span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length + selectedCollectionIds.length}</span> 个项目</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('my_shares.selected_items', { count: selectedIds.length + selectedCollectionIds.length })}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
@@ -371,7 +367,7 @@ export const SharesPage: React.FC = () => {
                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                             }}
                         >
-                            <Trash2 size={16} strokeWidth={2.5} color="var(--accent-blue)" /> 批量删除
+                            <Trash2 size={16} strokeWidth={2.5} color="var(--accent-blue)" /> {t('my_shares.batch_delete_btn')}
                         </button>
                     </div>
                 </div>
@@ -380,8 +376,8 @@ export const SharesPage: React.FC = () => {
             {allShares.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-secondary)' }}>
                     <Link2 size={64} style={{ opacity: 0.3, marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>还没有分享链接</h3>
-                    <p>在文件浏览器中右键文件，选择"分享"</p>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{t('my_shares.no_shares_title')}</h3>
+                    <p>{t('my_shares.no_shares_desc')}</p>
                 </div>
             )}
 
@@ -447,18 +443,18 @@ export const SharesPage: React.FC = () => {
                                             gap: '4px'
                                         }}
                                     >
-                                        <Copy size={14} /> 复制
+                                        <Copy size={14} /> {t('my_shares.copy')}
                                     </button>
                                 </div>
                                 <div className="list-more-btn" onClick={(e) => {
+                                    e.stopPropagation();
                                     if (isFile) {
-                                        handleOpenMenu(e, { ...item, file_path: item.file_path!, share_token: item.share_token!, has_password: item.has_password! } as ShareLink);
+                                        deleteShare(item.id);
                                     } else {
-                                        e.stopPropagation();
                                         deleteCollection(item.id);
                                     }
                                 }}>
-                                    {isFile ? <MoreHorizontal size={18} /> : <Trash2 size={18} />}
+                                    <Trash2 size={18} color="var(--text-secondary)" />
                                 </div>
                             </div>
                         );
@@ -642,32 +638,8 @@ export const SharesPage: React.FC = () => {
 
 
 
-            {/* Context Menu */}
-            {menuAnchor && (
-                <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setMenuAnchor(null)} />
-                    <div
-                        className="context-menu"
-                        style={{
-                            position: 'fixed',
-                            left: menuAnchor.x,
-                            top: menuAnchor.y,
-                            zIndex: 1000
-                        }}
-                    >
-                        <div className="context-menu-item" onClick={() => { setDetailShare(menuAnchor.share); setMenuAnchor(null); }}>
-                            <Eye size={16} color="var(--accent-blue)" /> 查看详情
-                        </div>
-                        <div className="context-menu-item" onClick={() => { copyShareLink(menuAnchor.share.share_token); setMenuAnchor(null); }}>
-                            <Copy size={16} color="var(--accent-blue)" /> 复制链接
-                        </div>
-                        <div className="context-menu-separator" />
-                        <div className="context-menu-item danger" onClick={() => { deleteShare(menuAnchor.share.id); setMenuAnchor(null); }}>
-                            <Trash2 size={16} /> 删除
-                        </div>
-                    </div>
-                </>
-            )}
+
+
 
             {shareResult && (
                 <ShareResultModal

@@ -1654,7 +1654,6 @@ app.get('/api/files', authenticate, async (req, res) => {
                     `).get(itemPath);
 
             // Calculate folder size if directory
-            // Optimized: only calculate folder size if not 304'd (which we aren't here)
             const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
 
             return {
