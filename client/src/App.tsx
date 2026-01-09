@@ -404,6 +404,16 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
         </button>
 
+        {/* Version Badge */}
+        <span style={{
+          fontSize: '0.7rem',
+          color: 'rgba(255,255,255,0.35)',
+          fontWeight: 500,
+          letterSpacing: '0.5px'
+        }}>
+          v11.3
+        </span>
+
         <div
           ref={dropdownRef}
           className="hidden-mobile-flex"
