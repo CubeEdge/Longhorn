@@ -149,6 +149,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const docContainerRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     // Wrapper for manual refresh (used by other actions)
     const fetchFiles = async (_path?: string) => {
@@ -311,16 +312,45 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         fetchFiles(parts.join('/'));
     };
 
-    const handleUploadClick = () => fileInputRef.current?.click();
+
+    const handleUploadClick = () => {
+        if (uploading) {
+            cancelUpload();
+        } else {
+            fileInputRef.current?.click();
+        }
+    };
+
+    const cancelUpload = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setUploading(false);
+            setUploadProgress(0);
+            setUploadStatus('idle');
+            // Reset file input so the same file can be selected again if needed
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) return;
         setUploading(true);
         setUploadProgress(0);
+
+        // Create new AbortController
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         const formData = new FormData();
         Array.from(e.target.files).forEach(f => formData.append('files', f));
+
+        let isCancelled = false;
+
         try {
             await axios.post(`/api/upload?path=${currentPath}`, formData, {
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+                signal: controller.signal,
                 onUploadProgress: (progressEvent) => {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
                     setUploadProgress(percentCompleted);
@@ -339,7 +369,25 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             });
             setUploadStatus('success');
             fetchFiles(currentPath);
-        } catch { setUploadStatus('error'); } finally { setUploading(false); setTimeout(() => setUploadStatus('idle'), 3000); }
+        } catch (error: any) {
+            if (axios.isCancel(error)) {
+                console.log('Upload cancelled');
+                isCancelled = true;
+                // Status/input reset already handled in cancelUpload if called via UI
+                // But if called via abort() here for some reason, we ensure consistency
+            } else {
+                setUploadStatus('error');
+            }
+        } finally {
+            if (!isCancelled) {
+                if (abortControllerRef.current) {
+                    setUploading(false);
+                    setTimeout(() => setUploadStatus('idle'), 3000);
+                    abortControllerRef.current = null;
+                }
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+        }
     };
 
     const handleCreateFolder = async () => {
@@ -955,8 +1003,22 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             }} title={t("action.new_folder")}>
                                 <FolderPlus size={22} color="var(--accent-blue)" strokeWidth={2} />
                             </button>
-                            <button className="btn-primary" onClick={handleUploadClick} disabled={uploading}>
-                                {uploading ? <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> {uploadProgress}% {uploadSpeed && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>({uploadSpeed})</span>}</div> : <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Upload size={18} /> <span style={{ fontWeight: 600 }}>{t('common.upload')}</span></div>}
+                            <button className={`btn-primary ${uploading ? 'uploading' : ''}`} onClick={handleUploadClick}>
+                                {uploading ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <X size={18} />
+                                        {uploadProgress === 100 ? (<span>处理中...</span>) : (
+                                            <>
+                                                {uploadProgress}% {uploadSpeed && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>({uploadSpeed})</span>}
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Upload size={18} />
+                                        <span style={{ fontWeight: 600 }}>{t('common.upload')}</span>
+                                    </div>
+                                )}
                             </button>
                         </>
                     )}
