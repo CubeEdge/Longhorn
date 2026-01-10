@@ -27,7 +27,7 @@ if (!DISK_A) {
 const dbPath = path.join(__dirname, 'longhorn.db');
 const db = new Database(dbPath);
 
-console.log(`🚀 Starting MASTER SYNC v2...`);
+console.log(`🚀 Starting MASTER SYNC v3 (Symlink + NFC Mode)...`);
 console.log(`📂 Disk Path: ${DISK_A}`);
 console.log(`🗄️  DB Path: ${dbPath}`);
 
@@ -43,23 +43,25 @@ users.forEach(u => console.log(`   - [${u.id}] ${u.username} (${u.dept_name || '
 
 const folderMap = {};
 users.forEach(u => {
-    if (u.dept_name) folderMap[u.dept_name] = u.id;
-    folderMap[`Members/${u.username}`] = u.id;
-    folderMap[`Members/${u.username.toLowerCase()}`] = u.id;
+    if (u.dept_name) folderMap[u.dept_name.trim()] = u.id;
+    folderMap[`Members/${u.username}`.trim()] = u.id;
+    folderMap[`Members/${u.username.toLowerCase()}`.trim()] = u.id;
 });
 
 function getUploaderId(relativePath) {
-    const normalized = relativePath.normalize('NFC');
+    const normalized = relativePath.normalize('NFC').trim();
+
+    // Exact match or starts with mapping
     for (const [folder, id] of Object.entries(folderMap)) {
-        if (normalized.startsWith(folder + '/') || normalized === folder) {
+        if (normalized === folder || normalized.startsWith(folder + '/')) {
             return id;
         }
     }
     return 1; // Default to admin
 }
 
-// 3. Fix all existing paths in DB to NFC (One-time migration)
-console.log('🔄 Normalizing existing database paths to NFC...');
+// 3. Fix all existing paths in DB to NFC
+console.log('🔄 Cleaning up database path encoding...');
 const allStats = db.prepare('SELECT path, uploader_id FROM file_stats').all();
 const updatePathStmt = db.prepare('UPDATE file_stats SET path = ? WHERE path = ?');
 let normalizedCount = 0;
@@ -72,7 +74,6 @@ db.transaction(() => {
                 updatePathStmt.run(nfcPath, row.path);
                 normalizedCount++;
             } catch (e) {
-                // If both exist, keep the one that might have more info or just delete the non-normalized one
                 db.prepare('DELETE FROM file_stats WHERE path = ?').run(row.path);
             }
         }
@@ -80,11 +81,17 @@ db.transaction(() => {
 })();
 console.log(`✅ Normalized ${normalizedCount} paths in database.`);
 
-// 4. Recursive Sync
-function syncDir(currentPath) {
-    const items = fs.readdirSync(currentPath, { withFileTypes: true });
-    let count = 0;
+// 4. Recursive Sync (Follow Symlinks)
+function syncDir(currentPath, depth = 0) {
+    let items = [];
+    try {
+        items = fs.readdirSync(currentPath, { withFileTypes: true });
+    } catch (e) {
+        console.error(`⚠️  Cannot read directory: ${currentPath} (${e.message})`);
+        return 0;
+    }
 
+    let count = 0;
     const upsertStmt = db.prepare(`
         INSERT INTO file_stats (path, uploader_id, uploaded_at, access_count)
         VALUES (?, ?, ?, 0)
@@ -105,8 +112,23 @@ function syncDir(currentPath) {
         upsertStmt.run(relativePath, uploaderId, uploadDate);
         count++;
 
-        if (item.isDirectory()) {
-            count += syncDir(fullPath);
+        // Log first 2 levels to help user verify
+        if (depth < 2 && item.isDirectory()) {
+            console.log(`   ${"  ".repeat(depth)}📂 Entering: ${item.name}`);
+        }
+
+        // Check if it's a directory OR a symlink to a directory
+        let isDir = item.isDirectory();
+        if (item.isSymbolicLink()) {
+            try {
+                if (fs.statSync(fullPath).isDirectory()) {
+                    isDir = true;
+                }
+            } catch (e) { }
+        }
+
+        if (isDir) {
+            count += syncDir(fullPath, depth + 1);
         }
     }
     return count;
@@ -118,12 +140,12 @@ try {
         return syncDir(DISK_A);
     })();
 
-    console.log(`\n🎉 Sync Complete!`);
-    console.log(`✅ Total files and folders synced: ${totalSynced}`);
+    console.log(`\n🎉 MASTER SYNC v3 COMPLETE!`);
+    console.log(`✅ Total files and folders processed: ${totalSynced}`);
 
     const remainingUnknown = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id IS NULL").get().count;
     if (remainingUnknown > 0) {
-        console.log(`⚠️ Warning: ${remainingUnknown} records still have unknown uploader.`);
+        console.log(`⚠️  Warning: ${remainingUnknown} records still have unknown uploader.`);
     }
 
 } catch (err) {
