@@ -291,6 +291,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
           <Trash2 size={20} />
           <span>{t('browser.recycle')}</span>
         </Link>
+        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.4, textAlign: 'center' }}>
+          Longhorn v{__APP_VERSION__} · {__APP_BUILD_TIME__}
+        </div>
       </nav>
     </aside>
   );
@@ -593,10 +596,13 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
                 borderTop: '1px solid rgba(255,255,255,0.1)',
                 marginTop: '4px',
                 fontSize: '0.75rem',
-                color: 'rgba(255,255,255,0.35)',
-                textAlign: 'center'
+                color: 'rgba(255,255,255,0.3)',
+                textAlign: 'center',
+                lineHeight: '1.4'
               }}>
-                Longhorn v{__APP_VERSION__} <span style={{ opacity: 0.6 }}>({__APP_COMMIT__})</span>
+                <div>Longhorn v{__APP_VERSION__}</div>
+                <div style={{ opacity: 0.7 }}>Build: {__APP_BUILD_TIME__}</div>
+                <div style={{ opacity: 0.4, fontSize: '0.65rem' }}>{__APP_COMMIT__}</div>
               </div>
             </div>
           )}

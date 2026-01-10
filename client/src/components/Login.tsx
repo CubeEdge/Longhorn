@@ -136,6 +136,9 @@ const Login: React.FC = () => {
 
                 <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.6 }}>
                     <p>© 2026 Kinefinity Inc. All rights reserved.</p>
+                    <div style={{ marginTop: '8px', fontSize: '0.7rem' }}>
+                        Longhorn v{__APP_VERSION__} · Build: {__APP_BUILD_TIME__}
+                    </div>
                 </div>
             </div>
             <style>{`
@@ -149,7 +152,7 @@ const Login: React.FC = () => {
                     box-shadow: 0 0 0 4px rgba(255, 210, 0, 0.1);
                 }
             `}</style>
-        </div>
+        </div >
     );
 };
 
