@@ -624,19 +624,30 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
         return res.status(403).json({ error: 'No write permission for this folder' });
     }
 
-    req.files.forEach(file => {
-        const itemPath = path.join(subPath, file.filename);
-        // Use relative path for DB key to match format
-        const normalizedPath = itemPath.replace(/\\/g, '/');
-
-        db.prepare(`
+    try {
+        const insertStmt = db.prepare(`
             INSERT OR REPLACE INTO file_stats (path, upload_date, uploader_id, access_count, last_access)
             VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
-        `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
-    });
-    const uploadTime = Date.now() - receiveTime;
-    console.log(`[Upload] Processed ${req.files.length} files to ${subPath} by ${req.user.username} in ${uploadTime}ms`);
-    res.json({ success: true });
+        `);
+
+        // Use transaction for better performance
+        const transaction = db.transaction((files) => {
+            files.forEach(file => {
+                const itemPath = path.join(subPath, file.filename);
+                const normalizedPath = itemPath.replace(/\\/g, '/');
+                insertStmt.run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
+            });
+        });
+
+        transaction(req.files);
+
+        const uploadTime = Date.now() - receiveTime;
+        console.log(`[Upload] Total processed ${req.files.length} files to ${subPath} by ${req.user.username} in ${uploadTime}ms`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Upload] Database error:', err);
+        res.status(500).json({ error: 'Failed to update file metadata' });
+    }
 });
 
 app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {

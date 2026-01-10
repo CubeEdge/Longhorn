@@ -1009,7 +1009,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 {uploading ? (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <X size={18} />
-                                        {uploadProgress === 100 ? (<span>处理中...</span>) : (
+                                        {uploadProgress === 100 ? (<span>{t('status.processing')}</span>) : (
                                             <>
                                                 {uploadProgress}% {uploadSpeed && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>({uploadSpeed})</span>}
                                             </>
