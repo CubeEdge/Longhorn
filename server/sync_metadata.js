@@ -2,99 +2,26 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// 1. Setup DB
 const dbPath = path.join(__dirname, 'longhorn.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-console.log(`Starting MASTER SYNC v8 (Universal Aligner)...`);
-console.log(`DB Path: ${dbPath}`);
+console.log('Starting MASTER SYNC v10 (Forensic Repair)...');
 
-// 2. PATH ALIGNER: Clean up ghost prefixes (Kinefinity/, leading slashes, etc.)
-console.log('\n[Phase 1] PATH ALIGNMENT: Cleaning up database path strings...');
-const allStats = db.prepare('SELECT path, uploader_id FROM file_stats').all();
-let fixedPaths = 0;
-
-db.transaction(() => {
-    for (const row of allStats) {
-        let cleanPath = row.path.normalize('NFC').replace(/\\/g, '/');
-
-        // Remove "Kinefinity/" or "/Kinefinity/" or "DiskA/" prefix if exists
-        cleanPath = cleanPath.replace(/^(DiskA\/|Kinefinity\/|\/Kinefinity\/|\/DiskA\/|\/)/i, '');
-
-        // Trim trailing slashes
-        cleanPath = cleanPath.replace(/\/+$/, '');
-
-        if (cleanPath !== row.path) {
-            try {
-                // Check if the clean path already exists
-                const existing = db.prepare('SELECT path FROM file_stats WHERE path = ?').get(cleanPath);
-                if (existing) {
-                    // Merge: Keep the one with a valid uploader and higher access count
-                    db.prepare('DELETE FROM file_stats WHERE path = ?').run(row.path);
-                } else {
-                    db.prepare('UPDATE file_stats SET path = ? WHERE path = ?').run(cleanPath, row.path);
-                    fixedPaths++;
-                }
-            } catch (e) {
-                console.error(`   [Error] Could not align path "${row.path}": ${e.message}`);
-            }
-        }
-    }
-})();
-console.log(`   ✅ Aligned ${fixedPaths} paths (removed prefixes/normalization issues).`);
-
-// 3. NUCLEAR REPAIR: Direct Database Repair
-console.log('\n[Phase 2] NUCLEAR REPAIR: Fixing uploader associations...');
-
+// 1. Repair associations first (from v6 logic)
 const repairLogic = [
-    { pattern: '%运营部%', id: 37, name: 'Orange (OP)' },
-    { pattern: '%(OP)%', id: 37, name: 'Orange (OP)' },
-    { pattern: '%Orange%', id: 37, name: 'Orange (Path)' },
-    { pattern: '%市场部%', id: 11, name: 'Pepper (MS)' },
-    { pattern: '%(MS)%', id: 11, name: 'Pepper (MS)' },
-    { pattern: '%Pepper%', id: 11, name: 'Pepper (Path)' },
-    { pattern: '%admin%', id: 1, name: 'admin' }
+    { pattern: '%运营部%', id: 37 }, { pattern: '%(OP)%', id: 37 },
+    { pattern: '%市场部%', id: 11 }, { pattern: '%(MS)%', id: 11 }
 ];
 
 db.transaction(() => {
     repairLogic.forEach(task => {
-        const info = db.prepare(`
-            UPDATE file_stats 
-            SET uploader_id = ? 
-            WHERE path LIKE ? AND (uploader_id IS NULL OR uploader_id = 1)
-        `).run(task.id, task.pattern);
-
-        if (info.changes > 0) {
-            console.log(`   ✅ Repaired ${info.changes} records for: ${task.name}`);
-        }
+        db.prepare('UPDATE file_stats SET uploader_id = ? WHERE path LIKE ? AND (uploader_id IS NULL OR uploader_id = 1)').run(task.id, task.pattern);
     });
 })();
 
-// 4. Setup Disk Scanning
-let DISK_A = process.env.DISK_A;
-if (!DISK_A) {
-    const possiblePaths = [
-        path.join(__dirname, 'data/DiskA'),
-        path.join(__dirname, '../data/DiskA'),
-        path.join(process.cwd(), 'server/data/DiskA'),
-        path.join(process.cwd(), 'data/DiskA')
-    ];
-    for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-            DISK_A = p;
-            break;
-        }
-    }
-}
-
-if (!DISK_A) {
-    console.error('[Error] Could not find DiskA directory.');
-    process.exit(1);
-}
-
-console.log(`\n[Phase 3] DISK SCAN: Syncing physical files...`);
-console.log(`Disk Path: ${DISK_A}`);
+// 2. Aggressive Disk Sync with per-file logging
+const DISK_A = process.env.DISK_A || path.join(__dirname, 'data/DiskA');
 
 function getUploaderId(relativePath) {
     const normalized = relativePath.normalize('NFC').replace(/\\/g, '/');
@@ -103,54 +30,45 @@ function getUploaderId(relativePath) {
     return 1;
 }
 
-function syncDir(currentPath, depth = 0) {
-    let itemNames = [];
-    try {
-        itemNames = fs.readdirSync(currentPath);
-    } catch (e) { return 0; }
+const upsertStmt = db.prepare(`
+    INSERT INTO file_stats (path, uploader_id, uploaded_at, access_count)
+    VALUES (?, ?, ?, 0)
+    ON CONFLICT(path) DO UPDATE SET
+        uploader_id = CASE 
+            WHEN uploader_id IS NULL OR uploader_id = 1 THEN excluded.uploader_id
+            ELSE uploader_id
+        END
+`);
 
-    if (depth < 4) {
-        console.log(`${"  ".repeat(depth)}📂 ${path.basename(currentPath) || 'root'} (${itemNames.length} items)`);
-    }
-
+function syncDir(currentPath) {
+    let itemNames = fs.readdirSync(currentPath);
     let count = 0;
-    const upsertStmt = db.prepare(`
-        INSERT INTO file_stats (path, uploader_id, uploaded_at, access_count)
-        VALUES (?, ?, ?, 0)
-        ON CONFLICT(path) DO UPDATE SET
-            uploader_id = CASE 
-                WHEN uploader_id IS NULL OR uploader_id = 1 THEN excluded.uploader_id
-                ELSE uploader_id
-            END
-    `);
 
     for (const itemName of itemNames) {
         if (itemName.startsWith('.') || itemName === 'node_modules' || itemName === '.chunks') continue;
         const fullPath = path.join(currentPath, itemName);
-        let stats;
-        try { stats = fs.statSync(fullPath); } catch (e) { continue; }
-
+        const stats = fs.statSync(fullPath);
         const relativePath = path.relative(DISK_A, fullPath).normalize('NFC').replace(/\\/g, '/').replace(/^\//, '');
         const uploaderId = getUploaderId(relativePath);
         const uploadDate = stats.mtime.toISOString().slice(0, 19).replace('T', ' ');
 
-        upsertStmt.run(relativePath, uploaderId, uploadDate);
-        count++;
+        try {
+            const info = upsertStmt.run(relativePath, uploaderId, uploadDate);
+            if (info.changes > 0) {
+                console.log(`   [Saved] "${relativePath}" (UID:${uploaderId})`);
+                count++;
+            }
+        } catch (e) {
+            console.error(`   [Fail] "${relativePath}": ${e.message}`);
+        }
 
         if (stats.isDirectory()) {
-            count += syncDir(fullPath, depth + 1);
+            count += syncDir(fullPath);
         }
     }
     return count;
 }
 
-db.transaction(() => {
-    const totalSynced = syncDir(DISK_A);
-    console.log(`\n🎉 MASTER SYNC v8 COMPLETE!`);
-    console.log(`Total files processed from disk: ${totalSynced}`);
-})();
-
-const remainingUnknown = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id IS NULL").get().count;
-console.log(`Final Database Stats:`);
-console.log(`   - Records with NULL uploader: ${remainingUnknown}`);
+const total = syncDir(DISK_A);
+console.log(`\nDONE. Total items updated/inserted: ${total}`);
 db.close();
