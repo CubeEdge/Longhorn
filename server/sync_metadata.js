@@ -27,7 +27,7 @@ if (!DISK_A) {
 const dbPath = path.join(__dirname, 'longhorn.db');
 const db = new Database(dbPath);
 
-console.log(`Starting MASTER SYNC v3 (Symlink + NFC Mode)...`);
+console.log(`Starting MASTER SYNC v4 (Aggressive Mode)...`);
 console.log(`Disk Path: ${DISK_A}`);
 console.log(`DB Path: ${dbPath}`);
 
@@ -50,8 +50,6 @@ users.forEach(u => {
 
 function getUploaderId(relativePath) {
     const normalized = relativePath.normalize('NFC').trim();
-
-    // Exact match or starts with mapping
     for (const [folder, id] of Object.entries(folderMap)) {
         if (normalized === folder || normalized.startsWith(folder + '/')) {
             return id;
@@ -81,14 +79,18 @@ db.transaction(() => {
 })();
 console.log(`Success: Normalized ${normalizedCount} paths in database.`);
 
-// 4. Recursive Sync (Follow Symlinks)
+// 4. Recursive Sync (Aggressive Traversal)
 function syncDir(currentPath, depth = 0) {
-    let items = [];
+    let itemNames = [];
     try {
-        items = fs.readdirSync(currentPath, { withFileTypes: true });
+        itemNames = fs.readdirSync(currentPath);
     } catch (e) {
         console.error(`[Warning] Cannot read directory: ${currentPath} (${e.message})`);
         return 0;
+    }
+
+    if (depth < 3) {
+        console.log(`${"  ".repeat(depth)}📂 ${path.basename(currentPath) || 'root'} (${itemNames.length} items)`);
     }
 
     let count = 0;
@@ -96,38 +98,35 @@ function syncDir(currentPath, depth = 0) {
         INSERT INTO file_stats (path, uploader_id, uploaded_at, access_count)
         VALUES (?, ?, ?, 0)
         ON CONFLICT(path) DO UPDATE SET
-            uploader_id = IFNULL(uploader_id, excluded.uploader_id)
+            uploader_id = CASE 
+                WHEN uploader_id IS NULL OR uploader_id = 1 THEN excluded.uploader_id
+                ELSE uploader_id
+            END
     `);
 
-    for (const item of items) {
-        if (item.name.startsWith('.') || item.name === 'node_modules' || item.name === '.chunks') continue;
+    for (const itemName of itemNames) {
+        if (itemName.startsWith('.') || itemName === 'node_modules' || itemName === '.chunks') continue;
 
-        const fullPath = path.join(currentPath, item.name);
+        const fullPath = path.join(currentPath, itemName);
+        let stats;
+        try {
+            stats = fs.statSync(fullPath);
+        } catch (e) {
+            continue; // Skip items we can't stat
+        }
+
         const relativePath = path.relative(DISK_A, fullPath).normalize('NFC').replace(/\\/g, '/');
-
         const uploaderId = getUploaderId(relativePath);
-        const stats = fs.statSync(fullPath);
         const uploadDate = stats.mtime.toISOString().slice(0, 19).replace('T', ' ');
 
-        upsertStmt.run(relativePath, uploaderId, uploadDate);
-        count++;
-
-        // Log first 2 levels to help user verify
-        if (depth < 2 && item.isDirectory()) {
-            console.log(`   ${"  ".repeat(depth)}Entering: ${item.name}`);
+        try {
+            upsertStmt.run(relativePath, uploaderId, uploadDate);
+            count++;
+        } catch (e) {
+            console.error(`[Error] Failed to upsert ${relativePath}: ${e.message}`);
         }
 
-        // Check if it's a directory OR a symlink to a directory
-        let isDir = item.isDirectory();
-        if (item.isSymbolicLink()) {
-            try {
-                if (fs.statSync(fullPath).isDirectory()) {
-                    isDir = true;
-                }
-            } catch (e) { }
-        }
-
-        if (isDir) {
+        if (stats.isDirectory()) {
             count += syncDir(fullPath, depth + 1);
         }
     }
@@ -140,12 +139,12 @@ try {
         return syncDir(DISK_A);
     })();
 
-    console.log(`\nMASTER SYNC v3 COMPLETE!`);
+    console.log(`\nMASTER SYNC v4 Aggressive COMPLETE!`);
     console.log(`Total files and folders processed: ${totalSynced}`);
 
     const remainingUnknown = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id IS NULL").get().count;
     if (remainingUnknown > 0) {
-        console.log(`[Warning] ${remainingUnknown} records still have unknown uploader.`);
+        console.log(`[Warning] ${remainingUnknown} records still have unknown uploader in DB.`);
     }
 
 } catch (err) {
