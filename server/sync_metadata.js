@@ -27,59 +27,38 @@ if (!DISK_A) {
 const dbPath = path.join(__dirname, 'longhorn.db');
 const db = new Database(dbPath);
 
-console.log(`Starting MASTER SYNC v4 (Aggressive Mode)...`);
+console.log(`Starting MASTER SYNC v5 (Surgical Fix)...`);
 console.log(`Disk Path: ${DISK_A}`);
 console.log(`DB Path: ${dbPath}`);
 
-// 2. Dynamically fetch department users
-const users = db.prepare(`
-    SELECT u.id, u.username, d.name as dept_name 
-    FROM users u 
-    LEFT JOIN departments d ON u.department_id = d.id
-`).all();
-
-console.log('Detected User/Dept mapping:');
-users.forEach(u => console.log(`   - [${u.id}] ${u.username} (${u.dept_name || 'No Dept'})`));
-
-const folderMap = {};
-users.forEach(u => {
-    if (u.dept_name) folderMap[u.dept_name.trim()] = u.id;
-    folderMap[`Members/${u.username}`.trim()] = u.id;
-    folderMap[`Members/${u.username.toLowerCase()}`.trim()] = u.id;
+// 2. DIAGNOSTIC: Sample existing paths in DB
+console.log('\n[Diagnostic] Sampling existing database paths:');
+const samples = db.prepare('SELECT path, uploader_id FROM file_stats LIMIT 5').all();
+samples.forEach(s => {
+    console.log(`   - [UID:${s.uploader_id}] "${s.path}" (Len: ${s.path.length})`);
 });
 
+// 3. User Mapping
+const folderMap = {
+    '运营部': 37,
+    'OP': 37,
+    'Orange': 37,
+    '市场部': 11,
+    'MS': 11,
+    'Pepper': 11
+};
+
 function getUploaderId(relativePath) {
-    const normalized = relativePath.normalize('NFC').trim();
-    for (const [folder, id] of Object.entries(folderMap)) {
-        if (normalized === folder || normalized.startsWith(folder + '/')) {
-            return id;
-        }
-    }
+    const normalized = relativePath.normalize('NFC').replace(/\\/g, '/');
+
+    // Aggressive substring matching
+    if (normalized.includes('运营部') || normalized.includes('(OP)') || normalized.includes('Members/Orange')) return 37;
+    if (normalized.includes('市场部') || normalized.includes('(MS)') || normalized.includes('Members/Pepper')) return 11;
+
     return 1; // Default to admin
 }
 
-// 3. Fix all existing paths in DB to NFC
-console.log('Cleaning up database path encoding...');
-const allStats = db.prepare('SELECT path, uploader_id FROM file_stats').all();
-const updatePathStmt = db.prepare('UPDATE file_stats SET path = ? WHERE path = ?');
-let normalizedCount = 0;
-
-db.transaction(() => {
-    for (const row of allStats) {
-        const nfcPath = row.path.normalize('NFC');
-        if (nfcPath !== row.path) {
-            try {
-                updatePathStmt.run(nfcPath, row.path);
-                normalizedCount++;
-            } catch (e) {
-                db.prepare('DELETE FROM file_stats WHERE path = ?').run(row.path);
-            }
-        }
-    }
-})();
-console.log(`Success: Normalized ${normalizedCount} paths in database.`);
-
-// 4. Recursive Sync (Aggressive Traversal)
+// 4. Recursive Sync
 function syncDir(currentPath, depth = 0) {
     let itemNames = [];
     try {
@@ -89,7 +68,8 @@ function syncDir(currentPath, depth = 0) {
         return 0;
     }
 
-    if (depth < 3) {
+    // Verbose logging for top levels
+    if (depth < 4) {
         console.log(`${"  ".repeat(depth)}📂 ${path.basename(currentPath) || 'root'} (${itemNames.length} items)`);
     }
 
@@ -105,6 +85,7 @@ function syncDir(currentPath, depth = 0) {
     `);
 
     for (const itemName of itemNames) {
+        // Skip hidden files and temporary chunks
         if (itemName.startsWith('.') || itemName === 'node_modules' || itemName === '.chunks') continue;
 
         const fullPath = path.join(currentPath, itemName);
@@ -112,7 +93,7 @@ function syncDir(currentPath, depth = 0) {
         try {
             stats = fs.statSync(fullPath);
         } catch (e) {
-            continue; // Skip items we can't stat
+            continue;
         }
 
         const relativePath = path.relative(DISK_A, fullPath).normalize('NFC').replace(/\\/g, '/');
@@ -122,8 +103,13 @@ function syncDir(currentPath, depth = 0) {
         try {
             upsertStmt.run(relativePath, uploaderId, uploadDate);
             count++;
+
+            // Log deep files under mapping folders for verification
+            if (uploaderId !== 1 && depth > 2) {
+                console.log(`${"  ".repeat(depth)}  📄 ${itemName} -> UID:${uploaderId}`);
+            }
         } catch (e) {
-            console.error(`[Error] Failed to upsert ${relativePath}: ${e.message}`);
+            console.error(`[Error] Failed to upsert "${relativePath}": ${e.message}`);
         }
 
         if (stats.isDirectory()) {
@@ -139,13 +125,15 @@ try {
         return syncDir(DISK_A);
     })();
 
-    console.log(`\nMASTER SYNC v4 Aggressive COMPLETE!`);
+    console.log(`\nMASTER SYNC v5 COMPLETE!`);
     console.log(`Total files and folders processed: ${totalSynced}`);
 
     const remainingUnknown = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id IS NULL").get().count;
-    if (remainingUnknown > 0) {
-        console.log(`[Warning] ${remainingUnknown} records still have unknown uploader in DB.`);
-    }
+    console.log(`Final Database Stats:`);
+    console.log(`   - Records with NULL uploader: ${remainingUnknown}`);
+
+    const adminCount = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id = 1").get().count;
+    console.log(`   - Records with admin uploader: ${adminCount}`);
 
 } catch (err) {
     console.error('Sync Error:', err);
