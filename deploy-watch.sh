@@ -18,10 +18,10 @@ while true; do
     echo "----------------------------------------------------"
     
     # 执行一键部署
-    # 强制重置本地修改，确保更新成功 (Fix Git Conflicts)
+    # 强制重置本地修改并清理干扰文件
     git reset --hard HEAD
+    rm -f server/longhorn.db-shm server/longhorn.db-wal
     git pull
-    npm run install-all
     npm run deploy
     
     echo "----------------------------------------------------"
