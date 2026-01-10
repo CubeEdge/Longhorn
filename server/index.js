@@ -1720,7 +1720,7 @@ app.get('/api/files', authenticate, async (req, res) => {
     // Auto-fix: If resolving to "Members" (root) and user is not Admin,
     // force it to their personal directory.
     if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
-        subPath = `Members / ${req.user.username}`;
+        subPath = `Members/${req.user.username}`;
     }
 
     const fullPath = path.join(DISK_A, subPath);
@@ -1764,7 +1764,11 @@ app.get('/api/files', authenticate, async (req, res) => {
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
                 WHERE s.path = ?
-                    `).get(itemPath);
+            `).get(itemPath);
+
+            if (!dbStats && (itemPath.includes('运营部') || itemPath.includes('市场部'))) {
+                console.log(`[Debug] No DB record for: "${itemPath}" (Hex: ${Buffer.from(itemPath).toString('hex')})`);
+            }
 
             // Calculate folder size if directory
             const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
