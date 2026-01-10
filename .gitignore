@@ -13,3 +13,6 @@ server/data/.recycle/*
 *.zip
 *.log
 server/debug_perm.txt
+
+server/longhorn.db-shm
+server/longhorn.db-wal
