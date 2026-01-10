@@ -291,8 +291,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
           <Trash2 size={20} />
           <span>{t('browser.recycle')}</span>
         </Link>
-        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.4, textAlign: 'center' }}>
-          Longhorn v{__APP_VERSION__} · {__APP_BUILD_TIME__}
+        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.4, textAlign: 'center', lineHeight: '1.4' }}>
+          <div>代码版本: {__APP_COMMIT_TIME__}</div>
+          <div>构建部署: {__APP_BUILD_TIME__}</div>
         </div>
       </nav>
     </aside>
@@ -598,11 +599,14 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
                 fontSize: '0.75rem',
                 color: 'rgba(255,255,255,0.3)',
                 textAlign: 'center',
-                lineHeight: '1.4'
+                lineHeight: '1.5'
               }}>
                 <div>Longhorn v{__APP_VERSION__}</div>
-                <div style={{ opacity: 0.7 }}>Build: {__APP_BUILD_TIME__}</div>
-                <div style={{ opacity: 0.4, fontSize: '0.65rem' }}>{__APP_COMMIT__}</div>
+                <div style={{ margin: '4px 0' }}>
+                  <div style={{ opacity: 0.9 }}>代码版本: {__APP_COMMIT_TIME__}</div>
+                  <div style={{ opacity: 0.6 }}>构建部署: {__APP_BUILD_TIME__}</div>
+                </div>
+                <div style={{ opacity: 0.3, fontSize: '0.65rem' }}>{__APP_COMMIT__}</div>
               </div>
             </div>
           )}

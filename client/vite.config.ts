@@ -6,30 +6,50 @@ import { resolve } from 'path'
 
 // Get version info at build time
 const getVersionInfo = () => {
+  const formatBeijingTime = (date: Date) => {
+    // Force Beijing format regardless of build machine settings
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(date).replace(/\//g, '-');
+  }
+
   try {
     // Get git commit hash (short)
     const commitHash = execSync('git rev-parse --short HEAD').toString().trim()
+
+    // Get git commit time
+    const commitTimestamp = parseInt(execSync('git log -1 --format=%ct').toString().trim()) * 1000
+    const commitTime = formatBeijingTime(new Date(commitTimestamp))
 
     // Get version from root package.json
     const pkgPath = resolve(__dirname, '../package.json')
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
     const version = pkg.version || '0.0.0'
 
-    // Get build timestamp
-    const buildTime = new Date().toISOString().slice(0, 16).replace('T', ' ')
+    // Get build timestamp in Beijing time
+    const buildTime = formatBeijingTime(new Date())
 
     return {
       version,
       commitHash,
+      commitTime,
       buildTime,
       fullVersion: `${version} (${commitHash})`
     }
   } catch (e) {
     console.warn('Could not get version info:', e)
+    const now = formatBeijingTime(new Date())
     return {
       version: '11.3.0',
       commitHash: 'unknown',
-      buildTime: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      commitTime: now,
+      buildTime: now,
       fullVersion: '11.3.0 (dev)'
     }
   }
@@ -45,6 +65,7 @@ export default defineConfig({
     // Inject version info as global constants
     __APP_VERSION__: JSON.stringify(versionInfo.version),
     __APP_COMMIT__: JSON.stringify(versionInfo.commitHash),
+    __APP_COMMIT_TIME__: JSON.stringify(versionInfo.commitTime),
     __APP_BUILD_TIME__: JSON.stringify(versionInfo.buildTime),
     __APP_FULL_VERSION__: JSON.stringify(versionInfo.fullVersion)
   },

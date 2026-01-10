@@ -136,8 +136,9 @@ const Login: React.FC = () => {
 
                 <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.6 }}>
                     <p>© 2026 Kinefinity Inc. All rights reserved.</p>
-                    <div style={{ marginTop: '8px', fontSize: '0.7rem' }}>
-                        Longhorn v{__APP_VERSION__} · Build: {__APP_BUILD_TIME__}
+                    <div style={{ marginTop: '12px', fontSize: '0.7rem', lineHeight: '1.6' }}>
+                        <div>代码版本: {__APP_COMMIT_TIME__} ({__APP_COMMIT__})</div>
+                        <div style={{ opacity: 0.8 }}>构建部署: {__APP_BUILD_TIME__}</div>
                     </div>
                 </div>
             </div>
