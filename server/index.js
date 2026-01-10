@@ -26,11 +26,11 @@ const DEPT_DISPLAY_MAP = {
     'OP': '运营部 (OP)',
     'MS': '市场部 (MS)',
     'RD': '研发部 (RD)',
-    'GE': '综合管理 (GE)'
+    'RE': '通用台面 (RE)'
 };
 
 // Valid department codes (for path validation)
-const VALID_DEPT_CODES = ['OP', 'MS', 'RD', 'GE', 'MEMBERS'];
+const VALID_DEPT_CODES = ['OP', 'MS', 'RD', 'RE', 'MEMBERS'];
 
 // I18n for share pages
 const SHARE_I18N = {
@@ -305,7 +305,7 @@ const adminPassword = bcrypt.hashSync('admin123', 10);
 db.prepare('INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', adminPassword, 'Admin');
 
 // Pre-seed departments (pure English codes)
-const defaultDepts = ['OP', 'MS', 'RD', 'GE'];
+const defaultDepts = ['OP', 'MS', 'RD', 'RE'];
 
 defaultDepts.forEach(code => {
     try {

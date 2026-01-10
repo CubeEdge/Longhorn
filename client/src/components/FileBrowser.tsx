@@ -988,7 +988,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                     'OP': `${t('dept.OP')} (OP)`,
                                                     'MS': `${t('dept.MS')} (MS)`,
                                                     'RD': `${t('dept.RD')} (RD)`,
-                                                    'GE': `${t('dept.GE')} (GE)`,
+                                                    'RE': `${t('dept.RE')} (RE)`,
                                                 };
 
                                                 // 1. Try direct code match

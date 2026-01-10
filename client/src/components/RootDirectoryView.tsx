@@ -29,7 +29,7 @@ export const RootDirectoryView: React.FC = () => {
         'OP': '运营部 (OP)',
         'MS': '市场部 (MS)',
         'RD': '研发部 (RD)',
-        'GE': '综合管理 (GE)'
+        'RE': '通用台面 (RE)'
     };
 
     // Extract code from department name (handles both 'OP' and '运营部 (OP)' formats)
