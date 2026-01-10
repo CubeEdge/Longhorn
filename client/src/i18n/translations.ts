@@ -34,6 +34,7 @@ export const translations = {
         'dept.OP': '运营部',
         'dept.RD': '研发部',
         'dept.RE': '通用台面',
+        'dept.GE': '综合管理',
 
         // User Roles
         'role.admin': '系统管理员',
@@ -864,6 +865,7 @@ export const translations = {
         'dept.OP': 'Operations',
         'dept.RD': 'R&D',
         'dept.RE': 'General',
+        'dept.GE': 'Administration',
         'dept.permission_conflict_rule': 'In case of permission conflict, higher permission takes priority (Full > Read).',
         'share.items': 'items',
         'starred.add_hint': 'Right-click a file in the browser and select "Add to Favorites"',
@@ -1447,6 +1449,7 @@ export const translations = {
         'dept.OP': 'Betrieb',
         'dept.RD': 'F&E',
         'dept.RE': 'Allgemein',
+        'dept.GE': 'Verwaltung',
         'dept.permission_conflict_rule': 'Bei Berechtigungskonflikt hat die höhere Berechtigung Vorrang (Voll > Lesen).',
         'share.items': 'Elemente',
         'starred.add_hint': 'Klicken Sie mit der rechten Maustaste auf eine Datei und wählen Sie "Zu Favoriten hinzufügen"',
@@ -2032,6 +2035,7 @@ export const translations = {
         'dept.OP': '運営部',
         'dept.RD': '研究開発部',
         'dept.RE': '一般',
+        'dept.GE': '総合管理',
         'dept.permission_conflict_rule': '権限の競合時は、高い権限が優先されます (フル > 読み取り専用)。',
         'share.items': '項目',
         'starred.add_hint': 'ファイルブラウザでファイルを右クリックし、「お気に入りに追加」を選択してください',

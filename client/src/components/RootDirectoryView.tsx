@@ -24,11 +24,19 @@ export const RootDirectoryView: React.FC = () => {
         }
     };
 
-    const deptCodeMap: { [key: string]: string } = {
-        '市场部 (MS)': 'MS',
-        '运营部 (OP)': 'OP',
-        '研发部 (RD)': 'RD',
-        '通用台面 (GE)': 'GE'
+    // Department display name mapping (code -> display name)
+    const deptDisplayMap: { [key: string]: string } = {
+        'OP': '运营部 (OP)',
+        'MS': '市场部 (MS)',
+        'RD': '研发部 (RD)',
+        'GE': '综合管理 (GE)'
+    };
+
+    // Extract code from department name (handles both 'OP' and '运营部 (OP)' formats)
+    const getDeptCode = (name: string): string => {
+        if (/^[A-Z]{2,3}$/.test(name)) return name; // Already a code
+        const match = name.match(/\(([A-Z]{2,3})\)/);
+        return match ? match[1] : name;
     };
 
     return (
@@ -73,11 +81,12 @@ export const RootDirectoryView: React.FC = () => {
 
                 {/* Department Folders */}
                 {departments.map(dept => {
-                    const code = deptCodeMap[dept.name];
+                    const code = getDeptCode(dept.name);
+                    const displayName = deptDisplayMap[code] || dept.name;
                     return (
                         <div
                             key={dept.id}
-                            onClick={() => navigate(`/dept/${code}`)}
+                            onClick={() => navigate(`/dept/${code.toLowerCase()}`)}
                             style={{
                                 background: 'var(--glass-bg)',
                                 border: '2px solid var(--glass-border)',
@@ -101,7 +110,7 @@ export const RootDirectoryView: React.FC = () => {
                         >
                             <Folder size={48} color="var(--accent-blue)" />
                             <div style={{ fontSize: '1.1rem', fontWeight: 600, textAlign: 'center' }}>
-                                {dept.name}
+                                {displayName}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
                                 部门文件

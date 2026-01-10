@@ -163,7 +163,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
 
     // 3. Fallback map for known Chinese names (Legacy support)
     const legacyMap: { [key: string]: string } = {
-      '市场部': 'MS', '运营部': 'OP', '研发部': 'RD', '通用台面': 'RE'
+      '市场部': 'MS', '运营部': 'OP', '研发部': 'RD', '综合管理': 'GE', '通用台面': 'GE'
     };
     // Check if name contains these keywords
     for (const key in legacyMap) {

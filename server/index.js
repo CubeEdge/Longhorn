@@ -21,14 +21,16 @@ const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
-// Department code mapping for frontend shortcuts (MS -> 市场部 (MS))
-const DEPT_CODE_MAP = {
-    'MS': '市场部 (MS)',
+// Department display mapping (code -> display name for UI)
+const DEPT_DISPLAY_MAP = {
     'OP': '运营部 (OP)',
+    'MS': '市场部 (MS)',
     'RD': '研发部 (RD)',
-    'RE': '通用台面 (RE)',
-    'GE': '通用台面 (RE)' // Alias for backward compatibility
+    'GE': '综合管理 (GE)'
 };
+
+// Valid department codes (for path validation)
+const VALID_DEPT_CODES = ['OP', 'MS', 'RD', 'GE', 'MEMBERS'];
 
 // I18n for share pages
 const SHARE_I18N = {
@@ -128,23 +130,16 @@ const SHARE_I18N = {
 
 const getShareI18n = (lang = 'zh') => SHARE_I18N[lang] || SHARE_I18N.zh;
 
-// Resolve frontend paths like '/MS' or '/MS/ProjectA' to physical paths '/市场部 (MS)' or '/市场部 (MS)/ProjectA'
+// Resolve frontend paths - normalize to uppercase department codes
 function resolvePath(requestPath) {
     if (!requestPath) return '';
 
-    // Handle members personal space: members/pepper or Members/pepper → Members/pepper
-    const lowerPath = requestPath.toLowerCase();
-    if (lowerPath.startsWith('members/')) {
-        const username = requestPath.substring('members/'.length);
-        return `Members/${username}`;
-    }
-
-    // Handle department codes (case-insensitive)
     const segments = requestPath.split('/').filter(Boolean);
     if (segments.length > 0) {
         const firstSegmentUpper = segments[0].toUpperCase();
-        if (DEPT_CODE_MAP[firstSegmentUpper]) {
-            segments[0] = DEPT_CODE_MAP[firstSegmentUpper];
+        // Validate and normalize department code
+        if (VALID_DEPT_CODES.includes(firstSegmentUpper)) {
+            segments[0] = firstSegmentUpper;
         }
     }
     return segments.join('/');
@@ -309,21 +304,14 @@ try {
 const adminPassword = bcrypt.hashSync('admin123', 10);
 db.prepare('INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', adminPassword, 'Admin');
 
-// Pre-seed departments
-const defaultDepts = [
-    { name: '市场部 (MS)', code: 'MS' },
-    { name: '运营部 (OP)', code: 'OP' },
-    { name: '研发部 (RD)', code: 'RD' },
-    { name: '通用台面 (RE)', code: 'RE' }
-];
+// Pre-seed departments (pure English codes)
+const defaultDepts = ['OP', 'MS', 'RD', 'GE'];
 
-defaultDepts.forEach(dept => {
+defaultDepts.forEach(code => {
     try {
-        db.prepare('INSERT OR IGNORE INTO departments (name) VALUES (?)').run(dept.name);
-        // Ensure Department folders exist (but not Members subfolders)
-        const deptPath = path.join(DISK_A, dept.name);
+        db.prepare('INSERT OR IGNORE INTO departments (name) VALUES (?)').run(code);
+        const deptPath = path.join(DISK_A, code);
         fs.ensureDirSync(deptPath);
-        // Members folders removed - only use top-level Members/ for personal spaces
     } catch (e) { }
 });
 
