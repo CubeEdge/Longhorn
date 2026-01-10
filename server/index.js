@@ -2544,4 +2544,8 @@ app.use((req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Open http://localhost:${PORT} in your browser`);
+    // Signal PM2 that the process is ready
+    if (process.send) {
+        process.send('ready');
+    }
 });
