@@ -626,7 +626,7 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
 
     try {
         const insertStmt = db.prepare(`
-            INSERT OR REPLACE INTO file_stats (path, upload_date, uploader_id, access_count, last_access)
+            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploader_id, access_count, last_access)
             VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
         `);
 
@@ -730,7 +730,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.replace(/\\/g, '/');
         db.prepare(`
-            INSERT OR REPLACE INTO file_stats (path, upload_date, uploader_id, access_count, last_access)
+            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploader_id, access_count, last_access)
             VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
         `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
 
