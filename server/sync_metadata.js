@@ -20,16 +20,16 @@ if (!DISK_A) {
 }
 
 if (!DISK_A) {
-    console.error('❌ Could not find DiskA directory. Please set DISK_A environment variable.');
+    console.error('[Error] Could not find DiskA directory. Please set DISK_A environment variable.');
     process.exit(1);
 }
 
 const dbPath = path.join(__dirname, 'longhorn.db');
 const db = new Database(dbPath);
 
-console.log(`🚀 Starting MASTER SYNC v3 (Symlink + NFC Mode)...`);
-console.log(`📂 Disk Path: ${DISK_A}`);
-console.log(`🗄️  DB Path: ${dbPath}`);
+console.log(`Starting MASTER SYNC v3 (Symlink + NFC Mode)...`);
+console.log(`Disk Path: ${DISK_A}`);
+console.log(`DB Path: ${dbPath}`);
 
 // 2. Dynamically fetch department users
 const users = db.prepare(`
@@ -38,7 +38,7 @@ const users = db.prepare(`
     LEFT JOIN departments d ON u.department_id = d.id
 `).all();
 
-console.log('👥 Detected User/Dept mapping:');
+console.log('Detected User/Dept mapping:');
 users.forEach(u => console.log(`   - [${u.id}] ${u.username} (${u.dept_name || 'No Dept'})`));
 
 const folderMap = {};
@@ -61,7 +61,7 @@ function getUploaderId(relativePath) {
 }
 
 // 3. Fix all existing paths in DB to NFC
-console.log('🔄 Cleaning up database path encoding...');
+console.log('Cleaning up database path encoding...');
 const allStats = db.prepare('SELECT path, uploader_id FROM file_stats').all();
 const updatePathStmt = db.prepare('UPDATE file_stats SET path = ? WHERE path = ?');
 let normalizedCount = 0;
@@ -79,7 +79,7 @@ db.transaction(() => {
         }
     }
 })();
-console.log(`✅ Normalized ${normalizedCount} paths in database.`);
+console.log(`Success: Normalized ${normalizedCount} paths in database.`);
 
 // 4. Recursive Sync (Follow Symlinks)
 function syncDir(currentPath, depth = 0) {
@@ -87,7 +87,7 @@ function syncDir(currentPath, depth = 0) {
     try {
         items = fs.readdirSync(currentPath, { withFileTypes: true });
     } catch (e) {
-        console.error(`⚠️  Cannot read directory: ${currentPath} (${e.message})`);
+        console.error(`[Warning] Cannot read directory: ${currentPath} (${e.message})`);
         return 0;
     }
 
@@ -114,7 +114,7 @@ function syncDir(currentPath, depth = 0) {
 
         // Log first 2 levels to help user verify
         if (depth < 2 && item.isDirectory()) {
-            console.log(`   ${"  ".repeat(depth)}📂 Entering: ${item.name}`);
+            console.log(`   ${"  ".repeat(depth)}Entering: ${item.name}`);
         }
 
         // Check if it's a directory OR a symlink to a directory
@@ -140,16 +140,16 @@ try {
         return syncDir(DISK_A);
     })();
 
-    console.log(`\n🎉 MASTER SYNC v3 COMPLETE!`);
-    console.log(`✅ Total files and folders processed: ${totalSynced}`);
+    console.log(`\nMASTER SYNC v3 COMPLETE!`);
+    console.log(`Total files and folders processed: ${totalSynced}`);
 
     const remainingUnknown = db.prepare("SELECT COUNT(*) as count FROM file_stats WHERE uploader_id IS NULL").get().count;
     if (remainingUnknown > 0) {
-        console.log(`⚠️  Warning: ${remainingUnknown} records still have unknown uploader.`);
+        console.log(`[Warning] ${remainingUnknown} records still have unknown uploader.`);
     }
 
 } catch (err) {
-    console.error('❌ Sync Error:', err);
+    console.error('Sync Error:', err);
 } finally {
     db.close();
 }
