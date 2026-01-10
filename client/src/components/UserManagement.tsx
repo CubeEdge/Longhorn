@@ -199,7 +199,7 @@ const UserManagement: React.FC = () => {
             const res = await axios.get(`/api/files?path=${path || ''}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setBrowserFiles(res.data.items || []);
+            setBrowserFiles((res.data.items || []).filter((f: any) => !f.name.startsWith('.')));
             setBrowserPath(path);
         } catch (err) {
             console.error("Failed to browse files", err);
@@ -599,7 +599,7 @@ const UserManagement: React.FC = () => {
             {/* Permission Grant Modal (Stage 2) */}
             {
                 isGranting && (
-                    <div className="modal-overlay" style={{ zIndex: 2100 }} onClick={() => setIsGranting(false)}>
+                    <div className="modal-overlay" style={{ zIndex: 4000 }} onClick={() => setIsGranting(false)}>
                         <div className="modal-content scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
                             <h3 style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>{t('user.add_access_auth')}</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -733,7 +733,7 @@ const UserManagement: React.FC = () => {
             {/* Folder Browser Modal (Inside Grant Modal) */}
             {
                 isBrowserOpen && (
-                    <div className="modal-overlay" style={{ zIndex: 2200 }} onClick={() => setIsBrowserOpen(false)}>
+                    <div className="modal-overlay" style={{ zIndex: 4100 }} onClick={() => setIsBrowserOpen(false)}>
                         <div className="modal-content fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, minHeight: 460 }}>
                             <div className="modal-header">
                                 <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Folder size={22} color="var(--accent-blue)" /> {t('user.select_folder_title')}</h3>

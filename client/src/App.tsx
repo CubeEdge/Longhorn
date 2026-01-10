@@ -11,7 +11,8 @@ import {
   Star,
   Trash2,
   User,
-  Network
+  Network,
+  LayoutDashboard
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -251,50 +252,12 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
         {/* Recycle Bin - Bottom */}
         <div style={{ marginTop: 'auto' }} />
 
-        {/* Language Selector - Mobile Only */}
-        <div className="hidden-desktop" style={{ padding: '8px 16px', marginBottom: '8px' }}>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            background: 'rgba(255,255,255,0.05)',
-            padding: '8px',
-            borderRadius: '10px',
-            justifyContent: 'center'
-          }}>
-            {(['zh', 'en', 'de', 'ja'] as const).map((lang) => {
-              const langEmoji: { [key: string]: string } = { zh: '🇨🇳', en: '🇺🇸', de: '🇩🇪', ja: '🇯🇵' };
-              const { language: currentLanguage, setLanguage } = useLanguage();
-              return (
-                <button
-                  key={lang}
-                  onClick={() => setLanguage(lang)}
-                  style={{
-                    background: currentLanguage === lang ? 'var(--accent-blue)' : 'transparent',
-                    color: currentLanguage === lang ? '#000' : 'var(--text-secondary)',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '6px 10px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: '1rem'
-                  }}
-                >
-                  {langEmoji[lang]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
         <Link to="/recycle-bin" className={`sidebar-item ${location.pathname === '/recycle-bin' ? 'active' : ''}`} onClick={onClose}>
           <Trash2 size={20} />
           <span>{t('browser.recycle')}</span>
         </Link>
-        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.4, textAlign: 'center', lineHeight: '1.4' }}>
-          <div>代码版本: {__APP_COMMIT_TIME__}</div>
-          <div>构建部署: {__APP_BUILD_TIME__}</div>
-        </div>
       </nav>
     </aside>
   );
@@ -449,9 +412,9 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
         </button>
 
+        {/* User Profile - visible on all screen sizes */}
         <div
           ref={dropdownRef}
-          className="hidden-mobile-flex"
           onClick={() => setShowDropdown(!showDropdown)}
           style={{
             cursor: 'pointer',
@@ -465,11 +428,14 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
             background: showDropdown ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
           }}
         >
-          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
-            <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
-              {user.role === 'Admin' ? t('role.admin') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
-            </span>
+          {/* Username/Role - hidden on mobile, flex-column on desktop */}
+          <div className="hidden-mobile">
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
+                {user.role === 'Admin' ? t('role.admin') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
+              </span>
+            </div>
           </div>
           <div style={{
             width: 36,
@@ -563,6 +529,35 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
               >
                 <User size={16} />
                 {t('sidebar.personal')}
+              </button>
+
+              {/* Dashboard Entry */}
+              <button
+                onClick={() => {
+                  navigate('/dashboard');
+                  setShowDropdown(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.9)',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <LayoutDashboard size={16} />
+                {t('sidebar.dashboard')}
               </button>
 
               {/* Logout */}

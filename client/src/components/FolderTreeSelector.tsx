@@ -71,7 +71,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
 
         // Add all non-members nodes from the root's children
         actualRoots.forEach(node => {
-            if (node.path.toLowerCase() !== 'members') {
+            if (node.path.toLowerCase() !== 'members' && !node.name.startsWith('.')) {
                 newTree.push(node);
             }
         });
@@ -197,7 +197,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                zIndex: 1000,
+                zIndex: 4500,
                 backdropFilter: 'blur(4px)'
             }}
             onClick={isProcessing ? undefined : onClose}

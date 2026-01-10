@@ -608,6 +608,19 @@ select.form-control option {
 
   .content-area {
     padding: 8px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 60px;
+  }
+
+  .sidebar {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar nav {
+    overflow-y: visible;
+    min-height: min-content;
   }
 }
 

@@ -1724,7 +1724,8 @@ app.get('/api/files', authenticate, async (req, res) => {
     try {
         // Check write permissions - both Full and Contributor can write
         const canWrite = hasPermission(req.user, subPath, 'Full') || hasPermission(req.user, subPath, 'Contributor');
-        const items = await fs.readdir(fullPath, { withFileTypes: true });
+        const items = (await fs.readdir(fullPath, { withFileTypes: true }))
+            .filter(item => !item.name.startsWith('.'));
 
         // Generate ETag source data (names + mtime + size)
         // Note: For deep folders, getFolderSize is expensive, so we exclude folder sizes from ETag calculation for speed
@@ -1861,7 +1862,7 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
             // Also allow Root ('') to list initial folders
             if (dirPath !== '' && dirPath.toLowerCase() !== 'members' && !hasPermission(req.user, dirPath, 'Read')) return nodes;
 
-            const items = fs.readdirSync(fullPath);
+            const items = fs.readdirSync(fullPath).filter(name => !name.startsWith('.'));
 
             for (const item of items) {
                 const itemPath = path.join(dirPath, item);
