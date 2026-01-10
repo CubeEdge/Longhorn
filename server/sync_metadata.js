@@ -3,12 +3,13 @@ const path = require('path');
 const fs = require('fs');
 
 const dbPath = path.join(__dirname, 'longhorn.db');
+console.log(`Starting MASTER SYNC v11 (Final Aligner)...`);
+console.log(`DB Path (Absolute): ${path.resolve(dbPath)}`);
+
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-console.log('Starting MASTER SYNC v10 (Forensic Repair)...');
-
-// 1. Repair associations first (from v6 logic)
+// 1. Repair associations first
 const repairLogic = [
     { pattern: '%运营部%', id: 37 }, { pattern: '%(OP)%', id: 37 },
     { pattern: '%市场部%', id: 11 }, { pattern: '%(MS)%', id: 11 }
@@ -20,8 +21,24 @@ db.transaction(() => {
     });
 })();
 
-// 2. Aggressive Disk Sync with per-file logging
+// 2. PATH ALIGNER: Clean up ghost prefixes
+const allStats = db.prepare('SELECT path FROM file_stats').all();
+db.transaction(() => {
+    for (const row of allStats) {
+        let cleanPath = row.path.normalize('NFC').replace(/\\/g, '/');
+        cleanPath = cleanPath.replace(/^(DiskA\/|Kinefinity\/|\/Kinefinity\/|\/DiskA\/|\/)/i, '');
+        cleanPath = cleanPath.replace(/\/+$/, '');
+        if (cleanPath !== row.path) {
+            try {
+                db.prepare('UPDATE OR IGNORE file_stats SET path = ? WHERE path = ?').run(cleanPath, row.path);
+            } catch (e) { }
+        }
+    }
+})();
+
+// 3. Disk Sync
 const DISK_A = process.env.DISK_A || path.join(__dirname, 'data/DiskA');
+console.log(`Disk Path: ${DISK_A}`);
 
 function getUploaderId(relativePath) {
     const normalized = relativePath.normalize('NFC').replace(/\\/g, '/');
@@ -43,32 +60,25 @@ const upsertStmt = db.prepare(`
 function syncDir(currentPath) {
     let itemNames = fs.readdirSync(currentPath);
     let count = 0;
-
     for (const itemName of itemNames) {
-        if (itemName.startsWith('.') || itemName === 'node_modules' || itemName === '.chunks') continue;
+        if (itemName.startsWith('.') || itemName === 'node_modules') continue;
         const fullPath = path.join(currentPath, itemName);
         const stats = fs.statSync(fullPath);
         const relativePath = path.relative(DISK_A, fullPath).normalize('NFC').replace(/\\/g, '/').replace(/^\//, '');
         const uploaderId = getUploaderId(relativePath);
         const uploadDate = stats.mtime.toISOString().slice(0, 19).replace('T', ' ');
 
-        try {
-            const info = upsertStmt.run(relativePath, uploaderId, uploadDate);
-            if (info.changes > 0) {
-                console.log(`   [Saved] "${relativePath}" (UID:${uploaderId})`);
-                count++;
-            }
-        } catch (e) {
-            console.error(`   [Fail] "${relativePath}": ${e.message}`);
-        }
-
-        if (stats.isDirectory()) {
-            count += syncDir(fullPath);
-        }
+        upsertStmt.run(relativePath, uploaderId, uploadDate);
+        count++;
+        if (stats.isDirectory()) count += syncDir(fullPath);
     }
     return count;
 }
 
-const total = syncDir(DISK_A);
-console.log(`\nDONE. Total items updated/inserted: ${total}`);
+try {
+    const total = syncDir(DISK_A);
+    console.log(`\nDONE. Total items (disk): ${total}`);
+} catch (e) {
+    console.error(`Sync error: ${e.message}`);
+}
 db.close();

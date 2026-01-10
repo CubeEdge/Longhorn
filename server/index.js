@@ -190,6 +190,7 @@ const upload = multer({ storage });
 
 // Database Setup
 const db = new Database(DB_PATH);
+console.log(`[Database] Omni-Fix v11 active. DB File: ${path.resolve(DB_PATH)}`);
 // Enable WAL mode for better concurrency during uploads
 db.pragma('journal_mode = WAL');
 db.exec(`
@@ -1759,15 +1760,27 @@ app.get('/api/files', authenticate, async (req, res) => {
             const itemPath = path.join(subPath, item.name).normalize('NFC');
             const fullItemPath = path.join(fullPath, item.name);
             const stats = fs.statSync(fullItemPath);
-            const dbStats = db.prepare(`
+            // Ultimate Omni-Matcher: Try Exact -> NFC -> NFD -> Suffix Match
+            let dbStats = db.prepare(`
                 SELECT s.access_count, u.username as uploader 
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
-                WHERE s.path = ? OR s.path = ? OR s.path LIKE ?
-            `).get(itemPath, itemPath.normalize('NFD'), `%${item.name}`);
+                WHERE s.path = ? OR s.path = ? OR s.path = ?
+            `).get(itemPath, itemPath.normalize('NFC'), itemPath.normalize('NFD'));
+
+            if (!dbStats) {
+                // Fuzzy fallback: Match by file name suffix
+                dbStats = db.prepare(`
+                    SELECT s.access_count, u.username as uploader 
+                    FROM file_stats s 
+                    LEFT JOIN users u ON s.uploader_id = u.id 
+                    WHERE s.path LIKE ? ESCAPE '\\'
+                    LIMIT 1
+                `).get(`%/${item.name}`);
+            }
 
             if (!dbStats && (itemPath.includes('运营部') || itemPath.includes('市场部'))) {
-                console.log(`[Debug] No DB record for: "${itemPath}" (Hex: ${Buffer.from(itemPath).toString('hex')})`);
+                console.log(`[Debug] Query MISS: "${itemPath}" | Hex: ${Buffer.from(itemPath).toString('hex')}`);
             }
 
             // Calculate folder size if directory
