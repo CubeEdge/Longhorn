@@ -16,10 +16,17 @@ cd client
 npm install
 npm run build
 
-echo "🔄 Restarting Server..."
-cd ../server
-npm install # Install/update server deps if any
-# Try restart, if fails (process not found), then start
-pm2 restart index || pm2 start index.js --name index
+echo "🔄 Restarting Server (Cluster Mode)..."
+cd ..
+
+# Create logs directory if not exists
+mkdir -p logs
+
+# Stop old processes and start with cluster config
+pm2 delete longhorn 2>/dev/null || true
+pm2 delete index 2>/dev/null || true
+pm2 start ecosystem.config.js
 
 echo "✅ Update successfully completed!"
+echo "📊 PM2 Status:"
+pm2 list
