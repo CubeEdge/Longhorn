@@ -21,7 +21,7 @@ const folderMap = {
 };
 
 function getUploaderId(relativePath) {
-    const normalized = relativePath.replace(/\\/g, '/');
+    const normalized = relativePath.normalize('NFC');
 
     // Check direct mappings
     for (const [folder, id] of Object.entries(folderMap)) {
@@ -42,19 +42,17 @@ function syncDir(currentPath) {
         INSERT INTO file_stats (path, uploader_id, uploaded_at, access_count)
         VALUES (?, ?, ?, 0)
         ON CONFLICT(path) DO UPDATE SET
-            uploader_id = CASE 
-                WHEN excluded.uploader_id != 1 THEN excluded.uploader_id
-                WHEN uploader_id IS NULL THEN excluded.uploader_id
-                ELSE uploader_id 
-            END
+            uploader_id = IFNULL(uploader_id, excluded.uploader_id)
     `);
 
     for (const item of items) {
         // Skip hidden files and temporary chunks
-        if (item.name.startsWith('.') || item.name === 'node_modules') continue;
+        if (item.name.startsWith('.') || item.name === 'node_modules' || item.name === '.chunks') continue;
 
         const fullPath = path.join(currentPath, item.name);
-        const relativePath = path.relative(DISK_A, fullPath).replace(/\\/g, '/');
+        // Normalize path to NFC for database consistency
+        const relativePath = path.relative(DISK_A, fullPath).normalize('NFC').replace(/\\/g, '/');
+
         const uploaderId = getUploaderId(relativePath);
         const stats = fs.statSync(fullPath);
         const uploadDate = stats.birthtime.toISOString().slice(0, 19).replace('T', ' ');

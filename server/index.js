@@ -1756,7 +1756,7 @@ app.get('/api/files', authenticate, async (req, res) => {
         res.setHeader('ETag', etag);
 
         const result = items.map(item => {
-            const itemPath = path.join(subPath, item.name);
+            const itemPath = path.join(subPath, item.name).normalize('NFC');
             const fullItemPath = path.join(fullPath, item.name);
             const stats = fs.statSync(fullItemPath);
             const dbStats = db.prepare(`
