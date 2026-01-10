@@ -342,42 +342,94 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        const formData = new FormData();
-        Array.from(e.target.files).forEach(f => formData.append('files', f));
+        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+        const uploadBaseUrl = import.meta.env.VITE_UPLOAD_BASE_URL || '';
+        const files = Array.from(e.target.files);
 
+        // Calculate total size for progress
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        let uploadedBytes = 0;
         let isCancelled = false;
 
-        // Use VITE_UPLOAD_BASE_URL to bypass Cloudflare timeout on production
-        const uploadBaseUrl = import.meta.env.VITE_UPLOAD_BASE_URL || '';
         try {
-            await axios.post(`${uploadBaseUrl}/api/upload?path=${currentPath}`, formData, {
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
-                signal: controller.signal,
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-                    setUploadProgress(percentCompleted);
-                    // Calculate speed from rate (bytes per second)
-                    if (progressEvent.rate) {
-                        const rate = progressEvent.rate;
-                        if (rate >= 1024 * 1024) {
-                            setUploadSpeed(`${(rate / (1024 * 1024)).toFixed(1)} MB/s`);
-                        } else if (rate >= 1024) {
-                            setUploadSpeed(`${(rate / 1024).toFixed(0)} KB/s`);
-                        } else {
-                            setUploadSpeed(`${rate} B/s`);
-                        }
-                    }
+            for (const file of files) {
+                if (controller.signal.aborted) {
+                    isCancelled = true;
+                    break;
                 }
-            });
-            setUploadStatus('success');
-            fetchFiles(currentPath);
+
+                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+                // Upload each chunk
+                for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                    if (controller.signal.aborted) {
+                        isCancelled = true;
+                        break;
+                    }
+
+                    const start = chunkIndex * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+
+                    const formData = new FormData();
+                    formData.append('chunk', chunk);
+                    formData.append('uploadId', uploadId);
+                    formData.append('fileName', file.name);
+                    formData.append('chunkIndex', chunkIndex.toString());
+                    formData.append('totalChunks', totalChunks.toString());
+                    formData.append('path', currentPath);
+
+                    await axios.post(`${uploadBaseUrl}/api/upload/chunk`, formData, {
+                        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+                        signal: controller.signal,
+                        onUploadProgress: (progressEvent) => {
+                            const chunkUploaded = progressEvent.loaded;
+                            const currentTotal = uploadedBytes + chunkUploaded;
+                            const percentCompleted = Math.round((currentTotal * 100) / totalSize);
+                            setUploadProgress(Math.min(percentCompleted, 99)); // Cap at 99% until merge
+
+                            if (progressEvent.rate) {
+                                const rate = progressEvent.rate;
+                                if (rate >= 1024 * 1024) {
+                                    setUploadSpeed(`${(rate / (1024 * 1024)).toFixed(1)} MB/s`);
+                                } else if (rate >= 1024) {
+                                    setUploadSpeed(`${(rate / 1024).toFixed(0)} KB/s`);
+                                } else {
+                                    setUploadSpeed(`${rate} B/s`);
+                                }
+                            }
+                        }
+                    });
+
+                    uploadedBytes += (end - start);
+                }
+
+                // Merge chunks after all are uploaded for this file
+                if (!controller.signal.aborted) {
+                    await axios.post(`${uploadBaseUrl}/api/upload/merge`, {
+                        uploadId,
+                        fileName: file.name,
+                        totalChunks,
+                        path: currentPath
+                    }, {
+                        headers: { Authorization: `Bearer ${token}` },
+                        signal: controller.signal
+                    });
+                }
+            }
+
+            if (!isCancelled) {
+                setUploadProgress(100);
+                setUploadStatus('success');
+                fetchFiles(currentPath);
+            }
         } catch (error: any) {
             if (axios.isCancel(error)) {
                 console.log('Upload cancelled');
                 isCancelled = true;
-                // Status/input reset already handled in cancelUpload if called via UI
-                // But if called via abort() here for some reason, we ensure consistency
             } else {
+                console.error('Upload error:', error);
                 setUploadStatus('error');
             }
         } finally {

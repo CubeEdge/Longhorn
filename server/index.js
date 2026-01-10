@@ -650,6 +650,98 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
     }
 });
 
+// Chunked Upload - Receive individual chunks
+const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
+app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (req, res) => {
+    try {
+        const { uploadId, fileName, chunkIndex, totalChunks, path: uploadPath } = req.body;
+
+        if (!uploadId || !fileName || chunkIndex === undefined || !totalChunks) {
+            return res.status(400).json({ error: 'Missing required chunk metadata' });
+        }
+
+        // Create chunk directory for this upload
+        const chunkDir = path.join(DISK_A, '.chunks', uploadId);
+        fs.ensureDirSync(chunkDir);
+
+        // Move uploaded chunk to its proper location
+        const chunkPath = path.join(chunkDir, `${chunkIndex}`);
+        fs.moveSync(req.file.path, chunkPath, { overwrite: true });
+
+        console.log(`[Chunk] Received chunk ${parseInt(chunkIndex) + 1}/${totalChunks} for ${fileName} (upload: ${uploadId})`);
+        res.json({ success: true, chunkIndex: parseInt(chunkIndex) });
+    } catch (err) {
+        console.error('[Chunk] Error:', err);
+        res.status(500).json({ error: 'Failed to save chunk' });
+    }
+});
+
+// Chunked Upload - Merge all chunks into final file
+app.post('/api/upload/merge', authenticate, async (req, res) => {
+    try {
+        const { uploadId, fileName, totalChunks, path: uploadPath } = req.body;
+
+        if (!uploadId || !fileName || !totalChunks) {
+            return res.status(400).json({ error: 'Missing required merge metadata' });
+        }
+
+        let subPath = resolvePath(uploadPath || '');
+        if (!subPath || subPath === '') {
+            subPath = `Members/${req.user.username}`;
+        }
+        if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
+            subPath = `Members/${req.user.username}`;
+        }
+
+        if (!hasPermission(req.user, subPath, 'Full') && !hasPermission(req.user, subPath, 'Contributor')) {
+            return res.status(403).json({ error: 'No write permission for this folder' });
+        }
+
+        const chunkDir = path.join(DISK_A, '.chunks', uploadId);
+        const targetDir = path.join(DISK_A, subPath);
+        fs.ensureDirSync(targetDir);
+
+        const finalPath = path.join(targetDir, fileName);
+        const writeStream = fs.createWriteStream(finalPath);
+
+        // Merge chunks in order
+        for (let i = 0; i < parseInt(totalChunks); i++) {
+            const chunkPath = path.join(chunkDir, `${i}`);
+            if (!fs.existsSync(chunkPath)) {
+                writeStream.destroy();
+                return res.status(400).json({ error: `Missing chunk ${i}` });
+            }
+            const chunkData = fs.readFileSync(chunkPath);
+            writeStream.write(chunkData);
+        }
+
+        writeStream.end();
+
+        // Wait for write to complete
+        await new Promise((resolve, reject) => {
+            writeStream.on('finish', resolve);
+            writeStream.on('error', reject);
+        });
+
+        // Clean up chunk directory
+        fs.removeSync(chunkDir);
+
+        // Update database
+        const itemPath = path.join(subPath, fileName);
+        const normalizedPath = itemPath.replace(/\\/g, '/');
+        db.prepare(`
+            INSERT OR REPLACE INTO file_stats (path, upload_date, uploader_id, access_count, last_access)
+            VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
+        `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
+
+        console.log(`[Merge] Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
+        res.json({ success: true, path: normalizedPath });
+    } catch (err) {
+        console.error('[Merge] Error:', err);
+        res.status(500).json({ error: 'Failed to merge chunks' });
+    }
+});
+
 app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {
     const { username, password, role, department_id } = req.body;
     const hash = bcrypt.hashSync(password, 10);
