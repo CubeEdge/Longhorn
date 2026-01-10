@@ -1763,8 +1763,8 @@ app.get('/api/files', authenticate, async (req, res) => {
                 SELECT s.access_count, u.username as uploader 
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
-                WHERE s.path = ?
-            `).get(itemPath);
+                WHERE s.path = ? OR s.path = ? OR s.path LIKE ?
+            `).get(itemPath, itemPath.normalize('NFD'), `%${item.name}`);
 
             if (!dbStats && (itemPath.includes('运营部') || itemPath.includes('市场部'))) {
                 console.log(`[Debug] No DB record for: "${itemPath}" (Hex: ${Buffer.from(itemPath).toString('hex')})`);
