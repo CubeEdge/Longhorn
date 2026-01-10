@@ -633,8 +633,8 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
         // Use transaction for better performance
         const transaction = db.transaction((files) => {
             files.forEach(file => {
-                const itemPath = path.join(subPath, file.filename);
-                const normalizedPath = itemPath.replace(/\\/g, '/');
+                const itemPath = path.join(subPath, file.originalname);
+                const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
                 insertStmt.run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
             });
         });
@@ -728,7 +728,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
 
         // Update database
         const itemPath = path.join(subPath, fileName);
-        const normalizedPath = itemPath.replace(/\\/g, '/');
+        const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
         db.prepare(`
             INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploader_id, access_count, last_access)
             VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
@@ -1837,7 +1837,7 @@ app.post('/api/folders', authenticate, async (req, res) => {
     try {
         await fs.ensureDir(fullPath);
         // Track folder creator
-        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploader_id) VALUES (?, ?)').run(targetPath, req.user.id);
+        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploader_id) VALUES (?, ?)').run(targetPath.normalize('NFC'), req.user.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
