@@ -4,6 +4,8 @@ import { format, addDays, addMonths, startOfMonth, endOfMonth, startOfWeek, endO
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
+import { useConfirm } from '../store/useConfirm';
 import { useLanguage } from '../i18n/useLanguage';
 import {
     UserPlus,
@@ -127,6 +129,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
 const UserManagement: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const { showToast } = useToast();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState<any[]>([]);
@@ -250,7 +253,7 @@ const UserManagement: React.FC = () => {
             const updatedUser = { ...selectedUser, username: editUsername, role: editRole, department_id: editDeptId };
             setSelectedUser(updatedUser);
         } catch (err) {
-            alert(`更新失败: ${(err as any).response?.data?.error || (err as any).message}`);
+            showToast(`${t('error.update_failed_detail', { error: (err as any).response?.data?.error || (err as any).message })}`, 'error');
         }
     };
 
@@ -274,19 +277,19 @@ const UserManagement: React.FC = () => {
             setExpiryPreset(t('user.expiry_7days'));
             fetchPermissions(selectedUser.id);
         } catch (err) {
-            alert(`授权失败: ${(err as any).response?.data?.error || (err as any).message}`);
+            showToast(`${t('error.auth_failed_detail', { error: (err as any).response?.data?.error || (err as any).message })}`, 'error');
         }
     };
 
     const handleRevokePermission = async (permId: number) => {
-        if (!window.confirm(t('user.revoke_confirm'))) return;
+        if (!await confirm(t('user.revoke_confirm'), t('dialog.confirm_title'))) return;
         try {
             await axios.delete(`/api/admin/permissions/${permId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchPermissions(selectedUser.id);
         } catch (err) {
-            alert(t('user.revoke_failed'));
+            showToast(t('user.revoke_failed'), 'error');
         }
     };
 
@@ -306,7 +309,7 @@ const UserManagement: React.FC = () => {
             setPassword('');
             fetchData();
         } catch (err) {
-            alert(t('user.create_failed'));
+            showToast(t('user.create_failed'), 'error');
         }
     };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
 import { useNavigate } from 'react-router-dom';
 import { Search, File, Folder, Image, Video, FileText, Filter } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,6 +25,7 @@ export const SearchPage: React.FC = () => {
     const { token } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const { showToast } = useToast();
 
     const handleSearch = async () => {
         if (!query.trim()) return;
@@ -40,7 +42,7 @@ export const SearchPage: React.FC = () => {
             setResults(res.data.results || []);
         } catch (err) {
             console.error('Search failed:', err);
-            alert(t('search.error'));
+            showToast(t('search.error'), 'error');
         } finally {
             setLoading(false);
         }

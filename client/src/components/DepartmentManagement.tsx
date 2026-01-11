@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
 import { useLanguage } from '../i18n/useLanguage';
 import {
     ShieldCheck,
@@ -25,6 +26,7 @@ const DepartmentManagement: React.FC = () => {
     const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
 
     const { token } = useAuthStore();
+    const { showToast } = useToast();
     const { t } = useLanguage();
 
     const fetchData = async () => {
@@ -44,14 +46,14 @@ const DepartmentManagement: React.FC = () => {
     const createDept = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newDeptName || !newDeptCode) {
-            alert(t('dept.alert_fill_info'));
+            showToast(t('dept.alert_fill_info'), 'warning');
             return;
         }
 
         // Validate Code: 2-3 uppercase letters
         const codeRegex = /^[A-Z]{2,3}$/;
         if (!codeRegex.test(newDeptCode)) {
-            alert(t('dept.alert_code_format'));
+            showToast(t('dept.alert_code_format'), 'warning');
             return;
         }
 
@@ -76,7 +78,7 @@ const DepartmentManagement: React.FC = () => {
             headers: { Authorization: `Bearer ${token}` }
         });
         setGrantPath('');
-        alert(t('dept_mgmt.auth_success'));
+        showToast(t('dept_mgmt.auth_success'), 'success');
     };
 
     // Helper function to translate department name

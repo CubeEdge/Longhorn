@@ -32,6 +32,8 @@ import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
 
 import ShareCollectionPage from './components/ShareCollectionPage';
+import Toast from './components/Toast';
+import { ConfirmDialog } from './components/ConfirmDialog';
 
 // Main Layout Component for authenticated users
 const MainLayout: React.FC<{ user: any }> = ({ user }) => {
@@ -117,6 +119,8 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       </Routes>
+      <Toast />
+      <ConfirmDialog />
     </Router>
   );
 };

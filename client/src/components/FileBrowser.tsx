@@ -4,6 +4,8 @@ import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
+import { useConfirm } from '../store/useConfirm';
 import { useLanguage } from '../i18n/useLanguage';
 import {
     Folder,
@@ -69,6 +71,8 @@ interface FileBrowserProps {
 
 const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const { t } = useLanguage();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const params = useParams();
     const navigate = useNavigate();
     const { user } = useAuthStore();
@@ -199,7 +203,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setStarredFiles(starredFiles.filter(p => p !== item.path));
-                    alert('✅ 已取消星标');
+                    showToast(t('starred.removed'), 'success');
                 }
             } else {
                 // Star
@@ -209,11 +213,11 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setStarredFiles([...starredFiles, item.path]);
-                alert(`⭐ ${t('starred.added')}`);
+                showToast(t('starred.added'), 'success');
             }
         } catch (err: any) {
             console.error('Failed to toggle star:', err);
-            alert('❌ 操作失败：' + (err.response?.data?.error || err.message));
+            showToast(err.response?.data?.error || err.message, 'error');
         }
     };
 
@@ -456,7 +460,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             setNewFolderName('');
             fetchFiles(currentPath);
         } catch (err) {
-            alert("创建文件夹失败");
+            showToast(t('error.create_folder_failed'), 'error');
         } finally {
             setIsProcessing(false);
         }
@@ -496,12 +500,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 { path: filePath },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            alert(t('starred.added'));
+            showToast(t('starred.added'), 'success');
         } catch (err: any) {
             if (err.response?.status === 409) {
-                alert(t('starred.already_starred'));
+                showToast(t('starred.already_starred'), 'warning');
             } else {
-                alert(t('starred.add_failed'));
+                showToast(t('starred.add_failed'), 'error');
             }
         }
     };
@@ -518,19 +522,19 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     }, []);
 
     const handleDelete = async (item: any) => {
-        if (!window.confirm(t('dialog.confirm_delete', { name: item.name }))) return;
+        if (!await confirm(t('dialog.confirm_delete', { name: item.name }), t('dialog.confirm_title'))) return;
         try {
             await axios.delete(`/api/files?path=${item.path}`, { headers: { Authorization: `Bearer ${token}` } });
             fetchFiles(currentPath);
             setMenuAnchor(null);
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || t('error.delete_failed');
-            alert(errorMsg);
+            showToast(errorMsg, 'error');
         }
     };
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(t('dialog.confirm_batch_delete', { count: selectedPaths.length }))) return;
+        if (!await confirm(t('dialog.confirm_batch_delete', { count: selectedPaths.length }), t('dialog.confirm_title'))) return;
         if (isProcessing) return;
         setIsProcessing(true);
 
@@ -542,16 +546,16 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             if (res.data.failedItems && res.data.failedItems.length > 0) {
                 const successCount = res.data.deletedCount;
                 const failCount = res.data.failedItems.length;
-                alert(`⚠️ 操作部分完成\n\n✅ 成功删除: ${successCount} 个\n❌ 删除失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可删除)`);
+                showToast(`${t('message.partial_success')}: ${successCount} ${t('common.success')}, ${failCount} ${t('common.failed')}`, 'warning');
             } else {
-                alert(`✅ ${t('message.delete_success')}`);
+                showToast(t('message.delete_success'), 'success');
             }
 
             setSelectedPaths([]);
             fetchFiles(currentPath);
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || t('error.batch_delete_failed');
-            alert(`❌ ${errorMsg}`);
+            showToast(errorMsg, 'error');
         } finally {
             setIsProcessing(false);
         }
@@ -560,7 +564,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
     const handleBulkMove = async (targetPath?: string) => {
         const finalTarget = targetPath || moveTargetDir;
         if (!finalTarget) {
-            alert(t('modal.select_folder_prompt'));
+            showToast(t('modal.select_folder_prompt'), 'warning');
             return;
         }
 
@@ -576,9 +580,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             if (res.data.failedItems && res.data.failedItems.length > 0) {
                 const successCount = res.data.movedCount;
                 const failCount = res.data.failedItems.length;
-                alert(`⚠️ 操作部分完成\n\n✅ 成功移动: ${successCount} 个\n❌ 移动失败: ${failCount} 个\n\n失败项目:\n${res.data.failedItems.join('\n')}\n\n原因: 权限不足 (仅管理员或上传者可移动)`);
+                showToast(`${t('message.partial_success')}: ${successCount} ${t('common.success')}, ${failCount} ${t('common.failed')}`, 'warning');
             } else {
-                alert(t('alert.move_success'));
+                showToast(t('alert.move_success'), 'success');
             }
 
             fetchFiles(currentPath);
@@ -587,7 +591,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             setIsMoveModalOpen(false); // Close modal on success
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || t('error.batch_move_failed');
-            alert(`❌ ${errorMsg}`);
+            showToast(errorMsg, 'error');
         } finally {
             setIsProcessing(false);
         }
@@ -595,7 +599,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const handleBatchDownload = async () => {
         if (selectedPaths.length === 0) {
-            alert(t('alert.select_files_download'));
+            showToast(t('alert.select_files_download'), 'warning');
             return;
         }
 
@@ -632,13 +636,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             setSelectedPaths([]);
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || t('error.download_failed');
-            alert(errorMsg);
+            showToast(errorMsg, 'error');
         }
     };
 
     const handleBatchShare = async () => {
         if (selectedPaths.length === 0) {
-            alert(t('alert.select_files_share'));
+            showToast(t('alert.select_files_share'), 'warning');
             return;
         }
 
@@ -704,7 +708,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
             }
         } catch (err: any) {
             const errorMsg = err.response?.data?.error || err.message || '创建分享失败';
-            alert(`❌ ${errorMsg}`);
+            showToast(errorMsg, 'error');
         } finally {
             setIsSharing(false);
         }
@@ -753,12 +757,12 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 setShowShareDialog(false);
                 setSharePassword('');
             } else {
-                alert('❌ 生成失败：服务器未返回链接');
+                showToast(t('error.share_no_link'), 'error');
             }
         } catch (err: any) {
             console.error('Failed to create share link:', err);
             const errorMsg = err.response?.data?.error || err.message || '未知错误';
-            alert(`❌ 创建分享链接失败：${errorMsg}`);
+            showToast(`${t('error.share_failed')}: ${errorMsg}`, 'error');
         } finally {
             setIsSharing(false);
         }

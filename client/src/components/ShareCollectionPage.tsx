@@ -205,7 +205,7 @@ const ShareCollectionPage: React.FC = () => {
                                             className="icon-btn"
                                             title="下载"
                                             onClick={() => {
-                                                alert(t('share_page.password_required') ? '请使用上方"下载全部"按钮下载整个集合' : 'Please use "Download All" button');
+                                                // Individual download not supported for collections - use Download All
                                             }}
                                         >
                                             <Download size={18} />

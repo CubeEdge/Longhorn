@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
+import { useConfirm } from '../store/useConfirm';
 import { useLanguage, getCurrentLanguage } from '../i18n/useLanguage';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN, enUS, de, ja } from 'date-fns/locale';
@@ -23,6 +25,8 @@ interface RecycleItem {
 
 const RecycleBin: React.FC = () => {
     const { t } = useLanguage();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const [items, setItems] = useState<RecycleItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -71,7 +75,7 @@ const RecycleBin: React.FC = () => {
     };
 
     const handleClearAll = async () => {
-        if (!window.confirm(t('recycle.confirm_clear'))) return;
+        if (!await confirm(t('recycle.confirm_clear'), t('dialog.confirm_title'))) return;
         try {
             await axios.delete('/api/recycle-bin-clear', {
                 headers: { Authorization: `Bearer ${token}` }
@@ -79,7 +83,7 @@ const RecycleBin: React.FC = () => {
             fetchItems();
         } catch (err) {
             console.error('Clear all failed:', err);
-            alert(t('recycle.clear_error'));
+            showToast(t('recycle.clear_error'), 'error');
         }
     };
 
@@ -94,12 +98,12 @@ const RecycleBin: React.FC = () => {
             setSelectedIds([]);
             fetchItems();
         } catch (err) {
-            alert(t('recycle.restore_error'));
+            showToast(t('recycle.restore_error'), 'error');
         }
     };
 
     const handleBulkDelete = async () => {
-        if (!window.confirm(t('recycle.delete_confirm', { count: selectedIds.length }))) return;
+        if (!await confirm(t('recycle.delete_confirm', { count: selectedIds.length }), t('dialog.confirm_title'))) return;
         try {
             for (const id of selectedIds) {
                 await axios.delete(`/api/recycle-bin/${id}`, {
@@ -109,7 +113,7 @@ const RecycleBin: React.FC = () => {
             setSelectedIds([]);
             fetchItems();
         } catch (err) {
-            alert(t('recycle.delete_error'));
+            showToast(t('recycle.delete_error'), 'error');
         }
     };
 

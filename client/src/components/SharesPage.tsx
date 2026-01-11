@@ -5,6 +5,8 @@ import { Link2, Copy, Trash2, Lock, Eye, File, Check, X, Clock, User, Calendar, 
 import { format } from 'date-fns';
 import ShareResultModal from './ShareResultModal';
 import { useLanguage } from '../i18n/useLanguage';
+import { useToast } from '../store/useToast';
+import { useConfirm } from '../store/useConfirm';
 
 interface ShareLink {
     id: number;
@@ -48,6 +50,8 @@ interface UnifiedShareItem {
 
 export const SharesPage: React.FC = () => {
     const { t } = useLanguage();
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const [shares, setShares] = useState<ShareLink[]>([]);
     const [collections, setCollections] = useState<ShareCollection[]>([]);
     const [loading, setLoading] = useState(true);
@@ -113,7 +117,7 @@ export const SharesPage: React.FC = () => {
 
         document.body.removeChild(textArea);
 
-        alert(success ? '✅ 链接已复制到剪贴板！' : '⚠️ 请手动复制链接');
+        showToast(success ? t('share.copy_success') : t('share.copy_failed'), success ? 'success' : 'warning');
     };
 
     const copyCollectionLink = (token: string) => {
@@ -142,11 +146,11 @@ export const SharesPage: React.FC = () => {
 
         document.body.removeChild(textArea);
 
-        alert(success ? '✅ 批量分享链接已复制到剪贴板！' : '⚠️ 请手动复制链接');
+        showToast(success ? t('share.copy_collection_success') : t('share.copy_failed'), success ? 'success' : 'warning');
     };
 
     const deleteShare = async (id: number) => {
-        if (!confirm('确定要删除此分享链接吗？')) return;
+        if (!await confirm(t('my_shares.confirm_delete_link'), t('dialog.confirm_title'))) return;
 
         try {
             await axios.delete(`/api/shares/${id}`, {
@@ -154,25 +158,23 @@ export const SharesPage: React.FC = () => {
             });
             setShares(shares.filter(s => s.id !== id));
             setSelectedIds(selectedIds.filter(sid => sid !== id));
-            setDetailShare(null);
-            alert(`✅ ${t('my_shares.delete_link_success')}`);
+            showToast(t('my_shares.delete_link_success'), 'success');
         } catch (err) {
-            alert(`❌ ${t('my_shares.delete_failed')}`);
+            showToast(t('my_shares.delete_failed'), 'error');
         }
     };
 
     const deleteCollection = async (id: number) => {
-        if (!confirm(t('my_shares.confirm_delete_collection'))) return;
+        if (!await confirm(t('my_shares.confirm_delete_collection'), t('dialog.confirm_title'))) return;
 
         try {
             await axios.delete(`/api/share-collection/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCollections(collections.filter(c => c.id !== id));
-            setSelectedCollectionIds(selectedCollectionIds.filter(cid => cid !== id));
-            alert(`✅ ${t('my_shares.collection_deleted')}`);
+            showToast(t('my_shares.collection_deleted'), 'success');
         } catch (err) {
-            alert(`❌ ${t('my_shares.delete_failed')}`);
+            showToast(t('my_shares.delete_failed'), 'error');
         }
     };
 
@@ -189,9 +191,9 @@ export const SharesPage: React.FC = () => {
             return;
         }
 
-        // Use setTimeout to prevent event bubbling from closing the confirm dialog
+        // Use setTimeout to prevent event bubbling issues, though less relevant with custom modal
         setTimeout(async () => {
-            const confirmed = confirm(t('my_shares.confirm_bulk_delete', { count: totalSelected }));
+            const confirmed = await confirm(t('my_shares.confirm_bulk_delete', { count: totalSelected }), t('dialog.confirm_title'));
             console.log('[bulkDelete] User confirmed:', confirmed);
             if (!confirmed) return;
 
@@ -217,11 +219,10 @@ export const SharesPage: React.FC = () => {
                 setShares(shares.filter(s => !selectedIds.includes(s.id)));
                 setCollections(collections.filter(c => !selectedCollectionIds.includes(c.id)));
                 setSelectedIds([]);
-                setSelectedCollectionIds([]);
-                alert(`✅ ${t('my_shares.bulk_delete_success')}`);
+                showToast(t('my_shares.bulk_delete_success'), 'success');
             } catch (err) {
                 console.error('[bulkDelete] Error:', err);
-                alert(`❌ ${t('my_shares.bulk_delete_failed')}`);
+                showToast(t('my_shares.bulk_delete_failed'), 'error');
             }
         }, 0);
     };

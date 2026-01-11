@@ -351,7 +351,7 @@ app.get('/api/thumbnail', async (req, res) => {
 
         // Validate file extension
         const ext = path.extname(decodedPath).toLowerCase();
-        const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+        const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.heic', '.heif', '.hevc', '.mov', '.mp4'];
         if (!supportedFormats.includes(ext)) {
             return res.status(400).json({ error: 'Unsupported format for thumbnails' });
         }
@@ -1719,6 +1719,15 @@ app.get('/api/files', authenticate, async (req, res) => {
     // Check Read permissions for the subPath
     if (!hasPermission(req.user, subPath, 'Read')) {
         return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // Handle File Download
+    if (req.query.download === 'true') {
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            return res.download(fullPath);
+        } else {
+            return res.status(404).json({ error: 'File not found' });
+        }
     }
 
     try {

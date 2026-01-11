@@ -199,7 +199,7 @@ export const translations = {
         'share.delete_bulk_success': '✅ 已删除选中的分享',
         'share.delete_error': '❌ 删除失败',
         'share.copy_collection_success': '✅ 批量分享链接已复制到剪贴板！',
-        'share.copy_manual': '⚠️ 请手动复制链接',
+
 
         // Admin
         'admin.system': '系统后台',
@@ -380,6 +380,7 @@ export const translations = {
         'common.share': '分享',
         'common.delete': '删除',
         'common.cancel': '取消',
+        'common.confirm': '确定',
         'common.back': '返回',
         'common.current_path': '当前路径：',
 
@@ -401,6 +402,8 @@ export const translations = {
         'starred.download_to_view': '请下载查看',
         'starred.grid_view': '网格视图',
         'starred.list_view': '列表视图',
+        'starred.batch_unstar_success': '已取消选中的星标',
+        'starred.batch_unstar_failed': '批量取消星标失败',
 
         // Browser keys
 
@@ -416,6 +419,14 @@ export const translations = {
         'error.load_stats_failed': '加载统计数据失败',
         'error.load_failed_icon': '❌ 加载失败',
         'error.delete_failed': '删除失败',
+        'error.create_folder_failed': '创建文件夹失败',
+        'error.share_no_link': '生成失败：服务器未返回链接',
+        'error.share_failed': '创建分享链接失败',
+        'error.batch_move_failed': '批量移动失败',
+        'message.partial_success': '操作部分完成',
+        'message.delete_success': '删除成功',
+        'common.success': '成功',
+        'common.failed': '失败',
 
         // Additional Browser keys
         'browser.access_analysis': '访问分析',
@@ -446,9 +457,7 @@ export const translations = {
         // Lang
         'lang.zh_short': 'ZH',
 
-        // Message
-        'message.upload_success': 'File uploaded successfully',
-        'message.delete_success': 'Deleted successfully',
+        'message.upload_success': '已上传成功',
 
         // Permission
         'permission.type': 'Permission Type',
@@ -498,7 +507,6 @@ export const translations = {
         'comment.secondary_nav': '二级侧边导航',
         'dialog.confirm_batch_delete': '确定要删除选中的 {count} 个项目吗？',
         'dialog.confirm_delete': '确定要删除 {name} 吗？',
-        'error.batch_move_failed': '移动失败',
         'login.error_default': '登录失败，请检查用户名或密码',
         'login.password_placeholder': '密码',
         'login.submit_btn': '即刻访问',
@@ -517,7 +525,6 @@ export const translations = {
         'member.view_manage_hint': '查看和管理所有用户的个人空间',
         'message.failed_count': '失败: {count} 个',
         'message.failed_items': '失败项目:',
-        'message.partial_success': '操作部分完成',
         'message.permission_denied': '原因: 权限不足 (仅管理员或上传者可操作)',
         'message.success_count': '成功: {count} 个',
         'recycle.clear_success': '回收站已清空',
@@ -694,6 +701,10 @@ export const translations = {
         'dept.auth_failed': '授权失败',
         'dept.click_select_folder': '点击选择文件夹...',
         'dept.core_reminder': '核心提醒',
+
+        // Dialogs & Confirms (New)
+        'dialog.confirm_title': '确认操作',
+        'my_shares.confirm_delete_link': '确定要删除此分享链接吗？',
         'dept.custom': '自定义',
         'dept.dept_name_placeholder': '部门名称...',
         'dept.execute_auth': 'Autorisierung ausführen',
@@ -798,6 +809,13 @@ export const translations = {
         'error.update_failed_detail': 'Update failed: {error}',
         'error.move_failed': 'Move failed',
         'error.clear_recycle_failed': 'Failed to clear recycle bin',
+        'error.share_no_link': 'Failed to generate: Server did not return a link',
+        'error.share_failed': 'Failed to create share link',
+        'error.batch_move_failed': 'Batch move failed',
+        'message.partial_success': 'Operation partially completed',
+        'message.delete_success': 'Deleted successfully',
+        'common.success': 'succeeded',
+        'common.failed': 'failed',
 
         // Label
         'label.name': 'Name',
@@ -814,9 +832,7 @@ export const translations = {
         // Lang
         'lang.zh_short': 'ZH',
 
-        // Message
-        'message.upload_success': 'File uploaded successfully',
-        'message.delete_success': 'Deleted successfully',
+        // Message\n        'message.upload_success': 'File uploaded successfully',
 
         // Permission
         'permission.type': 'Permission Type',
@@ -880,14 +896,18 @@ export const translations = {
         'starred.no_files': 'No starred files yet',
         'starred.unstar': 'Remove Star',
         'starred.view_preview': 'View/Preview',
+        'starred.batch_unstar_success': 'Successfully unstarred selected items',
+        'starred.batch_unstar_failed': 'Failed to unstar selected items',
         'time.custom': 'Custom',
 
         // Final batch translations
         'comment.main_content': '主内容区',
         'comment.secondary_nav': '二级侧边导航',
         'dialog.confirm_batch_delete': 'Delete {count} selected items?',
+        'dialog.confirm_title': 'Confirm Action',
         'dialog.confirm_delete': 'Delete {name}?',
-        'error.batch_move_failed': 'Move failed',
+        'my_shares.confirm_delete_link': 'Are you sure you want to delete this share link?',
+        'user.revoke_confirm': 'Are you sure you want to revoke this permission?',
         'login.error_default': 'Login failed, please check username or password',
         'login.password_placeholder': 'Password',
         'login.submit_btn': 'Access Now',
@@ -906,7 +926,6 @@ export const translations = {
         'member.view_manage_hint': 'View and manage all users\' personal spaces',
         'message.failed_count': 'Failed: {count}',
         'message.failed_items': 'Failed items:',
-        'message.partial_success': 'Operation partially completed',
         'message.permission_denied': 'Reason: Permission denied (admin or uploader only)',
         'message.success_count': 'Success: {count}',
         'recycle.clear_success': 'Recycle bin cleared',

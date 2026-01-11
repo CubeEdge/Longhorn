@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToast } from '../store/useToast';
+import { useConfirm } from '../store/useConfirm';
 import { Star, MoreHorizontal, File, Eye, FileText, Image, Check, X, Folder, Download, Share2, Video, Table as TableIcon } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { format } from 'date-fns';
@@ -34,6 +36,9 @@ export const StarredPage: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
 
+    const { showToast } = useToast();
+    const { confirm } = useConfirm();
+
     useEffect(() => {
         fetchStarredFiles();
     }, []);
@@ -59,15 +64,15 @@ export const StarredPage: React.FC = () => {
             setStarredFiles(starredFiles.filter(f => f.id !== id));
             setSelectedIds(selectedIds.filter(sid => sid !== id));
             if (previewFile?.id === id) setPreviewFile(null);
-            alert(`✅ 已${t('starred.unstar')}`);
+            showToast(t('starred.removed'), 'success');
         } catch (err) {
-            alert(`❌ ${t('starred.unstar')}失败`);
+            showToast(t('starred.unstar_failed'), 'error');
         }
     };
 
     const bulkUnstar = async () => {
         if (selectedIds.length === 0) return;
-        if (!confirm(t('starred.confirm_unstar', { count: selectedIds.length }))) return;
+        if (!await confirm(t('starred.confirm_unstar', { count: selectedIds.length }), t('dialog.confirm_title'))) return;
 
         try {
             await Promise.all(selectedIds.map(id =>
@@ -77,9 +82,9 @@ export const StarredPage: React.FC = () => {
             ));
             setStarredFiles(starredFiles.filter(f => !selectedIds.includes(f.id)));
             setSelectedIds([]);
-            alert(`✅ 已${t('starred.batch_unstar')}`);
+            showToast(t('starred.batch_unstar_success'), 'success');
         } catch (err) {
-            alert(`❌ ${t('starred.batch_unstar')}失败`);
+            showToast(t('starred.batch_unstar_failed'), 'error');
         }
     };
 
@@ -498,7 +503,7 @@ export const StarredPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
                             <a href={`/preview/${previewFile.file_path}`} download={getFileName(previewFile.file_path || '')} className="btn-preview"><Download size={18} />{t('common.download')}</a>
-                            <button className="btn-preview primary" onClick={() => alert('功能开发中')}><Share2 size={18} />{t('common.share')}</button>
+                            <button className="btn-preview primary" onClick={() => showToast(t('common.feature_coming_soon'), 'info')}><Share2 size={18} />{t('common.share')}</button>
                         </div>
                     </div>
 

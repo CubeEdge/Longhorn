@@ -120,7 +120,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ word, language, current
             utterance.rate = 0.8;
             speechSynthesis.speak(utterance);
         } else {
-            alert('您的浏览器不支持语音合成');
+            console.warn('Speech synthesis not supported');
         }
     };
 

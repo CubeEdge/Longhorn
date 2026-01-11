@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle, X, Copy } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
+import { useToast } from '../store/useToast';
 
 interface ShareResultModalProps {
     result: {
@@ -13,6 +14,7 @@ interface ShareResultModalProps {
 
 const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) => {
     const { t } = useLanguage();
+    const { showToast } = useToast();
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
@@ -115,10 +117,10 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                         document.body.removeChild(textArea);
 
                         if (success) {
-                            alert(t('share.copy_success'));
+                            showToast(t('share.copy_success'), 'success');
                             onClose();
                         } else {
-                            alert(t('share.copy_failed'));
+                            showToast(t('share.copy_failed'), 'warning');
                         }
                     }}
                     className="btn-primary"
