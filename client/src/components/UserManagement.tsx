@@ -130,6 +130,7 @@ const UserManagement: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState<any[]>([]);

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useConfirm } from '../store/useConfirm';
 import { useLanguage } from '../i18n/useLanguage';
-import { AlertCircle, X, Check } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 export const ConfirmDialog: React.FC = () => {
     const { isOpen, title, message, confirmLabel, cancelLabel, close } = useConfirm();

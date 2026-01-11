@@ -398,6 +398,7 @@ export const translations = {
         // Additional Starred keys
         'starred.confirm_unstar': '确定要取消选中的 {count} 个文件的星标吗？',
         'starred.batch_unstar': '批量取消星标',
+        'starred.unstar_failed': '取消星标失败',
         'starred.cannot_preview': '无法预览此文件',
         'starred.download_to_view': '请下载查看',
         'starred.grid_view': '网格视图',
@@ -789,6 +790,7 @@ export const translations = {
         'common.optional': '(Optional)',
         'common.personal_space': 'Personal Space',
         'common.feature_in_progress': 'Feature in development',
+        'common.feature_coming_soon': '功能即将推出',
         'common.coming_soon': 'Coming soon...',
         'common.motto': 'Flow freely like air',
         'common.download_collection_hint': 'button to download entire collection',

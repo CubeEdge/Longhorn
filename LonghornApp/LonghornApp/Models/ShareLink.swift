@@ -1,0 +1,90 @@
+//
+//  ShareLink.swift
+//  LonghornApp
+//
+//  分享链接数据模型
+//
+
+import Foundation
+
+/// 分享链接模型
+struct ShareLink: Codable, Identifiable {
+    let id: Int
+    let userId: Int
+    let filePath: String
+    let fileName: String?
+    let token: String
+    let password: String?
+    let expiresAt: String?
+    let createdAt: String
+    let accessCount: Int
+    let language: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case filePath = "file_path"
+        case fileName = "file_name"
+        case token, password
+        case expiresAt = "expires_at"
+        case createdAt = "created_at"
+        case accessCount = "access_count"
+        case language
+    }
+    
+    /// 是否已过期
+    var isExpired: Bool {
+        guard let expiresAt = expiresAt else { return false }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: expiresAt) else { return false }
+        return date < Date()
+    }
+    
+    /// 是否有密码保护
+    var hasPassword: Bool {
+        password != nil && !password!.isEmpty
+    }
+    
+    /// 格式化创建时间
+    var formattedCreatedAt: String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: createdAt) else { return createdAt }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .short
+        return displayFormatter.string(from: date)
+    }
+    
+    /// 格式化过期时间
+    var formattedExpiresAt: String? {
+        guard let expiresAt = expiresAt else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: expiresAt) else { return expiresAt }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .short
+        return displayFormatter.string(from: date)
+    }
+}
+
+/// 创建分享请求
+struct CreateShareRequest: Codable {
+    let filePath: String
+    let fileName: String
+    let password: String?
+    let expiresDays: Int?
+    let language: String
+    
+    enum CodingKeys: String, CodingKey {
+        case filePath = "file_path"
+        case fileName = "file_name"
+        case password
+        case expiresDays = "expires_days"
+        case language
+    }
+}
