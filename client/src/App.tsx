@@ -210,7 +210,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
         <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
 
         {/* Departments */}
-        {accessibleDepts.map((dept: any) => {
+        {Array.from(new Map(accessibleDepts.map(d => [getDeptCode(d.name), d])).values()).map((dept: any) => {
           const code = getDeptCode(dept.name);
           const Icon = deptIcons[code] || Box;
 
