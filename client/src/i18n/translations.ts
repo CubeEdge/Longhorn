@@ -199,6 +199,7 @@ export const translations = {
         'share.delete_bulk_success': '✅ 已删除选中的分享',
         'share.delete_error': '❌ 删除失败',
         'share.copy_collection_success': '✅ 批量分享链接已复制到剪贴板！',
+        'common.feature_coming_soon': '功能即将推出',
 
 
         // Admin
@@ -273,6 +274,8 @@ export const translations = {
         'user.read_only': '只读访问',
         'user.revoke': '撤销',
         'user.revoke_confirm': '确定要撤销此权限吗？',
+        'error.auth_failed_detail': '授权失败：{error}',
+        'error.update_failed_detail': '更新失败：{error}',
         'user.revoke_failed': '撤销失败',
         'user.no_manual_auth': '暂无手动授权项目',
         'user.add_access_auth': '新增访问授权',
