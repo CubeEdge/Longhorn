@@ -135,11 +135,13 @@ class UploadService: ObservableObject {
             let progress = Double(uploadedBytes) / Double(task.fileSize)
             let elapsed = Date().timeIntervalSince(startTime)
             let bytesPerSecond = elapsed > 0 ? Double(uploadedBytes) / elapsed : 0
+            let currentUploadedBytes = uploadedBytes  // Capture for MainActor
+            let currentSpeed = formatSpeed(bytesPerSecond)
             
             await MainActor.run {
-                task.uploadedBytes = uploadedBytes
+                task.uploadedBytes = currentUploadedBytes
                 task.progress = progress
-                task.speed = formatSpeed(bytesPerSecond)
+                task.speed = currentSpeed
             }
         }
         
@@ -165,7 +167,7 @@ class UploadService: ObservableObject {
         totalChunks: Int,
         path: String
     ) async throws {
-        guard let token = AuthService.shared.token else {
+        guard let token = AuthManager.shared.token else {
             throw APIError.unauthorized
         }
         
