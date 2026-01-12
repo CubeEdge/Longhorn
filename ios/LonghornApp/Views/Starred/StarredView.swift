@@ -642,6 +642,7 @@ extension FileItem {
         self.uploaderId = nil
         self.uploaderName = nil
         self.isStarred = nil
+        self.accessCount = nil
     }
 }
 
