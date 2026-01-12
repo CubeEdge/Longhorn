@@ -2,7 +2,7 @@
 //  RecycleBinListView.swift
 //  LonghornApp
 //
-//  回收站视图（完整实现）
+//  回收站视图（完整实现 - 支持批量操作）
 //
 
 import SwiftUI
@@ -12,6 +12,11 @@ struct RecycleBinListView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showClearConfirm = false
+    
+    // 选择模式
+    @State private var isSelectionMode = false
+    @State private var selectedIds: Set<Int> = []
+    @State private var showBatchDeleteConfirm = false
     
     var body: some View {
         ZStack {
@@ -30,38 +35,58 @@ struct RecycleBinListView: View {
                     description: Text("删除的文件会在这里保留30天")
                 )
             } else {
-                List {
-                    ForEach(items) { item in
-                        RecycleBinItemRow(item: item)
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    restoreItem(item)
-                                } label: {
-                                    Label("恢复", systemImage: "arrow.uturn.backward")
-                                }
-                                .tint(.green)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    permanentlyDeleteItem(item)
-                                } label: {
-                                    Label("永久删除", systemImage: "trash.fill")
-                                }
-                            }
+                VStack(spacing: 0) {
+                    // 批量操作栏
+                    if isSelectionMode && !selectedIds.isEmpty {
+                        batchActionBar
                     }
+                    
+                    List(selection: isSelectionMode ? $selectedIds : nil) {
+                        ForEach(items) { item in
+                            RecycleBinItemRow(item: item)
+                                .tag(item.id)
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        restoreItem(item)
+                                    } label: {
+                                        Label("恢复", systemImage: "arrow.uturn.backward")
+                                    }
+                                    .tint(.green)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        permanentlyDeleteItem(item)
+                                    } label: {
+                                        Label("永久删除", systemImage: "trash.fill")
+                                    }
+                                }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
                 }
-                .listStyle(.plain)
             }
         }
         .navigationTitle("回收站")
         .toolbar {
-            if !items.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(role: .destructive) {
-                        showClearConfirm = true
-                    } label: {
-                        Text("清空")
-                            .foregroundColor(.red)
+            ToolbarItem(placement: .primaryAction) {
+                HStack {
+                    if !items.isEmpty {
+                        Button(isSelectionMode ? "完成" : "选择") {
+                            isSelectionMode.toggle()
+                            if !isSelectionMode {
+                                selectedIds.removeAll()
+                            }
+                        }
+                    }
+                    
+                    if !isSelectionMode && !items.isEmpty {
+                        Button(role: .destructive) {
+                            showClearConfirm = true
+                        } label: {
+                            Text("清空")
+                                .foregroundColor(.red)
+                        }
                     }
                 }
             }
@@ -74,6 +99,12 @@ struct RecycleBinListView: View {
         } message: {
             Text("此操作不可撤销，所有文件将被永久删除。")
         }
+        .confirmationDialog("确定要永久删除所选的\(selectedIds.count)个项目吗？", isPresented: $showBatchDeleteConfirm, titleVisibility: .visible) {
+            Button("永久删除", role: .destructive) {
+                batchDelete()
+            }
+            Button("取消", role: .cancel) { }
+        }
         .refreshable {
             await loadItems()
         }
@@ -81,6 +112,52 @@ struct RecycleBinListView: View {
             await loadItems()
         }
     }
+    
+    // MARK: - 批量操作栏
+    
+    private var batchActionBar: some View {
+        HStack {
+            Button(selectedIds.count == items.count ? "取消全选" : "全选") {
+                if selectedIds.count == items.count {
+                    selectedIds.removeAll()
+                } else {
+                    selectedIds = Set(items.map { $0.id })
+                }
+            }
+            .font(.system(size: 14, weight: .medium))
+            
+            Spacer()
+            
+            Text("已选 \(selectedIds.count) 项")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            // 批量恢复
+            Button {
+                batchRestore()
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 18))
+            }
+            .foregroundColor(.green)
+            
+            // 批量删除
+            Button {
+                showBatchDeleteConfirm = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 18))
+            }
+            .foregroundColor(.red)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(Color(UIColor.secondarySystemBackground))
+    }
+    
+    // MARK: - 数据操作
     
     private func loadItems() async {
         isLoading = true
@@ -127,6 +204,28 @@ struct RecycleBinListView: View {
             } catch {
                 print("Clear recycle bin failed: \(error)")
             }
+        }
+    }
+    
+    private func batchRestore() {
+        Task {
+            for id in selectedIds {
+                try? await FileService.shared.restoreFile(id: id)
+            }
+            selectedIds.removeAll()
+            isSelectionMode = false
+            await loadItems()
+        }
+    }
+    
+    private func batchDelete() {
+        Task {
+            for id in selectedIds {
+                try? await FileService.shared.permanentlyDelete(id: id)
+            }
+            selectedIds.removeAll()
+            isSelectionMode = false
+            await loadItems()
         }
     }
 }

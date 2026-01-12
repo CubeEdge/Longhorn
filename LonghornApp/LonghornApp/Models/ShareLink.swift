@@ -88,3 +88,49 @@ struct CreateShareRequest: Codable {
         case language
     }
 }
+
+/// 分享合集模型
+struct ShareCollection: Codable, Identifiable {
+    let id: Int
+    let token: String
+    let name: String
+    let expiresAt: String?
+    let accessCount: Int
+    let createdAt: String
+    let itemCount: Int?
+    let hasPassword: Bool?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case token
+        case name
+        case expiresAt = "expires_at"
+        case accessCount = "access_count"
+        case createdAt = "created_at"
+        case itemCount = "item_count"
+        case hasPassword = "has_password"
+    }
+    
+    /// 是否已过期
+    var isExpired: Bool {
+        guard let expiresAt = expiresAt else { return false }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: expiresAt) else { return false }
+        return date < Date()
+    }
+    
+    /// 格式化过期时间
+    var formattedExpiresAt: String? {
+        guard let expiresAt = expiresAt else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: expiresAt) else { return expiresAt }
+        
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .short
+        return displayFormatter.string(from: date)
+    }
+}
+

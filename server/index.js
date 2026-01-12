@@ -2015,6 +2015,63 @@ app.post('/api/download-batch', authenticate, (req, res) => {
     archive.finalize();
 });
 
+// Rename file/folder
+app.post('/api/files/rename', authenticate, async (req, res) => {
+    const { path: filePath, newName } = req.body;
+    if (!filePath || !newName) {
+        return res.status(400).json({ error: 'Path and newName required' });
+    }
+
+    // Validate newName (no path separators)
+    if (newName.includes('/') || newName.includes('\\')) {
+        return res.status(400).json({ error: 'Invalid name: contains path separator' });
+    }
+
+    // Check permission
+    if (!hasPermission(req.user, filePath, 'Full') && !hasPermission(req.user, filePath, 'Contributor')) {
+        return res.status(403).json({ error: 'No permission to rename this file' });
+    }
+
+    // For Contributor, check ownership
+    if (!hasPermission(req.user, filePath, 'Full')) {
+        const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(filePath);
+        if (!fileStat || fileStat.uploader_id !== req.user.id) {
+            return res.status(403).json({ error: 'You can only rename files you uploaded' });
+        }
+    }
+
+    try {
+        const oldFullPath = path.join(DISK_A, filePath);
+        const parentDir = path.dirname(filePath);
+        const newSubPath = path.join(parentDir, newName);
+        const newFullPath = path.join(DISK_A, newSubPath);
+
+        // Check if source exists
+        if (!await fs.pathExists(oldFullPath)) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Check if target already exists
+        if (await fs.pathExists(newFullPath)) {
+            return res.status(409).json({ error: 'A file with that name already exists' });
+        }
+
+        // Perform rename
+        await fs.rename(oldFullPath, newFullPath);
+
+        // Update database records
+        db.prepare('UPDATE file_stats SET path = ? WHERE path = ?').run(newSubPath, filePath);
+        db.prepare('UPDATE access_logs SET path = ? WHERE path = ?').run(newSubPath, filePath);
+        db.prepare('UPDATE starred_files SET file_path = ? WHERE file_path = ?').run(newSubPath, filePath);
+        db.prepare('UPDATE share_links SET file_path = ? WHERE file_path = ?').run(newSubPath, filePath);
+
+        res.json({ success: true, newPath: newSubPath });
+    } catch (err) {
+        console.error('[Rename] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/files/bulk-move', authenticate, async (req, res) => {
     const { paths, targetDir: requestedTargetDir } = req.body;
     if (!Array.isArray(paths) || requestedTargetDir === undefined) return res.status(400).json({ error: 'Paths and targetDir required' });

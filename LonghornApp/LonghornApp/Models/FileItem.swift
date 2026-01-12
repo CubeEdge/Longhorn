@@ -18,6 +18,7 @@ struct FileItem: Codable, Identifiable, Hashable {
     let uploaderId: Int?
     let uploaderName: String?
     let isStarred: Bool?
+    let accessCount: Int?
     
     // 使用 path 作为唯一标识
     var id: String { path }
@@ -29,6 +30,7 @@ struct FileItem: Codable, Identifiable, Hashable {
         case uploaderId = "uploader_id"
         case uploaderName = "uploader_name"
         case isStarred = "starred"
+        case accessCount = "access_count"
     }
     
     init(from decoder: Decoder) throws {
@@ -40,6 +42,7 @@ struct FileItem: Codable, Identifiable, Hashable {
         uploaderId = try container.decodeIfPresent(Int.self, forKey: .uploaderId)
         uploaderName = try container.decodeIfPresent(String.self, forKey: .uploaderName)
         isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred)
+        accessCount = try container.decodeIfPresent(Int.self, forKey: .accessCount)
         
         // 解析日期 - 支持多种格式
         if let mtimeString = try container.decodeIfPresent(String.self, forKey: .modifiedAt) {

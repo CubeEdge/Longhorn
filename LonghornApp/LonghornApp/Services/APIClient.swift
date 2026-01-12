@@ -136,6 +136,53 @@ class APIClient {
         return destURL
     }
     
+    /// 批量下载文件（返回 ZIP）
+    func downloadBatchFiles(paths: [String]) async throws -> URL {
+        let endpoint = "/api/download-batch"
+        
+        guard let urlComponents = URLComponents(string: baseURL + endpoint) else {
+            throw APIError.invalidURL
+        }
+        
+        guard let url = urlComponents.url else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let token = await AuthManager.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let body = ["paths": paths]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (tempURL, response) = try await session.download(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.noData
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode >= 400 {
+            throw APIError.serverError(httpResponse.statusCode, nil)
+        }
+        
+        // 移动到缓存目录
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let destURL = cacheDir.appendingPathComponent("batch_download.zip")
+        
+        try? FileManager.default.removeItem(at: destURL)
+        try FileManager.default.moveItem(at: tempURL, to: destURL)
+        
+        return destURL
+    }
+    
     /// 上传文件
     func uploadFile(data: Data, fileName: String, toPath: String, progress: ((Double) -> Void)? = nil) async throws {
         let endpoint = "/api/upload"

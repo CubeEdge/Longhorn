@@ -30,11 +30,14 @@ class FileService {
     // MARK: - 搜索
     
     /// 搜索文件
-    func searchFiles(query: String, scope: String = "all") async throws -> [FileItem] {
-        let queryItems = [
+    func searchFiles(query: String, scope: String = "all", type: String? = nil) async throws -> [FileItem] {
+        var queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "scope", value: scope)
         ]
+        if let type = type {
+            queryItems.append(URLQueryItem(name: "type", value: type))
+        }
         let response: SearchResponse = try await APIClient.shared.get("/api/search", queryItems: queryItems)
         return response.results
     }
@@ -68,9 +71,9 @@ class FileService {
     }
     
     /// 重命名文件
-    func renameFile(path: String, newName: String) async throws {
-        let parentPath = (path as NSString).deletingLastPathComponent
-        try await moveFiles(paths: [path], destination: parentPath)
+    func renameFile(at path: String, to newName: String) async throws {
+        let request = RenameRequest(path: path, newName: newName)
+        try await APIClient.shared.post("/api/files/rename", body: request)
     }
     
     // MARK: - 收藏操作
@@ -208,6 +211,11 @@ private struct BulkDeleteRequest: Codable {
 private struct BulkMoveRequest: Codable {
     let paths: [String]
     let destination: String
+}
+
+private struct RenameRequest: Codable {
+    let path: String
+    let newName: String
 }
 
 private struct StarRequest: Codable {

@@ -304,6 +304,12 @@ struct MoreMenuView: View {
             // 功能入口
             Section {
                 NavigationLink {
+                    DashboardView()
+                } label: {
+                    Label("我的仪表盘", systemImage: "chart.bar.fill")
+                }
+                
+                NavigationLink {
                     SharesView()
                 } label: {
                     Label("我的分享", systemImage: "square.and.arrow.up")
@@ -418,7 +424,161 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - 用户仪表盘
+
+struct UserStats: Codable {
+    let uploadCount: Int
+    let storageUsed: Int
+    let starredCount: Int
+    let shareCount: Int
+    let lastLogin: String
+    let accountCreated: String
+    let username: String
+    let role: String
+}
+
+struct DashboardView: View {
+    @State private var stats: UserStats?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    
+    private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
+    
+    var body: some View {
+        ScrollView {
+            if isLoading {
+                ProgressView("加载中...")
+                    .padding(50)
+            } else if let error = errorMessage {
+                ContentUnavailableView(
+                    "加载失败",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
+            } else if let stats = stats {
+                VStack(spacing: 24) {
+                    userHeader(stats)
+                    statsGrid(stats)
+                    accountInfo(stats)
+                }
+                .padding()
+            }
+        }
+        .navigationTitle("我的仪表盘")
+        .refreshable { await loadStats() }
+        .task { await loadStats() }
+    }
+    
+    private func userHeader(_ stats: UserStats) -> some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(accentColor)
+                    .frame(width: 64, height: 64)
+                Text(String(stats.username.prefix(1)).uppercased())
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.black)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(stats.username)
+                    .font(.system(size: 22, weight: .bold))
+                Text(stats.role == "Admin" ? "管理员" : stats.role == "Lead" ? "部门负责人" : "成员")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+    
+    private func statsGrid(_ stats: UserStats) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            StatCard(title: "上传文件", value: "\(stats.uploadCount)", icon: "doc.fill", iconColor: accentColor)
+            StatCard(title: "占用空间", value: formatBytes(stats.storageUsed), icon: "externaldrive.fill", iconColor: .blue)
+            StatCard(title: "收藏文件", value: "\(stats.starredCount)", icon: "star.fill", iconColor: .orange)
+            StatCard(title: "分享链接", value: "\(stats.shareCount)", icon: "link", iconColor: .green)
+        }
+    }
+    
+    private func accountInfo(_ stats: UserStats) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("账户信息").font(.system(size: 18, weight: .semibold))
+            HStack {
+                Image(systemName: "clock").foregroundColor(.secondary)
+                Text("上次登录").foregroundColor(.secondary)
+                Spacer()
+                Text(formatDate(stats.lastLogin)).font(.system(size: 14, weight: .medium))
+            }
+            Divider()
+            HStack {
+                Image(systemName: "calendar").foregroundColor(.secondary)
+                Text("账户创建").foregroundColor(.secondary)
+                Spacer()
+                Text(formatDate(stats.accountCreated)).font(.system(size: 14, weight: .medium))
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+    
+    private func loadStats() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            stats = try await APIClient.shared.get("/api/user/stats")
+        } catch let error as APIError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+    
+    private func formatBytes(_ bytes: Int) -> String {
+        ByteCountFormatter().string(fromByteCount: Int64(bytes))
+    }
+    
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let date = formatter.date(from: dateString) else { return dateString }
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df.string(from: date)
+    }
+}
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let iconColor: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(iconColor)
+            }
+            Text(value).font(.system(size: 24, weight: .bold))
+            Text(title).font(.system(size: 13)).foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+}
+
 #Preview {
     MainTabView()
         .environmentObject(AuthManager.shared)
 }
+

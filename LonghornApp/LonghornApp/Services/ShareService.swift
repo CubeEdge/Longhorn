@@ -47,4 +47,21 @@ class ShareService {
     func getShareURL(token: String) -> String {
         return "\(APIClient.shared.baseURL)/s/\(token)"
     }
+    
+    // MARK: - 分享合集操作
+    
+    /// 获取我的分享合集列表
+    func getMyCollections() async throws -> [ShareCollection] {
+        return try await APIClient.shared.get("/api/share-collections")
+    }
+    
+    /// 删除分享合集
+    func deleteCollection(id: Int) async throws {
+        try await APIClient.shared.delete("/api/share-collections/\(id)")
+    }
+    
+    /// 获取分享合集链接 URL
+    func getCollectionURL(token: String) -> String {
+        return "\(APIClient.shared.baseURL)/c/\(token)"
+    }
 }

@@ -35,6 +35,11 @@ struct FileBrowserView: View {
     @State private var shareFile: FileItem?
     @State private var showDeleteConfirmation = false
     
+    // 重命名
+    @State private var showRenameAlert = false
+    @State private var renameFile: FileItem?
+    @State private var newFileName = ""
+    
     // 上传
     @State private var showFilePicker = false
     @State private var showPhotoPicker = false
@@ -47,6 +52,10 @@ struct FileBrowserView: View {
     @State private var isPreviewLoading = false
     @State private var showPreviewError = false
     @State private var previewErrorMessage = ""
+    
+    // 批量下载
+    @State private var isBatchDownloading = false
+    @State private var batchDownloadURL: URL?
     
     // 搜索
     @State private var searchText = ""
@@ -133,7 +142,7 @@ struct FileBrowserView: View {
             toolbarContent
         }
         .refreshable {
-            await loadFiles()
+            await loadFiles(forceRefresh: true)
         }
         .task {
             await loadFiles()
@@ -209,6 +218,20 @@ struct FileBrowserView: View {
             Button("确定", role: .cancel) { }
         } message: {
             Text(previewErrorMessage)
+        }
+        .alert("重命名", isPresented: $showRenameAlert) {
+            TextField("新名称", text: $newFileName)
+            Button("取消", role: .cancel) {
+                renameFile = nil
+                newFileName = ""
+            }
+            Button("确定") {
+                performRename()
+            }
+        } message: {
+            if let file = renameFile {
+                Text("重命名 \"\(file.name)\"")
+            }
         }
     }
     
@@ -296,7 +319,7 @@ struct FileBrowserView: View {
                 }
                 .listStyle(.plain)
                 .refreshable {
-                    await loadFiles()
+                    await loadFiles(forceRefresh: true)
                 }
                 .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
                 
@@ -328,7 +351,7 @@ struct FileBrowserView: View {
                     .padding()
                 }
                 .refreshable {
-                    await loadFiles()
+                    await loadFiles(forceRefresh: true)
                 }
             }
         }
@@ -368,11 +391,16 @@ struct FileBrowserView: View {
                 .disabled(selectedPaths.isEmpty)
                 
                 Button {
-                    // TODO: 批量下载
+                    batchDownload()
                 } label: {
-                    Image(systemName: "arrow.down.circle")
+                    if isBatchDownloading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "arrow.down.circle")
+                    }
                 }
-                .disabled(selectedPaths.isEmpty)
+                .disabled(selectedPaths.isEmpty || isBatchDownloading)
                 
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
@@ -528,6 +556,15 @@ struct FileBrowserView: View {
         
         Divider()
         
+        // 重命名
+        Button {
+            renameFile = file
+            newFileName = file.name
+            showRenameAlert = true
+        } label: {
+            Label("重命名", systemImage: "pencil")
+        }
+        
         // 删除
         Button(role: .destructive) {
             deleteFile(file)
@@ -615,16 +652,33 @@ struct FileBrowserView: View {
     
     // MARK: - 方法
     
-    private func loadFiles() async {
-        isLoading = true
+    private func loadFiles(forceRefresh: Bool = false) async {
+        // 首次加载或强制刷新时显示loading
+        if files.isEmpty || forceRefresh {
+            isLoading = true
+        }
         errorMessage = nil
         
         do {
-            files = try await FileService.shared.getFiles(path: path)
+            let (loadedFiles, fromCache) = try await FileService.shared.getFilesWithCache(
+                path: path,
+                forceRefresh: forceRefresh
+            )
+            files = loadedFiles
+            
+            // 如果是从缓存加载，可以显示一个小指示(可选)
+            if fromCache {
+                print("[Cache] Loaded \(loadedFiles.count) files from cache")
+            }
         } catch let error as APIError {
-            errorMessage = error.errorDescription
+            // 如果有缓存数据，即使出错也保留
+            if files.isEmpty {
+                errorMessage = error.errorDescription
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            if files.isEmpty {
+                errorMessage = error.localizedDescription
+            }
         }
         
         isLoading = false
@@ -685,6 +739,32 @@ struct FileBrowserView: View {
             } catch {
                 print("Toggle star failed: \(error)")
             }
+        }
+    }
+    
+    private func performRename() {
+        guard let file = renameFile,
+              !newFileName.isEmpty,
+              newFileName != file.name else {
+            renameFile = nil
+            newFileName = ""
+            return
+        }
+        
+        Task {
+            do {
+                try await FileService.shared.renameFile(
+                    at: file.path,
+                    to: newFileName
+                )
+                // 使缓存失效并刷新
+                await FileCacheManager.shared.invalidate(path: path)
+                await loadFiles(forceRefresh: true)
+            } catch {
+                print("Rename failed: \(error)")
+            }
+            renameFile = nil
+            newFileName = ""
         }
     }
     
@@ -750,6 +830,45 @@ struct FileBrowserView: View {
             } catch {
                 print("Create folder failed: \(error)")
             }
+        }
+    }
+    
+    private func batchDownload() {
+        guard !selectedPaths.isEmpty else { return }
+        isBatchDownloading = true
+        
+        Task {
+            do {
+                let url = try await APIClient.shared.downloadBatchFiles(paths: Array(selectedPaths))
+                await MainActor.run {
+                    isBatchDownloading = false
+                    batchDownloadURL = url
+                    // 使用系统分享
+                    shareDownloadedFile(url)
+                }
+            } catch {
+                await MainActor.run {
+                    isBatchDownloading = false
+                    previewErrorMessage = error.localizedDescription
+                    showPreviewError = true
+                }
+                print("Batch download failed: \(error)")
+            }
+        }
+    }
+    
+    private func shareDownloadedFile(_ url: URL) {
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            // iPad 需要 popover
+            if let popover = activityVC.popoverPresentationController {
+                popover.sourceView = rootVC.view
+                popover.sourceRect = CGRect(x: rootVC.view.bounds.midX, y: rootVC.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            rootVC.present(activityVC, animated: true)
         }
     }
 }
