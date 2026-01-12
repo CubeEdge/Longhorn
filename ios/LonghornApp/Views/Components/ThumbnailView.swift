@@ -68,7 +68,7 @@ struct ThumbnailView: View {
         
         do {
             var request = URLRequest(url: url)
-            if let token = AuthService.shared.token {
+            if let token = AuthManager.shared.token {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
             
