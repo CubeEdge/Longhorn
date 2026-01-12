@@ -838,6 +838,12 @@ struct FileBrowserView: View {
         Task {
             do {
                 try await FileService.shared.deleteFile(path: file.path)
+                // 删除时失效预览缓存
+                if file.isDirectory {
+                    await PreviewCacheManager.shared.invalidateDirectory(path: file.path)
+                } else {
+                    await PreviewCacheManager.shared.invalidate(path: file.path)
+                }
                 await loadFiles()
             } catch {
                 print("Delete failed: \(error)")
@@ -848,7 +854,10 @@ struct FileBrowserView: View {
     private func deleteSelectedFiles() {
         Task {
             do {
-                try await FileService.shared.deleteFiles(paths: Array(selectedPaths))
+                let pathsToDelete = Array(selectedPaths)
+                try await FileService.shared.deleteFiles(paths: pathsToDelete)
+                // 批量删除时失效预览缓存
+                await PreviewCacheManager.shared.invalidate(paths: pathsToDelete)
                 selectedPaths.removeAll()
                 isSelectionMode = false
                 await loadFiles()
@@ -861,7 +870,10 @@ struct FileBrowserView: View {
     private func moveSelectedFiles(to destination: String) {
         Task {
             do {
-                try await FileService.shared.moveFiles(paths: Array(selectedPaths), destination: destination)
+                let pathsToMove = Array(selectedPaths)
+                try await FileService.shared.moveFiles(paths: pathsToMove, destination: destination)
+                // 移动时失效旧路径的预览缓存
+                await PreviewCacheManager.shared.invalidate(paths: pathsToMove)
                 selectedPaths.removeAll()
                 isSelectionMode = false
                 await loadFiles()
