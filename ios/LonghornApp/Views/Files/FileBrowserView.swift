@@ -34,6 +34,7 @@ struct FileBrowserView: View {
     @State private var showShareSheet = false
     @State private var shareFile: FileItem?
     @State private var showDeleteConfirmation = false
+    @State private var showBatchShareSheet = false  // 批量分享
     
     // 重命名
     @State private var showRenameAlert = false
@@ -171,6 +172,16 @@ struct FileBrowserView: View {
                 filePath: file.path,
                 fileName: file.name,
                 onDismiss: { shareFile = nil }
+            )
+        }
+        .sheet(isPresented: $showBatchShareSheet) {
+            BatchShareDialogView(
+                filePaths: Array(selectedPaths),
+                onDismiss: {
+                    showBatchShareSheet = false
+                    selectedPaths.removeAll()
+                    isSelectionMode = false
+                }
             )
         }
         .sheet(isPresented: $showFilePicker) {
@@ -415,6 +426,14 @@ struct FileBrowserView: View {
                     showMoveSheet = true
                 } label: {
                     Image(systemName: "folder")
+                }
+                .disabled(selectedPaths.isEmpty)
+                
+                // 批量分享
+                Button {
+                    showBatchShareSheet = true
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
                 }
                 .disabled(selectedPaths.isEmpty)
                 
