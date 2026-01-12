@@ -213,6 +213,11 @@ struct FileBrowserView: View {
                             shareFile = file
                             showFilePreview = false
                         }
+                    },
+                    onStar: {
+                        if let file = previewFile {
+                            toggleStar(file)
+                        }
                     }
                 )
             }
@@ -1653,29 +1658,6 @@ struct PhotoPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { onDismiss() }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - 上传进度视图（简化版）
-
-struct UploadProgressView: View {
-    var onDismiss: () -> Void = {}
-    
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "没有上传任务",
-                systemImage: "arrow.up.circle",
-                description: Text("上传的文件将显示在这里")
-            )
-            .navigationTitle("上传任务")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { onDismiss() }
                 }
             }
         }

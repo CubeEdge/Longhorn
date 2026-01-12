@@ -15,12 +15,24 @@ struct FilePreviewSheet: View {
     let onClose: () -> Void
     let onDownload: () -> Void
     let onShare: () -> Void
+    var onStar: (() -> Void)? = nil  // 用于切换收藏状态
     
     @State private var isLoading = false
     @State private var videoPlayer: AVPlayer?
     @State private var showOSD = true  // OSD可见状态
+    @State private var isStarred: Bool  // 收藏状态
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
+    
+    init(file: FileItem, previewURL: URL?, onClose: @escaping () -> Void, onDownload: @escaping () -> Void, onShare: @escaping () -> Void, onStar: (() -> Void)? = nil) {
+        self.file = file
+        self.previewURL = previewURL
+        self.onClose = onClose
+        self.onDownload = onDownload
+        self.onShare = onShare
+        self.onStar = onStar
+        self._isStarred = State(initialValue: file.isStarred == true)
+    }
     
     var body: some View {
         ZStack {
@@ -167,25 +179,41 @@ struct FilePreviewSheet: View {
     private var bottomInfoBar: some View {
         VStack(spacing: 12) {
             // 操作按钮
-            HStack(spacing: 40) {
+            HStack(spacing: 32) {
+                // 收藏
+                Button {
+                    isStarred.toggle()
+                    onStar?()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: isStarred ? "star.fill" : "star")
+                            .font(.system(size: 28))
+                        Text(isStarred ? "已收藏" : "收藏")
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(isStarred ? .orange : .white)
+                
+                // 下载
                 Button {
                     onDownload()
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 32))
+                            .font(.system(size: 28))
                         Text("下载")
                             .font(.caption)
                     }
                 }
                 .foregroundColor(accentColor)
                 
+                // 分享
                 Button {
                     onShare()
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.up.circle.fill")
-                            .font(.system(size: 32))
+                            .font(.system(size: 28))
                         Text("分享")
                             .font(.caption)
                     }
