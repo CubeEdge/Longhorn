@@ -167,7 +167,7 @@ class UploadService: ObservableObject {
         totalChunks: Int,
         path: String
     ) async throws {
-        guard let token = AuthManager.shared.token else {
+        guard let token = await AuthManager.shared.token else {
             throw APIError.unauthorized
         }
         
