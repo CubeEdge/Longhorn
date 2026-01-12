@@ -25,6 +25,10 @@
 		LH_BF_SV1 /* StarredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SV1 /* StarredView.swift */; };
 		LH_BF_RV1 /* RecycleBinListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_RV1 /* RecycleBinListView.swift */; };
 		LH_BF_SHL1 /* SharesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SHL1 /* SharesListView.swift */; };
+		LH_BF_FCM1 /* FileCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FCM1 /* FileCacheManager.swift */; };
+		LH_BF_US1 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_US1 /* UploadService.swift */; };
+		LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FPS1 /* FilePreviewSheet.swift */; };
+		LH_BF_TV1 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_TV1 /* ThumbnailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +51,10 @@
 		LH_FR_SV1 /* StarredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredView.swift; sourceTree = "<group>"; };
 		LH_FR_RV1 /* RecycleBinListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecycleBinListView.swift; sourceTree = "<group>"; };
 		LH_FR_SHL1 /* SharesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharesListView.swift; sourceTree = "<group>"; };
+		LH_FR_FCM1 /* FileCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCacheManager.swift; sourceTree = "<group>"; };
+		LH_FR_US1 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
+		LH_FR_FPS1 /* FilePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewSheet.swift; sourceTree = "<group>"; };
+		LH_FR_TV1 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -88,6 +96,8 @@
 				LH_FR_AM1 /* AuthManager.swift */,
 				LH_FR_FS1 /* FileService.swift */,
 				LH_FR_SS1 /* ShareService.swift */,
+				LH_FR_FCM1 /* FileCacheManager.swift */,
+				LH_FR_US1 /* UploadService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -101,8 +111,18 @@
 				LH_G_STARRED /* Starred */,
 				LH_G_RECYCLE /* RecycleBin */,
 				LH_G_SHARES /* Shares */,
+				LH_G_COMPONENTS /* Components */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		LH_G_COMPONENTS /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				LH_FR_FPS1 /* FilePreviewSheet.swift */,
+				LH_FR_TV1 /* ThumbnailView.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		LH_G_AUTH /* Auth */ = {
@@ -250,6 +270,10 @@
 				LH_BF_SV1 /* StarredView.swift in Sources */,
 				LH_BF_RV1 /* RecycleBinListView.swift in Sources */,
 				LH_BF_SHL1 /* SharesListView.swift in Sources */,
+				LH_BF_FCM1 /* FileCacheManager.swift in Sources */,
+				LH_BF_US1 /* UploadService.swift in Sources */,
+				LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */,
+				LH_BF_TV1 /* ThumbnailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
