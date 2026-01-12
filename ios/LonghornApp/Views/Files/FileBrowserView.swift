@@ -52,6 +52,7 @@ struct FileBrowserView: View {
     @State private var isPreviewLoading = false
     @State private var showPreviewError = false
     @State private var previewErrorMessage = ""
+    @State private var showFilePreview = false  // 显示自定义预览面板
     
     // 批量下载
     @State private var isBatchDownloading = false
@@ -193,7 +194,29 @@ struct FileBrowserView: View {
         .sheet(isPresented: $showUploadProgress) {
             UploadProgressView(onDismiss: { showUploadProgress = false })
         }
-        .quickLookPreview($previewURL)
+        .fullScreenCover(isPresented: $showFilePreview) {
+            if let file = previewFile {
+                FilePreviewSheet(
+                    file: file,
+                    previewURL: previewURL,
+                    onClose: {
+                        showFilePreview = false
+                        previewFile = nil
+                    },
+                    onDownload: {
+                        if let file = previewFile {
+                            downloadFile(file)
+                        }
+                    },
+                    onShare: {
+                        if let file = previewFile {
+                            shareFile = file
+                            showFilePreview = false
+                        }
+                    }
+                )
+            }
+        }
         .overlay {
             if isPreviewLoading {
                 ZStack {
@@ -559,7 +582,12 @@ struct FileBrowserView: View {
         // 重命名
         Button {
             renameFile = file
-            newFileName = file.name
+            // 只显示文件名（不含后缀），保留后缀
+            if file.isDirectory {
+                newFileName = file.name
+            } else {
+                newFileName = (file.name as NSString).deletingPathExtension
+            }
             showRenameAlert = true
         } label: {
             Label("重命名", systemImage: "pencil")
@@ -693,19 +721,38 @@ struct FileBrowserView: View {
     }
     
     private func previewFile(_ file: FileItem) {
+        previewFile = file
         isPreviewLoading = true
+        
         Task {
+            // 1. 先检查缓存
+            if let cachedURL = await PreviewCacheManager.shared.getCachedURL(for: file.path) {
+                await MainActor.run {
+                    previewURL = cachedURL
+                    isPreviewLoading = false
+                    showFilePreview = true
+                }
+                return
+            }
+            
+            // 2. 缓存未命中，下载文件
             do {
                 let url = try await APIClient.shared.downloadFile(path: file.path)
+                
+                // 3. 缓存下载的文件
+                await PreviewCacheManager.shared.cache(url: url, for: file.path)
+                
                 await MainActor.run {
                     previewURL = url
                     isPreviewLoading = false
+                    showFilePreview = true
                 }
             } catch {
                 await MainActor.run {
                     isPreviewLoading = false
                     previewErrorMessage = error.localizedDescription
                     showPreviewError = true
+                    previewFile = nil
                 }
                 print("Preview failed: \(error)")
             }
@@ -744,8 +791,27 @@ struct FileBrowserView: View {
     
     private func performRename() {
         guard let file = renameFile,
-              !newFileName.isEmpty,
-              newFileName != file.name else {
+              !newFileName.isEmpty else {
+            renameFile = nil
+            newFileName = ""
+            return
+        }
+        
+        // 构建完整文件名（保留原有后缀）
+        let finalName: String
+        if file.isDirectory {
+            finalName = newFileName
+        } else {
+            let ext = (file.name as NSString).pathExtension
+            if ext.isEmpty {
+                finalName = newFileName
+            } else {
+                finalName = newFileName + "." + ext
+            }
+        }
+        
+        // 检查名称是否有变化
+        guard finalName != file.name else {
             renameFile = nil
             newFileName = ""
             return
@@ -755,7 +821,7 @@ struct FileBrowserView: View {
             do {
                 try await FileService.shared.renameFile(
                     at: file.path,
-                    to: newFileName
+                    to: finalName
                 )
                 // 使缓存失效并刷新
                 await FileCacheManager.shared.invalidate(path: path)

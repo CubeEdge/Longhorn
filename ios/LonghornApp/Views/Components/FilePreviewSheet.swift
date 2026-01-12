@@ -2,7 +2,7 @@
 //  FilePreviewSheet.swift
 //  LonghornApp
 //
-//  自定义文件预览面板 - 包含下载/分享/文件信息
+//  自定义文件预览面板 - 包含下载/分享/文件信息 + OSD隐藏
 //
 
 import SwiftUI
@@ -18,47 +18,84 @@ struct FilePreviewSheet: View {
     
     @State private var isLoading = false
     @State private var videoPlayer: AVPlayer?
+    @State private var showOSD = true  // OSD可见状态
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // 预览内容
-                previewContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                // 底部信息栏
-                bottomInfoBar
-            }
-            .navigationTitle(file.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") {
-                        onClose()
+        ZStack {
+            // 预览内容（全屏）
+            previewContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showOSD.toggle()
                     }
                 }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            onDownload()
-                        } label: {
-                            Label("下载", systemImage: "arrow.down.circle")
-                        }
-                        
-                        Button {
-                            onShare()
-                        } label: {
-                            Label("分享链接", systemImage: "square.and.arrow.up")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+            
+            // OSD 覆盖层
+            if showOSD {
+                VStack(spacing: 0) {
+                    // 顶部导航栏
+                    topBar
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    Spacer()
+                    
+                    // 底部信息栏
+                    bottomInfoBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
+    }
+    
+    // MARK: - 顶部栏
+    
+    private var topBar: some View {
+        HStack {
+            Button("关闭") {
+                onClose()
+            }
+            .foregroundColor(.white)
+            
+            Spacer()
+            
+            Text(file.name)
+                .font(.headline)
+                .foregroundColor(.white)
+                .lineLimit(1)
+            
+            Spacer()
+            
+            Menu {
+                Button {
+                    onDownload()
+                } label: {
+                    Label("下载", systemImage: "arrow.down.circle")
+                }
+                
+                Button {
+                    onShare()
+                } label: {
+                    Label("分享链接", systemImage: "square.and.arrow.up")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title2)
+                    .foregroundColor(.white)
+            }
+        }
+        .padding()
+        .background(
+            LinearGradient(
+                colors: [Color.black.opacity(0.7), Color.clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
     
     // MARK: - 预览内容
@@ -70,21 +107,15 @@ struct FilePreviewSheet: View {
             
             if ["jpg", "jpeg", "png", "gif", "heic", "webp"].contains(ext) {
                 // 图片预览
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    case .failure:
-                        Image(systemName: "photo")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary)
-                    @unknown default:
-                        EmptyView()
-                    }
+                if let data = try? Data(contentsOf: url),
+                   let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 60))
+                        .foregroundColor(.secondary)
                 }
                 
             } else if ["mp4", "mov", "m4v", "avi"].contains(ext) {
@@ -110,10 +141,10 @@ struct FilePreviewSheet: View {
                 VStack(spacing: 16) {
                     Image(systemName: file.systemIconName)
                         .font(.system(size: 80))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.6))
                     
                     Text("无法预览此文件类型")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                     
                     Button {
                         onDownload()
@@ -127,6 +158,7 @@ struct FilePreviewSheet: View {
             }
         } else {
             ProgressView("加载中...")
+                .tint(.white)
         }
     }
     
@@ -134,16 +166,14 @@ struct FilePreviewSheet: View {
     
     private var bottomInfoBar: some View {
         VStack(spacing: 12) {
-            Divider()
-            
             // 操作按钮
-            HStack(spacing: 20) {
+            HStack(spacing: 40) {
                 Button {
                     onDownload()
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 32))
                         Text("下载")
                             .font(.caption)
                     }
@@ -155,41 +185,48 @@ struct FilePreviewSheet: View {
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.up.circle.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 32))
                         Text("分享")
                             .font(.caption)
                     }
                 }
-                .foregroundColor(.blue)
+                .foregroundColor(.white)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 12)
             
             // 文件信息
-            HStack(spacing: 16) {
+            HStack(spacing: 20) {
                 // 大小
                 if let size = file.size {
                     Label(formatFileSize(size), systemImage: "doc")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                 }
                 
                 // 上传者
                 if let uploader = file.uploaderName {
                     Label(uploader, systemImage: "person")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                 }
                 
                 // 访问次数
                 if let accessCount = file.accessCount {
-                    Label("\(accessCount)", systemImage: "eye")
+                    Label("\(accessCount)次访问", systemImage: "eye")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                 }
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, 16)
         }
-        .background(Color(UIColor.secondarySystemBackground))
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Color.clear, Color.black.opacity(0.8)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
     
     private func formatFileSize(_ bytes: Int64) -> String {
@@ -237,6 +274,7 @@ struct TextFileView: View {
                     .font(.system(.body, design: .monospaced))
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundColor(.white)
             }
         }
         .task {
@@ -249,4 +287,3 @@ struct TextFileView: View {
         }
     }
 }
-

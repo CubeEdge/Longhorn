@@ -29,6 +29,7 @@
 		LH_BF_US1 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_US1 /* UploadService.swift */; };
 		LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FPS1 /* FilePreviewSheet.swift */; };
 		LH_BF_TV1 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_TV1 /* ThumbnailView.swift */; };
+		LH_BF_PCM1 /* PreviewCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_PCM1 /* PreviewCacheManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@
 		LH_FR_US1 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
 		LH_FR_FPS1 /* FilePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewSheet.swift; sourceTree = "<group>"; };
 		LH_FR_TV1 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
+		LH_FR_PCM1 /* PreviewCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCacheManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -98,6 +100,7 @@
 				LH_FR_SS1 /* ShareService.swift */,
 				LH_FR_FCM1 /* FileCacheManager.swift */,
 				LH_FR_US1 /* UploadService.swift */,
+				LH_FR_PCM1 /* PreviewCacheManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -274,6 +277,7 @@
 				LH_BF_US1 /* UploadService.swift in Sources */,
 				LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */,
 				LH_BF_TV1 /* ThumbnailView.swift in Sources */,
+				LH_BF_PCM1 /* PreviewCacheManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
