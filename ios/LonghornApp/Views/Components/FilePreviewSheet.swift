@@ -215,6 +215,45 @@ struct FilePreviewSheet: View {
                             .foregroundColor(.white)
                     }
                 }
+                
+                // "查看原图" 按钮 (微信风格)
+                // 仅当: 是大图(使用预览API) 且 当前未加载原图 且 未在下载中
+                if isLargeImage && finalURL == nil && !isDownloading {
+                    VStack {
+                        Spacer()
+                        
+                        Button {
+                            // 切换到下载原图模式
+                            print("[Preview] User requested original image")
+                            finalURL = nil
+                            isDownloading = true
+                            
+                            // 构建原图URL (raw=true)
+                            let rawURL = buildPreviewURL(for: file)
+                            
+                            if let url = rawURL {
+                                Task {
+                                    await downloadAndCache(url: url)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("查看原图")
+                                if let size = file.size {
+                                    Text("(\(formatFileSize(size)))")
+                                }
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(20)
+                        }
+                        .padding(.bottom, 100) // 位于底部信息栏上方
+                    }
+                    .transition(.opacity)
+                }
             }
             .task {
                 // 1. 尝试获取本地缓存
