@@ -62,118 +62,52 @@ struct FilePreviewSheet: View {
                     
                     Spacer()
                     
-                // "查看原图" 按钮 (微信风格)
-                // 显示条件: 是大图 且 (没有本地文件 OR 本地文件是缩略图/预览图) 且 未在下载中
-                let isCachedOriginal: Bool = {
-                    guard let url = finalURL, let size = file.size else { return false }
-                    if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-                       let cachedSize = attrs[.size] as? Int64 {
-                        return cachedSize >= (size - 10240)
-                    }
-                    return false
-                }()
-                
-                if isLargeImage && !isCachedOriginal && !isDownloading {
-                    Button {
-                        // 切换到下载原图模式
-                        print("[Preview] User requested original image")
-                        finalURL = nil 
-                        isDownloading = true
-                        
-                        // 构建原图URL (raw=true)
-                        let rawURL = buildPreviewURL(for: file)
-                        if let url = rawURL {
-                            Task {
-                                await downloadAndCache(url: url)
-                            }
+                    // "查看原图" 按钮 (微信风格)
+                    // 显示条件: 是大图 且 (没有本地文件 OR 本地文件是缩略图/预览图) 且 未在下载中
+                    let isCachedOriginal: Bool = {
+                        guard let url = finalURL, let size = file.size else { return false }
+                        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                           let cachedSize = attrs[.size] as? Int64 {
+                            // 如果缓存文件大小接近原图大小 (误差 10KB)，认为是原图
+                            return cachedSize >= (size - 10240)
                         }
-                    } label: {
-                        Text("查看原图")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(20)
-                    }
-                    .padding(.bottom, 20) // Spacing above bottom bar
-                    .transition(.opacity)
-                }
-            }
-            // 底部信息栏
-            bottomInfoBar
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-        }
-    }
-    
-    // ... (TopBar remains same) ...
-
-    // MARK: - 预览内容 (REMOVED BUTTON FROM HERE)
-    @ViewBuilder
-    private var previewContent: some View {
-         // ... unchanged ...
-                    if errorMessage != nil {
-                         VStack { ... }
+                        return false
+                    }()
+                    
+                    if isLargeImage && !isCachedOriginal && !isDownloading {
+                        Button {
+                            // 切换到下载原图模式
+                            print("[Preview] User requested original image")
+                            finalURL = nil
+                            isDownloading = true
+                            
+                            // 构建原图URL (raw=true)
+                            let rawURL = buildPreviewURL(for: file)
+                            if let url = rawURL {
+                                Task {
+                                    await downloadAndCache(url: url)
+                                }
+                            }
+                        } label: {
+                            Text("查看原图")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(20)
+                        }
+                        .padding(.bottom, 20) // Spacing above bottom bar
+                        .transition(.opacity)
                     }
                     
-                    // REMOVED BUTTON LOGIC FROM HERE
+                    // 底部信息栏
+                    bottomInfoBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .task { ... }
-         // ...
-    }
-
-    // MARK: - 底部信息栏
-    
-    private var bottomInfoBar: some View {
-        VStack(spacing: 12) {
-            // 操作按钮
-            HStack(spacing: 32) {
-                // 收藏
-                Button {
-                    isStarred.toggle()
-                    onStar?()
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: isStarred ? "star.fill" : "star")
-                            .font(.system(size: 28))
-                        Text(isStarred ? "已收藏" : "收藏")
-                            .font(.caption)
-                    }
-                }
-                .foregroundColor(isStarred ? .orange : .white)
-                
-                // 下载
-                Button {
-                    onDownload()
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle") // Removed fill for cleaner look? Or keep fill but white? User said "no special color".
-                            // Keeping fill but making it white is safer to match others.
-                            // Actually user said "Download no special color".
-                        Image(systemName: "arrow.down.circle") 
-                            .font(.system(size: 28))
-                        Text("下载")
-                            .font(.caption)
-                    }
-                }
-                .foregroundColor(.white) // Neutral color
-                
-                // 分享
-                Button {
-                    onShare()
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "square.and.arrow.up") // Outline style to match download?
-                            .font(.system(size: 28))
-                        Text("分享")
-                            .font(.caption)
-                    }
-                }
-                .foregroundColor(.white)
             }
-            .padding(.vertical, 12)
-            
-            // ... (FileInfo remains same) ...
+        }
+    }
     
     // MARK: - 顶部栏
     
@@ -237,36 +171,31 @@ struct FilePreviewSheet: View {
                 Color.black // 纯黑背景
                 
                 // 层级 1: 缩略图 (轻度模糊，瞬间加载)
-                // 只有当主图未加载完成时才显示
                 if finalURL == nil, let thumbURL = thumbnailURL {
                     AsyncImage(url: thumbURL) { phase in
                         if let image = phase.image {
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .blur(radius: 5) // 模糊处理，平滑过渡
+                                .blur(radius: 5)
                                 .opacity(0.6)
                         } else {
-                            Color.black // 缩略图都没好时显示黑底
+                            Color.black
                         }
                     }
                 }
                 
-                // 层级 2: 加载进度 (环形 + 百分比)
-                // 层级 2: 加载进度 (Modern Circular Ring + Glassmorphism)
+                // 层级 2: 加载进度
                 if isDownloading {
                     ZStack {
-                        // Background Blur
                         RoundedRectangle(cornerRadius: 16)
                             .fill(.ultraThinMaterial)
                             .frame(width: 80, height: 80)
                         
-                        // Track
                         Circle()
                             .stroke(Color.white.opacity(0.2), lineWidth: 4)
                             .frame(width: 40, height: 40)
                         
-                        // Progress
                         Circle()
                             .trim(from: 0, to: downloader.progress)
                             .stroke(accentColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
@@ -274,7 +203,6 @@ struct FilePreviewSheet: View {
                             .rotationEffect(.degrees(-90))
                             .animation(.linear(duration: 0.1), value: downloader.progress)
                         
-                        // Percentage
                         Text("\(Int(downloader.progress * 100))%")
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundColor(.white)
@@ -283,7 +211,7 @@ struct FilePreviewSheet: View {
                     .zIndex(10)
                 }
                 
-                // 层级 3: 最终原图 (本地缓存)
+                // 层级 3: 最终原图
                 if let bgURL = finalURL {
                     AsyncImage(url: bgURL) { phase in
                         switch phase {
@@ -295,19 +223,18 @@ struct FilePreviewSheet: View {
                             }
                             .transition(.opacity.animation(.easeInOut(duration: 0.3)))
                         case .failure:
-                            // 如果本地加载失败(罕见)，回退到WebView尝试远程
                             if let url = remoteURL {
                                 WebView(url: url, errorMessage: $webViewError)
                             } else {
                                 Image(systemName: "exclamationmark.triangle").foregroundColor(.red)
                             }
                         case .empty:
-                            ProgressView().tint(.white) // 本地读取的短暂loading
+                            ProgressView().tint(.white)
                         @unknown default:
                             EmptyView()
                         }
                     }
-                    .id(bgURL) // 强制刷新
+                    .id(bgURL)
                 }
                 
                 // 错误提示
@@ -320,70 +247,13 @@ struct FilePreviewSheet: View {
                             .foregroundColor(.white)
                     }
                 }
-                
-                // "查看原图" 按钮 (微信风格)
-                // 显示条件: 是大图 且 (没有本地文件 OR 本地文件是缩略图/预览图) 且 未在下载中
-                let isCachedOriginal: Bool = {
-                    guard let url = finalURL, let size = file.size else { return false }
-                    if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-                       let cachedSize = attrs[.size] as? Int64 {
-                        // 如果缓存文件大小接近原图大小 (误差 10KB)，认为是原图
-                        // 预览图通常只有几百KB，原图几MB，差异巨大
-                        return cachedSize >= (size - 10240)
-                    }
-                    return false
-                }()
-                
-                if isLargeImage && !isCachedOriginal && !isDownloading {
-                    VStack {
-                        Spacer()
-                        
-                        Button {
-                            // 切换到下载原图模式
-                            print("[Preview] User requested original image")
-                            
-                            // 即使当前显示的预览图，也要强制重新下载原图
-                            // 不清空 finalURL 以保持预览显示直到原图下载完毕? 
-                            // 不，清空是为了显示下载进度条
-                            finalURL = nil 
-                            isDownloading = true
-                            
-                            // 构建原图URL (raw=true)
-                            let rawURL = buildPreviewURL(for: file)
-                            
-                            if let url = rawURL {
-                                Task {
-                                    // 重新下载并覆盖缓存
-                                    await downloadAndCache(url: url)
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Text("查看原图")
-                                if let size = file.size {
-                                    Text("(\(formatFileSize(size)))")
-                                }
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(20)
-                        }
-                        .padding(.bottom, 100) // 位于底部信息栏上方
-                    }
-                    .transition(.opacity)
-                }
             }
             .task {
-                // 1. 尝试获取本地缓存
                 if let cached = await PreviewCacheManager.shared.getCachedURL(for: file.path) {
                     print("[Preview] Hit cache: \(cached.path)")
                     finalURL = cached
                     isDownloading = false
                 } else {
-                    // 2. 缓存未命中，启动下载任务
                     print("[Preview] Cache miss. Starting progressive download.")
                     finalURL = nil
                     isDownloading = true
@@ -395,20 +265,15 @@ struct FilePreviewSheet: View {
             }
 
         } else if ["mp4", "mov", "m4v", "avi", "hevc"].contains(ext) {
-            // 视频预览 - 优先尝试本地缓存，否则使用网络并后台缓存
             let remoteURL = buildPreviewURL(for: file)
             
             ZStack {
-                Color.black // 纯黑背景
-                
-                // 加载指示器 (当视频未准备好时显示)
-                ProgressView()
-                    .tint(.white)
+                Color.black
+                ProgressView().tint(.white)
                 
                 if let url = finalURL ?? remoteURL {
                     VideoPlayer(player: AVPlayer(url: url))
                         .onAppear {
-                            // 每次出现重新创建Player
                             videoPlayer = AVPlayer(url: url)
                             videoPlayer?.play()
                         }
@@ -417,31 +282,22 @@ struct FilePreviewSheet: View {
                             videoPlayer = nil
                         }
                 } else {
-                    Text("Invalid URL")
-                        .foregroundColor(.red)
+                    Text("Invalid URL").foregroundColor(.red)
                 }
             }
             .task {
-                // 1. 尝试获取本地缓存
                 if let cached = await PreviewCacheManager.shared.getCachedURL(for: file.path) {
-                    print("[Video] Hit cache: \(cached.path)")
                     finalURL = cached
                 } else {
-                    // 2. 没有缓存，使用远程URL显示，但在后台下载入库
-                    print("[Video] Cache miss. Streaming remote.")
                     finalURL = remoteURL
-                    
                     if let url = remoteURL {
-                        // 后台下载并缓存 (不阻塞UI显示)
-                        Task.detached(priority: .utility) { // Video use utility priority
-                            print("[Video] Start caching \(file.path)...")
+                        Task.detached(priority: .utility) {
                             do {
                                 let (data, _) = try await URLSession.shared.data(from: url)
                                 let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
                                 try data.write(to: tempURL)
                                 await PreviewCacheManager.shared.cache(url: tempURL, for: file.path)
                                 try? FileManager.default.removeItem(at: tempURL)
-                                print("[Video] Cached success: \(file.path)")
                             } catch {
                                 print("[Video] Cache failed: \(error)")
                             }
@@ -451,25 +307,20 @@ struct FilePreviewSheet: View {
             }
             
         } else if ["pdf"].contains(ext) {
-            // PDF 预览
             if let url = previewURL {
                 PDFKitView(url: url)
             } else {
-                ProgressView("加载中...")
-                    .tint(.white)
+                ProgressView().tint(.white)
             }
             
         } else if ["txt", "md", "json", "xml", "log", "swift", "js", "ts", "py"].contains(ext) {
-            // 文本预览
             if let url = previewURL {
                 TextFileView(url: url)
             } else {
-                ProgressView("加载中...")
-                    .tint(.white)
+                ProgressView().tint(.white)
             }
             
         } else {
-            // 其他文件类型
             VStack(spacing: 16) {
                 Image(systemName: file.systemIconName)
                     .font(.system(size: 80))
@@ -494,9 +345,7 @@ struct FilePreviewSheet: View {
     
     private var bottomInfoBar: some View {
         VStack(spacing: 12) {
-            // 操作按钮
             HStack(spacing: 32) {
-                // 收藏
                 Button {
                     isStarred.toggle()
                     onStar?()
@@ -510,25 +359,23 @@ struct FilePreviewSheet: View {
                 }
                 .foregroundColor(isStarred ? .orange : .white)
                 
-                // 下载
                 Button {
                     onDownload()
                 } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: "arrow.down.circle.fill")
+                        Image(systemName: "arrow.down.circle")
                             .font(.system(size: 28))
                         Text("下载")
                             .font(.caption)
                     }
                 }
-                .foregroundColor(accentColor)
+                .foregroundColor(.white)
                 
-                // 分享
                 Button {
                     onShare()
                 } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: "square.and.arrow.up.circle.fill")
+                        Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 28))
                         Text("分享")
                             .font(.caption)
@@ -538,23 +385,19 @@ struct FilePreviewSheet: View {
             }
             .padding(.vertical, 12)
             
-            // 文件信息
             HStack(spacing: 20) {
-                // 大小
                 if let size = file.size {
                     Label(formatFileSize(size), systemImage: "doc")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 }
                 
-                // 上传者
                 if let uploader = file.uploaderName {
                     Label(uploader, systemImage: "person")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 }
                 
-                // 访问次数
                 if let accessCount = file.accessCount {
                     Label("\(accessCount)次访问", systemImage: "eye")
                         .font(.caption)
@@ -573,9 +416,12 @@ struct FilePreviewSheet: View {
         )
     }
     
-
-    
     // MARK: - Helper Functions
+    
+    // Helper to access isLargeImage inside previewContent logic (Repeated logic but accessible here)
+    private var isLargeImage: Bool {
+        return (file.size ?? 0) > 1_048_576 || file.size == nil
+    }
     
     private func formatFileSize(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
@@ -585,7 +431,6 @@ struct FilePreviewSheet: View {
 
     private func buildPreviewURL(for file: FileItem) -> URL? {
         var urlComponents = URLComponents(string: APIClient.shared.baseURL)
-        // Ensure clean path concatenation
         let rawPath = file.path.hasPrefix("/") ? String(file.path.dropFirst()) : file.path
         urlComponents?.path = "/preview/" + rawPath
         urlComponents?.queryItems = [URLQueryItem(name: "raw", value: "true")]
@@ -607,7 +452,7 @@ struct FilePreviewSheet: View {
         urlComponents?.path = "/api/thumbnail"
         urlComponents?.queryItems = [
             URLQueryItem(name: "path", value: file.path),
-            URLQueryItem(name: "size", value: "400") // Tablet sized thumbnail
+            URLQueryItem(name: "size", value: "400")
         ]
         return urlComponents?.url
     }
@@ -615,30 +460,19 @@ struct FilePreviewSheet: View {
     private func downloadAndCache(url: URL) async {
         do {
             print("[Preview] Starting high-performance download for \(file.path)")
-            
-            // 使用 FileDownloader (URLSession delegate) 下载，避免 for-await 循环带来的 CPU 性能问题
             let tempURL = try await downloader.downloadFile(from: url)
-            
-            // 缓存文件 (移动 temp -> cache)
             await PreviewCacheManager.shared.cache(url: tempURL, for: file.path)
-            
-            // 清理临时文件 (cache函数内部通常是 copy，所以这里需要清理？
-            // PreviewCacheManager.cache 实现是 copyItem. 所以我们需要清理 downloader 返回的 tempURL)
             try? FileManager.default.removeItem(at: tempURL)
-            
             print("[Preview] Download & Cache complete")
             
-            // Update UI
             if let cached = await PreviewCacheManager.shared.getCachedURL(for: file.path) {
                 withAnimation {
                     finalURL = cached
                     isDownloading = false
                 }
             }
-            
         } catch {
             print("[Preview] Download failed: \(error)")
-            // 忽略取消错误
             let nsError = error as NSError
             if nsError.code != NSURLErrorCancelled {
                 errorMessage = error.localizedDescription
@@ -649,8 +483,6 @@ struct FilePreviewSheet: View {
 }
 
 // MARK: - PDF 预览视图
-
-import PDFKit
 
 struct PDFKitView: UIViewRepresentable {
     let url: URL
@@ -753,7 +585,6 @@ struct WebView: UIViewRepresentable {
 }
 
 // MARK: - File Downloader Service (Embedded)
-// This class is embedded here to avoid Xcode project modifications
 @MainActor
 class FileDownloader: NSObject, ObservableObject {
     @Published var progress: Double = 0.0
@@ -829,7 +660,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         scrollView.showsVerticalScrollIndicator = false
         scrollView.backgroundColor = .clear
         
-        // Critical for Mac Trackpad/Mouse interaction
         scrollView.isUserInteractionEnabled = true
         scrollView.isScrollEnabled = true
         
@@ -838,19 +668,16 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
         hostedView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(hostedView)
         
-        // Constraints to center and fill
         NSLayoutConstraint.activate([
             hostedView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             hostedView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             hostedView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             hostedView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             
-            // Match size to Frame Layout Guide to clamp content initially
             hostedView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             hostedView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor)
         ])
         
-        // Double tap gesture
         let doubleTapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleDoubleTap(_:)))
         doubleTapGesture.numberOfTapsRequired = 2
         scrollView.addGestureRecognizer(doubleTapGesture)
@@ -860,7 +687,6 @@ struct ZoomableScrollView<Content: View>: UIViewRepresentable {
     
     func updateUIView(_ uiView: UIScrollView, context: Context) {
         context.coordinator.hostingController.rootView = self.content
-        // Do not force layout updates here that might reset zoom
     }
     
     func makeCoordinator() -> Coordinator {
