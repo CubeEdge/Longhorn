@@ -89,13 +89,18 @@ struct FilePreviewSheet: View {
                                 }
                             }
                         } label: {
-                            Text("查看原图")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(20)
+                            HStack(spacing: 4) {
+                                Text("查看原图")
+                                if let size = file.size {
+                                    Text("(\(formatFileSize(size)))")
+                                }
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(20)
                         }
                         .padding(.bottom, 20) // Spacing above bottom bar
                         .transition(.opacity)
