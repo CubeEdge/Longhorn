@@ -74,17 +74,17 @@ struct ShareLink: Codable, Identifiable {
 
 /// 创建分享请求
 struct CreateShareRequest: Codable {
-    let filePath: String
+    let path: String
     let fileName: String
     let password: String?
-    let expiresDays: Int?
+    let expiresIn: Int?
     let language: String
     
     enum CodingKeys: String, CodingKey {
-        case filePath = "file_path"
+        case path
         case fileName = "file_name"
         case password
-        case expiresDays = "expires_days"
+        case expiresIn = "expiresIn"
         case language
     }
 }

@@ -338,21 +338,7 @@ private struct CreateCollectionRequest: Codable {
     let language: String
 }
 
-struct CreateShareRequest: Codable {
-    let path: String
-    let fileName: String
-    let password: String?
-    let expiresIn: Int?
-    let language: String
-    
-    enum CodingKeys: String, CodingKey {
-        case path
-        case fileName = "file_name"
-        case password
-        case expiresIn = "expiresIn"
-        case language
-    }
-}
+
 
 struct ShareResult: Codable {
     let shareUrl: String
