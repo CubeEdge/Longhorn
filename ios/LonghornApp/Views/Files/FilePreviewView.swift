@@ -67,6 +67,7 @@ struct FilePreviewView: View {
             }
         }
         .task {
+            print("[Preview] View loaded for: \(file.name) (path: \(file.path))")
             await loadContent()
         }
     }
