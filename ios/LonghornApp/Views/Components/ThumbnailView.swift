@@ -16,7 +16,9 @@ struct ThumbnailView: View {
     @State private var loadFailed = false
     
     private var thumbnailURL: URL? {
-        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path
+        // Strip leading slash to ensure path is treated as relative by server's path.resolve
+        let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let encodedPath = cleanPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanPath
         return URL(string: "\(APIClient.shared.baseURL)/api/thumbnail?path=\(encodedPath)&size=\(Int(size * 2))")
     }
     
@@ -66,6 +68,16 @@ struct ThumbnailView: View {
             return
         }
         
+        let cacheKey = "\(path)_\(size)"
+        
+        // 1. Check Memory Cache
+        if let cachedImage = ImageCacheService.shared.image(for: cacheKey) {
+            self.image = cachedImage
+            self.isLoading = false
+            return
+        }
+        
+        // 2. Network Request
         do {
             var request = URLRequest(url: url)
             if let token = AuthManager.shared.token {
@@ -81,6 +93,9 @@ struct ThumbnailView: View {
                 isLoading = false
                 return
             }
+            
+            // 3. Save to Memory Cache
+            ImageCacheService.shared.insertImage(loadedImage, for: cacheKey)
             
             await MainActor.run {
                 image = loadedImage
@@ -104,6 +119,7 @@ struct FileRowWithThumbnailView: View {
     var onPreview: () -> Void = {}
     
     private let imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"]
+    private let videoExtensions = ["mp4", "mov", "m4v", "avi", "mkv", "hevc"]
     
     var body: some View {
         if isSelectionMode {
@@ -179,7 +195,7 @@ struct FileRowWithThumbnailView: View {
     
     private var isImageFile: Bool {
         let ext = (file.name as NSString).pathExtension.lowercased()
-        return imageExtensions.contains(ext)
+        return imageExtensions.contains(ext) || videoExtensions.contains(ext)
     }
     
     private var iconColor: Color {
@@ -193,174 +209,6 @@ struct FileRowWithThumbnailView: View {
     }
 }
 
-// MARK: - 批量分享对话框
-
-struct BatchShareDialogView: View {
-    let filePaths: [String]
-    var onDismiss: () -> Void = {}
-    
-    @State private var name = ""
-    @State private var password = ""
-    @State private var usePassword = false
-    @State private var expiresIn: ShareDialogView.ExpiryOption = .sevenDays
-    @State private var isLoading = false
-    @State private var shareResult: ShareResult?
-    @State private var errorMessage: String?
-    
-    private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
-    
-    var body: some View {
-        NavigationStack {
-            if let result = shareResult {
-                shareSuccessView(result)
-            } else {
-                shareSettingsForm
-            }
-        }
-    }
-    
-    private var shareSettingsForm: some View {
-        Form {
-            Section {
-                HStack {
-                    Image(systemName: "doc.on.doc.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
-                    
-                    Text("已选择 \(filePaths.count) 个文件")
-                        .font(.system(size: 15, weight: .medium))
-                }
-            } header: {
-                Text("分享内容")
-            }
-            
-            Section {
-                TextField("分享名称", text: $name)
-            } header: {
-                Text("合集名称")
-            } footer: {
-                Text("给这个分享合集起个名字")
-            }
-            
-            Section {
-                Toggle("设置访问密码", isOn: $usePassword)
-                
-                if usePassword {
-                    SecureField("密码", text: $password)
-                }
-            } header: {
-                Text("访问控制")
-            }
-            
-            Section {
-                Picker("有效期", selection: $expiresIn) {
-                    ForEach(ShareDialogView.ExpiryOption.allCases, id: \.self) { option in
-                        Text(option.rawValue).tag(option)
-                    }
-                }
-                .pickerStyle(.menu)
-            } header: {
-                Text("链接有效期")
-            }
-            
-            if let error = errorMessage {
-                Section {
-                    Text(error)
-                        .foregroundColor(.red)
-                }
-            }
-        }
-        .navigationTitle("批量分享")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("取消") { onDismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    createBatchShare()
-                } label: {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Text("创建")
-                    }
-                }
-                .disabled(isLoading || name.isEmpty)
-                .foregroundColor(accentColor)
-            }
-        }
-    }
-    
-    private func shareSuccessView(_ result: ShareResult) -> some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.green)
-            
-            Text("分享合集已创建")
-                .font(.system(size: 20, weight: .semibold))
-            
-            Text(result.shareUrl)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundColor(.secondary)
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-            
-            Button {
-                UIPasteboard.general.string = result.shareUrl
-            } label: {
-                Label("复制链接", systemImage: "doc.on.doc")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(accentColor)
-                    .cornerRadius(12)
-            }
-            
-            Spacer()
-            
-            Button("完成") { onDismiss() }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-                .padding()
-        }
-        .navigationTitle("分享成功")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    private func createBatchShare() {
-        isLoading = true
-        errorMessage = nil
-        
-        Task {
-            do {
-                let result = try await FileService.shared.createShareCollection(
-                    paths: filePaths,
-                    name: name,
-                    password: usePassword ? password : nil,
-                    expiresInDays: expiresIn.days
-                )
-                
-                await MainActor.run {
-                    shareResult = result
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
 
 #Preview {
     ThumbnailView(path: "MS/test.jpg", size: 100)
