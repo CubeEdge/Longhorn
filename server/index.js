@@ -322,84 +322,7 @@ const ensureUserFolders = (user) => {
     fs.ensureDirSync(personalPath);
 };
 
-
-app.use(compression()); // Enable gzip compression
-app.use(cors());
-app.use(express.json());
-app.use('/preview', express.static(DISK_A, {
-    maxAge: '1d',  // Cache images for 1 day
-    etag: true,
-    lastModified: true
-}));
-
-// Health Check Route (Moved down to avoid blocking UI)
-app.get('/api/status', (req, res) => {
-    res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
-});
-
-// Thumbnail API - generates and caches small WebP thumbnails for faster loading
-// Uses query parameter instead of path parameter for Express 5 compatibility
-app.get('/api/thumbnail', async (req, res) => {
-    try {
-        const filePath = req.query.path;
-        if (!filePath) {
-            return res.status(400).json({ error: 'Missing path parameter' });
-        }
-
-        const decodedPath = decodeURIComponent(filePath);
-        const size = parseInt(req.query.size) || 200; // Default 200px
-
-        // Validate file extension
-        const ext = path.extname(decodedPath).toLowerCase();
-        const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.heic', '.heif', '.hevc', '.mov', '.mp4'];
-        if (!supportedFormats.includes(ext)) {
-            return res.status(400).json({ error: 'Unsupported format for thumbnails' });
-        }
-
-        const sourcePath = path.join(DISK_A, decodedPath);
-        if (!fs.existsSync(sourcePath)) {
-            return res.status(404).json({ error: 'File not found' });
-        }
-
-        // Generate cache key based on file path and size
-        const cacheKey = `${decodedPath.replace(/[\/\\]/g, '_')}_${size}.webp`;
-        const cachePath = path.join(THUMB_DIR, cacheKey);
-
-        // Check if cached thumbnail exists and is newer than source
-        if (fs.existsSync(cachePath)) {
-            const sourceStat = fs.statSync(sourcePath);
-            const cacheStat = fs.statSync(cachePath);
-            if (cacheStat.mtime > sourceStat.mtime) {
-                // Serve cached thumbnail
-                res.set('Cache-Control', 'public, max-age=604800'); // 7 days
-                res.set('Content-Type', 'image/webp');
-                return res.sendFile(cachePath);
-            }
-        }
-
-        // Generate thumbnail
-        const thumbnail = await sharp(sourcePath)
-            .resize(size, size, { fit: 'cover', position: 'center' })
-            .webp({ quality: 75 })
-            .toBuffer();
-
-        // Save to cache (async, don't wait)
-        fs.writeFile(cachePath, thumbnail, (err) => {
-            if (err) console.error('[Thumbnail] Cache write error:', err.message);
-        });
-
-        // Respond with thumbnail
-        res.set('Cache-Control', 'public, max-age=604800'); // 7 days
-        res.set('Content-Type', 'image/webp');
-        res.send(thumbnail);
-
-    } catch (err) {
-        console.error('[Thumbnail] Error:', err.message);
-        res.status(500).json({ error: 'Thumbnail generation failed' });
-    }
-});
-
-// Middleware & Helpers
+// Middleware & Helpers (Moved to top to prevent ReferenceError)
 const authenticate = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -424,7 +347,7 @@ const authenticate = (req, res, next) => {
 
 const hasPermission = (user, folderPath, accessType = 'Read') => {
     try {
-        fs.appendFileSync(path.join(__dirname, 'debug_perm.txt'), `User=${user.username} Path=${folderPath} Norm=${folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')} Access=${accessType}\n`);
+        // fs.appendFileSync(path.join(__dirname, 'debug_perm.txt'), ...); // Disabled detailed logging
     } catch (e) { }
 
     if (user.role === 'Admin') return true;
@@ -432,36 +355,27 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
     const normalizedPath = folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
     const deptName = user.department_name;
 
-    // 1. Check personal space: Members/username (top-level)
-    // Use case-insensitive comparison to handle potential casing mismatches (e.g. orange vs Orange)
+    // 1. Check personal space: Members/username
     const personalPath = `members/${user.username.toLowerCase()}`;
     const normalizedLower = normalizedPath.toLowerCase();
 
     if (normalizedLower === personalPath || normalizedLower.startsWith(personalPath + '/')) {
-        return true; // Full access to own personal space
+        return true;
     }
 
     // 2. Check departmental logic
     if (deptName) {
         const deptNameLower = deptName.toLowerCase();
-
-        // Lead has full access to their department
-        if (user.role === 'Lead' && (normalizedLower === deptNameLower || normalizedLower.startsWith(deptNameLower + '/'))) {
-            return true;
-        }
-        // Member has read access to department
+        if (user.role === 'Lead' && (normalizedLower === deptNameLower || normalizedLower.startsWith(deptNameLower + '/'))) return true;
         if (user.role === 'Member' && (normalizedLower === deptNameLower || normalizedLower.startsWith(deptNameLower + '/'))) {
-            // Check if it's their own member folder (Full access) - Legacy support
+            // Legacy personal path support
             const legacyPersonalPath = `${deptNameLower}/members/${user.username.toLowerCase()}`;
-            if (normalizedLower === legacyPersonalPath || normalizedLower.startsWith(legacyPersonalPath + '/')) {
-                return true;
-            }
-            // Otherwise, only Read access for Member in department
+            if (normalizedLower === legacyPersonalPath || normalizedLower.startsWith(legacyPersonalPath + '/')) return true;
             if (accessType === 'Read' || accessType === 'Contributor') return true;
         }
     }
 
-    // 3. Check extended permissions table
+    // 3. Check extended permissions
     const permissions = db.prepare(`
         SELECT access_type, expires_at FROM permissions 
         WHERE user_id = ? AND (folder_path = ? OR ? LIKE folder_path || '/%')
@@ -478,40 +392,268 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
 
 async function moveItemToRecycle(subPath, userId) {
     const fullPath = path.join(DISK_A, subPath);
-
-    if (!fs.existsSync(fullPath)) {
-        console.error(`[Recycle] File not found: ${subPath}`);
-        return;
-    }
+    if (!fs.existsSync(fullPath)) return;
 
     const stats = fs.statSync(fullPath);
-    const isDirectory = stats.isDirectory();
     const fileName = path.basename(subPath);
     const deletedName = `${Date.now()}_${fileName}`;
     const deletedPath = path.join(RECYCLE_DIR, deletedName);
 
-    // Ensure recycle dir exists
     await fs.ensureDir(RECYCLE_DIR);
     await fs.move(fullPath, deletedPath);
-
-    const user = db.prepare('SELECT username FROM users WHERE id = ?').get(userId);
-    const deletedBy = user ? user.username : 'unknown';
 
     db.prepare(`
         INSERT INTO recycle_bin (name, original_path, deleted_path, user_id, is_directory)
         VALUES (?, ?, ?, ?, ?)
-    `).run(fileName, subPath, deletedName, userId, isDirectory ? 1 : 0);
+    `).run(fileName, subPath, deletedName, userId, stats.isDirectory() ? 1 : 0);
 
-    // Clean up database records (stats and logs)
+    // Clean up
     db.prepare('DELETE FROM file_stats WHERE path = ? OR path LIKE ?').run(subPath, subPath + '/%');
     db.prepare('DELETE FROM access_logs WHERE path = ? OR path LIKE ?').run(subPath, subPath + '/%');
-    console.log(`[Recycle] Item moved: ${subPath} by ${deletedBy}`);
 }
 
 const isAdmin = (req, res, next) => {
     if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
     next();
 };
+
+
+// Explicitly set MIME types for HEIC/Video to ensure correct browser/client handling
+// MUST be before compression to support Rate Limits / Range requests correctly on iOS
+app.use('/preview', (req, res, next) => {
+    console.log(`[Preview] Incoming: ${req.path}`);
+    res.on('finish', () => {
+        console.log(`[Preview] Completed: ${req.path} | Status: ${res.statusCode} | Size: ${res.get('Content-Length') || 'Chunked'}`);
+    });
+
+    const ext = path.extname(req.path).toLowerCase();
+    if (ext === '.heic') res.setHeader('Content-Type', 'image/heic');
+    if (ext === '.heif') res.setHeader('Content-Type', 'image/heif');
+    if (ext === '.hevc') res.setHeader('Content-Type', 'video/hevc');
+    if (ext === '.mov') res.setHeader('Content-Type', 'video/quicktime');
+    next();
+}, express.static(DISK_A, {
+    maxAge: '1d',  // Cache images for 1 day
+    etag: true,
+    lastModified: true,
+    acceptRanges: true // Enable Range requests
+}));
+
+app.use(compression()); // Enable gzip compression
+app.use(cors());
+app.use(express.json());
+
+// Health Check Route (Moved down to avoid blocking UI)
+app.get('/api/status', (req, res) => {
+    res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
+});
+
+// Thumbnail API - generates and caches small WebP thumbnails for faster loading
+// Uses query parameter instead of path parameter for Express 5 compatibility
+app.get('/api/thumbnail', async (req, res) => {
+    try {
+        const filePath = req.query.path;
+        if (!filePath) {
+            return res.status(400).json({ error: 'Missing path parameter' });
+        }
+
+        const decodedPath = decodeURIComponent(filePath);
+
+        // Support "preview" mode for larger, higher quality images
+        const isPreview = req.query.size === 'preview';
+        const size = isPreview ? 1200 : (parseInt(req.query.size) || 200);
+        const quality = isPreview ? 85 : 75;
+        const fitMode = isPreview ? 'inside' : 'cover'; // 'inside' preserves aspect ratio
+
+        // Validate file extension
+        const ext = path.extname(decodedPath).toLowerCase();
+        // Standard images that sharp handles natively
+        const imageFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+        // Formats to process with ffmpeg (Videos + HEIC/HEIF which sharp might fail on)
+        const ffmpegFormats = ['.mov', '.mp4', '.m4v', '.avi', '.mkv', '.hevc', '.heic', '.heif'];
+        const supportedFormats = [...imageFormats, ...ffmpegFormats];
+
+        if (!supportedFormats.includes(ext)) {
+            return res.status(400).json({ error: 'Unsupported format for thumbnails' });
+        }
+
+        const sourcePath = path.join(DISK_A, decodedPath);
+        console.log(`[Thumbnail] Checking path: ${sourcePath} (DISK_A=${DISK_A}, decodedPath=${decodedPath})`);
+        if (!fs.existsSync(sourcePath)) {
+            console.log(`[Thumbnail] File NOT found: ${sourcePath}`);
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Generate cache key based on file path and size
+        const cacheKey = `${decodedPath.replace(/[\/\\]/g, '_')}_${size}.webp`;
+        const cachePath = path.join(THUMB_DIR, cacheKey);
+
+        // Check if cached thumbnail exists and is newer than source
+        // Check if cached thumbnail exists, is valid (size > 0), and is newer than source
+        if (fs.existsSync(cachePath)) {
+            try {
+                const sourceStat = fs.statSync(sourcePath);
+                const cacheStat = fs.statSync(cachePath);
+
+                if (cacheStat.size > 0 && cacheStat.mtime > sourceStat.mtime) {
+                    // Serve cached thumbnail with error handling
+                    res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+                    res.set('Content-Type', 'image/webp');
+
+                    return new Promise((resolve) => {
+                        res.sendFile(cachePath, (err) => {
+                            if (err) {
+                                console.error(`[Thumbnail] Failed to send cached file: ${cachePath}`, err.message);
+                                // If sending failed (e.g. 404), delete bad cache and continue to generation
+                                try { fs.unlinkSync(cachePath); } catch (e) { }
+                                resolve(false); // Proceed to generation
+                            } else {
+                                resolve(true); // Sent successfully
+                            }
+                        });
+                    }).then((sent) => {
+                        if (sent) return;
+                        // If not sent, fall through to generation code below...
+                    });
+                } else if (cacheStat.size === 0) {
+                    // Delete empty cache file
+                    try { fs.unlinkSync(cachePath); } catch (e) { }
+                }
+            } catch (err) {
+                console.error(`[Thumbnail] Cache check error:`, err.message);
+                // Continue to generation
+            }
+        }
+
+        let thumbnail;
+
+        // Thumbnail Generation Queue to prevent server overload (CPU/IO)
+        const thumbQueue = [];
+        let thumbProcessing = 0;
+        const MAX_CONCURRENT_THUMBS = 2; // Conservative limit for Raspberry Pi/Mini PCs
+
+        const runThumbQueue = () => {
+            if (thumbProcessing >= MAX_CONCURRENT_THUMBS || thumbQueue.length === 0) return;
+
+            thumbProcessing++;
+            const { task, resolve, reject } = thumbQueue.shift();
+
+            task().then(resolve).catch(reject).finally(() => {
+                thumbProcessing--;
+                runThumbQueue();
+            });
+        };
+
+        const queueThumbTask = (task) => {
+            return new Promise((resolve, reject) => {
+                thumbQueue.push({ task, resolve, reject });
+                runThumbQueue();
+            });
+        };
+
+        if (ffmpegFormats.includes(ext)) {
+            // Use ffmpeg/sips for video AND HEIC thumbnails (Async + Queued)
+            const { exec } = require('child_process');
+            const tempPath = path.join(THUMB_DIR, `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`);
+            const logPath = path.join(THUMB_DIR, 'ffmpeg_error.log');
+
+            // Auto-detect ffmpeg path
+            const possibleFfmpegPaths = [
+                '/opt/homebrew/bin/ffmpeg', // Apple Silicon
+                '/usr/local/bin/ffmpeg',    // Intel Mac
+                '/usr/bin/ffmpeg',          // Linux default
+                'ffmpeg'                    // PATH fallback
+            ];
+            let ffmpegPath = 'ffmpeg';
+            for (const p of possibleFfmpegPaths) {
+                if (fs.existsSync(p)) {
+                    ffmpegPath = p;
+                    break;
+                }
+            }
+
+            console.log(`[Thumbnail] Queued generation for: ${decodedPath} (preview=${isPreview}) using ${ffmpegPath}`);
+
+            try {
+                let cmd;
+                if (['.heic', '.heif'].includes(ext)) {
+                    // Use macOS native 'sips' for HEIC (More reliable than ffmpeg on Mac)
+                    // sips -s format jpeg input.heic --out output.jpg
+                    cmd = `sips -s format jpeg "${sourcePath}" --out "${tempPath}"`;
+                } else {
+                    // Video: Try to get frame at 1s, fallback to start
+                    cmd = `"${ffmpegPath}" -y -i "${sourcePath}" -ss 00:00:01 -vframes 1 -vf "scale=${size}:${size}:force_original_aspect_ratio=increase,crop=${size}:${size}" "${tempPath}" 2>/dev/null || "${ffmpegPath}" -y -i "${sourcePath}" -vframes 1 -vf "scale=${size}:${size}:force_original_aspect_ratio=increase,crop=${size}:${size}" "${tempPath}"`;
+                }
+
+                // execute via Queue
+                await queueThumbTask(() => {
+                    return new Promise((resolve, reject) => {
+                        console.log(`[Thumbnail] Processing started: ${decodedPath}`);
+                        exec(cmd, { timeout: 60000 }, (error, stdout, stderr) => {
+                            if (error) {
+                                fs.appendFileSync(logPath, `[${new Date().toISOString()}] Error for ${decodedPath}: ${error.message}\nStderr: ${stderr}\n`);
+                                reject(error);
+                            } else {
+                                resolve();
+                            }
+                        });
+                    });
+                });
+
+                if (fs.existsSync(tempPath)) {
+                    // Convert to WebP using sharp
+                    // For preview mode, use 'inside' fit to preserve aspect ratio
+                    thumbnail = await sharp(tempPath)
+                        .rotate() // Respect EXIF Orientation
+                        .resize(size, size, { fit: fitMode, position: 'center', withoutEnlargement: true })
+                        .webp({ quality: quality })
+                        .toBuffer();
+
+                    fs.unlinkSync(tempPath);
+                } else {
+                    throw new Error('Output file missing');
+                }
+            } catch (err) {
+                console.error(`[Thumbnail] Generation error for ${decodedPath}:`, err.message);
+                if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+                return res.status(404).json({ error: 'Thumbnail generation failed' });
+            }
+        } else {
+            // Standard Image processing
+            try {
+                thumbnail = await sharp(sourcePath)
+                    .rotate() // Respect EXIF Orientation
+                    .resize(size, size, { fit: fitMode, position: 'center', withoutEnlargement: true })
+                    .webp({ quality: quality })
+                    .toBuffer();
+            } catch (err) {
+                console.error(`[Thumbnail] Sharp error for ${decodedPath}:`, err.message);
+                return res.status(500).json({ error: 'Image thumbnail processing failed' });
+            }
+        }
+
+        // Save to cache ATOMICALLY (Write temp -> Rename)
+        const tempCachePath = path.join(THUMB_DIR, `cache_temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`);
+        try {
+            await fs.writeFile(tempCachePath, thumbnail);
+            await fs.move(tempCachePath, cachePath, { overwrite: true });
+        } catch (e) {
+            console.error('[Thumbnail] Cache write error:', e.message);
+            if (fs.existsSync(tempCachePath)) fs.unlinkSync(tempCachePath);
+        }
+
+        // Respond with thumbnail
+        res.set('Cache-Control', 'public, max-age=604800');
+        res.set('Content-Type', 'image/webp');
+        res.send(thumbnail);
+
+    } catch (err) {
+        console.error('[Thumbnail] Error:', err.message);
+        res.status(500).json({ error: 'Thumbnail generation failed' });
+    }
+});
+
+
 
 // Auth Routes
 app.post('/api/login', (req, res) => {
@@ -878,6 +1020,96 @@ app.post('/api/admin/departments', authenticate, isAdmin, (req, res) => {
     }
 });
 
+// Get department stats for the current user
+app.get('/api/department/my-stats', authenticate, (req, res) => {
+    try {
+        // Fetch fresh user info including department
+        const userInfo = db.prepare(`
+            SELECT u.*, d.name as department_name 
+            FROM users u 
+            LEFT JOIN departments d ON u.department_id = d.id 
+            WHERE u.id = ?
+        `).get(req.user.id);
+
+        const deptName = userInfo ? userInfo.department_name : null;
+
+        if (!deptName) {
+            return res.json({
+                fileCount: 0,
+                storageUsed: 0,
+                memberCount: 0,
+                departmentName: "Unknown"
+            });
+        }
+
+        // Member Count
+        const memberCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE department_id = (SELECT id FROM departments WHERE name = ?)').get(deptName).count || 0;
+
+        // File Stats (Scanning DISK_A/<DeptName>)
+        let fileCount = 0;
+        let storageUsed = 0;
+        const deptPath = path.join(DISK_A, deptName);
+
+        const scan = (dir) => {
+            if (!fs.existsSync(dir)) return;
+            try {
+                const items = fs.readdirSync(dir);
+                for (const item of items) {
+                    const fullPath = path.join(dir, item);
+                    try {
+                        const stats = fs.statSync(fullPath);
+                        if (stats.isDirectory()) {
+                            scan(fullPath);
+                        } else {
+                            fileCount++;
+                            storageUsed += stats.size;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+            } catch (e) { /* ignore dir access error */ }
+        };
+
+        scan(deptPath);
+
+        res.json({
+            fileCount,
+            storageUsed,
+            memberCount,
+            departmentName: deptName
+        });
+    } catch (err) {
+        console.error('[Dept Stats] Error:', err);
+        res.status(500).json({ error: 'Failed to fetch department stats' });
+    }
+});
+
+
+
+// Get current user's special permissions
+app.get('/api/user/permissions', authenticate, (req, res) => {
+    try {
+        const perms = db.prepare(`
+            SELECT id, folder_path, access_type, expires_at 
+            FROM permissions 
+            WHERE user_id = ?
+        `).all(req.user.id);
+
+        // Filter out expired permissions
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const validPerms = perms.filter(p => {
+            if (!p.expires_at) return true;
+            return new Date(p.expires_at) >= now;
+        });
+
+        res.json(validPerms);
+    } catch (err) {
+        console.error('[Permissions] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // System Stats API (for Dashboard)
 app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
     try {
@@ -910,7 +1142,7 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
         // Get upload stats by time period
         const getUploadStats = (startDate) => {
             const stats = db.prepare(`
-                SELECT COUNT(*) as count, SUM(s.size) as total_size
+            SELECT COUNT(*) as count, SUM(s.size) as total_size
                 FROM file_stats s
                 WHERE s.uploaded_at >= ?
             `).get(startDate.toISOString()) || { count: 0, total_size: 0 };
@@ -1017,6 +1249,56 @@ app.get('/api/files/recent', authenticate, async (req, res) => {
 });
 
 // ==================== SEARCH API ====================
+// --- Vocabulary API (Daily Word V13) ---
+app.get('/api/vocabulary', async (req, res) => {
+    try {
+        const { lang = 'en', level, limit = 50, exclude_ids } = req.query;
+        const limitNum = parseInt(limit) || 50;
+
+        let excludeSet = new Set();
+        if (exclude_ids) {
+            const ids = exclude_ids.split(',');
+            ids.forEach(id => excludeSet.add(id));
+        }
+
+        const vocabPath = path.join(__dirname, 'data/vocab', `${lang}.json`);
+        if (!fs.existsSync(vocabPath)) {
+            // Return empty if language not found
+            return res.json({ items: [], hasMore: false });
+        }
+
+        const words = await fs.readJson(vocabPath);
+
+        // Filter by level if provided
+        let filtered = words;
+        if (level) {
+            filtered = words.filter(w => w.level === level);
+        }
+
+        // Filter out seen IDs
+        const available = filtered.filter(w => !excludeSet.has(w.id));
+
+        // Shuffle available words to provide random "new" content
+        // Fisher-Yates shuffle
+        for (let i = available.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [available[i], available[j]] = [available[j], available[i]];
+        }
+
+        const selected = available.slice(0, limitNum);
+
+        res.json({
+            items: selected,
+            // Simple heuristic for hasMore: if we filtered out stuff or if original list is huge
+            hasMore: available.length > limitNum
+        });
+
+    } catch (error) {
+        console.error('Vocabulary API Error:', error);
+        res.status(500).json({ error: 'Failed to fetch vocabulary' });
+    }
+});
+
 app.get('/api/search', authenticate, async (req, res) => {
     try {
         const { q, type, dept } = req.query;
@@ -1513,6 +1795,61 @@ app.delete('/api/shares/:id', authenticate, (req, res) => {
     }
 });
 
+// Update share link (password, expiry)
+app.put('/api/shares/:id', authenticate, (req, res) => {
+    try {
+        const { password, expiresInDays, removePassword } = req.body;
+        const shareId = req.params.id;
+
+        // Verify ownership
+        const share = db.prepare(`
+            SELECT * FROM share_links WHERE id = ? AND user_id = ?
+        `).get(shareId, req.user.id);
+
+        if (!share) {
+            return res.status(404).json({ error: 'Share link not found' });
+        }
+
+        // Build update query
+        const updates = [];
+        const values = [];
+
+        // Handle password update
+        if (removePassword) {
+            updates.push('password = NULL');
+        } else if (password) {
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            updates.push('password = ?');
+            values.push(hashedPassword);
+        }
+
+        // Handle expiry update
+        if (expiresInDays !== undefined) {
+            if (expiresInDays === null || expiresInDays === -1) {
+                updates.push('expires_at = NULL');
+            } else {
+                const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+                updates.push('expires_at = ?');
+                values.push(expiresAt);
+            }
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No updates provided' });
+        }
+
+        values.push(shareId, req.user.id);
+        const result = db.prepare(`
+            UPDATE share_links SET ${updates.join(', ')} WHERE id = ? AND user_id = ?
+        `).run(...values);
+
+        res.json({ success: true, changes: result.changes });
+    } catch (err) {
+        console.error('[Shares] Error updating:', err);
+        res.status(500).json({ error: 'Failed to update share link' });
+    }
+});
+
 // Public share access (no auth required)
 app.get('/share/:token', async (req, res) => {
     try {
@@ -1702,6 +2039,34 @@ const getFolderSize = (dirPath) => {
 
 // File Routes
 // File Routes
+// Get file access stats
+app.get('/api/files/stats', authenticate, (req, res) => {
+    const { path: filePath } = req.query;
+    if (!filePath) return res.status(400).json({ error: 'Path required' });
+
+    // Check permission (Full or Owner)
+    const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(filePath);
+    const isOwner = fileStat && fileStat.uploader_id === req.user.id;
+
+    if (!isOwner && !hasPermission(req.user, filePath, 'Full')) {
+        return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    try {
+        const stats = db.prepare(`
+            SELECT l.count, l.last_access, u.username, u.email
+            FROM access_logs l
+            JOIN users u ON l.user_id = u.id
+            WHERE l.path = ?
+            ORDER BY l.last_access DESC
+        `).all(filePath);
+
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/files', authenticate, async (req, res) => {
     const requestedPath = req.query.path || '';
     let subPath = resolvePath(requestedPath);
@@ -2068,6 +2433,67 @@ app.post('/api/files/rename', authenticate, async (req, res) => {
         res.json({ success: true, newPath: newSubPath });
     } catch (err) {
         console.error('[Rename] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Copy file/folder
+app.post('/api/files/copy', authenticate, async (req, res) => {
+    const { sourcePath, targetDir } = req.body;
+    if (!sourcePath || !targetDir) {
+        return res.status(400).json({ error: 'sourcePath and targetDir required' });
+    }
+
+    // Check read permission on source
+    if (!hasPermission(req.user, sourcePath, 'Reader') &&
+        !hasPermission(req.user, sourcePath, 'Contributor') &&
+        !hasPermission(req.user, sourcePath, 'Full')) {
+        return res.status(403).json({ error: 'No permission to read source file' });
+    }
+
+    // Check write permission on target
+    if (!hasPermission(req.user, targetDir, 'Full') && !hasPermission(req.user, targetDir, 'Contributor')) {
+        return res.status(403).json({ error: 'No write permission for target directory' });
+    }
+
+    try {
+        const sourceFullPath = path.join(DISK_A, sourcePath);
+        const fileName = path.basename(sourcePath);
+        let targetFileName = fileName;
+        let targetFullPath = path.join(DISK_A, targetDir, targetFileName);
+
+        // Check if source exists
+        if (!await fs.pathExists(sourceFullPath)) {
+            return res.status(404).json({ error: 'Source file not found' });
+        }
+
+        // Handle name conflict - add (copy) suffix
+        let copyNum = 0;
+        while (await fs.pathExists(targetFullPath)) {
+            copyNum++;
+            const ext = path.extname(fileName);
+            const base = path.basename(fileName, ext);
+            targetFileName = `${base} (copy${copyNum > 1 ? ' ' + copyNum : ''})${ext}`;
+            targetFullPath = path.join(DISK_A, targetDir, targetFileName);
+        }
+
+        // Perform copy
+        await fs.copy(sourceFullPath, targetFullPath);
+
+        // Copy file_stats if exists (with new uploader)
+        const sourceStat = db.prepare('SELECT * FROM file_stats WHERE path = ?').get(sourcePath);
+        const newPath = path.join(targetDir, targetFileName);
+
+        if (sourceStat) {
+            db.prepare(`
+                INSERT OR REPLACE INTO file_stats (path, access_count, uploader_id, last_accessed, size)
+                VALUES (?, 0, ?, datetime('now'), ?)
+            `).run(newPath, req.user.id, sourceStat.size);
+        }
+
+        res.json({ success: true, newPath: newPath });
+    } catch (err) {
+        console.error('[Copy] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -2451,6 +2877,50 @@ app.delete('/api/share-collection/:id', authenticate, (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('[Share Collection] Error deleting:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Share Collection
+app.put('/api/share-collection/:id', authenticate, (req, res) => {
+    try {
+        const { password, expiresInDays, removePassword } = req.body;
+        const shareId = req.params.id;
+
+        // Verify ownership
+        const share = db.prepare(`SELECT * FROM share_collections WHERE id = ? AND user_id = ?`).get(shareId, req.user.id);
+        if (!share) return res.status(404).json({ error: 'Share collection not found' });
+
+        // Build update query
+        const updates = [];
+        const values = [];
+
+        if (removePassword) {
+            updates.push('password = NULL');
+        } else if (password) {
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            updates.push('password = ?');
+            values.push(hashedPassword);
+        }
+
+        if (expiresInDays !== undefined) {
+            if (expiresInDays === null || expiresInDays === -1) {
+                updates.push('expires_at = NULL');
+            } else {
+                const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+                updates.push('expires_at = ?');
+                values.push(expiresAt);
+            }
+        }
+
+        if (updates.length === 0) return res.status(400).json({ error: 'No updates provided' });
+
+        values.push(shareId, req.user.id);
+        db.prepare(`UPDATE share_collections SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`).run(...values);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Share Collection] Error updating:', err);
         res.status(500).json({ error: err.message });
     }
 });
