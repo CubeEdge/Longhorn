@@ -36,6 +36,10 @@ struct FileBrowserView: View {
     @State private var showDeleteConfirmation = false
     @State private var showBatchShareSheet = false  // 批量分享
     
+    // 单个删除确认
+    @State private var showSingleDeleteConfirmation = false
+    @State private var fileToDelete: FileItem?
+    
     // 重命名
     @State private var showRenameAlert = false
     @State private var renameFile: FileItem?
@@ -192,6 +196,22 @@ struct FileBrowserView: View {
             Button("取消", role: .cancel) {}
         } message: {
             Text("删除的文件将移动到回收站")
+        }
+        .confirmationDialog(
+            "确定要删除 \"\(fileToDelete?.name ?? "这个文件")\" 吗？",
+            isPresented: $showSingleDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                if let file = fileToDelete {
+                    deleteFile(file)
+                }
+            }
+            Button("取消", role: .cancel) {
+                fileToDelete = nil
+            }
+        } message: {
+            Text("删除后可在回收站找回")
         }
         .sheet(item: $shareFile) { file in
             ShareDialogView(
@@ -661,7 +681,8 @@ struct FileBrowserView: View {
         
         // 删除
         Button(role: .destructive) {
-            deleteFile(file)
+            fileToDelete = file
+            showSingleDeleteConfirmation = true
         } label: {
             Label("action.delete", systemImage: "trash")
         }
@@ -888,7 +909,8 @@ struct FileBrowserView: View {
             selectedPaths = [file.path]
             showMoveSheet = true
         case .delete:
-            deleteFile(file)
+            fileToDelete = file
+            showSingleDeleteConfirmation = true
         case .download:
             downloadFile(file)
         }

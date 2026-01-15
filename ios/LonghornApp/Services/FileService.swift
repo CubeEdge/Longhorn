@@ -27,6 +27,16 @@ class FileService {
         return try await APIClient.shared.get("/api/user/accessible-departments")
     }
     
+    /// 获取我的特殊权限目录
+    func fetchMyPermissions() async throws -> [AuthorizedLocation] {
+        return try await APIClient.shared.get("/api/user/permissions")
+    }
+    
+    /// 获取部门概览数据
+    func fetchDepartmentStats() async throws -> DepartmentOverviewStats {
+        return try await APIClient.shared.get("/api/department/my-stats")
+    }
+    
     // MARK: - 搜索
     
     /// 搜索文件
@@ -74,6 +84,12 @@ class FileService {
     func renameFile(at path: String, to newName: String) async throws {
         let request = RenameRequest(path: path, newName: newName)
         try await APIClient.shared.post("/api/files/rename", body: request)
+    }
+    
+    /// 复制文件
+    func copyFile(sourcePath: String, targetDir: String) async throws -> CopyResult {
+        let request = CopyRequest(sourcePath: sourcePath, targetDir: targetDir)
+        return try await APIClient.shared.post("/api/files/copy", body: request)
     }
     
     // MARK: - 收藏操作
@@ -156,10 +172,10 @@ class FileService {
     func createShareLink(path: String, password: String?, expiresInDays: Int?, language: String = "zh") async throws -> ShareResult {
         let fileName = (path as NSString).lastPathComponent
         let request = CreateShareRequest(
-            filePath: path,
+            path: path,
             fileName: fileName,
             password: password,
-            expiresDays: expiresInDays,
+            expiresIn: expiresInDays,
             language: language
         )
         return try await APIClient.shared.post("/api/shares", body: request)
@@ -175,6 +191,12 @@ class FileService {
         try await APIClient.shared.delete("/api/shares/\(id)")
     }
     
+    /// 更新分享设置
+    func updateShare(id: Int, password: String? = nil, removePassword: Bool = false, expiresInDays: Int? = nil) async throws {
+        let request = UpdateShareRequest(password: password, removePassword: removePassword, expiresInDays: expiresInDays)
+        try await APIClient.shared.put("/api/shares/\(id)", body: request)
+    }
+    
     /// 批量分享（创建分享合集）
     func createShareCollection(paths: [String], name: String, password: String?, expiresInDays: Int?, language: String = "zh") async throws -> ShareResult {
         let request = CreateCollectionRequest(
@@ -186,6 +208,11 @@ class FileService {
         )
         return try await APIClient.shared.post("/api/share-collection", body: request)
     }
+    /// 获取文件访问统计
+    func getFileStats(path: String) async throws -> [AccessLog] {
+        let queryItems = [URLQueryItem(name: "path", value: path)]
+        return try await APIClient.shared.get("/api/files/stats", queryItems: queryItems)
+    }
 }
 
 // MARK: - 请求/响应结构
@@ -193,6 +220,27 @@ class FileService {
 private struct FilesResponse: Codable {
     let items: [FileItem]
     let userCanWrite: Bool?
+}
+
+// ... existing structs ...
+
+struct AccessLog: Codable, Identifiable {
+    let count: Int
+    let lastAccess: String
+    let username: String?
+    let email: String?
+    
+    var id: String { username ?? UUID().uuidString }
+    
+    enum CodingKeys: String, CodingKey {
+        case count
+        case lastAccess = "last_access"
+        case username, email
+    }
+    
+    var formattedLastAccess: String {
+        return lastAccess // TODO: Format date properly
+    }
 }
 
 private struct SearchResponse: Codable {
@@ -218,6 +266,22 @@ private struct RenameRequest: Codable {
     let newName: String
 }
 
+private struct CopyRequest: Codable {
+    let sourcePath: String
+    let targetDir: String
+}
+
+struct CopyResult: Codable {
+    let success: Bool
+    let newPath: String
+}
+
+private struct UpdateShareRequest: Codable {
+    let password: String?
+    let removePassword: Bool
+    let expiresInDays: Int?
+}
+
 private struct StarRequest: Codable {
     let file_path: String
 }
@@ -227,6 +291,30 @@ private struct StarredCheckResponse: Codable {
 }
 
 private struct EmptyBody: Codable {}
+
+struct AuthorizedLocation: Codable, Identifiable {
+    let id: Int
+    let folderPath: String
+    let accessType: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case folderPath = "folder_path"
+        case accessType = "access_type"
+    }
+    
+    var displayName: String {
+        let name = (folderPath as NSString).lastPathComponent
+        return LocalizationHelper.localizedDepartmentName(name)
+    }
+}
+
+struct DepartmentOverviewStats: Codable {
+    let fileCount: Int
+    let storageUsed: Int64
+    let memberCount: Int
+    let departmentName: String?
+}
 
 struct FolderTreeItem: Codable, Identifiable {
     let name: String
@@ -248,6 +336,22 @@ private struct CreateCollectionRequest: Codable {
     let password: String?
     let expiresIn: Int?
     let language: String
+}
+
+struct CreateShareRequest: Codable {
+    let path: String
+    let fileName: String
+    let password: String?
+    let expiresIn: Int?
+    let language: String
+    
+    enum CodingKeys: String, CodingKey {
+        case path
+        case fileName = "file_name"
+        case password
+        case expiresIn = "expiresIn"
+        case language
+    }
 }
 
 struct ShareResult: Codable {
