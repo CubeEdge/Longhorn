@@ -217,15 +217,30 @@ struct FilePreviewSheet: View {
                 }
                 
                 // "查看原图" 按钮 (微信风格)
-                // 仅当: 是大图(使用预览API) 且 当前未加载原图 且 未在下载中
-                if isLargeImage && finalURL == nil && !isDownloading {
+                // 显示条件: 是大图 且 (没有本地文件 OR 本地文件是缩略图/预览图) 且 未在下载中
+                let isCachedOriginal: Bool = {
+                    guard let url = finalURL, let size = file.size else { return false }
+                    if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                       let cachedSize = attrs[.size] as? Int64 {
+                        // 如果缓存文件大小接近原图大小 (误差 10KB)，认为是原图
+                        // 预览图通常只有几百KB，原图几MB，差异巨大
+                        return cachedSize >= (size - 10240)
+                    }
+                    return false
+                }()
+                
+                if isLargeImage && !isCachedOriginal && !isDownloading {
                     VStack {
                         Spacer()
                         
                         Button {
                             // 切换到下载原图模式
                             print("[Preview] User requested original image")
-                            finalURL = nil
+                            
+                            // 即使当前显示的预览图，也要强制重新下载原图
+                            // 不清空 finalURL 以保持预览显示直到原图下载完毕? 
+                            // 不，清空是为了显示下载进度条
+                            finalURL = nil 
                             isDownloading = true
                             
                             // 构建原图URL (raw=true)
@@ -233,6 +248,7 @@ struct FilePreviewSheet: View {
                             
                             if let url = rawURL {
                                 Task {
+                                    // 重新下载并覆盖缓存
                                     await downloadAndCache(url: url)
                                 }
                             }
