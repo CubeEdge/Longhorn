@@ -224,11 +224,13 @@ struct FilePreviewView: View {
         }
         
         // 2. Smart Preview Logic
+        // If size is unknown (nil or 0), default to treating as large image (use preview)
         let fileSize = file.size ?? 0
-        let isSmallImage = isImage && fileSize <= 1_048_576 // 1MB
-        let isLargeImage = isImage && fileSize > 1_048_576
+        let sizeIsKnown = file.size != nil && file.size! > 0
+        let isSmallImage = isImage && sizeIsKnown && fileSize <= 1_048_576 // 1MB
+        let isLargeImage = isImage && (!sizeIsKnown || fileSize > 1_048_576) // Unknown or > 1MB
         
-        print("[Preview] File: \(file.name), Size: \(fileSize), isSmallImage: \(isSmallImage), isLargeImage: \(isLargeImage)")
+        print("[Preview] File: \(file.name), Size: \(fileSize), sizeKnown: \(sizeIsKnown), isSmallImage: \(isSmallImage), isLargeImage: \(isLargeImage)")
         
         // 3. For LARGE images (>1MB): Use server preview API
         if isLargeImage, let url = previewURL {
