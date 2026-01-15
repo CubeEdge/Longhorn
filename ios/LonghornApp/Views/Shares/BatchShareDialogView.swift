@@ -71,6 +71,8 @@ struct BatchShareDialogView: View {
                 Picker("界面语言", selection: $selectedLanguage) {
                     Text("中文").tag("zh")
                     Text("English").tag("en")
+                    Text("Deutsch").tag("de")
+                    Text("日本語").tag("ja")
                 }
                 .pickerStyle(.menu)
             }
@@ -115,24 +117,47 @@ struct BatchShareDialogView: View {
             Text("share.success") // "Share Collection Created" - reusing "share.success"
                 .font(.system(size: 20, weight: .semibold))
             
-            Text(result.shareUrl)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundColor(.secondary)
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-            
-            Button {
-                UIPasteboard.general.string = result.shareUrl
-            } label: {
-                Label("action.copy_link", systemImage: "doc.on.doc")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(accentColor)
+            VStack(spacing: 12) {
+                Text(result.shareUrl)
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
                     .cornerRadius(12)
+                
+                Button {
+                    UIPasteboard.general.string = result.shareUrl
+                    ToastManager.shared.show("链接已复制", type: .success)
+                } label: {
+                    Label("action.copy_link", systemImage: "doc.on.doc")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(accentColor)
+                        .cornerRadius(12)
+                }
+                
+                // 信息展示：有效期 & 语言
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .foregroundColor(.secondary)
+                        Text(expiresIn.localizedName)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .foregroundColor(.secondary)
+                        Text(languageName(selectedLanguage))
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
+            .padding(.horizontal)
             
             Spacer()
             
@@ -145,6 +170,16 @@ struct BatchShareDialogView: View {
         }
         .navigationTitle(Text("share.success"))
         .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func languageName(_ code: String) -> String {
+        switch code {
+        case "zh": return "中文"
+        case "en": return "English"
+        case "de": return "Deutsch"
+        case "ja": return "日本語"
+        default: return code
+        }
     }
     
     private func createBatchShare() {

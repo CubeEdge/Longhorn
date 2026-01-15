@@ -114,6 +114,8 @@ struct ShareDialogView: View {
                 Picker("界面语言", selection: $selectedLanguage) {
                     Text("中文").tag("zh")
                     Text("English").tag("en")
+                    Text("Deutsch").tag("de")
+                    Text("日本語").tag("ja")
                 }
                 .pickerStyle(.menu)
             }
@@ -184,6 +186,7 @@ struct ShareDialogView: View {
                 // 复制按钮
                 Button {
                     UIPasteboard.general.string = result.shareUrl
+                    ToastManager.shared.show("链接已复制", type: .success)
                 } label: {
                     Label("action.copy_link", systemImage: "doc.on.doc")
                         .font(.system(size: 16, weight: .semibold))
@@ -199,12 +202,13 @@ struct ShareDialogView: View {
                     HStack {
                         Image(systemName: "lock.fill")
                             .foregroundColor(.secondary)
-                        Text("Password: \(password)") // Partial loc ok, or add key
+                        Text("Password: \(password)")
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                         
                         Button {
                             UIPasteboard.general.string = password
+                            ToastManager.shared.show("密码已复制", type: .success)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .font(.system(size: 12))
@@ -213,20 +217,30 @@ struct ShareDialogView: View {
                     }
                 }
                 
-                // 有效期提示
-                HStack {
-                    Image(systemName: "clock")
-                        .foregroundColor(.secondary)
-                    Text("\(Text("permission.validity")): \(Text(expiresIn.localizedName))")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
+                // 信息展示：有效期 & 语言
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .foregroundColor(.secondary)
+                        Text(expiresIn.localizedName)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .foregroundColor(.secondary)
+                        Text(languageName(selectedLanguage))
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .padding(.horizontal)
             
             Spacer()
             
-            // 完成按钮
+            // 底部只有一个完成按钮
             Button {
                 onDismiss()
             } label: {
@@ -243,13 +257,15 @@ struct ShareDialogView: View {
         }
         .navigationTitle(Text("share.success"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("action.done") {
-                    onDismiss()
-                }
-                .foregroundColor(accentColor)
-            }
+    }
+    
+    private func languageName(_ code: String) -> String {
+        switch code {
+        case "zh": return "中文"
+        case "en": return "English"
+        case "de": return "Deutsch"
+        case "ja": return "日本語"
+        default: return code
         }
     }
     
