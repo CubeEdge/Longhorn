@@ -488,40 +488,35 @@ app.get('/api/thumbnail', async (req, res) => {
         const cacheKey = `${decodedPath.replace(/[\/\\]/g, '_')}_${size}.webp`;
         const cachePath = path.join(THUMB_DIR, cacheKey);
 
-        // Check if cached thumbnail exists and is newer than source
         // Check if cached thumbnail exists, is valid (size > 0), and is newer than source
+        let useCache = false;
         if (fs.existsSync(cachePath)) {
             try {
                 const sourceStat = fs.statSync(sourcePath);
                 const cacheStat = fs.statSync(cachePath);
 
                 if (cacheStat.size > 0 && cacheStat.mtime > sourceStat.mtime) {
-                    // Serve cached thumbnail with error handling
-                    res.set('Cache-Control', 'public, max-age=604800'); // 7 days
-                    res.set('Content-Type', 'image/webp');
-
-                    return new Promise((resolve) => {
-                        res.sendFile(cachePath, (err) => {
-                            if (err) {
-                                console.error(`[Thumbnail] Failed to send cached file: ${cachePath}`, err.message);
-                                // If sending failed (e.g. 404), delete bad cache and continue to generation
-                                try { fs.unlinkSync(cachePath); } catch (e) { }
-                                resolve(false); // Proceed to generation
-                            } else {
-                                resolve(true); // Sent successfully
-                            }
-                        });
-                    }).then((sent) => {
-                        if (sent) return;
-                        // If not sent, fall through to generation code below...
-                    });
+                    useCache = true;
                 } else if (cacheStat.size === 0) {
-                    // Delete empty cache file
+                    // Delete empty/corrupt cache file
                     try { fs.unlinkSync(cachePath); } catch (e) { }
                 }
             } catch (err) {
-                console.error(`[Thumbnail] Cache check error:`, err.message);
-                // Continue to generation
+                console.error(`[Thumbnail] Cache stat error:`, err.message);
+            }
+        }
+
+        // If valid cache exists, serve it directly (simpler, synchronous)
+        if (useCache) {
+            try {
+                const cacheData = await fs.readFile(cachePath);
+                res.set('Cache-Control', 'public, max-age=604800');
+                res.set('Content-Type', 'image/webp');
+                return res.send(cacheData);
+            } catch (err) {
+                console.error(`[Thumbnail] Failed to read cache: ${cachePath}`, err.message);
+                // Delete bad cache, continue to regeneration
+                try { fs.unlinkSync(cachePath); } catch (e) { }
             }
         }
 
