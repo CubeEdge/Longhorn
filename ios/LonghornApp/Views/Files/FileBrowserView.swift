@@ -138,17 +138,7 @@ struct FileBrowserView: View {
         }
         .navigationTitle(pathTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-             // Hint Footer
-             if !displayedFiles.isEmpty {
-                 Text("hint.pull_refresh")
-                     .font(.caption2)
-                     .foregroundStyle(.secondary)
-                     .padding(.vertical, 8)
-                     .frame(maxWidth: .infinity)
-                     .background(.ultraThinMaterial)
-             }
-        }
+
         .searchable(text: $searchText, prompt: Text(searchPromptKey))
         .onSubmit(of: .search) {
             performSearch()
