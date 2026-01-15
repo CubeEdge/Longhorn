@@ -16,7 +16,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
-const DISK_A = process.env.DISK_A || path.join(__dirname, 'data/DiskA');
+const DISK_A = path.resolve(__dirname, process.env.DISK_A || 'data/DiskA');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
