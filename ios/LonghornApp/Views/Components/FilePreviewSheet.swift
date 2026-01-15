@@ -62,13 +62,118 @@ struct FilePreviewSheet: View {
                     
                     Spacer()
                     
-                    // 底部信息栏
-                    bottomInfoBar
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                // "查看原图" 按钮 (微信风格)
+                // 显示条件: 是大图 且 (没有本地文件 OR 本地文件是缩略图/预览图) 且 未在下载中
+                let isCachedOriginal: Bool = {
+                    guard let url = finalURL, let size = file.size else { return false }
+                    if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                       let cachedSize = attrs[.size] as? Int64 {
+                        return cachedSize >= (size - 10240)
+                    }
+                    return false
+                }()
+                
+                if isLargeImage && !isCachedOriginal && !isDownloading {
+                    Button {
+                        // 切换到下载原图模式
+                        print("[Preview] User requested original image")
+                        finalURL = nil 
+                        isDownloading = true
+                        
+                        // 构建原图URL (raw=true)
+                        let rawURL = buildPreviewURL(for: file)
+                        if let url = rawURL {
+                            Task {
+                                await downloadAndCache(url: url)
+                            }
+                        }
+                    } label: {
+                        Text("查看原图")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(20)
+                    }
+                    .padding(.bottom, 20) // Spacing above bottom bar
+                    .transition(.opacity)
                 }
             }
+            // 底部信息栏
+            bottomInfoBar
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
+    
+    // ... (TopBar remains same) ...
+
+    // MARK: - 预览内容 (REMOVED BUTTON FROM HERE)
+    @ViewBuilder
+    private var previewContent: some View {
+         // ... unchanged ...
+                    if errorMessage != nil {
+                         VStack { ... }
+                    }
+                    
+                    // REMOVED BUTTON LOGIC FROM HERE
+                }
+                .task { ... }
+         // ...
+    }
+
+    // MARK: - 底部信息栏
+    
+    private var bottomInfoBar: some View {
+        VStack(spacing: 12) {
+            // 操作按钮
+            HStack(spacing: 32) {
+                // 收藏
+                Button {
+                    isStarred.toggle()
+                    onStar?()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: isStarred ? "star.fill" : "star")
+                            .font(.system(size: 28))
+                        Text(isStarred ? "已收藏" : "收藏")
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(isStarred ? .orange : .white)
+                
+                // 下载
+                Button {
+                    onDownload()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "arrow.down.circle") // Removed fill for cleaner look? Or keep fill but white? User said "no special color".
+                            // Keeping fill but making it white is safer to match others.
+                            // Actually user said "Download no special color".
+                        Image(systemName: "arrow.down.circle") 
+                            .font(.system(size: 28))
+                        Text("下载")
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(.white) // Neutral color
+                
+                // 分享
+                Button {
+                    onShare()
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up") // Outline style to match download?
+                            .font(.system(size: 28))
+                        Text("分享")
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(.white)
+            }
+            .padding(.vertical, 12)
+            
+            // ... (FileInfo remains same) ...
     
     // MARK: - 顶部栏
     
