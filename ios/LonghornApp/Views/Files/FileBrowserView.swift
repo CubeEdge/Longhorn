@@ -41,6 +41,14 @@ struct FileBrowserView: View {
     @State private var renameFile: FileItem?
     @State private var newFileName = ""
     
+    // 复制
+    @State private var showCopySheet = false
+    @State private var copySourceFile: FileItem?
+    
+    // 详情/统计
+    @State private var showStatsSheet = false
+    @State private var statsFile: FileItem?
+    
     // 上传
     @State private var showFilePicker = false
     @State private var showPhotoPicker = false
@@ -67,8 +75,8 @@ struct FileBrowserView: View {
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     enum ViewMode: String, CaseIterable {
-        case list = "列表"
-        case grid = "网格"
+        case list = "view.list"
+        case grid = "view.grid"
         
         var icon: String {
             switch self {
@@ -79,9 +87,9 @@ struct FileBrowserView: View {
     }
     
     enum SortOrder: String, CaseIterable {
-        case name = "名称"
-        case date = "日期"
-        case size = "大小"
+        case name = "sort.name"
+        case date = "sort.date"
+        case size = "sort.size"
         
         var icon: String {
             switch self {
@@ -95,16 +103,16 @@ struct FileBrowserView: View {
     var body: some View {
         ZStack {
             if isLoading {
-                ProgressView("加载中...")
+                ProgressView(String(localized: "browser.loading"))
                     .progressViewStyle(.circular)
             } else if let error = errorMessage {
                 ContentUnavailableView(
-                    "加载失败",
+                    String(localized: "alert.error"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
                 .overlay(alignment: .bottom) {
-                    Button("重试") {
+                    Button(String(localized: "action.retry")) {
                         Task { await loadFiles() }
                     }
                     .buttonStyle(.borderedProminent)
@@ -113,15 +121,15 @@ struct FileBrowserView: View {
             } else if displayedFiles.isEmpty {
                 if isSearching && !searchText.isEmpty {
                     ContentUnavailableView(
-                        "无搜索结果",
+                        String(localized: "search.no_results"),
                         systemImage: "magnifyingglass",
-                        description: Text("没有找到匹配「\(searchText)」的结果")
+                        description: Text("No results for \"\(searchText)\"") // Simplified for now
                     )
                 } else {
                     ContentUnavailableView(
-                        "文件夹为空",
+                        String(localized: "browser.empty"),
                         systemImage: "folder",
-                        description: Text("此文件夹中没有文件")
+                        description: Text("browser.empty")
                     )
                 }
             } else {
@@ -130,7 +138,18 @@ struct FileBrowserView: View {
         }
         .navigationTitle(pathTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: searchPrompt)
+        .safeAreaInset(edge: .bottom) {
+             // Hint Footer
+             if !displayedFiles.isEmpty {
+                 Text("hint.pull_refresh")
+                     .font(.caption2)
+                     .foregroundStyle(.secondary)
+                     .padding(.vertical, 8)
+                     .frame(maxWidth: .infinity)
+                     .background(.ultraThinMaterial)
+             }
+        }
+        .searchable(text: $searchText, prompt: Text(searchPromptKey))
         .onSubmit(of: .search) {
             performSearch()
         }
@@ -147,13 +166,30 @@ struct FileBrowserView: View {
             await loadFiles(forceRefresh: true)
         }
         .task {
+            // Initial load (visible)
             await loadFiles()
+            
+            // Polling loop (silent, every 5s)
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
+                if !Task.isCancelled {
+                    await loadFiles(forceRefresh: true, silent: true)
+                }
+            }
         }
         .sheet(isPresented: $showCreateFolder) {
             createFolderSheet
         }
         .sheet(isPresented: $showMoveSheet) {
             moveSheet
+        }
+        .sheet(isPresented: $showCopySheet) {
+            copySheet
+        }
+        .sheet(item: $statsFile) { file in
+            FileStatsView(file: file) {
+                statsFile = nil
+            }
         }
         .confirmationDialog(
             "确定要删除所选的 \(selectedPaths.count) 个项目吗？",
@@ -205,33 +241,23 @@ struct FileBrowserView: View {
         .sheet(isPresented: $showUploadProgress) {
             UploadProgressView(onDismiss: { showUploadProgress = false })
         }
-        .fullScreenCover(isPresented: $showFilePreview) {
-            if let file = previewFile {
-                FilePreviewSheet(
-                    file: file,
-                    previewURL: previewURL,
-                    onClose: {
-                        showFilePreview = false
-                        previewFile = nil
-                    },
-                    onDownload: {
-                        if let file = previewFile {
-                            downloadFile(file)
-                        }
-                    },
-                    onShare: {
-                        if let file = previewFile {
-                            shareFile = file
-                            showFilePreview = false
-                        }
-                    },
-                    onStar: {
-                        if let file = previewFile {
-                            toggleStar(file)
-                        }
-                    }
-                )
-            }
+        .fullScreenCover(item: $previewFile) { file in
+            FilePreviewSheet(
+                file: file,
+                previewURL: previewURL,
+                onClose: {
+                    previewFile = nil
+                },
+                onDownload: {
+                    downloadFile(file)
+                },
+                onShare: {
+                    shareFile = file
+                },
+                onStar: {
+                    toggleStar(file)
+                }
+            )
         }
         .overlay {
             if isPreviewLoading {
@@ -243,7 +269,7 @@ struct FileBrowserView: View {
                         ProgressView()
                             .scaleEffect(1.5)
                             .tint(.white)
-                        Text("正在下载预览...")
+                        Text("正在打开...")
                             .foregroundStyle(.white)
                             .font(.headline)
                     }
@@ -276,14 +302,14 @@ struct FileBrowserView: View {
     
     // MARK: - 搜索相关
     
-    private var searchPrompt: String {
+    private var searchPromptKey: LocalizedStringKey {
         switch searchScope {
         case .all:
-            return "搜索所有文件"
+            return "search.placeholder.all"
         case .department(let code):
-            return "在 \(code) 中搜索"
+            return LocalizedStringKey("Search in \(code)") // Not clean but functional for dynamic
         case .personal:
-            return "搜索个人空间"
+            return "search.placeholder.personal"
         }
     }
     
@@ -408,7 +434,7 @@ struct FileBrowserView: View {
                     selectedPaths = Set(displayedFiles.map { $0.path })
                 }
             } label: {
-                Text(selectedPaths.count == displayedFiles.count ? "取消全选" : "全选")
+                Text(selectedPaths.count == displayedFiles.count ? "action.select_none" : "action.select_all") // Using Keys
                     .font(.system(size: 14, weight: .medium))
             }
             
@@ -422,6 +448,14 @@ struct FileBrowserView: View {
             
             // 批量操作按钮
             HStack(spacing: 16) {
+                // 批量收藏
+                Button {
+                    batchToggleStar()
+                } label: {
+                    Image(systemName: "star")
+                }
+                .disabled(selectedPaths.isEmpty)
+                
                 Button {
                     showMoveSheet = true
                 } label: {
@@ -465,50 +499,52 @@ struct FileBrowserView: View {
     
     // MARK: - 工具栏
     
+    @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        Group {
+            // Daily Word Badge (Leading)
+            // Daily Word Badge removed as per request
+
             // 选择模式切换
             ToolbarItem(placement: .primaryAction) {
-                Button(isSelectionMode ? "完成" : "选择") {
-                    isSelectionMode.toggle()
-                    if !isSelectionMode {
+                if isSelectionMode {
+                    Button(String(localized: "action.done")) {
+                        isSelectionMode = false
                         selectedPaths.removeAll()
                     }
+                    .foregroundColor(accentColor)
+                } else {
+                    Button(String(localized: "action.select")) {
+                        isSelectionMode = true
+                    }
+                    .foregroundColor(.primary)
                 }
-                .foregroundColor(isSelectionMode ? accentColor : .primary)
             }
             
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    // 视图切换
-                    Section("视图") {
+                    Section("view.title") {
                         ForEach(ViewMode.allCases, id: \.self) { mode in
                             Button {
                                 viewMode = mode
                             } label: {
-                                Label(mode.rawValue, systemImage: mode.icon)
-                                if viewMode == mode {
-                                    Image(systemName: "checkmark")
-                                }
+                                Label(LocalizedStringKey(mode.rawValue), systemImage: mode.icon)
+                                    .foregroundColor(viewMode == mode ? .blue : .primary)
                             }
                         }
                     }
                     
-                    // 排序
-                    Section("排序") {
+                    Section("sort.title") {
                         ForEach(SortOrder.allCases, id: \.self) { order in
                             Button {
                                 sortOrder = order
                             } label: {
-                                Label(order.rawValue, systemImage: order.icon)
-                                if sortOrder == order {
-                                    Image(systemName: "checkmark")
-                                }
+                                Label(LocalizedStringKey(order.rawValue), systemImage: order.icon)
+                                    .foregroundColor(sortOrder == order ? .blue : .primary)
                             }
                         }
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Label("more.tools", systemImage: "ellipsis.circle")
                 }
             }
             
@@ -520,7 +556,7 @@ struct FileBrowserView: View {
                         newFolderName = formatter.string(from: Date())
                         showCreateFolder = true
                     } label: {
-                        Label("新建文件夹", systemImage: "folder.badge.plus")
+                        Label("browser.create_folder", systemImage: "folder.badge.plus")
                     }
                     
                     Divider()
@@ -528,13 +564,13 @@ struct FileBrowserView: View {
                     Button {
                         showFilePicker = true
                     } label: {
-                        Label("上传文件", systemImage: "doc.badge.plus")
+                        Label("browser.upload_file", systemImage: "doc.badge.plus")
                     }
                     
                     Button {
                         showPhotoPicker = true
                     } label: {
-                        Label("上传照片/视频", systemImage: "photo.badge.plus")
+                        Label("browser.upload_photo", systemImage: "photo.badge.plus")
                     }
                     
                     if activeUploadCount > 0 {
@@ -550,7 +586,7 @@ struct FileBrowserView: View {
                     Image(systemName: "plus")
                 }
             }
-        }
+
     }
     
     // MARK: - 上下文菜单
@@ -562,7 +598,7 @@ struct FileBrowserView: View {
             Button {
                 previewFile(file)
             } label: {
-                Label("预览", systemImage: "eye")
+                Label("action.preview", systemImage: "eye")
             }
         }
         
@@ -571,7 +607,7 @@ struct FileBrowserView: View {
             toggleStar(file)
         } label: {
             Label(
-                file.isStarred == true ? "取消收藏" : "收藏",
+                file.isStarred == true ? "action.unstar" : "action.star",
                 systemImage: file.isStarred == true ? "star.slash.fill" : "star.fill"
             )
         }
@@ -583,13 +619,13 @@ struct FileBrowserView: View {
             Button {
                 shareFile = file
             } label: {
-                Label("分享", systemImage: "square.and.arrow.up")
+                Label("action.share", systemImage: "square.and.arrow.up")
             }
             
             Button {
                 downloadFile(file)
             } label: {
-                Label("下载", systemImage: "arrow.down.circle")
+                Label("action.download", systemImage: "arrow.down.circle")
             }
         }
         
@@ -598,7 +634,7 @@ struct FileBrowserView: View {
             selectedPaths = [file.path]
             showMoveSheet = true
         } label: {
-            Label("移动到", systemImage: "folder")
+            Label("action.move_to", systemImage: "folder")
         }
         
         Divider()
@@ -614,14 +650,30 @@ struct FileBrowserView: View {
             }
             showRenameAlert = true
         } label: {
-            Label("重命名", systemImage: "pencil")
+            Label("action.rename", systemImage: "pencil")
+        }
+        
+        // 复制
+        Button {
+            copySourceFile = file
+            showCopySheet = true
+        } label: {
+            Label("action.copy_to", systemImage: "doc.on.doc")
+        }
+        
+        // 详情
+        Button {
+            statsFile = file
+            showStatsSheet = true
+        } label: {
+            Label("stats.details", systemImage: "info.circle")
         }
         
         // 删除
         Button(role: .destructive) {
             deleteFile(file)
         } label: {
-            Label("删除", systemImage: "trash")
+            Label("action.delete", systemImage: "trash")
         }
     }
     
@@ -630,19 +682,19 @@ struct FileBrowserView: View {
     private var createFolderSheet: some View {
         NavigationStack {
             Form {
-                TextField("文件夹名称", text: $newFolderName)
+                TextField("browser.folder_name_placeholder", text: $newFolderName)
             }
-            .navigationTitle("新建文件夹")
+            .navigationTitle(Text("browser.create_folder"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button("action.cancel") {
                         showCreateFolder = false
                         newFolderName = ""
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("创建") {
+                    Button("action.create") {
                         createFolder()
                     }
                     .disabled(newFolderName.isEmpty)
@@ -655,19 +707,38 @@ struct FileBrowserView: View {
     
     private var moveSheet: some View {
         NavigationStack {
-            FolderPickerView(
-                selectedPath: .constant(""),
+            DestinationFolderPicker(
                 onSelect: { targetPath in
                     moveSelectedFiles(to: targetPath)
                     showMoveSheet = false
                 }
             )
-            .navigationTitle("移动到")
+            .navigationTitle(Text("action.move_to"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("action.cancel") {
+                        showMoveSheet = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private var copySheet: some View {
+        NavigationStack {
+            DestinationFolderPicker(
+                onSelect: { targetPath in
+                    performCopy(to: targetPath)
+                    showCopySheet = false
+                }
+            )
+            .navigationTitle("复制到")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
-                        showMoveSheet = false
+                        showCopySheet = false
                     }
                 }
             }
@@ -704,9 +775,9 @@ struct FileBrowserView: View {
     
     // MARK: - 方法
     
-    private func loadFiles(forceRefresh: Bool = false) async {
-        // 首次加载或强制刷新时显示loading
-        if files.isEmpty || forceRefresh {
+    private func loadFiles(forceRefresh: Bool = false, silent: Bool = false) async {
+        // 首次加载或强制刷新时显示loading (除非是静默轮询)
+        if (files.isEmpty || forceRefresh) && !silent {
             isLoading = true
         }
         errorMessage = nil
@@ -716,19 +787,32 @@ struct FileBrowserView: View {
                 path: path,
                 forceRefresh: forceRefresh
             )
+            
+            // Sync Deletion Logic: 检测是否有文件被删除
+            if !files.isEmpty && !loadedFiles.isEmpty {
+                let oldPaths = Set(files.map { $0.path })
+                let newPaths = Set(loadedFiles.map { $0.path })
+                
+                let deletedPaths = oldPaths.subtracting(newPaths)
+                if !deletedPaths.isEmpty {
+                    print("[Sync] Detect \(deletedPaths.count) deleted files. Invalidating cache.")
+                    await PreviewCacheManager.shared.invalidate(paths: Array(deletedPaths))
+                }
+            }
+            
             files = loadedFiles
             
             // 如果是从缓存加载，可以显示一个小指示(可选)
-            if fromCache {
+            if fromCache && !silent {
                 print("[Cache] Loaded \(loadedFiles.count) files from cache")
             }
         } catch let error as APIError {
             // 如果有缓存数据，即使出错也保留
-            if files.isEmpty {
+            if files.isEmpty && !silent {
                 errorMessage = error.errorDescription
             }
         } catch {
-            if files.isEmpty {
+            if files.isEmpty && !silent {
                 errorMessage = error.localizedDescription
             }
         }
@@ -745,7 +829,26 @@ struct FileBrowserView: View {
     }
     
     private func previewFile(_ file: FileItem) {
-        previewFile = file
+        // Record History
+        RecentFilesManager.shared.add(file)
+        
+        print("DEBUG PREVIEW: Tapped file: \(file.name) (isImage: \(file.isImage), isVideo: \(file.isVideo))")
+        // REMOVED EARLY ASSIGNMENT: previewFile = file
+        
+        // 检查是否为图片或视频，如果是，则立即流式预览
+        // 使用 FileItem 的属性判断，更稳健
+        let isMedia = file.isImage || file.isVideo
+        print("DEBUG PREVIEW: isMedia check result: \(isMedia)")
+        
+        if isMedia {
+            // 立即弹出预览面板
+            print("DEBUG PREVIEW: Immediate preview triggered")
+            previewFile = file // Trigger Sheet
+            isPreviewLoading = false
+            return
+        }
+        
+        // 非媒体文件，或者需要下载才能预览的文件
         isPreviewLoading = true
         
         Task {
@@ -754,7 +857,7 @@ struct FileBrowserView: View {
                 await MainActor.run {
                     previewURL = cachedURL
                     isPreviewLoading = false
-                    showFilePreview = true
+                    previewFile = file // Trigger Sheet
                 }
                 return
             }
@@ -769,7 +872,7 @@ struct FileBrowserView: View {
                 await MainActor.run {
                     previewURL = url
                     isPreviewLoading = false
-                    showFilePreview = true
+                    previewFile = file // Trigger Sheet
                 }
             } catch {
                 await MainActor.run {
@@ -852,9 +955,11 @@ struct FileBrowserView: View {
                 await loadFiles(forceRefresh: true)
             } catch {
                 print("Rename failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
             }
             renameFile = nil
             newFileName = ""
+            ToastManager.shared.show(String(localized: "toast.rename_success"), type: .success)
         }
     }
     
@@ -868,9 +973,12 @@ struct FileBrowserView: View {
                 } else {
                     await PreviewCacheManager.shared.invalidate(path: file.path)
                 }
-                await loadFiles()
+                // 强制刷新列表以立即反映更改
+                await loadFiles(forceRefresh: true)
+                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success)
             } catch {
                 print("Delete failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
             }
         }
     }
@@ -885,8 +993,10 @@ struct FileBrowserView: View {
                 selectedPaths.removeAll()
                 isSelectionMode = false
                 await loadFiles()
+                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success)
             } catch {
                 print("Bulk delete failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
             }
         }
     }
@@ -901,11 +1011,62 @@ struct FileBrowserView: View {
                 selectedPaths.removeAll()
                 isSelectionMode = false
                 await loadFiles()
+                ToastManager.shared.show(String(localized: "toast.move_success"), type: .success)
             } catch {
                 print("Bulk move failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
             }
         }
     }
+    
+    private func performCopy(to destination: String) {
+        Task {
+            do {
+                if let source = copySourceFile {
+                    // 单个文件复制
+                    _ = try await FileService.shared.copyFile(sourcePath: source.path, targetDir: destination)
+                    copySourceFile = nil
+                } else if !selectedPaths.isEmpty {
+                    // 批量复制（暂时循环调用，后续可优化为批量接口）
+                    for path in selectedPaths {
+                        _ = try await FileService.shared.copyFile(sourcePath: path, targetDir: destination)
+                    }
+                    isSelectionMode = false
+                    await loadFiles()
+                    ToastManager.shared.show(String(localized: "toast.copy_success"), type: .success)
+                }
+            } catch {
+                print("Copy failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
+            }
+        }
+    }
+    
+    private func batchToggleStar() {
+        Task {
+            var successCount = 0
+            for path in selectedPaths {
+                do {
+                    // Check if starred, if not, star it. (Greedy favoriting)
+                    let isStarred = try await FileService.shared.isFileStarred(path: path)
+                    if !isStarred {
+                        try await FileService.shared.starFile(path: path)
+                        successCount += 1
+                    }
+                } catch {
+                    print("Failed to star \(path): \(error)")
+                }
+            }
+            
+            if successCount > 0 {
+                await loadFiles()
+                ToastManager.shared.show(String(localized: "toast.starred_success"), type: .success)
+                isSelectionMode = false
+                selectedPaths.removeAll()
+            }
+        }
+    }
+
     
     private func downloadFile(_ file: FileItem) {
         Task {
@@ -929,8 +1090,10 @@ struct FileBrowserView: View {
                 showCreateFolder = false
                 newFolderName = ""
                 await loadFiles()
+                ToastManager.shared.show(String(localized: "toast.folder_created"), type: .success)
             } catch {
                 print("Create folder failed: \(error)")
+                ToastManager.shared.show(error.localizedDescription, type: .error)
             }
         }
     }
@@ -974,6 +1137,7 @@ struct FileBrowserView: View {
         }
     }
 }
+
 
 // MARK: - 文件行视图
 
@@ -1075,32 +1239,33 @@ struct FileRowView: View {
             
             // 更多操作菜单
             if !isSelectionMode {
+
                 Menu {
                     Button { onAction(.preview) } label: {
-                        Label("预览", systemImage: "eye")
+                        Label("action.preview", systemImage: "eye")
                     }
                     
                     Button { onAction(.toggleStar) } label: {
-                        Label(file.isStarred == true ? "取消收藏" : "收藏", 
+                        Label(file.isStarred == true ? "action.unfavorite" : "action.favorite", 
                               systemImage: file.isStarred == true ? "star.slash" : "star")
                     }
                     
                     Button { onAction(.share) } label: {
-                        Label("分享", systemImage: "square.and.arrow.up")
+                        Label("action.share", systemImage: "square.and.arrow.up")
                     }
                     
                     Button { onAction(.move) } label: {
-                        Label("移动", systemImage: "folder")
+                        Label("action.move", systemImage: "folder")
                     }
                     
                     Button { onAction(.download) } label: {
-                        Label("下载", systemImage: "arrow.down.circle")
+                        Label("action.download", systemImage: "arrow.down.circle")
                     }
                     
                     Divider()
                     
                     Button(role: .destructive) { onAction(.delete) } label: {
-                        Label("删除", systemImage: "trash")
+                        Label("action.delete", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -1176,30 +1341,30 @@ struct FileGridItemView: View {
             if !isSelectionMode {
                 Menu {
                     Button { onAction(.preview) } label: {
-                        Label("预览", systemImage: "eye")
+                        Label("action.preview", systemImage: "eye")
                     }
                     
                     Button { onAction(.toggleStar) } label: {
-                        Label(file.isStarred == true ? "取消收藏" : "收藏", 
+                        Label(file.isStarred == true ? "action.unfavorite" : "action.favorite", 
                               systemImage: file.isStarred == true ? "star.slash" : "star")
                     }
                     
                     Button { onAction(.share) } label: {
-                        Label("分享", systemImage: "square.and.arrow.up")
+                        Label("action.share", systemImage: "square.and.arrow.up")
                     }
                     
                     Button { onAction(.move) } label: {
-                        Label("移动", systemImage: "folder")
+                        Label("action.move", systemImage: "folder")
                     }
                     
                     Button { onAction(.download) } label: {
-                        Label("下载", systemImage: "arrow.down.circle")
+                        Label("action.download", systemImage: "arrow.down.circle")
                     }
                     
                     Divider()
                     
                     Button(role: .destructive) { onAction(.delete) } label: {
-                        Label("删除", systemImage: "trash")
+                        Label("action.delete", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle.fill")
@@ -1256,108 +1421,10 @@ struct FileGridItemView: View {
     }
 }
 
-// MARK: - 文件预览视图
+// MARK: - 目标文件夹选择器
 
-struct FilePreviewView: View {
-    let file: FileItem
-    @State private var localURL: URL?
-    @State private var isLoading = true
-    
-    var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("加载中...")
-            } else if let url = localURL {
-                QuickLookPreview(url: url)
-            } else {
-                VStack(spacing: 20) {
-                    Image(systemName: file.systemIconName)
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    
-                    Text(file.name)
-                        .font(.headline)
-                    
-                    if !file.isDirectory {
-                        Text(file.formattedSize)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Button {
-                        Task {
-                            await downloadAndPreview()
-                        }
-                    } label: {
-                        Label("下载预览", systemImage: "arrow.down.circle.fill")
-                            .font(.headline)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                }
-            }
-        }
-        .navigationTitle(file.name)
-        .task {
-            await downloadAndPreview()
-        }
-    }
-    
-    private func downloadAndPreview() async {
-        isLoading = true
-        do {
-            let url = try await APIClient.shared.downloadFile(path: file.path)
-            await MainActor.run {
-                localURL = url
-                isLoading = false
-            }
-        } catch {
-            print("Download failed: \(error)")
-            await MainActor.run {
-                isLoading = false
-            }
-        }
-    }
-}
-
-// MARK: - QuickLook 预览包装
-
-struct QuickLookPreview: UIViewControllerRepresentable {
-    let url: URL
-    
-    func makeUIViewController(context: Context) -> QLPreviewController {
-        let controller = QLPreviewController()
-        controller.dataSource = context.coordinator
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: QLPreviewController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(url: url)
-    }
-    
-    class Coordinator: NSObject, QLPreviewControllerDataSource {
-        let url: URL
-        
-        init(url: URL) {
-            self.url = url
-        }
-        
-        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
-        
-        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
-            url as QLPreviewItem
-        }
-    }
-}
-
-// MARK: - 文件夹选择器
-
-struct FolderPickerView: View {
-    @Binding var selectedPath: String
+// MARK: - Destination Folder Picker
+struct DestinationFolderPicker: View {
     var onSelect: (String) -> Void
     
     @State private var folders: [FolderTreeItem] = []
@@ -1367,6 +1434,8 @@ struct FolderPickerView: View {
         Group {
             if isLoading {
                 ProgressView()
+            } else if folders.isEmpty {
+                 ContentUnavailableView("No folders", systemImage: "folder.badge.questionmark")
             } else {
                 List {
                     ForEach(folders) { folder in
@@ -1376,8 +1445,45 @@ struct FolderPickerView: View {
             }
         }
         .task {
+            isLoading = true
             do {
-                folders = try await FileService.shared.getFolderTree()
+                // 1. Try to get root tree
+                let rootFolders = try await FileService.shared.getFolderTree()
+                if !rootFolders.isEmpty {
+                    folders = rootFolders
+                } else {
+                    // 2. If empty (e.g. no root access), fetch authorized locations and their trees
+                    let stats = try await FileService.shared.fetchMyPermissions()
+                    
+                    var newFolders: [FolderTreeItem] = []
+                    
+                    // Fetch tree for each location concurrently
+                    await withTaskGroup(of: FolderTreeItem?.self) { group in
+                        for loc in stats {
+                            group.addTask {
+                                do {
+                                    // Fetch the tree UNDER this location
+                                    let children = try await FileService.shared.getFolderTree(rootPath: loc.folderPath)
+                                    // Wrap it in a node representing the location itself
+                                    return FolderTreeItem(name: loc.displayName, path: loc.folderPath, children: children)
+                                } catch {
+                                    print("Failed to load tree for \(loc.folderPath): \(error)")
+                                    // If failed, still show the folder but empty? Or skip?
+                                    // Let's show it with empty children so user at least sees it (implied empty)
+                                    return FolderTreeItem(name: loc.displayName, path: loc.folderPath, children: [])
+                                }
+                            }
+                        }
+                        
+                        for await item in group {
+                            if let item = item {
+                                newFolders.append(item)
+                            }
+                        }
+                    }
+                    // Sort by name for consistency
+                    folders = newFolders.sorted { $0.name < $1.name }
+                }
             } catch {
                 print("Load folder tree failed: \(error)")
             }
@@ -1389,18 +1495,35 @@ struct FolderPickerView: View {
 struct FolderPickerRow: View {
     let folder: FolderTreeItem
     var onSelect: (String) -> Void
+    @State private var isExpanded = false
     
     var body: some View {
+        if let children = folder.children, !children.isEmpty {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                ForEach(children) { child in
+                    FolderPickerRow(folder: child, onSelect: onSelect)
+                }
+            } label: {
+                folderContent
+            }
+        } else {
+           folderContent
+        }
+    }
+    
+    var folderContent: some View {
         Button {
             onSelect(folder.path)
         } label: {
             HStack {
                 Image(systemName: "folder.fill")
                     .foregroundColor(.blue)
-                Text(folder.name)
+                Text(Department(id: nil, name: folder.name).localizedName())
+                    .foregroundColor(.primary)
                 Spacer()
             }
         }
+        .buttonStyle(.plain) // Important for List row behavior
     }
 }
 
@@ -1410,275 +1533,3 @@ struct FolderPickerRow: View {
     }
 }
 
-// MARK: - 分享对话框
-
-struct ShareDialogView: View {
-    let filePath: String
-    let fileName: String
-    var onDismiss: () -> Void = {}
-    
-    @State private var password = ""
-    @State private var usePassword = false
-    @State private var expiresIn: ExpiryOption = .sevenDays
-    @State private var isLoading = false
-    @State private var shareResult: ShareResult?
-    @State private var errorMessage: String?
-    
-    private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
-    
-    enum ExpiryOption: String, CaseIterable {
-        case oneDay = "1天"
-        case threeDays = "3天"
-        case sevenDays = "7天"
-        case thirtyDays = "30天"
-        case never = "永久"
-        
-        var days: Int? {
-            switch self {
-            case .oneDay: return 1
-            case .threeDays: return 3
-            case .sevenDays: return 7
-            case .thirtyDays: return 30
-            case .never: return nil
-            }
-        }
-    }
-    
-    var body: some View {
-        NavigationStack {
-            if let result = shareResult {
-                shareSuccessView(result)
-            } else {
-                shareSettingsForm
-            }
-        }
-    }
-    
-    private var shareSettingsForm: some View {
-        Form {
-            Section {
-                HStack(spacing: 12) {
-                    Image(systemName: "doc.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(fileName)
-                            .font(.system(size: 15, weight: .medium))
-                        Text(filePath)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            } header: {
-                Text("分享文件")
-            }
-            
-            Section {
-                Toggle("设置访问密码", isOn: $usePassword)
-                
-                if usePassword {
-                    SecureField("密码", text: $password)
-                }
-            } header: {
-                Text("访问控制")
-            }
-            
-            Section {
-                Picker("有效期", selection: $expiresIn) {
-                    ForEach(ExpiryOption.allCases, id: \.self) { option in
-                        Text(option.rawValue).tag(option)
-                    }
-                }
-                .pickerStyle(.menu)
-            } header: {
-                Text("链接有效期")
-            }
-            
-            if let error = errorMessage {
-                Section {
-                    Text(error)
-                        .foregroundColor(.red)
-                }
-            }
-        }
-        .navigationTitle("创建分享链接")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("取消") { onDismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    createShareLink()
-                } label: {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Text("创建")
-                    }
-                }
-                .disabled(isLoading || (usePassword && password.isEmpty))
-                .foregroundColor(accentColor)
-            }
-        }
-    }
-    
-    private func shareSuccessView(_ result: ShareResult) -> some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.green)
-            
-            Text("分享链接已创建")
-                .font(.system(size: 20, weight: .semibold))
-            
-            Text(result.shareUrl)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundColor(.secondary)
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-            
-            Button {
-                UIPasteboard.general.string = result.shareUrl
-            } label: {
-                Label("复制链接", systemImage: "doc.on.doc")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(accentColor)
-                    .cornerRadius(12)
-            }
-            
-            Spacer()
-            
-            Button("完成") { onDismiss() }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-                .padding()
-        }
-        .navigationTitle("分享成功")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-    
-    private func createShareLink() {
-        isLoading = true
-        errorMessage = nil
-        
-        Task {
-            do {
-                let result = try await FileService.shared.createShareLink(
-                    path: filePath,
-                    password: usePassword ? password : nil,
-                    expiresInDays: expiresIn.days
-                )
-                
-                await MainActor.run {
-                    shareResult = result
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
-
-// MARK: - 文件选择器
-
-struct FilePickerView: UIViewControllerRepresentable {
-    let destinationPath: String
-    var onDismiss: () -> Void = {}
-    
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
-        picker.allowsMultipleSelection = true
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(destinationPath: destinationPath, onDismiss: onDismiss)
-    }
-    
-    class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let destinationPath: String
-        let onDismiss: () -> Void
-        
-        init(destinationPath: String, onDismiss: @escaping () -> Void) {
-            self.destinationPath = destinationPath
-            self.onDismiss = onDismiss
-        }
-        
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            // TODO: 实现文件上传
-            for url in urls {
-                print("Selected file: \(url.lastPathComponent)")
-            }
-            onDismiss()
-        }
-        
-        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            onDismiss()
-        }
-    }
-}
-
-// MARK: - 照片选择器
-
-
-
-struct PhotoPickerView: View {
-    let destinationPath: String
-    var onDismiss: () -> Void = {}
-    
-    @State private var selectedItems: [PhotosPickerItem] = []
-    
-    var body: some View {
-        NavigationStack {
-            VStack {
-                PhotosPicker(
-                    selection: $selectedItems,
-                    maxSelectionCount: 20,
-                    matching: .any(of: [.images, .videos])
-                ) {
-                    VStack(spacing: 16) {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.system(size: 48))
-                            .foregroundColor(.blue)
-                        
-                        Text("选择照片或视频")
-                            .font(.headline)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .onChange(of: selectedItems) { _, items in
-                    if !items.isEmpty {
-                        // TODO: 实现照片上传
-                        print("Selected \(items.count) items")
-                        onDismiss()
-                    }
-                }
-            }
-            .navigationTitle("上传照片")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { onDismiss() }
-                }
-            }
-        }
-    }
-}
