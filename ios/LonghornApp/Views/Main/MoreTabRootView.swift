@@ -2,10 +2,8 @@ import SwiftUI
 
 struct MoreTabRootView: View {
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var store = DashboardStore.shared
     
-    @State private var systemStats: SystemStats?
-    @State private var deptStats: DepartmentOverviewStats?
-    @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage = ""
     
@@ -16,7 +14,7 @@ struct MoreTabRootView: View {
                 Section(header: Text("more.dashboard")) {
                     // Department Dashboard Entry (Hidden for Admin, Visible for others)
                     if authManager.currentUser?.isAdmin == false {
-                        if let stats = deptStats {
+                        if let stats = store.deptStats {
                             NavigationLink(destination: DetailStatsView(title: String(localized: "more.dept_overview"), stats: UserStats(uploadCount: stats.fileCount, storageUsed: Int(stats.storageUsed), starredCount: 0, shareCount: stats.memberCount, lastLogin: "N/A", accountCreated: "N/A", username: stats.departmentName ?? "Department", role: "lead"))) {
                                 VStack(alignment: .leading, spacing: 10) {
                                     HStack {
@@ -40,7 +38,7 @@ struct MoreTabRootView: View {
                                 }
                                 .padding(.vertical, 8)
                             }
-                        } else if isLoading {
+                        } else if store.deptStatsLoading {
                             ProgressView(String(localized: "browser.loading"))
                         } else {
                             Text("error.dept_load_fail")
@@ -51,7 +49,7 @@ struct MoreTabRootView: View {
 
                     // System Dashboard (Visible for Admin)
                     if authManager.currentUser?.isAdmin == true {
-                        NavigationLink(destination: SystemDashboardView(stats: systemStats ?? SystemStats.placeholder)) {
+                        NavigationLink(destination: SystemDashboardView(stats: store.systemStats ?? SystemStats.placeholder)) {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     Image(systemName: "server.rack")
@@ -65,16 +63,16 @@ struct MoreTabRootView: View {
                                 }
                                 
                                 HStack {
-                                    StatItem(title: String(localized: "stats.files"), value: systemStats.map { "\($0.totalFiles)" } ?? "—", icon: "doc.on.doc.fill", color: .purple)
+                                    StatItem(title: String(localized: "stats.files"), value: store.systemStats.map { "\($0.totalFiles)" } ?? "—", icon: "doc.on.doc.fill", color: .purple)
                                     Divider()
-                                    StatItem(title: String(localized: "stats.storage"), value: systemStats.map { ByteCountFormatter.string(fromByteCount: $0.storage.used, countStyle: .file) } ?? "—", icon: "xmark.bin.fill", color: .red)
+                                    StatItem(title: String(localized: "stats.storage"), value: store.systemStats.map { ByteCountFormatter.string(fromByteCount: $0.storage.used, countStyle: .file) } ?? "—", icon: "xmark.bin.fill", color: .red)
                                     Divider()
-                                    StatItem(title: String(localized: "stats.today_files"), value: systemStats.map { "\($0.todayStats.count)" } ?? "—", icon: "doc.badge.plus", color: .blue)
+                                    StatItem(title: String(localized: "stats.today_files"), value: store.systemStats.map { "\($0.todayStats.count)" } ?? "—", icon: "doc.badge.plus", color: .blue)
                                 }
                             }
                             .padding(.vertical, 8)
                         }
-                        .disabled(systemStats == nil && !showError)
+                        .disabled(store.systemStats == nil && !showError)
                         
                         // Error overlay (only show if there's an error)
                         if showError {
@@ -131,24 +129,19 @@ struct MoreTabRootView: View {
             .task {
                 await loadStats()
             }
+            .refreshable {
+                await loadStats()
+            }
         }
     }
 
     private func loadStats() async {
-        isLoading = true
         showError = false
-        do {
-            if authManager.currentUser?.isAdmin == true {
-                systemStats = try await AdminService.shared.fetchSystemStats()
-            } else {
-                deptStats = try await FileService.shared.fetchDepartmentStats()
-            }
-        } catch {
-            print("Failed to fetch stats: \(error)")
-            errorMessage = error.localizedDescription
-            showError = true
+        if authManager.currentUser?.isAdmin == true {
+            await store.loadSystemStatsIfNeeded()
+        } else {
+            await store.loadDeptStatsIfNeeded()
         }
-        isLoading = false
     }
 }
 

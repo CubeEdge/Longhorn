@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PersonalTabRootView: View {
     @EnvironmentObject var authManager: AuthManager
-    @State private var stats: UserStats?
+    @StateObject private var store = DashboardStore.shared
     
     var body: some View {
         NavigationView {
@@ -55,17 +55,17 @@ struct PersonalTabRootView: View {
                 
                 // MARK: - Core Stats
                 Section(header: Text("personal.core_stats")) {
-                    NavigationLink(destination: DetailStatsView(title: String(localized: "personal.core_stats"), stats: stats ?? UserStats.placeholder)) {
+                    NavigationLink(destination: DetailStatsView(title: String(localized: "personal.core_stats"), stats: store.userStats ?? UserStats.placeholder)) {
                         HStack {
-                            StatItem(title: String(localized: "stats.upload"), value: stats.map { "\($0.uploadCount)" } ?? "—", icon: "doc.fill", color: .blue)
+                            StatItem(title: String(localized: "stats.upload"), value: store.userStats.map { "\($0.uploadCount)" } ?? "—", icon: "doc.fill", color: .blue)
                             Divider()
-                            StatItem(title: String(localized: "stats.storage"), value: stats.map { formatBytes($0.storageUsed) } ?? "—", icon: "externaldrive.fill", color: .orange)
+                            StatItem(title: String(localized: "stats.storage"), value: store.userStats.map { formatBytes($0.storageUsed) } ?? "—", icon: "externaldrive.fill", color: .orange)
                             Divider()
-                            StatItem(title: String(localized: "stats.starred"), value: stats.map { "\($0.starredCount)" } ?? "—", icon: "star.fill", color: .yellow)
+                            StatItem(title: String(localized: "stats.starred"), value: store.userStats.map { "\($0.starredCount)" } ?? "—", icon: "star.fill", color: .yellow)
                         }
                         .padding(.vertical, 8)
                     }
-                    .disabled(stats == nil)
+                    .disabled(store.userStats == nil)
                 }
                 
                 // MARK: - Other Links (Optional)
@@ -82,16 +82,11 @@ struct PersonalTabRootView: View {
             }
             .navigationTitle(Text("personal.title"))
             .task {
-                await loadStats()
+                await store.loadUserStatsIfNeeded()
             }
-        }
-    }
-    
-    private func loadStats() async {
-        do {
-            stats = try await APIClient.shared.get("/api/user/stats")
-        } catch {
-            print("Failed to load stats: \(error)")
+            .refreshable {
+                await store.refreshUserStats()
+            }
         }
     }
     
