@@ -1,0 +1,77 @@
+[
+    {
+        "id": "zh_1",
+        "word": "画龙点睛",
+        "phonetic": "huà lóng diǎn jīng",
+        "meaning": "Finishing touch",
+        "meaningZh": "画龙点睛",
+        "partOfSpeech": "Idiom",
+        "examples": [
+            {
+                "sentence": "真是画龙点睛。",
+                "translation": "Using this idiom perfectly."
+            }
+        ],
+        "level": "Idioms"
+    },
+    {
+        "id": "zh_2",
+        "word": "胸有成竹",
+        "phonetic": "xiōng yǒu chéng zhú",
+        "meaning": "Confident",
+        "meaningZh": "胸有成竹",
+        "partOfSpeech": "Idiom",
+        "examples": [
+            {
+                "sentence": "他胸有成竹。",
+                "translation": "He is confident."
+            }
+        ],
+        "level": "Idioms"
+    },
+    {
+        "id": "zh_3",
+        "word": "见微知著",
+        "phonetic": "jiàn wēi zhī zhù",
+        "meaning": "Insightful",
+        "meaningZh": "见微知著",
+        "partOfSpeech": "Idiom",
+        "examples": [
+            {
+                "sentence": "见微知著的能力。",
+                "translation": "Ability to see the big picture from details."
+            }
+        ],
+        "level": "Idioms"
+    },
+    {
+        "id": "zh_4",
+        "word": "破釜沉舟",
+        "phonetic": "pò fǔ chén zhōu",
+        "meaning": "Burn bridges",
+        "meaningZh": "破釜沉舟",
+        "partOfSpeech": "Idiom",
+        "examples": [
+            {
+                "sentence": "他决定破釜沉舟。",
+                "translation": "He decided to burn his boats."
+            }
+        ],
+        "level": "Idioms"
+    },
+    {
+        "id": "zh_5",
+        "word": "海纳百川",
+        "phonetic": "hǎi nà bǎi chuān",
+        "meaning": "Inclusive",
+        "meaningZh": "海纳百川",
+        "partOfSpeech": "Idiom",
+        "examples": [
+            {
+                "sentence": "海纳百川。",
+                "translation": "Inclusive like the ocean."
+            }
+        ],
+        "level": "Idioms"
+    }
+]

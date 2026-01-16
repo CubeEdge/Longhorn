@@ -1,0 +1,41 @@
+
+import SwiftUI
+
+struct ToastView: View {
+    let toast: Toast
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: toast.type.icon)
+                .font(.title3)
+                .foregroundColor(toast.type.color)
+            
+            Text(toast.message)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial) // iOS Native Glass effect
+        .background(
+            RoundedRectangle(cornerRadius: 25)
+                .fill(Color(UIColor.systemBackground).opacity(0.5))
+        )
+        .cornerRadius(25)
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
+        .padding(.horizontal, 24)
+    }
+}
+
+#Preview {
+    VStack {
+        ToastView(toast: Toast(message: "文件上传成功", type: .success, duration: 2))
+        ToastView(toast: Toast(message: "网络连接失败", type: .error, duration: 2))
+    }
+    .padding()
+    .background(Color.gray)
+}

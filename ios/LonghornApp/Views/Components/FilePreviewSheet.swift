@@ -445,8 +445,9 @@ struct FilePreviewSheet: View {
     private func buildLargePreviewURL(for file: FileItem) -> URL? {
         var urlComponents = URLComponents(string: APIClient.shared.baseURL)
         urlComponents?.path = "/api/thumbnail"
+        let rawPath = file.path.hasPrefix("/") ? String(file.path.dropFirst()) : file.path
         urlComponents?.queryItems = [
-            URLQueryItem(name: "path", value: file.path),
+            URLQueryItem(name: "path", value: rawPath),
             URLQueryItem(name: "size", value: "preview")
         ]
         return urlComponents?.url
@@ -455,8 +456,9 @@ struct FilePreviewSheet: View {
     private func buildThumbnailURL(for file: FileItem) -> URL? {
         var urlComponents = URLComponents(string: APIClient.shared.baseURL)
         urlComponents?.path = "/api/thumbnail"
+        let rawPath = file.path.hasPrefix("/") ? String(file.path.dropFirst()) : file.path
         urlComponents?.queryItems = [
-            URLQueryItem(name: "path", value: file.path),
+            URLQueryItem(name: "path", value: rawPath),
             URLQueryItem(name: "size", value: "400")
         ]
         return urlComponents?.url

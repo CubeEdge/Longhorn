@@ -1976,7 +1976,7 @@ app.get('/s/:token', async (req, res) => {
 
         let previewHTML = '';
         if (isImage) {
-            previewHTML = `<div style="margin: 30px 0;"><img src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" alt="${fileName}"></div>`;
+            previewHTML = `<div style="margin: 30px 0;"><img src="/api/download-share/${token}?size=preview${password ? '&password=' + encodeURIComponent(password) : ''}" style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" alt="${fileName}"></div>`;
         } else if (isVideo) {
             previewHTML = `<div style="margin: 30px 0;"><video controls style="max-width: 100%; max-height: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);"><source src="/api/download-share/${token}${password ? '?password=' + encodeURIComponent(password) : ''}" type="video/${ext.substring(1)}">${i18n.browserNoVideo}</video></div>`;
         }
@@ -1991,10 +1991,10 @@ app.get('/s/:token', async (req, res) => {
     }
 });
 
-app.get('/api/download-share/:token', (req, res) => {
+app.get('/api/download-share/:token', async (req, res) => {
     try {
         const { token } = req.params;
-        const { password } = req.query;
+        const { password, size } = req.query;
         const shareLink = db.prepare('SELECT * FROM share_links WHERE share_token = ?').get(token);
         if (!shareLink || (shareLink.expires_at && new Date(shareLink.expires_at) < new Date())) {
             return res.status(404).json({ error: 'Link not found or expired' });
@@ -2004,6 +2004,48 @@ app.get('/api/download-share/:token', (req, res) => {
         }
         const filePath = path.join(DISK_A, shareLink.file_path);
         if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+        // Preview Mode
+        if (size === 'preview') {
+            const ext = path.extname(filePath).toLowerCase();
+            const imageFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic', '.tiff'];
+            if (imageFormats.includes(ext)) {
+                // Try to use existing thumbnail cache or generate one
+                // We use the same THUMB_DIR as the main thumbnail API
+                const cacheKey = `${shareLink.file_path.replace(/[\/\\]/g, '_')}_preview_share.webp`;
+                const cachePath = path.join(THUMB_DIR, cacheKey);
+
+                if (fs.existsSync(cachePath)) {
+                    res.set('Content-Type', 'image/webp');
+                    return res.download(cachePath);
+                }
+
+                // Generate
+                try {
+                    // Check if sharp is available (it should be)
+                    // We generate a 1200px preview
+                    let transform = sharp(filePath);
+                    if (ext === '.heic') {
+                        const inputBuffer = await fs.readFile(filePath);
+                        const outputBuffer = await heicConvert({ buffer: inputBuffer, format: 'JPEG', quality: 0.8 });
+                        transform = sharp(outputBuffer);
+                    }
+
+                    await transform
+                        .rotate()
+                        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 80 })
+                        .toFile(cachePath);
+
+                    res.set('Content-Type', 'image/webp');
+                    return res.download(cachePath);
+                } catch (sharpErr) {
+                    console.error('[Share Preview] Generation failed:', sharpErr);
+                    // Fallback to original
+                }
+            }
+        }
+
         res.download(filePath);
     } catch (err) {
         console.error('[Share Download] Error:', err);
@@ -3034,23 +3076,7 @@ app.get('/api/share-collection/:token/download', async (req, res) => {
     }
 });
 
-// Get My Share Collections
-app.get('/api/my-share-collections', authenticate, (req, res) => {
-    try {
-        const collections = db.prepare(`
-            SELECT c.id, c.token, c.name, c.expires_at, c.access_count, c.created_at, COUNT(i.id) as item_count 
-            FROM share_collections c 
-            LEFT JOIN share_collection_items i ON c.id = i.collection_id 
-            WHERE c.user_id = ? 
-            GROUP BY c.id 
-            ORDER BY c.created_at DESC
-        `).all(req.user.id);
-        res.json(collections);
-    } catch (err) {
-        console.error('[Share Collection] Error listing:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+
 
 // Delete Share Collection
 app.delete('/api/share-collection/:id', authenticate, (req, res) => {

@@ -12,6 +12,14 @@ enum UserRole: String, Codable {
     case admin = "Admin"
     case lead = "Lead"
     case member = "Member"
+    
+    var localizedName: String {
+        switch self {
+        case .admin: return String(localized: "role.Admin")
+        case .lead: return String(localized: "role.Lead")
+        case .member: return String(localized: "role.Member")
+        }
+    }
 }
 
 /// 用户模型
@@ -71,20 +79,6 @@ struct Department: Codable, Identifiable, Hashable {
     
     /// 获取显示用的部门名称
     var displayName: String {
-        // 如果只有代码，返回预定义的中文名
-        let deptNames: [String: String] = [
-            "MS": "市场部 (MS)",
-            "OP": "运营部 (OP)",
-            "RD": "研发部 (RD)",
-            "RE": "通用台面 (RE)"
-        ]
-        
-        // 如果名称已经是完整格式，直接返回
-        if name.contains("(") {
-            return name
-        }
-        
-        // 否则尝试查找预定义名称
-        return deptNames[name] ?? name
+        return localizedName()
     }
 }

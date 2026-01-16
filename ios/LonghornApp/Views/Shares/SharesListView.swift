@@ -20,19 +20,31 @@ struct SharesListView: View {
     @State private var selectedCollectionIds: Set<Int> = []
     @State private var showDeleteConfirmation = false
     
+    // 编辑相关
+    @State private var showEditSheet = false
+    @State private var editShareItem: ShareLink?
+    @State private var editCollectionItem: ShareCollection?
+    
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     enum ShareTab: String, CaseIterable {
-        case files = "文件"
-        case collections = "合集"
+        case files = "files"
+        case collections = "collections"
+        
+        var title: LocalizedStringKey {
+            switch self {
+            case .files: return "share.tab.files"
+            case .collections: return "share.tab.collections"
+            }
+        }
     }
     
     var body: some View {
         VStack(spacing: 0) {
             // Tab 选择器
-            Picker("类型", selection: $selectedTab) {
+            Picker("share.list.type", selection: $selectedTab) {
                 ForEach(ShareTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(tab.title).tag(tab)
                 }
             }
             .pickerStyle(.segmented)
@@ -41,10 +53,10 @@ struct SharesListView: View {
             // 内容
             ZStack {
                 if isLoading {
-                    ProgressView("加载中...")
+                    ProgressView("status.loading")
                 } else if let error = errorMessage {
                     ContentUnavailableView(
-                        "加载失败",
+                        String(localized: "alert.error"),
                         systemImage: "exclamationmark.triangle",
                         description: Text(error)
                     )
@@ -58,10 +70,10 @@ struct SharesListView: View {
                 }
             }
         }
-        .navigationTitle("我的分享")
+        .navigationTitle(Text("quick.my_shares"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(isSelectionMode ? "完成" : "选择") {
+                Button(isSelectionMode ? "action.done" : "action.select") {
                     isSelectionMode.toggle()
                     if !isSelectionMode {
                         selectedShareIds.removeAll()
@@ -71,20 +83,48 @@ struct SharesListView: View {
             }
         }
         .confirmationDialog(
-            "确定要删除所选的\(currentSelectionCount)个分享吗？",
+            "share.confirm_delete_count",
             isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("删除", role: .destructive) {
+            titleVisibility: .visible,
+            presenting: currentSelectionCount
+        ) { count in
+            Button("action.delete", role: .destructive) {
                 batchDelete()
             }
-            Button("取消", role: .cancel) {}
+            Button("action.cancel", role: .cancel) {}
+        } message: { count in
+             Text("share.confirm_delete_count \(count)")
         }
         .refreshable {
             await loadData()
         }
-        .task {
-            await loadData()
+
+        .sheet(isPresented: $showEditSheet) {
+            if let share = editShareItem {
+                EditShareSheet(
+                    isCollection: false,
+                    id: share.id,
+                    initialHasPassword: share.hasPassword,
+                    initialExpiresAt: share.expiresAt,
+                    onDismiss: {
+                        showEditSheet = false
+                        editShareItem = nil
+                        Task { await loadData() }
+                    }
+                )
+            } else if let collection = editCollectionItem {
+                EditShareSheet(
+                    isCollection: true,
+                    id: collection.id,
+                    initialHasPassword: collection.hasPassword ?? false,
+                    initialExpiresAt: collection.expiresAt,
+                    onDismiss: {
+                        showEditSheet = false
+                        editCollectionItem = nil
+                        Task { await loadData() }
+                    }
+                )
+            }
         }
     }
     
@@ -98,9 +138,9 @@ struct SharesListView: View {
     private var fileSharesContent: some View {
         if shares.isEmpty {
             ContentUnavailableView(
-                "暂无分享",
+                String(localized: "share.no_files"),
                 systemImage: "square.and.arrow.up",
-                description: Text("你创建的分享链接将显示在这里")
+                description: Text("share.no_files_desc")
             )
         } else {
             VStack(spacing: 0) {
@@ -115,7 +155,10 @@ struct SharesListView: View {
                 
                 List(selection: isSelectionMode ? $selectedShareIds : nil) {
                     ForEach(shares) { share in
-                        ShareItemRow(share: share, onDelete: {
+                        ShareItemRow(share: share, onEdit: {
+                            editShareItem = share
+                            showEditSheet = true
+                        }, onDelete: {
                             deleteShare(share)
                         })
                         .tag(share.id)
@@ -133,9 +176,9 @@ struct SharesListView: View {
     private var collectionsContent: some View {
         if collections.isEmpty {
             ContentUnavailableView(
-                "暂无合集",
+                String(localized: "share.no_collections"),
                 systemImage: "rectangle.stack",
-                description: Text("批量分享文件时会创建合集")
+                description: Text("share.no_collections_desc")
             )
         } else {
             VStack(spacing: 0) {
@@ -149,7 +192,10 @@ struct SharesListView: View {
                 
                 List(selection: isSelectionMode ? $selectedCollectionIds : nil) {
                     ForEach(collections) { collection in
-                        CollectionItemRow(collection: collection, onDelete: {
+                        CollectionItemRow(collection: collection, onEdit: {
+                            editCollectionItem = collection
+                            showEditSheet = true
+                        }, onDelete: {
                             deleteCollection(collection)
                         })
                         .tag(collection.id)
@@ -165,7 +211,7 @@ struct SharesListView: View {
     
     private func batchActionBar(count: Int, selectAll: @escaping () -> Void, deselectAll: @escaping () -> Void) -> some View {
         HStack {
-            Button(count == (selectedTab == .files ? shares.count : collections.count) ? "取消全选" : "全选") {
+            Button(count == (selectedTab == .files ? shares.count : collections.count) ? "common.cancel_selection" : "action.select_all") {
                 if count == (selectedTab == .files ? shares.count : collections.count) {
                     deselectAll()
                 } else {
@@ -176,7 +222,7 @@ struct SharesListView: View {
             
             Spacer()
             
-            Text("已选 \(count) 项")
+            Text("common.selected_count \(count)")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             
@@ -197,23 +243,34 @@ struct SharesListView: View {
     
     // MARK: - 数据加载
     
-    private func loadData() async {
+    private func loadData() {
         isLoading = true
         errorMessage = nil
+        print("SharesListView: loadData started")
         
-        do {
-            async let sharesTask = ShareService.shared.getMyShares()
-            async let collectionsTask = ShareService.shared.getMyCollections()
-            
-            shares = try await sharesTask
-            collections = try await collectionsTask
-        } catch let error as APIError {
-            errorMessage = error.errorDescription
-        } catch {
-            errorMessage = error.localizedDescription
+        Task {
+            do {
+                async let sharesTask = ShareService.shared.getMyShares()
+                async let collectionsTask = ShareService.shared.getMyCollections()
+                
+                print("SharesListView: Requesting shares and collections...")
+                let (shares, collections) = try await (sharesTask, collectionsTask)
+                print("SharesListView: Received \(shares.count) shares, \(collections.count) collections")
+                
+                await MainActor.run {
+                    self.shares = shares
+                    self.collections = collections
+                    self.isLoading = false
+                    print("SharesListView: Data loaded successfully")
+                }
+            } catch {
+                print("SharesListView: loadData failed with error: \(error)")
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isLoading = false
+                }
+            }
         }
-        
-        isLoading = false
     }
     
     private func deleteShare(_ share: ShareLink) {
@@ -261,6 +318,7 @@ struct SharesListView: View {
 
 struct ShareItemRow: View {
     let share: ShareLink
+    let onEdit: () -> Void
     let onDelete: () -> Void
     
     @State private var showCopied = false
@@ -274,7 +332,7 @@ struct ShareItemRow: View {
                 Image(systemName: "doc.fill")
                     .foregroundColor(.secondary)
                 
-                Text(share.fileName ?? "文件")
+                Text(share.fileName ?? String(localized: "file.type.generic"))
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                 
@@ -282,7 +340,7 @@ struct ShareItemRow: View {
                 
                 // 状态标签
                 if share.isExpired {
-                    Text("已过期")
+                    Text("share.status.expired")
                         .font(.system(size: 11, weight: .medium))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -309,7 +367,7 @@ struct ShareItemRow: View {
                 if let expiry = share.formattedExpiresAt {
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
-                            .font(.system(size: 11))
+                        .font(.system(size: 11))
                         Text(expiry)
                             .font(.system(size: 12))
                     }
@@ -318,7 +376,7 @@ struct ShareItemRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: "infinity")
                             .font(.system(size: 11))
-                        Text("永久")
+                        Text("share.status.permanent")
                             .font(.system(size: 12))
                     }
                     .foregroundColor(.secondary)
@@ -333,7 +391,7 @@ struct ShareItemRow: View {
                     HStack(spacing: 6) {
                         Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                             .font(.system(size: 12))
-                        Text(showCopied ? "已复制" : "复制链接")
+                        Text(showCopied ? "share.status.copied" : "share.action.copy_link")
                             .font(.system(size: 13, weight: .medium))
                     }
                     .padding(.horizontal, 14)
@@ -345,6 +403,15 @@ struct ShareItemRow: View {
                 .buttonStyle(.plain)
                 
                 Spacer()
+                
+                Button {
+                    onEdit()
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
                 
                 Button(role: .destructive) {
                     onDelete()
@@ -379,6 +446,7 @@ struct ShareItemRow: View {
 
 struct CollectionItemRow: View {
     let collection: ShareCollection
+    let onEdit: () -> Void
     let onDelete: () -> Void
     
     @State private var showCopied = false
@@ -400,7 +468,7 @@ struct CollectionItemRow: View {
                 
                 // 状态
                 if collection.isExpired {
-                    Text("已过期")
+                    Text("share.status.expired")
                         .font(.system(size: 11, weight: .medium))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -421,7 +489,7 @@ struct CollectionItemRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: "doc")
                             .font(.system(size: 11))
-                        Text("\(count) 个文件")
+                        Text("share.collection.file_count \(count)")
                             .font(.system(size: 12))
                     }
                     .foregroundColor(.secondary)
@@ -456,7 +524,7 @@ struct CollectionItemRow: View {
                     HStack(spacing: 6) {
                         Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
                             .font(.system(size: 12))
-                        Text(showCopied ? "已复制" : "复制链接")
+                        Text(showCopied ? "share.status.copied" : "share.action.copy_link")
                             .font(.system(size: 13, weight: .medium))
                     }
                     .padding(.horizontal, 14)
@@ -468,6 +536,15 @@ struct CollectionItemRow: View {
                 .buttonStyle(.plain)
                 
                 Spacer()
+                
+                Button {
+                    onEdit()
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
                 
                 Button(role: .destructive) {
                     onDelete()
@@ -493,6 +570,138 @@ struct CollectionItemRow: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation {
                 showCopied = false
+            }
+        }
+    }
+    }
+
+
+// MARK: - 编辑分享 Sheet
+
+struct EditShareSheet: View {
+    let isCollection: Bool
+    let id: Int
+    let initialHasPassword: Bool
+    let initialExpiresAt: String?
+    var onDismiss: () -> Void
+    
+    @State private var password = ""
+    @State private var usePassword: Bool
+    @State private var useExpiry: Bool
+    @State private var expiryDate = Date()
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    
+    init(isCollection: Bool, id: Int, initialHasPassword: Bool, initialExpiresAt: String?, onDismiss: @escaping () -> Void) {
+        self.isCollection = isCollection
+        self.id = id
+        self.initialHasPassword = initialHasPassword
+        self.initialExpiresAt = initialExpiresAt
+        self.onDismiss = onDismiss
+        
+        _usePassword = State(initialValue: initialHasPassword)
+        _useExpiry = State(initialValue: initialExpiresAt != nil)
+        
+        if let initialExpiresAt = initialExpiresAt {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: initialExpiresAt) {
+                _expiryDate = State(initialValue: date)
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("share.edit.password_protect") {
+                    Toggle("share.edit.set_password", isOn: $usePassword)
+                    if usePassword {
+                        SecureField("share.edit.enter_password", text: $password)
+                        if initialHasPassword && password.isEmpty {
+                             Text("share.edit.password_hint").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                Section("share.edit.validity") {
+                    Toggle("share.edit.set_validity", isOn: $useExpiry)
+                    if useExpiry {
+                        DatePicker("share.edit.expiry_date", selection: $expiryDate, in: Date()..., displayedComponents: .date)
+                    }
+                }
+                
+                if let error = errorMessage {
+                    Section {
+                        Text(error).foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle(isCollection ? "share.edit.title_collection" : "share.edit.title_file")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("action.cancel") { onDismiss() }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("action.save") { save() }
+                        .disabled(isSaving)
+                }
+            }
+            .overlay {
+                if isSaving {
+                    ProgressView()
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func save() {
+        isSaving = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                // 计算有效期天数
+                var days: Int? = nil
+                if useExpiry {
+                    let interval = expiryDate.timeIntervalSince(Date())
+                    days = Int(ceil(interval / (24 * 3600)))
+                    if days ?? 0 <= 0 { days = 1 } // 至少1天
+                } else if initialExpiresAt != nil {
+                    // 如果之前有有效期，现在关闭了，传 -1 表示清除
+                    days = -1
+                }
+                
+                let pwd = (usePassword && !password.isEmpty) ? password : nil
+                let removePwd = !usePassword && initialHasPassword
+                
+                if isCollection {
+                    try await ShareService.shared.updateCollection(
+                        id: id,
+                        password: pwd,
+                        removePassword: removePwd,
+                        expiresInDays: days
+                    )
+                } else {
+                    try await ShareService.shared.updateShare(
+                        id: id,
+                        password: pwd,
+                        removePassword: removePwd,
+                        expiresInDays: days
+                    )
+                }
+                
+                await MainActor.run {
+                    onDismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isSaving = false
+                }
             }
         }
     }

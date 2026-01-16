@@ -23,6 +23,18 @@ struct FileItem: Codable, Identifiable, Hashable {
     // 使用 path 作为唯一标识
     var id: String { path }
     
+    init(name: String, path: String, isDirectory: Bool, size: Int64?, modifiedAt: Date?, uploaderId: Int?, uploaderName: String?, isStarred: Bool?, accessCount: Int?) {
+        self.name = name
+        self.path = path
+        self.isDirectory = isDirectory
+        self.size = size
+        self.modifiedAt = modifiedAt
+        self.uploaderId = uploaderId
+        self.uploaderName = uploaderName
+        self.isStarred = isStarred
+        self.accessCount = accessCount
+    }
+
     enum CodingKeys: String, CodingKey {
         case name, path, size
         case isDirectory = "isDirectory"

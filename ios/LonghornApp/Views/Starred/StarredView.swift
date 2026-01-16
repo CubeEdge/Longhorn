@@ -27,8 +27,15 @@ struct StarredView: View {
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     enum ViewMode: String, CaseIterable {
-        case list = "列表"
-        case grid = "网格"
+        case list = "list"
+        case grid = "grid"
+        
+        var title: LocalizedStringKey {
+            switch self {
+            case .list: return "browser.view_mode.list"
+            case .grid: return "browser.view_mode.grid"
+            }
+        }
         
         var icon: String {
             switch self {
@@ -41,18 +48,18 @@ struct StarredView: View {
     var body: some View {
         ZStack {
             if isLoading {
-                ProgressView("加载中...")
+                ProgressView("status.loading")
             } else if let error = errorMessage {
                 ContentUnavailableView(
-                    "加载失败",
+                    String(localized: "alert.error"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
             } else if starredItems.isEmpty {
                 ContentUnavailableView(
-                    "暂无收藏",
+                    String(localized: "starred.no_files"),
                     systemImage: "star",
-                    description: Text("收藏的文件和文件夹将显示在这里")
+                    description: Text("starred.hint")
                 )
             } else {
                 VStack(spacing: 0) {
@@ -71,7 +78,7 @@ struct StarredView: View {
                 }
             }
         }
-        .navigationTitle("收藏")
+        .navigationTitle(Text("starred.title"))
         .toolbar {
             toolbarContent
         }
@@ -82,14 +89,17 @@ struct StarredView: View {
             await loadStarredItems()
         }
         .confirmationDialog(
-            "确定要取消收藏所选的 \(selectedIds.count) 个项目吗？",
+            "starred.confirm_unstar_count",
             isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("取消收藏", role: .destructive) {
+            titleVisibility: .visible,
+            presenting: selectedIds.count
+        ) { count in
+            Button("action.unstar", role: .destructive) {
                 unstarSelectedItems()
             }
-            Button("取消", role: .cancel) {}
+            Button("action.cancel", role: .cancel) {}
+        } message: { count in
+            Text("starred.confirm_unstar_count \(count)")
         }
         .quickLookPreview($previewURL)
     }
@@ -113,7 +123,7 @@ struct StarredView: View {
                     Button(role: .destructive) {
                         unstarItem(item)
                     } label: {
-                        Label("取消收藏", systemImage: "star.slash")
+                        Label("action.unstar", systemImage: "star.slash")
                     }
                     .tint(.orange)
                 }
@@ -163,13 +173,13 @@ struct StarredView: View {
                     selectedIds = Set(starredItems.map { $0.id })
                 }
             } label: {
-                Text(selectedIds.count == starredItems.count ? "取消全选" : "全选")
+                Text(selectedIds.count == starredItems.count ? "common.cancel_selection" : "action.select_all")
                     .font(.system(size: 14, weight: .medium))
             }
             
             Spacer()
             
-            Text("已选 \(selectedIds.count) 项")
+            Text("common.selected_count \(selectedIds.count)")
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             
@@ -193,7 +203,7 @@ struct StarredView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button(isSelectionMode ? "完成" : "选择") {
+            Button(isSelectionMode ? "action.done" : "action.select") {
                 isSelectionMode.toggle()
                 if !isSelectionMode {
                     selectedIds.removeAll()
@@ -208,7 +218,7 @@ struct StarredView: View {
                     Button {
                         viewMode = mode
                     } label: {
-                        Label(mode.rawValue, systemImage: mode.icon)
+                        Label(mode.title, systemImage: mode.icon)
                         if viewMode == mode {
                             Image(systemName: "checkmark")
                         }
@@ -228,14 +238,14 @@ struct StarredView: View {
             Button {
                 previewItem(item)
             } label: {
-                Label("预览", systemImage: "eye")
+                Label("action.preview", systemImage: "eye")
             }
         }
         
         Button {
             navigateToFolder(item)
         } label: {
-            Label("打开所在文件夹", systemImage: "folder")
+            Label("starred.open_folder", systemImage: "folder")
         }
         
         Divider()
@@ -243,7 +253,7 @@ struct StarredView: View {
         Button(role: .destructive) {
             unstarItem(item)
         } label: {
-            Label("取消收藏", systemImage: "star.slash")
+            Label("action.unstar", systemImage: "star.slash")
         }
     }
     
@@ -512,7 +522,7 @@ struct StarredGridItem: View {
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 } else if item.isDirectory == true {
-                    Text("文件夹")
+                    Text("starred.folder")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -568,7 +578,7 @@ struct FileDetailView: View {
     var body: some View {
         Group {
             if isLoading {
-                ProgressView("加载中...")
+                ProgressView("status.loading")
             } else if let url = previewURL {
                 QuickLookPreview(url: url)
             } else {
@@ -582,11 +592,11 @@ struct FileDetailView: View {
                     
                     if let size = item.size {
                         let formatter = ByteCountFormatter()
-                        Text("文件大小: \(formatter.string(fromByteCount: size))")
+                        Text("\(String(localized: "label.size")): \(formatter.string(fromByteCount: size))")
                             .foregroundColor(.secondary)
                     }
                     
-                    Text("路径: \(item.fullPath)")
+                    Text("\(String(localized: "label.path")): \(item.fullPath)")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -597,7 +607,7 @@ struct FileDetailView: View {
                             await downloadAndPreview()
                         }
                     } label: {
-                        Label("下载预览", systemImage: "arrow.down.circle.fill")
+                        Label("file.download_preview", systemImage: "arrow.down.circle.fill")
                             .font(.headline)
                             .padding()
                             .background(Color.blue)

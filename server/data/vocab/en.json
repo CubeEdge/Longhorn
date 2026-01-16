@@ -1,0 +1,227 @@
+[
+    {
+        "id": "en_1",
+        "word": "Serendipity",
+        "phonetic": "/ˌserənˈdɪpɪti/",
+        "meaning": "Finding value by luck",
+        "meaningZh": "意外发现美好事物的运气",
+        "partOfSpeech": "n.",
+        "examples": [
+            {
+                "sentence": "Finding this café was pure serendipity.",
+                "translation": "发现这家咖啡馆纯属机缘巧合。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_2",
+        "word": "Ephemeral",
+        "phonetic": "/ɪˈfemərəl/",
+        "meaning": "Lasting a very short time",
+        "meaningZh": "短暂的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "Fame is often ephemeral.",
+                "translation": "名声往往是短暂的。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_3",
+        "word": "Ubiquitous",
+        "phonetic": "/juːˈbɪkwɪtəs/",
+        "meaning": "Found everywhere",
+        "meaningZh": "无处不在的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "Smartphones are ubiquitous now.",
+                "translation": "智能手机现在无处不在。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_4",
+        "word": "Eloquent",
+        "phonetic": "/ˈeləkwənt/",
+        "meaning": "Fluent speaking",
+        "meaningZh": "雄辩的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "She gave an eloquent speech.",
+                "translation": "她发表了雄辩的演讲。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_5",
+        "word": "Resilient",
+        "phonetic": "/rɪˈzɪliənt/",
+        "meaning": "Able to recover quickly",
+        "meaningZh": "有韧性的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "Kids are resilient.",
+                "translation": "孩子们适应力很强。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_6",
+        "word": "Pragmatic",
+        "phonetic": "/præɡˈmætɪk/",
+        "meaning": "Practical",
+        "meaningZh": "务实的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "A pragmatic approach.",
+                "translation": "务实的方法。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_7",
+        "word": "Meticulous",
+        "phonetic": "/məˈtɪkjələs/",
+        "meaning": "Very careful and precise",
+        "meaningZh": "一丝不苟的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is meticulous about details.",
+                "translation": "他对细节一丝不苟。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_8",
+        "word": "Altruistic",
+        "phonetic": "/ˌæl.truˈɪs.tɪk/",
+        "meaning": "Selfless concern for others",
+        "meaningZh": "利他的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "An altruistic act.",
+                "translation": "无私的举动。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_9",
+        "word": "Enigma",
+        "phonetic": "/ɪˈnɪɡ.mə/",
+        "meaning": "A mysterious person or thing",
+        "meaningZh": "谜",
+        "partOfSpeech": "n.",
+        "examples": [
+            {
+                "sentence": "He is an enigma.",
+                "translation": "他是个谜。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_10",
+        "word": "Cacophony",
+        "phonetic": "/kəˈkɒf.ə.ni/",
+        "meaning": "A harsh mixture of sounds",
+        "meaningZh": "刺耳的嘈杂声",
+        "partOfSpeech": "n.",
+        "examples": [
+            {
+                "sentence": "A cacophony of noise.",
+                "translation": "刺耳的噪音。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_11",
+        "word": "Nostalgia",
+        "phonetic": "/nɒˈstældʒə/",
+        "meaning": "A sentimental longing for the past",
+        "meaningZh": "怀旧",
+        "partOfSpeech": "n.",
+        "examples": [
+            {
+                "sentence": "A wave of nostalgia.",
+                "translation": "一阵怀旧之情。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_12",
+        "word": "Paradox",
+        "phonetic": "/ˈpærədɒks/",
+        "meaning": "A self-contradictory statement",
+        "meaningZh": "悖论",
+        "partOfSpeech": "n.",
+        "examples": [
+            {
+                "sentence": "It is a curious paradox.",
+                "translation": "这是一个奇怪的悖论。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_13",
+        "word": "Cynical",
+        "phonetic": "/ˈsɪnɪkəl/",
+        "meaning": "Believing that people are motivated by self-interest",
+        "meaningZh": "愤世嫉俗的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is cynical about politics.",
+                "translation": "他对政治愤世嫉俗。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_14",
+        "word": "Ambivalent",
+        "phonetic": "/æmˈbɪvələnt/",
+        "meaning": "Having mixed feelings",
+        "meaningZh": "矛盾的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "I feel ambivalent about the movie.",
+                "translation": "我对这部电影感觉矛盾。"
+            }
+        ],
+        "level": "Advanced"
+    },
+    {
+        "id": "en_15",
+        "word": "Complacent",
+        "phonetic": "/kəmˈpleɪsənt/",
+        "meaning": "Smug satisfaction with oneself",
+        "meaningZh": "自满的",
+        "partOfSpeech": "adj.",
+        "examples": [
+            {
+                "sentence": "Do not become complacent.",
+                "translation": "不要自满。"
+            }
+        ],
+        "level": "Advanced"
+    }
+]

@@ -4,7 +4,98 @@
 
 ---
 
-## 2026-01-11
+## 2026-01-14
+
+### 18:30 - 服务端崩溃修复
+```
+Could not connect to the server.
+```
+**修复**: `server/index.js` 在添加接口时意外引入多余闭合括号导致语法错误，已修正。
+
+### 18:25 - 部门数据缺失与授权目录不显示
+```
+无法加载部门数据.
+用pepper登录，并退出登录了。它被授权过额外的目录，但是没有出现在首页。
+```
+**修复**:
+1. **部门数据**: 服务端 `/api/department/my-stats` 增加 `JOIN` 逻辑，通过 UserID 获取 `department_name`，解决 Token 缺字段问题。客户端 `MoreTabRootView` 已适配展示真实文件数、存储和成员数。
+2. **授权目录**: 服务端重写 `/api/user/permissions` 接口，客户端 `BrowseView` 增加 `AuthorizedLocation` 数据拉取，首页 "位置" 区域现已展示被授权的额外文件夹。
+
+### 18:20 - BrowseView 编译修复
+```
+Generic parameter 'C' could not be inferred... Cannot find 'authorizedLocations' in scope
+```
+**修复**: `BrowseView.swift` 补充缺失的 `@State authorizedLocations` 变量及 `.onAppear` 数据拉取逻辑。
+
+### 17:50 - 部门真实数据接入请求
+```
+部门数据也需要真实数据。
+```
+**实现**: 
+1. 服务端新增 `/api/department/my-stats`。
+2. 客户端 `FileService` 新增接口，`MoreTabRootView` 逻辑更新为：非管理员显示部门概览，管理员显示系统概览。
+
+### 17:00 - Xcode构建修复与UI微调
+1. 修复 `FolderPickerView` 命名冲突。
+2. `UserDetailView`: 优化授权按钮（Kine Yellow），权限列表支持点击跳转。
+
+### 11:45 - 语法错误修复
+```
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift:106:1 Expected '}' in struct
+```
+**修复**: `MoreTabRootView.swift` 缺少闭合括号，已补全。
+
+### 11:41 - 个人与更多Tab优化
+```
+个人tab：数据概览，是体现，个人的数据统计和行为...
+更多tab：仪表盘这个地方：可以和个人tab的数据概览类似显示...
+```
+**实现**:
+1. **个人Tab**: 移除自定义 Header，改为标准 FileBrowser 样式；数据概览卡片支持点击进入 `DetailStatsView`。
+2. **更多Tab**: 仪表盘区域从文字链接改为数据概览卡片 (部门/系统区分)，点击进入详情。
+
+### 00:53 - 最近访问布局简化
+```
+最近访问 不显示缩略图了，不显示具体的缩略图和文件，只有点击查看全部才显示。不然会遮挡
+```
+**优化**: `BrowseView` 移除横向滚动的 Recents 区域，将其折叠为 "资料库" 列表下的一行 "最近打开"，点击后进入 `RecentFilesListView`。
+
+### 00:46 - 编译错误 Persistent (Target Issue)
+```
+Cannot find 'RecentFilesListView' in scope
+```
+**解决**: 用户手动添加 Target 困难，遂将 `RecentFilesListView` 和 `FilePreviewWrapper` 代码直接嵌入 `BrowseView.swift` 文件底部，绕过 Target Membership 问题。
+
+### 00:30 - 个人中心UI重构
+```
+这个排版和个人空间有点丑，请改进。
+```
+**优化**: `PersonalTabRootView` 重构为 iOS 原生 List 风格 (Settings Style)，包含头像 Header、个人空间入口、数据概览卡片。
+
+### 00:22 - 浏览Tab微调与MS权限
+```
+部门文件浏览器，不需要每日一词了... MS部门没有文件了？
+```
+**处理**:
+1. 移除部门浏览器中的每日一词 Badge。
+2. 确认 MS 部门显示 403 是因为 User 角色权限限制 (Correct Behavior)。
+3. `BrowseView` 最近访问增加 "查看全部" (`RecentFilesListView`)。
+
+### 00:10 - DashboardView 遗留报错
+```
+Type 'MainTabView.Tab' has no member 'departments'
+```
+**修复**: 旧 `DashboardView` 引用了已删除的 Tab 枚举值。虽然该文件已废弃，但为了编译通过，将其内部跳转逻辑临时指向 `.home`。
+
+### 23:55 - iOS 布局重构 (Files App Style)
+```
+iOS Files App Redesign
+```
+**重构**:
+1. **Browse**: 搜索 + 部门列表 + 资料库(收藏/分享/最近) + 每日一词。
+2. **Personal**: 统计概览 + 个人空间入口。
+3. **More**: 仪表盘(Mock) + 管理 + 设置 + 回收站 + 退出。
+4. **架构**: `MainTabView` 拆分为 `BrowseView`, `PersonalTabRootView`, `MoreTabRootView`。
 
 ### 11:22 - iPhone 药丸屏遮挡
 ```

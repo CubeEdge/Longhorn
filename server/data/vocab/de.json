@@ -1,0 +1,182 @@
+[
+    {
+        "id": "de_1",
+        "word": "Hallo",
+        "phonetic": "[haˈloː]",
+        "meaning": "Informelle Begrüßung",
+        "meaningZh": "你好",
+        "partOfSpeech": "Interj.",
+        "examples": [
+            {
+                "sentence": "Hallo!",
+                "translation": "你好！"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_2",
+        "word": "Danke",
+        "phonetic": "[ˈdaŋkə]",
+        "meaning": "Dankbarkeit",
+        "meaningZh": "谢谢",
+        "partOfSpeech": "Partikel",
+        "examples": [
+            {
+                "sentence": "Danke schön.",
+                "translation": "非常感谢。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_3",
+        "word": "Wasser",
+        "phonetic": "[ˈvasɐ]",
+        "meaning": "Flüssigkeit",
+        "meaningZh": "水",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "Ein Glas Wasser, bitte.",
+                "translation": "请给我一杯水。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_4",
+        "word": "Bitte",
+        "phonetic": "[ˈbɪtə]",
+        "meaning": "Höflichkeitsform",
+        "meaningZh": "请/不客气",
+        "partOfSpeech": "Partikel",
+        "examples": [
+            {
+                "sentence": "Wie bitte?",
+                "translation": "你说什么/请原谅？"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_5",
+        "word": "Tschüss",
+        "phonetic": "[tʃyːs]",
+        "meaning": "Abschied",
+        "meaningZh": "再见",
+        "partOfSpeech": "Interj.",
+        "examples": [
+            {
+                "sentence": "Tschüss, bis morgen!",
+                "translation": "再见，明天见！"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_6",
+        "word": "Ja",
+        "phonetic": "[jaː]",
+        "meaning": "Zustimmung",
+        "meaningZh": "是",
+        "partOfSpeech": "Partikel",
+        "examples": [
+            {
+                "sentence": "Ja, gerne.",
+                "translation": "是的，我很乐意。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_7",
+        "word": "Nein",
+        "phonetic": "[naɪ̯n]",
+        "meaning": "Ablehnung",
+        "meaningZh": "不",
+        "partOfSpeech": "Partikel",
+        "examples": [
+            {
+                "sentence": "Nein, danke.",
+                "translation": "不，谢谢。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_8",
+        "word": "Gut",
+        "phonetic": "[ɡuːt]",
+        "meaning": "Positiv",
+        "meaningZh": "好",
+        "partOfSpeech": "Adj.",
+        "examples": [
+            {
+                "sentence": "Guten Morgen.",
+                "translation": "早上好。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_9",
+        "word": "Schlecht",
+        "phonetic": "[ʃlɛçt]",
+        "meaning": "Negativ",
+        "meaningZh": "坏/不好",
+        "partOfSpeech": "Adj.",
+        "examples": [
+            {
+                "sentence": "Mir ist schlecht.",
+                "translation": "我不舒服。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_10",
+        "word": "Kaffee",
+        "phonetic": "[ˈkafe]",
+        "meaning": "Getränk",
+        "meaningZh": "咖啡",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "Ich trinke gern Kaffee.",
+                "translation": "我喜欢喝咖啡。"
+            }
+        ],
+        "level": "A1"
+    },
+    {
+        "id": "de_11",
+        "word": "Einkaufen",
+        "phonetic": "[ˈaɪ̯nˌkaʊ̯fn̩]",
+        "meaning": "Waren kaufen",
+        "meaningZh": "购物",
+        "partOfSpeech": "Verb",
+        "examples": [
+            {
+                "sentence": "Wir gehen einkaufen.",
+                "translation": "我们去购物。"
+            }
+        ],
+        "level": "A2"
+    },
+    {
+        "id": "de_12",
+        "word": "Urlaub",
+        "phonetic": "[ˈuːɐ̯laʊ̯p]",
+        "meaning": "Freizeit",
+        "meaningZh": "假期",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "Schönen Urlaub!",
+                "translation": "假期愉快！"
+            }
+        ],
+        "level": "A2"
+    }
+]

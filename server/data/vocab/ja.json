@@ -1,0 +1,152 @@
+[
+    {
+        "id": "ja_1",
+        "word": "私",
+        "phonetic": "わたし / watashi",
+        "meaning": "Me",
+        "meaningZh": "我",
+        "partOfSpeech": "Pronoun",
+        "examples": [
+            {
+                "sentence": "私は学生です。",
+                "translation": "我是学生。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_2",
+        "word": "先生",
+        "phonetic": "せんせい / sensei",
+        "meaning": "Teacher",
+        "meaningZh": "老师",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "先生、質問があります。",
+                "translation": "老师，我有问题。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_3",
+        "word": "学生",
+        "phonetic": "がくせい / gakusei",
+        "meaning": "Student",
+        "meaningZh": "学生",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "彼は学生です。",
+                "translation": "他是学生。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_4",
+        "word": "猫",
+        "phonetic": "ねこ / neko",
+        "meaning": "Cat",
+        "meaningZh": "猫",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "猫が好きです。",
+                "translation": "喜欢猫。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_5",
+        "word": "犬",
+        "phonetic": "いぬ / inu",
+        "meaning": "Dog",
+        "meaningZh": "狗",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "犬がいます。",
+                "translation": "有一只狗。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_6",
+        "word": "本",
+        "phonetic": "ほん / hon",
+        "meaning": "Book",
+        "meaningZh": "书",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "本を読みます。",
+                "translation": "读书。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_7",
+        "word": "食べる",
+        "phonetic": "たべる / taberu",
+        "meaning": "To eat",
+        "meaningZh": "吃",
+        "partOfSpeech": "Verb",
+        "examples": [
+            {
+                "sentence": "ご飯を食べます。",
+                "translation": "吃饭。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_8",
+        "word": "飲む",
+        "phonetic": "のむ / nomu",
+        "meaning": "To drink",
+        "meaningZh": "喝",
+        "partOfSpeech": "Verb",
+        "examples": [
+            {
+                "sentence": "水を飲みます。",
+                "translation": "喝水。"
+            }
+        ],
+        "level": "N5"
+    },
+    {
+        "id": "ja_9",
+        "word": "重要",
+        "phonetic": "じゅうよう / juuyou",
+        "meaning": "Important",
+        "meaningZh": "重要",
+        "partOfSpeech": "Adj",
+        "examples": [
+            {
+                "sentence": "これは重要です。",
+                "translation": "这很重要。"
+            }
+        ],
+        "level": "N3"
+    },
+    {
+        "id": "ja_10",
+        "word": "研究",
+        "phonetic": "けんきゅう / kenkyuu",
+        "meaning": "Research",
+        "meaningZh": "研究",
+        "partOfSpeech": "Noun",
+        "examples": [
+            {
+                "sentence": "研究室に行きます。",
+                "translation": "去实验室。"
+            }
+        ],
+        "level": "N3"
+    }
+]

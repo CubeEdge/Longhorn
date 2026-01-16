@@ -43,10 +43,10 @@ class APIClient {
     /// 服务器基础 URL（可在设置中修改）
     var baseURL: String {
         get {
-            UserDefaults.standard.string(forKey: "serverURL") ?? "https://opware.kineraw.com"
+            UserDefaults.standard.string(forKey: "server_base_url") ?? "https://opware.kineraw.com"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "serverURL")
+            UserDefaults.standard.set(newValue, forKey: "server_base_url")
         }
     }
     
@@ -96,6 +96,14 @@ class APIClient {
     /// 执行 DELETE 请求（带 query 参数）
     func delete(_ endpoint: String, queryItems: [URLQueryItem]) async throws {
         let request = try await buildRequest(endpoint: endpoint, method: "DELETE", queryItems: queryItems)
+        let _: EmptyResponse = try await execute(request)
+    }
+    
+    /// 执行 PUT 请求（无返回值）
+    func put<B: Encodable>(_ endpoint: String, body: B) async throws {
+        var request = try await buildRequest(endpoint: endpoint, method: "PUT")
+        request.httpBody = try JSONEncoder().encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let _: EmptyResponse = try await execute(request)
     }
     

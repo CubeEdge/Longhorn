@@ -802,13 +802,68 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
 
     const renderPreviewContent = (file: FileItem) => {
         const ext = file.name.split('.').pop()?.toLowerCase();
-        const url = `/preview/${file.path}`;
-        if (ext?.match(/(mp4|mov|m4v|hevc|h265)$/i)) return <video controls autoPlay className="preview-media" onClick={e => e.stopPropagation()}><source src={url} /></video>;
-        if (ext === 'pdf') return <iframe src={url} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} />;
+        // Base valid url for original file (used for video/download)
+        const originalUrl = `/preview/${file.path}`;
+
+        if (ext?.match(/(mp4|mov|m4v|hevc|h265)$/i)) return <video controls autoPlay className="preview-media" onClick={e => e.stopPropagation()}><source src={originalUrl} /></video>;
+        if (ext === 'pdf') return <iframe src={originalUrl} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} />;
         if (ext === 'docx') return <div ref={docContainerRef} className="doc-preview-container" onClick={e => e.stopPropagation()} />;
         if (['xlsx', 'xls'].includes(ext || '')) return <div className="doc-preview-container excel-preview-container" onClick={e => e.stopPropagation()}>{excelHtml ? <div dangerouslySetInnerHTML={{ __html: excelHtml }} /> : t('status.loading_data')}</div>;
         if (['txt', 'md', 'js', 'ts', 'css'].includes(ext || '')) return <div className="doc-preview-container" onClick={e => e.stopPropagation()}><pre className="txt-preview">{textContent}</pre></div>;
-        return <img src={url} className={`preview-media ${isZoomed ? 'zoomed' : ''}`} alt="" onDoubleClick={e => { e.stopPropagation(); setIsZoomed(!isZoomed); }} onClick={e => e.stopPropagation()} />;
+
+        // For Images: Use fast preview + "Original" option ONLY if > 1MB
+        // We use the new size=preview API which returns decent quality ~200KB images
+        const isLargeImage = file.size > 1024 * 1024; // 1MB
+        const previewUrl = isLargeImage
+            ? `/api/thumbnail?path=${encodeURIComponent(file.path)}&size=preview`
+            : originalUrl;
+
+        // If small image, render directly without overlay controls (or simplified controls)
+        if (!isLargeImage) {
+            return <img src={previewUrl} className={`preview-media ${isZoomed ? 'zoomed' : ''}`} alt="" onDoubleClick={e => { e.stopPropagation(); setIsZoomed(!isZoomed); }} onClick={e => e.stopPropagation()} />;
+        }
+
+        return (
+            <div className="preview-image-container" onClick={e => e.stopPropagation()} style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <img
+                    src={previewUrl}
+                    className={`preview-media ${isZoomed ? 'zoomed' : ''}`}
+                    alt=""
+                    onDoubleClick={e => { e.stopPropagation(); setIsZoomed(!isZoomed); }}
+                />
+
+                {/* Overlay Controls for Large Images */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: 20,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    gap: 16,
+                    background: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(10px)',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    zIndex: 10
+                }}>
+                    <button
+                        onClick={() => window.open(originalUrl, '_blank')}
+                        className="btn-icon-text"
+                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
+                    >
+                        <Download size={16} /> 原图 ({formatSize(file.size)})
+                    </button>
+                    <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.3)' }} />
+                    <button
+                        onClick={() => handleStar(file)}
+                        className="btn-icon-text"
+                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
+                    >
+                        <Star size={16} fill={starredFiles.includes(file.path) ? "orange" : "none"} color={starredFiles.includes(file.path) ? "orange" : "white"} /> 收藏
+                    </button>
+                </div>
+            </div>
+        );
     };
 
     return (

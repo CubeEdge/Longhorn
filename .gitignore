@@ -3,9 +3,14 @@ node_modules/
 dist/
 .env
 *.db
+*.db-shm
+*.db-wal
 server/data/DiskA/*
 server/data/DiskB/*
 server/data/.recycle/*
+server/data/.thumbnails/
+server/data/uploads/
+server/data/cache/
 !server/data/DiskA/.gitkeep
 !server/data/DiskB/.gitkeep
 !server/data/.recycle/.gitkeep
@@ -13,6 +18,8 @@ server/data/.recycle/*
 *.zip
 *.log
 server/debug_perm.txt
-
-server/longhorn.db-shm
-server/longhorn.db-wal
+server/server.log
+ios/.build/
+ios/DerivedData/
+ios/*.persistent_state
+*.xcuserstate

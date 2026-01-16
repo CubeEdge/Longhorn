@@ -7,85 +7,202 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3D0BE4AF2F16357B00183E47 /* DailyWordBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4AE2F16357B00183E47 /* DailyWordBadge.swift */; };
+		3D0BE4B52F1635F400183E47 /* DailyWord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4B42F1635F400183E47 /* DailyWord.swift */; };
+		3D0BE4B72F16360000183E47 /* DailyWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4B62F16360000183E47 /* DailyWordService.swift */; };
+		3D0BE4BA2F167FA700183E47 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4B92F167FA700183E47 /* DashboardView.swift */; };
+		3D0BE4BC2F167FCC00183E47 /* StatCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4BB2F167FCC00183E47 /* StatCard.swift */; };
+		3D0BE4BE2F167FDB00183E47 /* DailyWordHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4BD2F167FDB00183E47 /* DailyWordHeroCard.swift */; };
+		3D0BE4C02F1680FF00183E47 /* UserStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4BF2F1680FF00183E47 /* UserStats.swift */; };
+		3D0BE4C22F16891400183E47 /* RecentFilesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C12F16891400183E47 /* RecentFilesManager.swift */; };
+		3D0BE4C42F16893000183E47 /* DailyWordCompactCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C32F16893000183E47 /* DailyWordCompactCard.swift */; };
+		3D0BE4C62F168B8800183E47 /* PersonalSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C52F168B8800183E47 /* PersonalSpaceView.swift */; };
+		3D0BE4CA2F16A51B00183E47 /* MoreTabRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C82F16A51B00183E47 /* MoreTabRootView.swift */; };
+		3D0BE4CB2F16A51B00183E47 /* PersonalTabRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C92F16A51B00183E47 /* PersonalTabRootView.swift */; };
+		3D0BE4CC2F16A51B00183E47 /* BrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4C72F16A51B00183E47 /* BrowseView.swift */; };
+		3D0BE4CF2F174B9200183E47 /* RecentFilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4CE2F174B9200183E47 /* RecentFilesListView.swift */; };
+		3D0BE4D02F174B9200183E47 /* DetailStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4CD2F174B9200183E47 /* DetailStatsView.swift */; };
+		3D0BE4D92F175BB000183E47 /* UserDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4D82F175BB000183E47 /* UserDetailView.swift */; };
+		3D0BE4DA2F175BB000183E47 /* TeamManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4D72F175BB000183E47 /* TeamManagementView.swift */; };
+		3D0BE4DC2F175C9600183E47 /* AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4DB2F175C9600183E47 /* AdminService.swift */; };
+		3D0BE4DE2F176EA900183E47 /* GrantPermissionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4DD2F176EA900183E47 /* GrantPermissionSheet.swift */; };
+		3D0BE4E02F17A06700183E47 /* FolderPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4DF2F17A06700183E47 /* FolderPickerView.swift */; };
+		3D0BE4E22F17DA1900183E47 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4E12F17DA1900183E47 /* LanguageManager.swift */; };
+		3D0BE4E42F17DA2E00183E47 /* DailyWordsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4E32F17DA2E00183E47 /* DailyWordsData.swift */; };
+		3D0BE4EA2F17DC5400183E47 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 3D0BE4E82F17DC5400183E47 /* Localizable.xcstrings */; };
+		3D0BE4ED2F17DC7300183E47 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4EB2F17DC7300183E47 /* SettingsView.swift */; };
+		3D0BE4EF2F17F99C00183E47 /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4EE2F17F99C00183E47 /* FilePreviewView.swift */; };
+		3D0BE4F12F17F9B000183E47 /* BatchShareDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4F02F17F9B000183E47 /* BatchShareDialogView.swift */; };
+		3D0BE4F32F17FEBF00183E47 /* ShareDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4F22F17FEBF00183E47 /* ShareDialogView.swift */; };
+		3D0BE4F52F18846B00183E47 /* Department+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4F42F18846B00183E47 /* Department+Extensions.swift */; };
+		3D0BE4F72F189A6E00183E47 /* Permission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4F62F189A6E00183E47 /* Permission.swift */; };
+		3D0BE4F92F18BFC300183E47 /* ToastManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4F82F18BFC300183E47 /* ToastManager.swift */; };
+		3D0BE4FB2F18BFD300183E47 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4FA2F18BFD300183E47 /* ToastView.swift */; };
+		3D0BE4FD2F19133B00183E47 /* ImageCacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4FC2F19133B00183E47 /* ImageCacheService.swift */; };
+		LH_BF_A1 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_A1 /* APIClient.swift */; };
+		LH_BF_AM1 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_AM1 /* AuthManager.swift */; };
+		LH_BF_F1 /* FileItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_F1 /* FileItem.swift */; };
+		LH_BF_FB1 /* FileBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FB1 /* FileBrowserView.swift */; };
+		LH_BF_FCM1 /* FileCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FCM1 /* FileCacheManager.swift */; };
+		LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FPS1 /* FilePreviewSheet.swift */; };
+		LH_BF_FS1 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FS1 /* FileService.swift */; };
+		LH_BF_FSV1 /* FileStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FSV1 /* FileStatsView.swift */; };
+		LH_BF_LV1 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_LV1 /* LoginView.swift */; };
+		LH_BF_MT1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_MT1 /* MainTabView.swift */; };
+		LH_BF_PCM1 /* PreviewCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_PCM1 /* PreviewCacheManager.swift */; };
+		LH_BF_RV1 /* RecycleBinListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_RV1 /* RecycleBinListView.swift */; };
+		LH_BF_S1 /* ShareLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_S1 /* ShareLink.swift */; };
+		LH_BF_SB1 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SB1 /* SidebarView.swift */; };
+		LH_BF_SHL1 /* SharesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SHL1 /* SharesListView.swift */; };
+		LH_BF_SL1 /* SearchListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SL1 /* SearchListView.swift */; };
+		LH_BF_SS1 /* ShareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SS1 /* ShareService.swift */; };
+		LH_BF_SV1 /* StarredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SV1 /* StarredView.swift */; };
+		LH_BF_TV1 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_TV1 /* ThumbnailView.swift */; };
+		LH_BF_U1 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_U1 /* User.swift */; };
+		LH_BF_UPV1 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_UPV1 /* UploadProgressView.swift */; };
+		LH_BF_US1 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_US1 /* UploadService.swift */; };
 		LONGHORN001 /* LonghornApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = LONGHORN002 /* LonghornApp.swift */; };
 		LONGHORN003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = LONGHORN004 /* Assets.xcassets */; };
 		LONGHORN005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LONGHORN006 /* ContentView.swift */; };
-		LH_BF_U1 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_U1 /* User.swift */; };
-		LH_BF_F1 /* FileItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_F1 /* FileItem.swift */; };
-		LH_BF_S1 /* ShareLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_S1 /* ShareLink.swift */; };
-		LH_BF_A1 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_A1 /* APIClient.swift */; };
-		LH_BF_AM1 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_AM1 /* AuthManager.swift */; };
-		LH_BF_FS1 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FS1 /* FileService.swift */; };
-		LH_BF_SS1 /* ShareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SS1 /* ShareService.swift */; };
-		LH_BF_LV1 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_LV1 /* LoginView.swift */; };
-		LH_BF_MT1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_MT1 /* MainTabView.swift */; };
-		LH_BF_SB1 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SB1 /* SidebarView.swift */; };
-		LH_BF_FB1 /* FileBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FB1 /* FileBrowserView.swift */; };
-		LH_BF_SL1 /* SearchListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SL1 /* SearchListView.swift */; };
-		LH_BF_SV1 /* StarredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SV1 /* StarredView.swift */; };
-		LH_BF_RV1 /* RecycleBinListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_RV1 /* RecycleBinListView.swift */; };
-		LH_BF_SHL1 /* SharesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_SHL1 /* SharesListView.swift */; };
-		LH_BF_FCM1 /* FileCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FCM1 /* FileCacheManager.swift */; };
-		LH_BF_US1 /* UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_US1 /* UploadService.swift */; };
-		LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_FPS1 /* FilePreviewSheet.swift */; };
-		LH_BF_TV1 /* ThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_TV1 /* ThumbnailView.swift */; };
-		LH_BF_PCM1 /* PreviewCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_PCM1 /* PreviewCacheManager.swift */; };
-		LH_BF_UPV1 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = LH_FR_UPV1 /* UploadProgressView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3D0BE4AE2F16357B00183E47 /* DailyWordBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordBadge.swift; sourceTree = "<group>"; };
+		3D0BE4B42F1635F400183E47 /* DailyWord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWord.swift; sourceTree = "<group>"; };
+		3D0BE4B62F16360000183E47 /* DailyWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordService.swift; sourceTree = "<group>"; };
+		3D0BE4B82F16505B00183E47 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3D0BE4B92F167FA700183E47 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		3D0BE4BB2F167FCC00183E47 /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
+		3D0BE4BD2F167FDB00183E47 /* DailyWordHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordHeroCard.swift; sourceTree = "<group>"; };
+		3D0BE4BF2F1680FF00183E47 /* UserStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStats.swift; sourceTree = "<group>"; };
+		3D0BE4C12F16891400183E47 /* RecentFilesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentFilesManager.swift; sourceTree = "<group>"; };
+		3D0BE4C32F16893000183E47 /* DailyWordCompactCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordCompactCard.swift; sourceTree = "<group>"; };
+		3D0BE4C52F168B8800183E47 /* PersonalSpaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalSpaceView.swift; sourceTree = "<group>"; };
+		3D0BE4C72F16A51B00183E47 /* BrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseView.swift; sourceTree = "<group>"; };
+		3D0BE4C82F16A51B00183E47 /* MoreTabRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreTabRootView.swift; sourceTree = "<group>"; };
+		3D0BE4C92F16A51B00183E47 /* PersonalTabRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalTabRootView.swift; sourceTree = "<group>"; };
+		3D0BE4CD2F174B9200183E47 /* DetailStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailStatsView.swift; sourceTree = "<group>"; };
+		3D0BE4CE2F174B9200183E47 /* RecentFilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentFilesListView.swift; sourceTree = "<group>"; };
+		3D0BE4D72F175BB000183E47 /* TeamManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamManagementView.swift; sourceTree = "<group>"; };
+		3D0BE4D82F175BB000183E47 /* UserDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDetailView.swift; sourceTree = "<group>"; };
+		3D0BE4DB2F175C9600183E47 /* AdminService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminService.swift; sourceTree = "<group>"; };
+		3D0BE4DD2F176EA900183E47 /* GrantPermissionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrantPermissionSheet.swift; sourceTree = "<group>"; };
+		3D0BE4DF2F17A06700183E47 /* FolderPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPickerView.swift; sourceTree = "<group>"; };
+		3D0BE4E12F17DA1900183E47 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		3D0BE4E32F17DA2E00183E47 /* DailyWordsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordsData.swift; sourceTree = "<group>"; };
+		3D0BE4E82F17DC5400183E47 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		3D0BE4EB2F17DC7300183E47 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3D0BE4EE2F17F99C00183E47 /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
+		3D0BE4F02F17F9B000183E47 /* BatchShareDialogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchShareDialogView.swift; sourceTree = "<group>"; };
+		3D0BE4F22F17FEBF00183E47 /* ShareDialogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareDialogView.swift; sourceTree = "<group>"; };
+		3D0BE4F42F18846B00183E47 /* Department+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Department+Extensions.swift"; sourceTree = "<group>"; };
+		3D0BE4F62F189A6E00183E47 /* Permission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permission.swift; sourceTree = "<group>"; };
+		3D0BE4F82F18BFC300183E47 /* ToastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastManager.swift; sourceTree = "<group>"; };
+		3D0BE4FA2F18BFD300183E47 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		3D0BE4FC2F19133B00183E47 /* ImageCacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheService.swift; sourceTree = "<group>"; };
+		LH_FR_A1 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		LH_FR_AM1 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		LH_FR_F1 /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileItem.swift; sourceTree = "<group>"; };
+		LH_FR_FB1 /* FileBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserView.swift; sourceTree = "<group>"; };
+		LH_FR_FCM1 /* FileCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCacheManager.swift; sourceTree = "<group>"; };
+		LH_FR_FPS1 /* FilePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewSheet.swift; sourceTree = "<group>"; };
+		LH_FR_FS1 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
+		LH_FR_FSV1 /* FileStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileStatsView.swift; sourceTree = "<group>"; };
+		LH_FR_LV1 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		LH_FR_MT1 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		LH_FR_PCM1 /* PreviewCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCacheManager.swift; sourceTree = "<group>"; };
+		LH_FR_RV1 /* RecycleBinListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecycleBinListView.swift; sourceTree = "<group>"; };
+		LH_FR_S1 /* ShareLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLink.swift; sourceTree = "<group>"; };
+		LH_FR_SB1 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		LH_FR_SHL1 /* SharesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharesListView.swift; sourceTree = "<group>"; };
+		LH_FR_SL1 /* SearchListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchListView.swift; sourceTree = "<group>"; };
+		LH_FR_SS1 /* ShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareService.swift; sourceTree = "<group>"; };
+		LH_FR_SV1 /* StarredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredView.swift; sourceTree = "<group>"; };
+		LH_FR_TV1 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
+		LH_FR_U1 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		LH_FR_UPV1 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
+		LH_FR_US1 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
 		LONGHORN002 /* LonghornApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LonghornApp.swift; sourceTree = "<group>"; };
 		LONGHORN004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		LONGHORN006 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		LONGHORN007 /* LonghornApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LonghornApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		LH_FR_U1 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
-		LH_FR_F1 /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileItem.swift; sourceTree = "<group>"; };
-		LH_FR_S1 /* ShareLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLink.swift; sourceTree = "<group>"; };
-		LH_FR_A1 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		LH_FR_AM1 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
-		LH_FR_FS1 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
-		LH_FR_SS1 /* ShareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareService.swift; sourceTree = "<group>"; };
-		LH_FR_LV1 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		LH_FR_MT1 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
-		LH_FR_SB1 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
-		LH_FR_FB1 /* FileBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserView.swift; sourceTree = "<group>"; };
-		LH_FR_SL1 /* SearchListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchListView.swift; sourceTree = "<group>"; };
-		LH_FR_SV1 /* StarredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredView.swift; sourceTree = "<group>"; };
-		LH_FR_RV1 /* RecycleBinListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecycleBinListView.swift; sourceTree = "<group>"; };
-		LH_FR_SHL1 /* SharesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharesListView.swift; sourceTree = "<group>"; };
-		LH_FR_FCM1 /* FileCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCacheManager.swift; sourceTree = "<group>"; };
-		LH_FR_US1 /* UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadService.swift; sourceTree = "<group>"; };
-		LH_FR_FPS1 /* FilePreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewSheet.swift; sourceTree = "<group>"; };
-		LH_FR_TV1 /* ThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailView.swift; sourceTree = "<group>"; };
-		LH_FR_PCM1 /* PreviewCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCacheManager.swift; sourceTree = "<group>"; };
-		LH_FR_UPV1 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		LONGHORN008 = {
+		3D0BE4E92F17DC5400183E47 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				LONGHORN009 /* LonghornApp */,
-				LONGHORN010 /* Products */,
+				3D0BE4E82F17DC5400183E47 /* Localizable.xcstrings */,
 			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
-		LONGHORN009 /* LonghornApp */ = {
+		3D0BE4EC2F17DC7300183E47 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				LONGHORN002 /* LonghornApp.swift */,
-				LONGHORN006 /* ContentView.swift */,
-				LONGHORN004 /* Assets.xcassets */,
-				LH_G_MODELS /* Models */,
-				LH_G_SERVICES /* Services */,
-				LH_G_VIEWS /* Views */,
+				3D0BE4EB2F17DC7300183E47 /* SettingsView.swift */,
 			);
-			path = LonghornApp;
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		LH_G_AUTH /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				LH_FR_LV1 /* LoginView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		LH_G_COMPONENTS /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				3D0BE4FA2F18BFD300183E47 /* ToastView.swift */,
+				3D0BE4C32F16893000183E47 /* DailyWordCompactCard.swift */,
+				3D0BE4BD2F167FDB00183E47 /* DailyWordHeroCard.swift */,
+				3D0BE4BB2F167FCC00183E47 /* StatCard.swift */,
+				3D0BE4AE2F16357B00183E47 /* DailyWordBadge.swift */,
+				LH_FR_FPS1 /* FilePreviewSheet.swift */,
+				LH_FR_TV1 /* ThumbnailView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		LH_G_FILES /* Files */ = {
+			isa = PBXGroup;
+			children = (
+				3D0BE4EE2F17F99C00183E47 /* FilePreviewView.swift */,
+				LH_FR_FB1 /* FileBrowserView.swift */,
+				LH_FR_SL1 /* SearchListView.swift */,
+				LH_FR_UPV1 /* UploadProgressView.swift */,
+				LH_FR_FSV1 /* FileStatsView.swift */,
+			);
+			path = Files;
+			sourceTree = "<group>";
+		};
+		LH_G_MAIN /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				3D0BE4CD2F174B9200183E47 /* DetailStatsView.swift */,
+				3D0BE4CE2F174B9200183E47 /* RecentFilesListView.swift */,
+				3D0BE4C72F16A51B00183E47 /* BrowseView.swift */,
+				3D0BE4C82F16A51B00183E47 /* MoreTabRootView.swift */,
+				3D0BE4C92F16A51B00183E47 /* PersonalTabRootView.swift */,
+				3D0BE4C52F168B8800183E47 /* PersonalSpaceView.swift */,
+				3D0BE4B92F167FA700183E47 /* DashboardView.swift */,
+				LH_FR_MT1 /* MainTabView.swift */,
+				LH_FR_SB1 /* SidebarView.swift */,
+			);
+			path = Main;
 			sourceTree = "<group>";
 		};
 		LH_G_MODELS /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				3D0BE4F62F189A6E00183E47 /* Permission.swift */,
+				3D0BE4F42F18846B00183E47 /* Department+Extensions.swift */,
+				3D0BE4E32F17DA2E00183E47 /* DailyWordsData.swift */,
+				3D0BE4BF2F1680FF00183E47 /* UserStats.swift */,
+				3D0BE4B42F1635F400183E47 /* DailyWord.swift */,
 				LH_FR_U1 /* User.swift */,
 				LH_FR_F1 /* FileItem.swift */,
 				LH_FR_S1 /* ShareLink.swift */,
@@ -93,9 +210,23 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		LH_G_RECYCLE /* RecycleBin */ = {
+			isa = PBXGroup;
+			children = (
+				LH_FR_RV1 /* RecycleBinListView.swift */,
+			);
+			path = RecycleBin;
+			sourceTree = "<group>";
+		};
 		LH_G_SERVICES /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				3D0BE4FC2F19133B00183E47 /* ImageCacheService.swift */,
+				3D0BE4F82F18BFC300183E47 /* ToastManager.swift */,
+				3D0BE4E12F17DA1900183E47 /* LanguageManager.swift */,
+				3D0BE4DB2F175C9600183E47 /* AdminService.swift */,
+				3D0BE4C12F16891400183E47 /* RecentFilesManager.swift */,
+				3D0BE4B62F16360000183E47 /* DailyWordService.swift */,
 				LH_FR_A1 /* APIClient.swift */,
 				LH_FR_AM1 /* AuthManager.swift */,
 				LH_FR_FS1 /* FileService.swift */,
@@ -107,9 +238,28 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		LH_G_SHARES /* Shares */ = {
+			isa = PBXGroup;
+			children = (
+				3D0BE4F22F17FEBF00183E47 /* ShareDialogView.swift */,
+				3D0BE4F02F17F9B000183E47 /* BatchShareDialogView.swift */,
+				LH_FR_SHL1 /* SharesListView.swift */,
+			);
+			path = Shares;
+			sourceTree = "<group>";
+		};
+		LH_G_STARRED /* Starred */ = {
+			isa = PBXGroup;
+			children = (
+				LH_FR_SV1 /* StarredView.swift */,
+			);
+			path = Starred;
+			sourceTree = "<group>";
+		};
 		LH_G_VIEWS /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				3D0BE4EC2F17DC7300183E47 /* Settings */,
 				LH_G_AUTH /* Auth */,
 				LH_G_MAIN /* Main */,
 				LH_G_FILES /* Files */,
@@ -121,64 +271,31 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		LH_G_COMPONENTS /* Components */ = {
+		LONGHORN008 = {
 			isa = PBXGroup;
 			children = (
-				LH_FR_FPS1 /* FilePreviewSheet.swift */,
-				LH_FR_TV1 /* ThumbnailView.swift */,
+				LONGHORN009 /* LonghornApp */,
+				LONGHORN010 /* Products */,
 			);
-			path = Components;
 			sourceTree = "<group>";
 		};
-		LH_G_AUTH /* Auth */ = {
+		LONGHORN009 /* LonghornApp */ = {
 			isa = PBXGroup;
 			children = (
-				LH_FR_LV1 /* LoginView.swift */,
+				3D0BE4E92F17DC5400183E47 /* Resources */,
+				3D0BE4DF2F17A06700183E47 /* FolderPickerView.swift */,
+				3D0BE4DD2F176EA900183E47 /* GrantPermissionSheet.swift */,
+				3D0BE4D72F175BB000183E47 /* TeamManagementView.swift */,
+				3D0BE4D82F175BB000183E47 /* UserDetailView.swift */,
+				3D0BE4B82F16505B00183E47 /* Info.plist */,
+				LONGHORN002 /* LonghornApp.swift */,
+				LONGHORN006 /* ContentView.swift */,
+				LONGHORN004 /* Assets.xcassets */,
+				LH_G_MODELS /* Models */,
+				LH_G_SERVICES /* Services */,
+				LH_G_VIEWS /* Views */,
 			);
-			path = Auth;
-			sourceTree = "<group>";
-		};
-		LH_G_MAIN /* Main */ = {
-			isa = PBXGroup;
-			children = (
-				LH_FR_MT1 /* MainTabView.swift */,
-				LH_FR_SB1 /* SidebarView.swift */,
-			);
-			path = Main;
-			sourceTree = "<group>";
-		};
-		LH_G_FILES /* Files */ = {
-			isa = PBXGroup;
-			children = (
-				LH_FR_FB1 /* FileBrowserView.swift */,
-				LH_FR_SL1 /* SearchListView.swift */,
-				LH_FR_UPV1 /* UploadProgressView.swift */,
-			);
-			path = Files;
-			sourceTree = "<group>";
-		};
-		LH_G_STARRED /* Starred */ = {
-			isa = PBXGroup;
-			children = (
-				LH_FR_SV1 /* StarredView.swift */,
-			);
-			path = Starred;
-			sourceTree = "<group>";
-		};
-		LH_G_RECYCLE /* RecycleBin */ = {
-			isa = PBXGroup;
-			children = (
-				LH_FR_RV1 /* RecycleBinListView.swift */,
-			);
-			path = RecycleBin;
-			sourceTree = "<group>";
-		};
-		LH_G_SHARES /* Shares */ = {
-			isa = PBXGroup;
-			children = (
-				LH_FR_SHL1 /* SharesListView.swift */,
-			);
-			path = Shares;
+			path = LonghornApp;
 			sourceTree = "<group>";
 		};
 		LONGHORN010 /* Products */ = {
@@ -248,6 +365,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3D0BE4EA2F17DC5400183E47 /* Localizable.xcstrings in Resources */,
 				LONGHORN003 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,28 +378,60 @@
 			buildActionMask = 2147483647;
 			files = (
 				LONGHORN001 /* LonghornApp.swift in Sources */,
+				3D0BE4C42F16893000183E47 /* DailyWordCompactCard.swift in Sources */,
+				3D0BE4CF2F174B9200183E47 /* RecentFilesListView.swift in Sources */,
+				3D0BE4D02F174B9200183E47 /* DetailStatsView.swift in Sources */,
+				3D0BE4F92F18BFC300183E47 /* ToastManager.swift in Sources */,
 				LONGHORN005 /* ContentView.swift in Sources */,
+				3D0BE4C22F16891400183E47 /* RecentFilesManager.swift in Sources */,
 				LH_BF_U1 /* User.swift in Sources */,
+				3D0BE4BE2F167FDB00183E47 /* DailyWordHeroCard.swift in Sources */,
+				3D0BE4ED2F17DC7300183E47 /* SettingsView.swift in Sources */,
+				3D0BE4E22F17DA1900183E47 /* LanguageManager.swift in Sources */,
 				LH_BF_F1 /* FileItem.swift in Sources */,
+				3D0BE4B72F16360000183E47 /* DailyWordService.swift in Sources */,
+				3D0BE4E02F17A06700183E47 /* FolderPickerView.swift in Sources */,
 				LH_BF_S1 /* ShareLink.swift in Sources */,
 				LH_BF_A1 /* APIClient.swift in Sources */,
+				3D0BE4FB2F18BFD300183E47 /* ToastView.swift in Sources */,
 				LH_BF_AM1 /* AuthManager.swift in Sources */,
 				LH_BF_FS1 /* FileService.swift in Sources */,
 				LH_BF_SS1 /* ShareService.swift in Sources */,
+				3D0BE4F32F17FEBF00183E47 /* ShareDialogView.swift in Sources */,
+				3D0BE4C62F168B8800183E47 /* PersonalSpaceView.swift in Sources */,
+				3D0BE4F52F18846B00183E47 /* Department+Extensions.swift in Sources */,
 				LH_BF_LV1 /* LoginView.swift in Sources */,
 				LH_BF_MT1 /* MainTabView.swift in Sources */,
 				LH_BF_SB1 /* SidebarView.swift in Sources */,
 				LH_BF_FB1 /* FileBrowserView.swift in Sources */,
 				LH_BF_SL1 /* SearchListView.swift in Sources */,
 				LH_BF_SV1 /* StarredView.swift in Sources */,
+				3D0BE4EF2F17F99C00183E47 /* FilePreviewView.swift in Sources */,
 				LH_BF_RV1 /* RecycleBinListView.swift in Sources */,
+				3D0BE4BA2F167FA700183E47 /* DashboardView.swift in Sources */,
+				3D0BE4D92F175BB000183E47 /* UserDetailView.swift in Sources */,
+				3D0BE4DA2F175BB000183E47 /* TeamManagementView.swift in Sources */,
+				3D0BE4F72F189A6E00183E47 /* Permission.swift in Sources */,
+				3D0BE4BC2F167FCC00183E47 /* StatCard.swift in Sources */,
+				3D0BE4C02F1680FF00183E47 /* UserStats.swift in Sources */,
+				3D0BE4F12F17F9B000183E47 /* BatchShareDialogView.swift in Sources */,
 				LH_BF_SHL1 /* SharesListView.swift in Sources */,
+				3D0BE4AF2F16357B00183E47 /* DailyWordBadge.swift in Sources */,
+				3D0BE4CA2F16A51B00183E47 /* MoreTabRootView.swift in Sources */,
+				3D0BE4CB2F16A51B00183E47 /* PersonalTabRootView.swift in Sources */,
+				3D0BE4CC2F16A51B00183E47 /* BrowseView.swift in Sources */,
 				LH_BF_FCM1 /* FileCacheManager.swift in Sources */,
 				LH_BF_US1 /* UploadService.swift in Sources */,
 				LH_BF_FPS1 /* FilePreviewSheet.swift in Sources */,
+				3D0BE4B52F1635F400183E47 /* DailyWord.swift in Sources */,
+				3D0BE4E42F17DA2E00183E47 /* DailyWordsData.swift in Sources */,
 				LH_BF_TV1 /* ThumbnailView.swift in Sources */,
 				LH_BF_PCM1 /* PreviewCacheManager.swift in Sources */,
 				LH_BF_UPV1 /* UploadProgressView.swift in Sources */,
+				LH_BF_FSV1 /* FileStatsView.swift in Sources */,
+				3D0BE4DC2F175C9600183E47 /* AdminService.swift in Sources */,
+				3D0BE4DE2F176EA900183E47 /* GrantPermissionSheet.swift in Sources */,
+				3D0BE4FD2F19133B00183E47 /* ImageCacheService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,6 +568,7 @@
 				DEVELOPMENT_TEAM = P98ZU6498D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LonghornApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Longhorn;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -450,6 +601,7 @@
 				DEVELOPMENT_TEAM = P98ZU6498D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LonghornApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Longhorn;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
