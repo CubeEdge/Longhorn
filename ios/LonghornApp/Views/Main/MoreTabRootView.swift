@@ -51,57 +51,46 @@ struct MoreTabRootView: View {
 
                     // System Dashboard (Visible for Admin)
                     if authManager.currentUser?.isAdmin == true {
-                        Group {
-                            if let stats = systemStats {
-                                NavigationLink(destination: SystemDashboardView(stats: stats)) {
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        HStack {
-                                            Image(systemName: "server.rack")
-                                                .foregroundColor(.purple)
-                                            Text("more.system_overview")
-                                                .font(.headline)
-                                            Spacer()
-                                            Text("stats.details")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        HStack {
-                                            StatItem(title: String(localized: "stats.files"), value: "\(stats.totalFiles)", icon: "doc.on.doc.fill", color: .purple)
-                                            Divider()
-                                            StatItem(title: String(localized: "stats.storage"), value: ByteCountFormatter.string(fromByteCount: stats.storage.used, countStyle: .file), icon: "xmark.bin.fill", color: .red)
-                                            Divider()
-                                            StatItem(title: String(localized: "stats.today_files"), value: "\(stats.todayStats.count)", icon: "doc.badge.plus", color: .blue)
-                                        }
-                                    }
-                                    .padding(.vertical, 8)
-                                }
-                            } else if showError {
-                                // Error State
-                                Button(action: {
-                                    Task { await loadStats() }
-                                }) {
-                                    VStack(alignment: .leading) {
-                                        HStack {
-                                            Image(systemName: "exclamationmark.triangle")
-                                                .foregroundColor(.red)
-                                            Text("action.retry_load")
-                                                .foregroundColor(.red)
-                                                .fontWeight(.bold)
-                                            Spacer()
-                                        }
-                                        Text(errorMessage)
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                    }
-                                    .padding(.vertical, 8)
-                                }
-                            } else {
-                                // Loading State
+                        NavigationLink(destination: SystemDashboardView(stats: systemStats ?? SystemStats.placeholder)) {
+                            VStack(alignment: .leading, spacing: 10) {
                                 HStack {
-                                    Text("browser.loading")
+                                    Image(systemName: "server.rack")
+                                        .foregroundColor(.purple)
+                                    Text("more.system_overview")
+                                        .font(.headline)
                                     Spacer()
-                                    ProgressView()
+                                    Text("stats.details")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                HStack {
+                                    StatItem(title: String(localized: "stats.files"), value: systemStats.map { "\($0.totalFiles)" } ?? "—", icon: "doc.on.doc.fill", color: .purple)
+                                    Divider()
+                                    StatItem(title: String(localized: "stats.storage"), value: systemStats.map { ByteCountFormatter.string(fromByteCount: $0.storage.used, countStyle: .file) } ?? "—", icon: "xmark.bin.fill", color: .red)
+                                    Divider()
+                                    StatItem(title: String(localized: "stats.today_files"), value: systemStats.map { "\($0.todayStats.count)" } ?? "—", icon: "doc.badge.plus", color: .blue)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        .disabled(systemStats == nil && !showError)
+                        
+                        // Error overlay (only show if there's an error)
+                        if showError {
+                            Button(action: {
+                                Task { await loadStats() }
+                            }) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                    Text(errorMessage)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text("action.retry")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
                                 }
                             }
                         }

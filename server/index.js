@@ -1578,14 +1578,21 @@ function generateShareToken() {
 // Get user's share links
 app.get('/api/shares', authenticate, (req, res) => {
     try {
-        const shares = db.prepare(`
-            SELECT id, user_id, file_path, file_name, 
+        const rawShares = db.prepare(`
+            SELECT id, user_id, file_path, 
                    share_token as token, expires_at, access_count, created_at, language,
                    (password IS NOT NULL AND password != '') as has_password
             FROM share_links 
             WHERE user_id = ?
             ORDER BY created_at DESC
         `).all(req.user.id);
+
+        // Add file_name derived from file_path
+        const shares = rawShares.map(s => ({
+            ...s,
+            file_name: s.file_path ? s.file_path.split('/').pop() : null
+        }));
+
         res.json(shares);
     } catch (err) {
         console.error('[Shares] Error fetching:', err);

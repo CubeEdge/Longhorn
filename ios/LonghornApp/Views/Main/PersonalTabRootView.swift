@@ -55,24 +55,17 @@ struct PersonalTabRootView: View {
                 
                 // MARK: - Core Stats
                 Section(header: Text("personal.core_stats")) {
-                    if let stats = stats {
-                        NavigationLink(destination: DetailStatsView(title: String(localized: "personal.core_stats"), stats: stats)) {
-                            HStack {
-                                StatItem(title: String(localized: "stats.upload"), value: "\(stats.uploadCount)", icon: "doc.fill", color: .blue)
-                                Divider()
-                                StatItem(title: String(localized: "stats.storage"), value: formatBytes(stats.storageUsed), icon: "externaldrive.fill", color: .orange)
-                                Divider()
-                                StatItem(title: String(localized: "stats.starred"), value: "\(stats.starredCount)", icon: "star.fill", color: .yellow)
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    } else {
+                    NavigationLink(destination: DetailStatsView(title: String(localized: "personal.core_stats"), stats: stats ?? UserStats.placeholder)) {
                         HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
+                            StatItem(title: String(localized: "stats.upload"), value: stats.map { "\($0.uploadCount)" } ?? "—", icon: "doc.fill", color: .blue)
+                            Divider()
+                            StatItem(title: String(localized: "stats.storage"), value: stats.map { formatBytes($0.storageUsed) } ?? "—", icon: "externaldrive.fill", color: .orange)
+                            Divider()
+                            StatItem(title: String(localized: "stats.starred"), value: stats.map { "\($0.starredCount)" } ?? "—", icon: "star.fill", color: .yellow)
                         }
+                        .padding(.vertical, 8)
                     }
+                    .disabled(stats == nil)
                 }
                 
                 // MARK: - Other Links (Optional)
