@@ -286,7 +286,7 @@ struct SharesListView: View {
                 selectedCollectionIds.removeAll()
             }
             isSelectionMode = false
-            await loadData()
+            await store.refreshData()
         }
     }
 }
