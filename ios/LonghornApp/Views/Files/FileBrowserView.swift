@@ -767,7 +767,9 @@ struct FileBrowserView: View {
     }
     
     private var sortedFiles: [FileItem] {
-        var sorted = files
+        // 优先使用 Store 缓存，如果为空则使用本地 files
+        let sourceFiles = store.getFiles(for: path).isEmpty ? files : store.getFiles(for: path)
+        var sorted = sourceFiles
         
         // 文件夹优先
         sorted.sort { $0.isDirectory && !$1.isDirectory }
