@@ -148,13 +148,13 @@ struct FilePreviewView: View {
             Button {
                 Task {
                     try? await FileService.shared.toggleStar(path: file.path)
-                    ToastManager.shared.show("已收藏", type: .success)
+                    ToastManager.shared.show(String(localized: "toast.starred"), type: .success)
                 }
             } label: {
                 VStack(spacing: 4) {
                     Image(systemName: file.isStarred == true ? "star.fill" : "star")
                         .font(.system(size: 22))
-                    Text("收藏")
+                    Text("action.favorite")
                         .font(.caption2)
                 }
             }
@@ -167,7 +167,7 @@ struct FilePreviewView: View {
                 VStack(spacing: 4) {
                     Image(systemName: hasOriginal ? "checkmark.circle.fill" : "arrow.down.circle")
                         .font(.system(size: 22))
-                    Text(hasOriginal ? "已下载" : "原图(\(file.formattedSize))")
+                    Text(hasOriginal ? String(localized: "status.downloaded") : String(localized: "action.download_original \(file.formattedSize)"))
                         .font(.caption2)
                 }
             }
@@ -189,7 +189,7 @@ struct FilePreviewView: View {
                 VStack(spacing: 4) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 22))
-                    Text("分享")
+                    Text("action.share")
                         .font(.caption2)
                 }
             }

@@ -337,7 +337,7 @@ struct FilePreviewSheet: View {
                 Button {
                     onDownload()
                 } label: {
-                    Label("下载文件", systemImage: "arrow.down.circle")
+                    Label("action.download", systemImage: "arrow.down.circle")
                         .font(.headline)
                 }
                 .buttonStyle(.borderedProminent)
@@ -358,7 +358,7 @@ struct FilePreviewSheet: View {
                     VStack(spacing: 4) {
                         Image(systemName: isStarred ? "star.fill" : "star")
                             .font(.system(size: 28))
-                        Text(isStarred ? "已收藏" : "收藏")
+                        Text(isStarred ? "status.starred" : "action.favorite")
                             .font(.caption)
                     }
                 }
@@ -370,7 +370,7 @@ struct FilePreviewSheet: View {
                     VStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle")
                             .font(.system(size: 28))
-                        Text("下载")
+                        Text("action.download")
                             .font(.caption)
                     }
                 }
@@ -382,7 +382,7 @@ struct FilePreviewSheet: View {
                     VStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 28))
-                        Text("分享")
+                        Text("action.share")
                             .font(.caption)
                     }
                 }
