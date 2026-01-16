@@ -4603,37 +4603,37 @@
     "starred.confirm_unstar_count %lld" : {
 
     },
-    "starred.folder" : {
-
-    },
-    "starred.hint" : {
+    "starred.confirm_unstar_message" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Markierte Dateien und Ordner werden hier angezeigt"
+            "value" : "Möchten Sie \"%@\" wirklich aus den Favoriten entfernen?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starred files and folders will appear here"
+            "value" : "Are you sure you want to unstar \"%@\"?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スター付きのファイルとフォルダはここに表示されます"
+            "value" : "本当に \"%@\" のスターを外しますか？"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "收藏的文件和文件夹将显示在这里"
+            "value" : "确定要取消收藏“%@”吗？"
           }
         }
       }
+    },
+    "starred.confirm_unstar_message %@" : {
+
     },
     "starred.confirm_unstar_single" : {
       "extractionState" : "manual",
@@ -4664,147 +4664,34 @@
         }
       }
     },
-    "starred.confirm_unstar_message" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Möchten Sie \"%@\" wirklich aus den Favoriten entfernen?"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Are you sure you want to unstar \"%@\"?"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "本当に \"%@\" のスターを外しますか？"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "确定要取消收藏“%@”吗？"
-          }
-        }
-      }
+    "starred.folder" : {
+
     },
-    "starred.unstar_success" : {
+    "starred.hint" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus Favoriten entfernt"
+            "value" : "Markierte Dateien und Ordner werden hier angezeigt"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Item unstarred successfully"
+            "value" : "Starred files and folders will appear here"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スターを解除しました"
+            "value" : "スター付きのファイルとフォルダはここに表示されます"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已取消收藏"
-          }
-        }
-      }
-    },
-    "starred.unstar_failed" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fehler beim Entfernen aus Favoriten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to unstar item"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "スター解除に失敗しました"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "取消收藏失败"
-          }
-        }
-      }
-    },
-    "starred.unstar_batch_success" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d Elemente aus Favoriten entfernt"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Successfully unstarred %d items"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 個の項目のスターを解除しました"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "已成功取消收藏 %d 个项目"
-          }
-        }
-      }
-    },
-    "starred.unstar_batch_partial" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d entfernt, %d fehlgeschlagen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unstarred %d items, %d failed"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 個解除成功、%d 個失敗"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "成功取消 %d 个，失败 %d 个"
+            "value" : "收藏的文件和文件夹将显示在这里"
           }
         }
       }
@@ -4892,6 +4779,135 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "收藏"
+          }
+        }
+      }
+    },
+    "starred.unstar_batch_partial" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d entfernt, %d fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unstarred %d items, %d failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d 個解除成功、%d 個失敗"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "成功取消 %d 个，失败 %d 个"
+          }
+        }
+      }
+    },
+    "starred.unstar_batch_partial %lld %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "starred.unstar_batch_partial %1$lld %2$lld"
+          }
+        }
+      }
+    },
+    "starred.unstar_batch_success" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d Elemente aus Favoriten entfernt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Successfully unstarred %d items"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d 個の項目のスターを解除しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已成功取消收藏 %d 个项目"
+          }
+        }
+      }
+    },
+    "starred.unstar_batch_success %lld" : {
+
+    },
+    "starred.unstar_failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehler beim Entfernen aus Favoriten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to unstar item"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スター解除に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消收藏失败"
+          }
+        }
+      }
+    },
+    "starred.unstar_success" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Favoriten entfernt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item unstarred successfully"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スターを解除しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已取消收藏"
           }
         }
       }

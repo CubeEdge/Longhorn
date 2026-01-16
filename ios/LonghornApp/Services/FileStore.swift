@@ -93,6 +93,13 @@ class FileStore: ObservableObject {
         loadingStates.removeAll()
     }
     
+    /// 外部设置缓存（用于与现有 loadFiles 逻辑同步）
+    func setFiles(_ files: [FileItem], for path: String) {
+        cache[path] = files
+        lastUpdated[path] = Date()
+        loadingStates[path] = false
+    }
+    
     /// 乐观更新：删除文件
     func deleteFile(_ file: FileItem, in path: String) {
         if var files = cache[path] {
