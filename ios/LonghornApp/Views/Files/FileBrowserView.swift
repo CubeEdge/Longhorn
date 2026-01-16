@@ -514,8 +514,6 @@ struct FileBrowserView: View {
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
         selectionToolbarItem
         viewOptionsToolbarItem
         addMenuToolbarItem
@@ -612,7 +610,7 @@ struct FileBrowserView: View {
         }
     }
 
-    }
+
     
     // MARK: - 上下文菜单
     
