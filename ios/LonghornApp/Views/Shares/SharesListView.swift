@@ -10,7 +10,7 @@ import SwiftUI
 struct SharesListView: View {
     @State private var shares: [ShareLink] = []
     @State private var collections: [ShareCollection] = []
-    @State private var isLoading = true
+    @State private var isFirstLoad = true
     @State private var errorMessage: String?
     @State private var selectedTab: ShareTab = .files
     
@@ -41,7 +41,7 @@ struct SharesListView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Tab 选择器
+            // Tab 选择器 - 始终可见，不受加载状态影响
             Picker("share.list.type", selection: $selectedTab) {
                 ForEach(ShareTab.allCases, id: \.self) { tab in
                     Text(tab.title).tag(tab)
@@ -50,30 +50,35 @@ struct SharesListView: View {
             .pickerStyle(.segmented)
             .padding()
             
-            // 内容
-            ZStack {
-                if isLoading {
-                    ProgressView(String(localized: "browser.loading"))
-                } else if let error = errorMessage {
-                    ContentUnavailableView(
-                        String(localized: "alert.error"),
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(error)
-                    )
-                } else {
-                    switch selectedTab {
-                    case .files:
-                        fileSharesContent
-                    case .collections:
-                        collectionsContent
-                    }
+            // 内容区域 - 始终显示结构，只有数据变化
+            if let error = errorMessage {
+                ContentUnavailableView(
+                    String(localized: "alert.error"),
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
+            } else if isFirstLoad && shares.isEmpty && collections.isEmpty {
+                // 仅在首次加载且没有缓存数据时显示 loading
+                VStack {
+                    ProgressView()
+                    Text("browser.loading")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // 正常显示列表内容
+                switch selectedTab {
+                case .files:
+                    fileSharesContent
+                case .collections:
+                    collectionsContent
                 }
             }
         }
-        .onAppear {
-            Task {
-                await loadData()
-            }
+        .task {
+            await loadData()
         }
         .navigationTitle(Text("quick.my_shares"))
         .toolbar {
@@ -101,7 +106,7 @@ struct SharesListView: View {
              Text("share.confirm_delete_count \(count)")
         }
         .refreshable {
-            await loadData()
+            await refreshData()
         }
 
         .sheet(isPresented: $showEditSheet) {
@@ -114,7 +119,7 @@ struct SharesListView: View {
                     onDismiss: {
                         showEditSheet = false
                         editShareItem = nil
-                        Task { await loadData() }
+                        Task { await refreshData() }
                     }
                 )
             } else if let collection = editCollectionItem {
@@ -126,7 +131,7 @@ struct SharesListView: View {
                     onDismiss: {
                         showEditSheet = false
                         editCollectionItem = nil
-                        Task { await loadData() }
+                        Task { await refreshData() }
                     }
                 )
             }
@@ -248,33 +253,54 @@ struct SharesListView: View {
     
     // MARK: - 数据加载
     
+    /// 首次加载 - 进入页面时调用
     private func loadData() async {
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-            print("SharesListView: loadData started")
-        }
+        errorMessage = nil
         
         do {
             async let sharesTask = ShareService.shared.getMyShares()
             async let collectionsTask = ShareService.shared.getMyCollections()
             
-            print("SharesListView: Requesting shares and collections...")
-            let (shares, collections) = try await (sharesTask, collectionsTask)
-            print("SharesListView: Received \(shares.count) shares, \(collections.count) collections")
+            let (newShares, newCollections) = try await (sharesTask, collectionsTask)
             
             await MainActor.run {
-                self.shares = shares
-                self.collections = collections
-                self.isLoading = false
-                print("SharesListView: Data loaded successfully")
+                self.shares = newShares
+                self.collections = newCollections
+                self.isFirstLoad = false
             }
+        } catch is CancellationError {
+            // 任务被取消时不显示错误（例如用户快速切换页面）
+            print("SharesListView: loadData cancelled")
         } catch {
             print("SharesListView: loadData failed with error: \(error)")
             await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
+                // 只有在首次加载失败时才显示错误
+                if self.shares.isEmpty && self.collections.isEmpty {
+                    self.errorMessage = error.localizedDescription
+                }
+                self.isFirstLoad = false
             }
+        }
+    }
+    
+    /// 下拉刷新 - 静默更新数据，不影响 UI 状态
+    private func refreshData() async {
+        do {
+            async let sharesTask = ShareService.shared.getMyShares()
+            async let collectionsTask = ShareService.shared.getMyCollections()
+            
+            let (newShares, newCollections) = try await (sharesTask, collectionsTask)
+            
+            await MainActor.run {
+                self.shares = newShares
+                self.collections = newCollections
+                self.errorMessage = nil
+            }
+        } catch is CancellationError {
+            // 下拉刷新被取消时静默忽略
+        } catch {
+            // 刷新失败时保留现有数据，不显示错误
+            print("SharesListView: refreshData failed: \(error)")
         }
     }
     

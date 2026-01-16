@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var languageManager: LanguageManager
     @State private var serverURL = APIClient.shared.baseURL
+    @State private var cacheCleared = false
     
     var body: some View {
         Form {
@@ -35,15 +36,18 @@ struct SettingsView: View {
                 }
             }
             
-            Section(header: Text("缓存管理")) {
+            Section(header: Text("settings.cache")) {
                 Button(role: .destructive) {
                     clearAllCache()
                 } label: {
                     HStack {
-                        Image(systemName: "trash")
-                        Text("清除所有图片缓存")
+                        Image(systemName: cacheCleared ? "checkmark.circle.fill" : "trash")
+                            .foregroundColor(cacheCleared ? .green : .red)
+                        Text(cacheCleared ? "settings.cache_cleared" : "settings.clear_cache")
+                            .foregroundColor(cacheCleared ? .secondary : .red)
                     }
                 }
+                .disabled(cacheCleared)
             }
         }
         .navigationTitle(Text("settings.title"))
@@ -58,6 +62,10 @@ struct SettingsView: View {
             await PreviewCacheManager.shared.clearAll()
         }
         
-        ToastManager.shared.show("缓存已清除", type: .success)
+        // Update state and show feedback
+        withAnimation {
+            cacheCleared = true
+        }
+        ToastManager.shared.show(String(localized: "settings.cache_cleared"), type: .success)
     }
 }
