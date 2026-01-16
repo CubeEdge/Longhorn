@@ -17,11 +17,6 @@ struct SharesListView: View {
     @State private var selectedCollectionIds: Set<Int> = []
     @State private var showDeleteConfirmation = false
     
-    // 单条删除确认
-    @State private var showSingleDeleteConfirmation = false
-    @State private var shareToDelete: ShareLink?
-    @State private var collectionToDelete: ShareCollection?
-    
     // 编辑相关
     @State private var showEditSheet = false
     @State private var editShareItem: ShareLink?
@@ -111,29 +106,6 @@ struct SharesListView: View {
         .refreshable {
             // 下拉强制刷新
             await store.refreshData()
-        }
-        .confirmationDialog(
-            String(localized: "share.confirm_delete_single"),
-            isPresented: $showSingleDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(String(localized: "action.delete"), role: .destructive) {
-                if shareToDelete != nil {
-                    confirmDeleteShare()
-                } else if collectionToDelete != nil {
-                    confirmDeleteCollection()
-                }
-            }
-            Button(String(localized: "action.cancel"), role: .cancel) {
-                shareToDelete = nil
-                collectionToDelete = nil
-            }
-        } message: {
-            if let share = shareToDelete {
-                Text("确定删除分享「\(share.fileName ?? share.filePath)」？")
-            } else if let collection = collectionToDelete {
-                Text("确定删除合集「\(collection.name)」？")
-            }
         }
 
         .sheet(isPresented: $showEditSheet) {
@@ -281,12 +253,6 @@ struct SharesListView: View {
     // MARK: - 操作方法
     
     private func deleteShare(_ share: ShareLink) {
-        shareToDelete = share
-        showSingleDeleteConfirmation = true
-    }
-    
-    private func confirmDeleteShare() {
-        guard let share = shareToDelete else { return }
         Task {
             do {
                 try await store.deleteShare(share.id)
@@ -295,17 +261,10 @@ struct SharesListView: View {
                 print("Delete share failed: \(error)")
                 ToastManager.shared.show(String(localized: "share.delete_failed"), type: .error)
             }
-            shareToDelete = nil
         }
     }
     
     private func deleteCollection(_ collection: ShareCollection) {
-        collectionToDelete = collection
-        showSingleDeleteConfirmation = true
-    }
-    
-    private func confirmDeleteCollection() {
-        guard let collection = collectionToDelete else { return }
         Task {
             do {
                 try await store.deleteCollection(collection.id)
@@ -314,8 +273,8 @@ struct SharesListView: View {
                 print("Delete collection failed: \(error)")
                 ToastManager.shared.show(String(localized: "share.delete_failed"), type: .error)
             }
-            collectionToDelete = nil
         }
+    }
     }
     
     private func batchDelete() {
@@ -345,6 +304,7 @@ struct ShareItemRow: View {
     let onDelete: () -> Void
     
     @State private var showCopied = false
+    @State private var showDeleteConfirmation = false
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
@@ -437,13 +397,25 @@ struct ShareItemRow: View {
                 .buttonStyle(.plain)
                 
                 Button(role: .destructive) {
-                    onDelete()
+                    showDeleteConfirmation = true
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
+                .confirmationDialog(
+                    String(localized: "alert.confirm_delete"),
+                    isPresented: $showDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button(String(localized: "action.delete"), role: .destructive) {
+                        onDelete()
+                    }
+                    Button(String(localized: "action.cancel"), role: .cancel) {}
+                } message: {
+                    Text("确定删除分享「\(share.fileName ?? share.filePath)」？")
+                }
             }
         }
         .padding(.vertical, 8)
@@ -473,6 +445,7 @@ struct CollectionItemRow: View {
     let onDelete: () -> Void
     
     @State private var showCopied = false
+    @State private var showDeleteConfirmation = false
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
@@ -570,13 +543,25 @@ struct CollectionItemRow: View {
                 .buttonStyle(.plain)
                 
                 Button(role: .destructive) {
-                    onDelete()
+                    showDeleteConfirmation = true
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
+                .confirmationDialog(
+                    String(localized: "alert.confirm_delete"),
+                    isPresented: $showDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button(String(localized: "action.delete"), role: .destructive) {
+                        onDelete()
+                    }
+                    Button(String(localized: "action.cancel"), role: .cancel) {}
+                } message: {
+                    Text("确定删除合集「\(collection.name)」？")
+                }
             }
         }
         .padding(.vertical, 8)

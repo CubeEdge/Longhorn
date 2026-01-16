@@ -3582,6 +3582,9 @@
     "share.confirm_delete_count %lld" : {
 
     },
+    "share.confirm_delete_single" : {
+
+    },
     "share.content" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3639,6 +3642,12 @@
           }
         }
       }
+    },
+    "share.delete_failed" : {
+
+    },
+    "share.delete_success" : {
+
     },
     "share.edit.enter_password" : {
       "extractionState" : "manual",
@@ -6112,6 +6121,12 @@
 
     },
     "确定" : {
+
+    },
+    "确定删除分享「%@」？" : {
+
+    },
+    "确定删除合集「%@」？" : {
 
     },
     "确定要删除 \"%@\" 吗？" : {
