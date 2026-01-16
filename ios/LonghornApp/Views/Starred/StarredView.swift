@@ -20,6 +20,10 @@ struct StarredView: View {
     @State private var selectedIds: Set<Int> = []
     @State private var showDeleteConfirmation = false
     
+    // 单条删除确认
+    @State private var itemToUnstar: StarredItem?
+    @State private var showSingleUnstarConfirmation = false
+    
     // 预览
     @State private var previewItem: StarredItem?
     @State private var previewURL: URL?
@@ -118,6 +122,22 @@ struct StarredView: View {
         } message: { count in
             Text("starred.confirm_unstar_count \(count)")
         }
+        // 单条取消收藏确认
+        .confirmationDialog(
+            "starred.confirm_unstar_single",
+            isPresented: $showSingleUnstarConfirmation,
+            titleVisibility: .visible,
+            presenting: itemToUnstar
+        ) { item in
+            Button("action.unstar", role: .destructive) {
+                confirmUnstarItem(item)
+            }
+            Button("action.cancel", role: .cancel) {
+                itemToUnstar = nil
+            }
+        } message: { item in
+            Text("starred.confirm_unstar_message \(item.displayName)")
+        }
         .quickLookPreview($previewURL)
     }
     
@@ -138,7 +158,8 @@ struct StarredView: View {
                 }
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
-                        unstarItem(item)
+                        itemToUnstar = item
+                        showSingleUnstarConfirmation = true
                     } label: {
                         Label("action.unstar", systemImage: "star.slash")
                     }
@@ -348,31 +369,43 @@ struct StarredView: View {
         // TODO: 导航到对应目录
     }
     
-    private func unstarItem(_ item: StarredItem) {
+    /// 确认取消收藏单个项目（带 Toast 反馈）
+    private func confirmUnstarItem(_ item: StarredItem) {
         Task {
             do {
                 try await FileService.shared.unstarFile(id: item.id)
                 // 乐观更新本地数据
                 await MainActor.run {
                     starredItems.removeAll { $0.id == item.id }
+                    itemToUnstar = nil
                 }
                 // 通知其他视图刷新
                 NotificationCenter.default.post(name: .starredDidChange, object: nil)
+                // 成功提示
+                ToastManager.shared.show(String(localized: "starred.unstar_success"), type: .success)
             } catch {
                 print("Unstar failed: \(error)")
+                // 失败提示
+                ToastManager.shared.show(String(localized: "starred.unstar_failed"), type: .error)
                 // 失败时刷新以恢复状态
                 await refreshData()
             }
         }
     }
     
+    /// 批量取消收藏（带 Toast 反馈）
     private func unstarSelectedItems() {
         Task {
+            var successCount = 0
+            var failCount = 0
+            
             for id in selectedIds {
                 do {
                     try await FileService.shared.unstarFile(id: id)
+                    successCount += 1
                 } catch {
                     print("Unstar \(id) failed: \(error)")
+                    failCount += 1
                 }
             }
             // 乐观更新
@@ -383,6 +416,12 @@ struct StarredView: View {
             }
             // 通知其他视图
             NotificationCenter.default.post(name: .starredDidChange, object: nil)
+            // 结果提示
+            if failCount == 0 {
+                ToastManager.shared.show(String(localized: "starred.unstar_batch_success \(successCount)"), type: .success)
+            } else {
+                ToastManager.shared.show(String(localized: "starred.unstar_batch_partial \(successCount) \(failCount)"), type: .warning)
+            }
         }
     }
 }

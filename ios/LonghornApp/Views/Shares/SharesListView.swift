@@ -8,10 +8,7 @@
 import SwiftUI
 
 struct SharesListView: View {
-    @State private var shares: [ShareLink] = []
-    @State private var collections: [ShareCollection] = []
-    @State private var isFirstLoad = true
-    @State private var errorMessage: String?
+    @StateObject private var store = ShareStore.shared
     @State private var selectedTab: ShareTab = .files
     
     // 选择模式
@@ -51,13 +48,13 @@ struct SharesListView: View {
             .padding()
             
             // 内容区域 - 始终显示结构，只有数据变化
-            if let error = errorMessage {
+            if let error = store.errorMessage {
                 ContentUnavailableView(
                     String(localized: "alert.error"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
-            } else if isFirstLoad && shares.isEmpty && collections.isEmpty {
+            } else if store.isFirstLoad && store.shares.isEmpty && store.collections.isEmpty {
                 // 仅在首次加载且没有缓存数据时显示 loading
                 VStack {
                     ProgressView()
@@ -78,7 +75,8 @@ struct SharesListView: View {
             }
         }
         .task {
-            await loadData()
+            // 使用智能加载：有缓存则不请求
+            await store.loadDataIfNeeded()
         }
         .navigationTitle(Text("quick.my_shares"))
         .toolbar {
@@ -106,7 +104,8 @@ struct SharesListView: View {
              Text("share.confirm_delete_count \(count)")
         }
         .refreshable {
-            await refreshData()
+            // 下拉强制刷新
+            await store.refreshData()
         }
 
         .sheet(isPresented: $showEditSheet) {
@@ -119,7 +118,7 @@ struct SharesListView: View {
                     onDismiss: {
                         showEditSheet = false
                         editShareItem = nil
-                        Task { await refreshData() }
+                        Task { await store.refreshData() }
                     }
                 )
             } else if let collection = editCollectionItem {
@@ -131,7 +130,7 @@ struct SharesListView: View {
                     onDismiss: {
                         showEditSheet = false
                         editCollectionItem = nil
-                        Task { await refreshData() }
+                        Task { await store.refreshData() }
                     }
                 )
             }
@@ -146,7 +145,7 @@ struct SharesListView: View {
     
     @ViewBuilder
     private var fileSharesContent: some View {
-        if shares.isEmpty {
+        if store.shares.isEmpty {
             ContentUnavailableView(
                 String(localized: "share.no_files"),
                 systemImage: "square.and.arrow.up",
@@ -157,14 +156,14 @@ struct SharesListView: View {
                 // 批量操作栏
                 if isSelectionMode && !selectedShareIds.isEmpty {
                     batchActionBar(count: selectedShareIds.count, selectAll: {
-                        selectedShareIds = Set(shares.map { $0.id })
+                        selectedShareIds = Set(store.shares.map { $0.id })
                     }, deselectAll: {
                         selectedShareIds.removeAll()
                     })
                 }
                 
                 List(selection: isSelectionMode ? $selectedShareIds : nil) {
-                    ForEach(shares) { share in
+                    ForEach(store.shares) { share in
                         ShareItemRow(share: share, onEdit: {
                             editShareItem = share
                             showEditSheet = true
@@ -184,7 +183,7 @@ struct SharesListView: View {
     
     @ViewBuilder
     private var collectionsContent: some View {
-        if collections.isEmpty {
+        if store.collections.isEmpty {
             ContentUnavailableView(
                 String(localized: "share.no_collections"),
                 systemImage: "rectangle.stack",
@@ -194,14 +193,14 @@ struct SharesListView: View {
             VStack(spacing: 0) {
                 if isSelectionMode && !selectedCollectionIds.isEmpty {
                     batchActionBar(count: selectedCollectionIds.count, selectAll: {
-                        selectedCollectionIds = Set(collections.map { $0.id })
+                        selectedCollectionIds = Set(store.collections.map { $0.id })
                     }, deselectAll: {
                         selectedCollectionIds.removeAll()
                     })
                 }
                 
                 List(selection: isSelectionMode ? $selectedCollectionIds : nil) {
-                    ForEach(collections) { collection in
+                    ForEach(store.collections) { collection in
                         CollectionItemRow(collection: collection, onEdit: {
                             editCollectionItem = collection
                             showEditSheet = true
@@ -221,8 +220,8 @@ struct SharesListView: View {
     
     private func batchActionBar(count: Int, selectAll: @escaping () -> Void, deselectAll: @escaping () -> Void) -> some View {
         HStack {
-            Button(count == (selectedTab == .files ? shares.count : collections.count) ? "common.cancel_selection" : "action.select_all") {
-                if count == (selectedTab == .files ? shares.count : collections.count) {
+            Button(count == (selectedTab == .files ? store.shares.count : store.collections.count) ? "common.cancel_selection" : "action.select_all") {
+                if count == (selectedTab == .files ? store.shares.count : store.collections.count) {
                     deselectAll()
                 } else {
                     selectAll()
@@ -251,64 +250,12 @@ struct SharesListView: View {
         .background(Color(UIColor.secondarySystemBackground))
     }
     
-    // MARK: - 数据加载
-    
-    /// 首次加载 - 进入页面时调用
-    private func loadData() async {
-        errorMessage = nil
-        
-        do {
-            async let sharesTask = ShareService.shared.getMyShares()
-            async let collectionsTask = ShareService.shared.getMyCollections()
-            
-            let (newShares, newCollections) = try await (sharesTask, collectionsTask)
-            
-            await MainActor.run {
-                self.shares = newShares
-                self.collections = newCollections
-                self.isFirstLoad = false
-            }
-        } catch is CancellationError {
-            // 任务被取消时不显示错误（例如用户快速切换页面）
-            print("SharesListView: loadData cancelled")
-        } catch {
-            print("SharesListView: loadData failed with error: \(error)")
-            await MainActor.run {
-                // 只有在首次加载失败时才显示错误
-                if self.shares.isEmpty && self.collections.isEmpty {
-                    self.errorMessage = error.localizedDescription
-                }
-                self.isFirstLoad = false
-            }
-        }
-    }
-    
-    /// 下拉刷新 - 静默更新数据，不影响 UI 状态
-    private func refreshData() async {
-        do {
-            async let sharesTask = ShareService.shared.getMyShares()
-            async let collectionsTask = ShareService.shared.getMyCollections()
-            
-            let (newShares, newCollections) = try await (sharesTask, collectionsTask)
-            
-            await MainActor.run {
-                self.shares = newShares
-                self.collections = newCollections
-                self.errorMessage = nil
-            }
-        } catch is CancellationError {
-            // 下拉刷新被取消时静默忽略
-        } catch {
-            // 刷新失败时保留现有数据，不显示错误
-            print("SharesListView: refreshData failed: \(error)")
-        }
-    }
+    // MARK: - 操作方法
     
     private func deleteShare(_ share: ShareLink) {
         Task {
             do {
-                try await ShareService.shared.deleteShare(id: share.id)
-                await loadData()
+                try await store.deleteShare(share.id)
             } catch {
                 print("Delete share failed: \(error)")
             }
@@ -318,8 +265,7 @@ struct SharesListView: View {
     private func deleteCollection(_ collection: ShareCollection) {
         Task {
             do {
-                try await ShareService.shared.deleteCollection(id: collection.id)
-                await loadData()
+                try await store.deleteCollection(collection.id)
             } catch {
                 print("Delete collection failed: \(error)")
             }
