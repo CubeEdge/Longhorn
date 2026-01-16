@@ -376,9 +376,7 @@ struct StarredView: View {
         }
     }
     
-    private func navigateToFolder(_ item: StarredItem) {
-        // TODO: 导航到对应目录
-    }
+
     
     /// 确认取消收藏单个项目（带 Toast 反馈）
     private func confirmUnstarItem(_ item: StarredItem) {
