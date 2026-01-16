@@ -1587,10 +1587,11 @@ app.get('/api/shares', authenticate, (req, res) => {
             ORDER BY created_at DESC
         `).all(req.user.id);
 
-        // Add file_name derived from file_path
+        // Transform data for iOS compatibility
         const shares = rawShares.map(s => ({
             ...s,
-            file_name: s.file_path ? s.file_path.split('/').pop() : null
+            file_name: s.file_path ? s.file_path.split('/').pop() : null,
+            has_password: Boolean(s.has_password)  // Convert 0/1 to boolean
         }));
 
         res.json(shares);
