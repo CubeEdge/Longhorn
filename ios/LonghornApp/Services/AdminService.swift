@@ -102,17 +102,36 @@ struct SystemStats: Codable {
     let storage: StorageStats
     let topUploaders: [UploaderStats]
     let totalFiles: Int
+    
+    static var placeholder: SystemStats {
+        SystemStats(
+            todayStats: .placeholder,
+            weekStats: .placeholder,
+            monthStats: .placeholder,
+            storage: .placeholder,
+            topUploaders: [],
+            totalFiles: 0
+        )
+    }
 }
 
 struct PeriodStats: Codable {
     let count: Int
     let size: Int64
+    
+    static var placeholder: PeriodStats {
+        PeriodStats(count: 0, size: 0)
+    }
 }
 
 struct StorageStats: Codable {
     let used: Int64
     let total: Int64
     let percentage: Int
+    
+    static var placeholder: StorageStats {
+        StorageStats(used: 0, total: 0, percentage: 0)
+    }
 }
 
 struct UploaderStats: Codable {
