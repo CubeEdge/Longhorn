@@ -17,6 +17,7 @@ struct FileBrowserView: View {
     var searchScope: SearchScope = .all
     
     @State private var files: [FileItem] = []
+    @StateObject private var store = FileStore.shared  // Smart caching store
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var viewMode: ViewMode = .list
