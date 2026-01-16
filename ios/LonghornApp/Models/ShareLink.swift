@@ -10,26 +10,27 @@ import Foundation
 /// 分享链接模型
 struct ShareLink: Codable, Identifiable {
     let id: Int
-    let userId: Int
+    let userId: Int?
     let filePath: String
     let fileName: String?
     let token: String
-    let password: String?
     let expiresAt: String?
     let createdAt: String
     let accessCount: Int
     let language: String?
+    let hasPassword: Bool
     
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
         case filePath = "file_path"
         case fileName = "file_name"
-        case token, password
+        case token
         case expiresAt = "expires_at"
         case createdAt = "created_at"
         case accessCount = "access_count"
         case language
+        case hasPassword = "has_password"
     }
     
     /// 是否已过期
@@ -39,11 +40,6 @@ struct ShareLink: Codable, Identifiable {
         formatter.formatOptions = [.withInternetDateTime]
         guard let date = formatter.date(from: expiresAt) else { return false }
         return date < Date()
-    }
-    
-    /// 是否有密码保护
-    var hasPassword: Bool {
-        password != nil && !password!.isEmpty
     }
     
     /// 格式化创建时间

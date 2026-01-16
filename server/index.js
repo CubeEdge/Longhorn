@@ -1579,8 +1579,9 @@ function generateShareToken() {
 app.get('/api/shares', authenticate, (req, res) => {
     try {
         const shares = db.prepare(`
-            SELECT id, file_path, share_token, expires_at, access_count, last_accessed, created_at,
-                   (password IS NOT NULL) as has_password
+            SELECT id, user_id, file_path, file_name, 
+                   share_token as token, expires_at, access_count, created_at, language,
+                   (password IS NOT NULL AND password != '') as has_password
             FROM share_links 
             WHERE user_id = ?
             ORDER BY created_at DESC
