@@ -275,7 +275,6 @@ struct SharesListView: View {
             }
         }
     }
-    }
     
     private func batchDelete() {
         Task {
