@@ -9,7 +9,7 @@ import SwiftUI
 
 struct StarredView: View {
     @State private var starredItems: [StarredItem] = []
-    @State private var isLoading = true
+    @State private var isFirstLoad = true
     @State private var errorMessage: String?
     
     // 视图模式
@@ -47,21 +47,34 @@ struct StarredView: View {
     
     var body: some View {
         ZStack {
-            if isLoading {
-                ProgressView("status.loading")
-            } else if let error = errorMessage {
+            // 错误状态
+            if let error = errorMessage, starredItems.isEmpty {
                 ContentUnavailableView(
                     String(localized: "alert.error"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
-            } else if starredItems.isEmpty {
+            }
+            // 首次加载骨架屏
+            else if isFirstLoad && starredItems.isEmpty {
+                VStack {
+                    ProgressView()
+                    Text("browser.loading")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                }
+            }
+            // 空状态
+            else if starredItems.isEmpty {
                 ContentUnavailableView(
                     String(localized: "starred.no_files"),
                     systemImage: "star",
                     description: Text("starred.hint")
                 )
-            } else {
+            }
+            // 正常内容
+            else {
                 VStack(spacing: 0) {
                     // 批量操作栏
                     if isSelectionMode && !selectedIds.isEmpty {
@@ -83,10 +96,14 @@ struct StarredView: View {
             toolbarContent
         }
         .refreshable {
-            await loadStarredItems()
+            await refreshData()
         }
         .task {
-            await loadStarredItems()
+            await loadData()
+        }
+        // 订阅收藏变更通知
+        .onReceive(NotificationCenter.default.publisher(for: .starredDidChange)) { _ in
+            Task { await refreshData() }
         }
         .confirmationDialog(
             "starred.confirm_unstar_count",
@@ -259,19 +276,43 @@ struct StarredView: View {
     
     // MARK: - 方法
     
-    private func loadStarredItems() async {
-        isLoading = true
+    /// 首次加载 - 进入页面时调用
+    private func loadData() async {
         errorMessage = nil
         
         do {
-            starredItems = try await FileService.shared.getStarredFiles()
-        } catch let error as APIError {
-            errorMessage = error.errorDescription
+            let items = try await FileService.shared.getStarredFiles()
+            await MainActor.run {
+                self.starredItems = items
+                self.isFirstLoad = false
+            }
+        } catch is CancellationError {
+            // 任务被取消时不显示错误
+            print("StarredView: loadData cancelled")
         } catch {
-            errorMessage = error.localizedDescription
+            print("StarredView: loadData failed: \(error)")
+            await MainActor.run {
+                if self.starredItems.isEmpty {
+                    self.errorMessage = error.localizedDescription
+                }
+                self.isFirstLoad = false
+            }
         }
-        
-        isLoading = false
+    }
+    
+    /// 下拉刷新 / 事件触发刷新 - 静默更新
+    private func refreshData() async {
+        do {
+            let items = try await FileService.shared.getStarredFiles()
+            await MainActor.run {
+                self.starredItems = items
+                self.errorMessage = nil
+            }
+        } catch is CancellationError {
+            // 静默忽略
+        } catch {
+            print("StarredView: refreshData failed: \(error)")
+        }
     }
     
     private func toggleSelection(_ id: Int) {
@@ -311,9 +352,16 @@ struct StarredView: View {
         Task {
             do {
                 try await FileService.shared.unstarFile(id: item.id)
-                await loadStarredItems()
+                // 乐观更新本地数据
+                await MainActor.run {
+                    starredItems.removeAll { $0.id == item.id }
+                }
+                // 通知其他视图刷新
+                NotificationCenter.default.post(name: .starredDidChange, object: nil)
             } catch {
                 print("Unstar failed: \(error)")
+                // 失败时刷新以恢复状态
+                await refreshData()
             }
         }
     }
@@ -327,11 +375,21 @@ struct StarredView: View {
                     print("Unstar \(id) failed: \(error)")
                 }
             }
-            selectedIds.removeAll()
-            isSelectionMode = false
-            await loadStarredItems()
+            // 乐观更新
+            await MainActor.run {
+                starredItems.removeAll { selectedIds.contains($0.id) }
+                selectedIds.removeAll()
+                isSelectionMode = false
+            }
+            // 通知其他视图
+            NotificationCenter.default.post(name: .starredDidChange, object: nil)
         }
     }
+}
+
+// MARK: - 通知名称扩展
+extension Notification.Name {
+    static let starredDidChange = Notification.Name("starredDidChange")
 }
 
 // MARK: - 收藏项行视图
