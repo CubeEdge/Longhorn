@@ -685,6 +685,9 @@
     "Admin" : {
 
     },
+    "alert.confirm_delete" : {
+
+    },
     "alert.error" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3580,9 +3583,6 @@
       }
     },
     "share.confirm_delete_count %lld" : {
-
-    },
-    "share.confirm_delete_single" : {
 
     },
     "share.content" : {

@@ -359,6 +359,7 @@ struct FilePreviewSheet: View {
                 Button {
                     isStarred.toggle()
                     onStar?()
+                    AppEvents.notifyStarredChanged(path: file.path)
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: isStarred ? "star.fill" : "star")

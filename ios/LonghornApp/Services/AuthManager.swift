@@ -74,6 +74,17 @@ class AuthManager: ObservableObject {
         currentUser = nil
         isAuthenticated = false
         UserDefaults.standard.removeObject(forKey: userKey)
+        
+        // 清理所有缓存
+        Task { @MainActor in
+            FileStore.shared.clearAll()
+            DashboardStore.shared.clearAll()
+            ShareStore.shared.clearCache()
+        }
+        
+        // 发送登出通知
+        AppEvents.notifyUserLogout()
+        
         print("[Auth] Logged out")
     }
     

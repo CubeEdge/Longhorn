@@ -106,4 +106,13 @@ class ShareStore: ObservableObject {
             throw error
         }
     }
+    
+    /// 清除所有缓存（登出时调用）
+    func clearCache() {
+        shares.removeAll()
+        collections.removeAll()
+        lastUpdated = nil
+        isFirstLoad = true
+        errorMessage = nil
+    }
 }

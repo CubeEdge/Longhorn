@@ -435,11 +435,6 @@ struct StarredView: View {
     }
 }
 
-// MARK: - 通知名称扩展
-extension Notification.Name {
-    static let starredDidChange = Notification.Name("starredDidChange")
-}
-
 // MARK: - 收藏项行视图
 
 struct StarredItemRow: View {

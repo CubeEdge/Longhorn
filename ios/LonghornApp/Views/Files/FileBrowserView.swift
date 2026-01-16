@@ -926,6 +926,8 @@ struct FileBrowserView: View {
             do {
                 try await FileService.shared.toggleStar(path: file.path)
                 await loadFiles()
+                // 通知 StarredView 刷新
+                AppEvents.notifyStarredChanged(path: file.path)
             } catch {
                 print("Toggle star failed: \(error)")
             }
