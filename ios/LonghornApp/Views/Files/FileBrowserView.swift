@@ -434,6 +434,7 @@ struct FileBrowserView: View {
             }
         }
     }
+    }
     
     // MARK: - 批量操作栏
     
