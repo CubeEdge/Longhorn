@@ -254,17 +254,22 @@ struct FilePreviewSheet: View {
                 }
             }
             .task {
-                if let cached = await PreviewCacheManager.shared.getCachedURL(for: file.path) {
+                // 立即设置下载状态，不等待缓存检查
+                isDownloading = true
+                
+                // 异步检查缓存，同时准备下载
+                let cachedURL = await PreviewCacheManager.shared.getCachedURL(for: file.path)
+                
+                if let cached = cachedURL {
                     print("[Preview] Hit cache: \(cached.path)")
                     finalURL = cached
                     isDownloading = false
                 } else {
-                    print("[Preview] Cache miss. Starting progressive download.")
-                    finalURL = nil
-                    isDownloading = true
-                    
+                    print("[Preview] Cache miss. Starting download immediately.")
                     if let url = remoteURL {
                         await downloadAndCache(url: url)
+                    } else {
+                        isDownloading = false
                     }
                 }
             }

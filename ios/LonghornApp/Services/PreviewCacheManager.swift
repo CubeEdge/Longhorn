@@ -88,16 +88,28 @@ actor PreviewCacheManager {
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             cache.removeValue(forKey: path)
-            saveCacheIndex()
+            scheduleSave()
             return nil
         }
         
-        // Update access time & save
+        // Update access time (in-memory only, save is debounced)
         cached.lastAccessedAt = Date()
         cache[path] = cached
-        saveCacheIndex()
+        scheduleSave()
         
         return fileURL
+    }
+    
+    // Debounced save to avoid frequent disk writes
+    private var saveTask: Task<Void, Never>?
+    
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second debounce
+            guard !Task.isCancelled else { return }
+            saveCacheIndex()
+        }
     }
     
     func cache(url: URL, for path: String) {
