@@ -130,7 +130,7 @@ struct SharesListView: View {
             }
         } message: {
             if let share = shareToDelete {
-                Text("确定删除分享「\(share.name ?? share.path)」？")
+                Text("确定删除分享「\(share.fileName ?? share.filePath)」？")
             } else if let collection = collectionToDelete {
                 Text("确定删除合集「\(collection.name)」？")
             }
