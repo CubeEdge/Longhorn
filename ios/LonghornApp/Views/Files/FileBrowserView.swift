@@ -16,7 +16,8 @@ struct FileBrowserView: View {
     let path: String
     var searchScope: SearchScope = .all
     
-    @StateObject private var store = FileStore.shared
+    @State private var files: [FileItem] = []
+    @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var viewMode: ViewMode = .list
     @State private var sortOrder: SortOrder = .name
@@ -105,7 +106,39 @@ struct FileBrowserView: View {
     
     var body: some View {
         ZStack {
-            mainContent
+            if isLoading {
+                ProgressView(String(localized: "browser.loading"))
+                    .progressViewStyle(.circular)
+            } else if let error = errorMessage {
+                ContentUnavailableView(
+                    String(localized: "alert.error"),
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
+                .overlay(alignment: .bottom) {
+                    Button(String(localized: "action.retry")) {
+                        Task { await loadFiles() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.bottom, 40)
+                }
+            } else if displayedFiles.isEmpty {
+                if isSearching && !searchText.isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "search.no_results"),
+                        systemImage: "magnifyingglass",
+                        description: Text("No results for \"\(searchText)\"") // Simplified for now
+                    )
+                } else {
+                    ContentUnavailableView(
+                        String(localized: "browser.empty"),
+                        systemImage: "folder",
+                        description: Text("browser.empty")
+                    )
+                }
+            } else {
+                fileListContent
+            }
         }
         .navigationTitle(pathTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -124,11 +157,19 @@ struct FileBrowserView: View {
             toolbarContent
         }
         .refreshable {
-            await store.refreshFiles(path: path)
+            await loadFiles(forceRefresh: true)
         }
         .task {
-            // 智能加载：有缓存则不请求
-            await store.loadFilesIfNeeded(path: path)
+            // Initial load (visible)
+            await loadFiles()
+            
+            // Polling loop (silent, every 5s)
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
+                if !Task.isCancelled {
+                    await loadFiles(forceRefresh: true, silent: true)
+                }
+            }
         }
         .sheet(isPresented: $showCreateFolder) {
             createFolderSheet
@@ -269,50 +310,6 @@ struct FileBrowserView: View {
         }
     }
     
-    // MARK: - 主视图内容
-    
-    @ViewBuilder
-    private var mainContent: some View {
-        // 错误状态
-        if let error = errorMessage {
-            ContentUnavailableView(
-                String(localized: "alert.error"),
-                systemImage: "exclamationmark.triangle",
-                description: Text(error)
-            )
-            .overlay(alignment: .bottom) {
-                Button(String(localized: "action.retry")) {
-                    Task { await store.refreshFiles(path: path) }
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.bottom, 40)
-            }
-        } 
-        // 首次加载且无缓存
-        else if store.isFirstLoad(for: path) {
-            ProgressView(String(localized: "browser.loading"))
-                .progressViewStyle(.circular)
-        }
-        // 空状态
-        else if displayedFiles.isEmpty {
-            if isSearching && !searchText.isEmpty {
-                ContentUnavailableView(
-                    String(localized: "search.no_results"),
-                    systemImage: "magnifyingglass",
-                    description: Text("No results for \"\(searchText)\"")
-                )
-            } else {
-                ContentUnavailableView(
-                    String(localized: "browser.empty"),
-                    systemImage: "folder",
-                    description: Text("browser.empty")
-                )
-            }
-        } else {
-            fileListContent
-        }
-    }
-    
     // MARK: - 搜索相关
     
     private var searchPromptKey: LocalizedStringKey {
@@ -362,88 +359,78 @@ struct FileBrowserView: View {
             
             switch viewMode {
             case .list:
-                listModeContent
-            case .grid:
-                gridModeContent
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private var listModeContent: some View {
-        List(selection: isSelectionMode ? $selectedPaths : nil) {
-            ForEach(displayedFiles) { file in
-                FileRowView(
-                    file: file,
-                    isSelectionMode: isSelectionMode,
-                    isSelected: selectedPaths.contains(file.path),
-                    onAction: { action in
-                        handleFileAction(action, for: file)
-                    }
-                )
-                .tag(file.path)
-                .contextMenu {
-                    fileContextMenu(file)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        deleteFile(file)
-                    } label: {
-                        Label("删除", systemImage: "trash")
-                    }
-                    
-                    Button {
-                        toggleStar(file)
-                    } label: {
-                        Label(
-                            file.isStarred == true ? "取消收藏" : "收藏",
-                            systemImage: file.isStarred == true ? "star.slash" : "star"
-                        )
-                    }
-                    .tint(.orange)
-                }
-            }
-        }
-        .listStyle(.plain)
-        .refreshable {
-            await store.refreshFiles(path: path)  // Fixed: use store.refreshFiles
-        }
-        .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
-    }
-    
-    @ViewBuilder
-    private var gridModeContent: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 16)
-            ], spacing: 16) {
-                ForEach(displayedFiles) { file in
-                    FileGridItemView(
-                        file: file,
-                        isSelectionMode: isSelectionMode,
-                        isSelected: selectedPaths.contains(file.path),
-                        onTap: {
-                            if isSelectionMode {
-                                toggleSelection(file.path)
+                List(selection: isSelectionMode ? $selectedPaths : nil) {
+                    ForEach(displayedFiles) { file in
+                        FileRowView(
+                            file: file,
+                            isSelectionMode: isSelectionMode,
+                            isSelected: selectedPaths.contains(file.path),
+                            onAction: { action in
+                                handleFileAction(action, for: file)
                             }
-                        },
-                        onAction: { action in
-                            handleFileAction(action, for: file)
+                        )
+                        .tag(file.path)
+                        .contextMenu {
+                            fileContextMenu(file)
                         }
-                    )
-                    .contextMenu {
-                        fileContextMenu(file)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                deleteFile(file)
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                            
+                            Button {
+                                toggleStar(file)
+                            } label: {
+                                Label(
+                                    file.isStarred == true ? "取消收藏" : "收藏",
+                                    systemImage: file.isStarred == true ? "star.slash" : "star"
+                                )
+                            }
+                            .tint(.orange)
+                        }
                     }
                 }
+                .listStyle(.plain)
+                .refreshable {
+                    await loadFiles(forceRefresh: true)
+                }
+                .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
+                
+            case .grid:
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 16)
+                    ], spacing: 16) {
+                        ForEach(displayedFiles) { file in
+                            FileGridItemView(
+                                file: file,
+                                isSelectionMode: isSelectionMode,
+                                isSelected: selectedPaths.contains(file.path),
+                                onTap: {
+                                    if isSelectionMode {
+                                        toggleSelection(file.path)
+                                    }
+                                },
+                                onAction: { action in
+                                    handleFileAction(action, for: file)
+                                }
+                            )
+                            .contextMenu {
+                                fileContextMenu(file)
+                            }
+                        }
+                    }
+                    .padding()
+                    .padding()
+                }
+                .refreshable {
+                    await loadFiles(forceRefresh: true)
+                }
             }
-            .padding()
-            .padding()
-        }
-        .refreshable {
-            await store.refreshFiles(path: path) // Fixed: use store.refreshFiles
         }
     }
-
     
     // MARK: - 批量操作栏
     
@@ -524,103 +511,93 @@ struct FileBrowserView: View {
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        selectionToolbarItem
-        viewOptionsToolbarItem
-        addMenuToolbarItem
-    }
-    
-    @ToolbarContentBuilder
-    private var selectionToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            if isSelectionMode {
-                Button(String(localized: "action.done")) {
-                    isSelectionMode = false
-                    selectedPaths.removeAll()
+            // Daily Word Badge (Leading)
+            // Daily Word Badge removed as per request
+
+            // 选择模式切换
+            ToolbarItem(placement: .primaryAction) {
+                if isSelectionMode {
+                    Button(String(localized: "action.done")) {
+                        isSelectionMode = false
+                        selectedPaths.removeAll()
+                    }
+                    .foregroundColor(accentColor)
+                } else {
+                    Button(String(localized: "action.select")) {
+                        isSelectionMode = true
+                    }
+                    .foregroundColor(.primary)
                 }
-                .foregroundColor(accentColor)
-            } else {
-                Button(String(localized: "action.select")) {
-                    isSelectionMode = true
-                }
-                .foregroundColor(.primary)
             }
-        }
-    }
-    
-    @ToolbarContentBuilder
-    private var viewOptionsToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                Section("view.title") {
-                    ForEach(ViewMode.allCases, id: \.self) { mode in
-                        Button {
-                            viewMode = mode
-                        } label: {
-                            Label(LocalizedStringKey(mode.rawValue), systemImage: mode.icon)
-                                .foregroundColor(viewMode == mode ? .blue : .primary)
+            
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Section("view.title") {
+                        ForEach(ViewMode.allCases, id: \.self) { mode in
+                            Button {
+                                viewMode = mode
+                            } label: {
+                                Label(LocalizedStringKey(mode.rawValue), systemImage: mode.icon)
+                                    .foregroundColor(viewMode == mode ? .blue : .primary)
+                            }
                         }
                     }
-                }
-                
-                Section("sort.title") {
-                    ForEach(SortOrder.allCases, id: \.self) { order in
-                        Button {
-                            sortOrder = order
-                        } label: {
-                            Label(LocalizedStringKey(order.rawValue), systemImage: order.icon)
-                                .foregroundColor(sortOrder == order ? .blue : .primary)
+                    
+                    Section("sort.title") {
+                        ForEach(SortOrder.allCases, id: \.self) { order in
+                            Button {
+                                sortOrder = order
+                            } label: {
+                                Label(LocalizedStringKey(order.rawValue), systemImage: order.icon)
+                                    .foregroundColor(sortOrder == order ? .blue : .primary)
+                            }
                         }
                     }
+                } label: {
+                    Label("more.tools", systemImage: "ellipsis.circle")
                 }
-            } label: {
-                Label("more.tools", systemImage: "ellipsis.circle")
             }
-        }
-    }
-    
-    @ToolbarContentBuilder
-    private var addMenuToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                Button {
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "yyyyMMdd"
-                    newFolderName = formatter.string(from: Date())
-                    showCreateFolder = true
-                } label: {
-                    Label("browser.create_folder", systemImage: "folder.badge.plus")
-                }
-                
-                Divider()
-                
-                Button {
-                    showFilePicker = true
-                } label: {
-                    Label("browser.upload_file", systemImage: "doc.badge.plus")
-                }
-                
-                Button {
-                    showPhotoPicker = true
-                } label: {
-                    Label("browser.upload_photo", systemImage: "photo.badge.plus")
-                }
-                
-                if activeUploadCount > 0 {
+            
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "yyyyMMdd"
+                        newFolderName = formatter.string(from: Date())
+                        showCreateFolder = true
+                    } label: {
+                        Label("browser.create_folder", systemImage: "folder.badge.plus")
+                    }
+                    
                     Divider()
                     
                     Button {
-                        showUploadProgress = true
+                        showFilePicker = true
                     } label: {
-                        Label("上传进度 (\(activeUploadCount))", systemImage: "arrow.up.circle")
+                        Label("browser.upload_file", systemImage: "doc.badge.plus")
                     }
+                    
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label("browser.upload_photo", systemImage: "photo.badge.plus")
+                    }
+                    
+                    if activeUploadCount > 0 {
+                        Divider()
+                        
+                        Button {
+                            showUploadProgress = true
+                        } label: {
+                            Label("上传进度 (\(activeUploadCount))", systemImage: "arrow.up.circle")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "plus")
                 }
-            } label: {
-                Image(systemName: "plus")
             }
-        }
+
     }
-
-
     
     // MARK: - 上下文菜单
     
@@ -789,8 +766,7 @@ struct FileBrowserView: View {
     }
     
     private var sortedFiles: [FileItem] {
-        // 从 Store 获取数据
-        var sorted = store.getFiles(for: path)
+        var sorted = files
         
         // 文件夹优先
         sorted.sort { $0.isDirectory && !$1.isDirectory }
@@ -810,7 +786,50 @@ struct FileBrowserView: View {
     
     // MARK: - 方法
     
-    // Legacy loadFiles removed - replaced by store.loadFilesIfNeeded calls in .task modifier
+    private func loadFiles(forceRefresh: Bool = false, silent: Bool = false) async {
+        // 首次加载或强制刷新时显示loading (除非是静默轮询)
+        if (files.isEmpty || forceRefresh) && !silent {
+            isLoading = true
+        }
+        errorMessage = nil
+        
+        do {
+            let (loadedFiles, fromCache) = try await FileService.shared.getFilesWithCache(
+                path: path,
+                forceRefresh: forceRefresh
+            )
+            
+            // Sync Deletion Logic: 检测是否有文件被删除
+            if !files.isEmpty && !loadedFiles.isEmpty {
+                let oldPaths = Set(files.map { $0.path })
+                let newPaths = Set(loadedFiles.map { $0.path })
+                
+                let deletedPaths = oldPaths.subtracting(newPaths)
+                if !deletedPaths.isEmpty {
+                    print("[Sync] Detect \(deletedPaths.count) deleted files. Invalidating cache.")
+                    await PreviewCacheManager.shared.invalidate(paths: Array(deletedPaths))
+                }
+            }
+            
+            files = loadedFiles
+            
+            // 如果是从缓存加载，可以显示一个小指示(可选)
+            if fromCache && !silent {
+                print("[Cache] Loaded \(loadedFiles.count) files from cache")
+            }
+        } catch let error as APIError {
+            // 如果有缓存数据，即使出错也保留
+            if files.isEmpty && !silent {
+                errorMessage = error.errorDescription
+            }
+        } catch {
+            if files.isEmpty && !silent {
+                errorMessage = error.localizedDescription
+            }
+        }
+        
+        isLoading = false
+    }
     
     private func toggleSelection(_ path: String) {
         if selectedPaths.contains(path) {
