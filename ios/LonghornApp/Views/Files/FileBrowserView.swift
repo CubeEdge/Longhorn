@@ -16,8 +16,7 @@ struct FileBrowserView: View {
     let path: String
     var searchScope: SearchScope = .all
     
-    @State private var files: [FileItem] = []
-    @State private var isLoading = true
+    @StateObject private var store = FileStore.shared
     @State private var errorMessage: String?
     @State private var viewMode: ViewMode = .list
     @State private var sortOrder: SortOrder = .name
@@ -106,10 +105,8 @@ struct FileBrowserView: View {
     
     var body: some View {
         ZStack {
-            if isLoading {
-                ProgressView(String(localized: "browser.loading"))
-                    .progressViewStyle(.circular)
-            } else if let error = errorMessage {
+            // 错误状态
+            if let error = errorMessage {
                 ContentUnavailableView(
                     String(localized: "alert.error"),
                     systemImage: "exclamationmark.triangle",
@@ -117,17 +114,24 @@ struct FileBrowserView: View {
                 )
                 .overlay(alignment: .bottom) {
                     Button(String(localized: "action.retry")) {
-                        Task { await loadFiles() }
+                        Task { await store.refreshFiles(path: path) }
                     }
                     .buttonStyle(.borderedProminent)
                     .padding(.bottom, 40)
                 }
-            } else if displayedFiles.isEmpty {
+            } 
+            // 首次加载且无缓存
+            else if store.isFirstLoad(for: path) {
+                ProgressView(String(localized: "browser.loading"))
+                    .progressViewStyle(.circular)
+            }
+            // 空状态
+            else if displayedFiles.isEmpty {
                 if isSearching && !searchText.isEmpty {
                     ContentUnavailableView(
                         String(localized: "search.no_results"),
                         systemImage: "magnifyingglass",
-                        description: Text("No results for \"\(searchText)\"") // Simplified for now
+                        description: Text("No results for \"\(searchText)\"")
                     )
                 } else {
                     ContentUnavailableView(
@@ -157,19 +161,11 @@ struct FileBrowserView: View {
             toolbarContent
         }
         .refreshable {
-            await loadFiles(forceRefresh: true)
+            await store.refreshFiles(path: path)
         }
         .task {
-            // Initial load (visible)
-            await loadFiles()
-            
-            // Polling loop (silent, every 5s)
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
-                if !Task.isCancelled {
-                    await loadFiles(forceRefresh: true, silent: true)
-                }
-            }
+            // 智能加载：有缓存则不请求
+            await store.loadFilesIfNeeded(path: path)
         }
         .sheet(isPresented: $showCreateFolder) {
             createFolderSheet
@@ -766,7 +762,8 @@ struct FileBrowserView: View {
     }
     
     private var sortedFiles: [FileItem] {
-        var sorted = files
+        // 从 Store 获取数据
+        var sorted = store.getFiles(for: path)
         
         // 文件夹优先
         sorted.sort { $0.isDirectory && !$1.isDirectory }
@@ -786,50 +783,7 @@ struct FileBrowserView: View {
     
     // MARK: - 方法
     
-    private func loadFiles(forceRefresh: Bool = false, silent: Bool = false) async {
-        // 首次加载或强制刷新时显示loading (除非是静默轮询)
-        if (files.isEmpty || forceRefresh) && !silent {
-            isLoading = true
-        }
-        errorMessage = nil
-        
-        do {
-            let (loadedFiles, fromCache) = try await FileService.shared.getFilesWithCache(
-                path: path,
-                forceRefresh: forceRefresh
-            )
-            
-            // Sync Deletion Logic: 检测是否有文件被删除
-            if !files.isEmpty && !loadedFiles.isEmpty {
-                let oldPaths = Set(files.map { $0.path })
-                let newPaths = Set(loadedFiles.map { $0.path })
-                
-                let deletedPaths = oldPaths.subtracting(newPaths)
-                if !deletedPaths.isEmpty {
-                    print("[Sync] Detect \(deletedPaths.count) deleted files. Invalidating cache.")
-                    await PreviewCacheManager.shared.invalidate(paths: Array(deletedPaths))
-                }
-            }
-            
-            files = loadedFiles
-            
-            // 如果是从缓存加载，可以显示一个小指示(可选)
-            if fromCache && !silent {
-                print("[Cache] Loaded \(loadedFiles.count) files from cache")
-            }
-        } catch let error as APIError {
-            // 如果有缓存数据，即使出错也保留
-            if files.isEmpty && !silent {
-                errorMessage = error.errorDescription
-            }
-        } catch {
-            if files.isEmpty && !silent {
-                errorMessage = error.localizedDescription
-            }
-        }
-        
-        isLoading = false
-    }
+    // Legacy loadFiles removed - replaced by store.loadFilesIfNeeded calls in .task modifier
     
     private func toggleSelection(_ path: String) {
         if selectedPaths.contains(path) {
