@@ -514,91 +514,103 @@ struct FileBrowserView: View {
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-            // Daily Word Badge (Leading)
-            // Daily Word Badge removed as per request
-
-            // 选择模式切换
-            ToolbarItem(placement: .primaryAction) {
-                if isSelectionMode {
-                    Button(String(localized: "action.done")) {
-                        isSelectionMode = false
-                        selectedPaths.removeAll()
-                    }
-                    .foregroundColor(accentColor)
-                } else {
-                    Button(String(localized: "action.select")) {
-                        isSelectionMode = true
-                    }
-                    .foregroundColor(.primary)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        selectionToolbarItem
+        viewOptionsToolbarItem
+        addMenuToolbarItem
+    }
+    
+    @ToolbarContentBuilder
+    private var selectionToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            if isSelectionMode {
+                Button(String(localized: "action.done")) {
+                    isSelectionMode = false
+                    selectedPaths.removeAll()
                 }
+                .foregroundColor(accentColor)
+            } else {
+                Button(String(localized: "action.select")) {
+                    isSelectionMode = true
+                }
+                .foregroundColor(.primary)
             }
-            
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Section("view.title") {
-                        ForEach(ViewMode.allCases, id: \.self) { mode in
-                            Button {
-                                viewMode = mode
-                            } label: {
-                                Label(LocalizedStringKey(mode.rawValue), systemImage: mode.icon)
-                                    .foregroundColor(viewMode == mode ? .blue : .primary)
-                            }
+        }
+    }
+    
+    @ToolbarContentBuilder
+    private var viewOptionsToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                Section("view.title") {
+                    ForEach(ViewMode.allCases, id: \.self) { mode in
+                        Button {
+                            viewMode = mode
+                        } label: {
+                            Label(LocalizedStringKey(mode.rawValue), systemImage: mode.icon)
+                                .foregroundColor(viewMode == mode ? .blue : .primary)
                         }
                     }
-                    
-                    Section("sort.title") {
-                        ForEach(SortOrder.allCases, id: \.self) { order in
-                            Button {
-                                sortOrder = order
-                            } label: {
-                                Label(LocalizedStringKey(order.rawValue), systemImage: order.icon)
-                                    .foregroundColor(sortOrder == order ? .blue : .primary)
-                            }
+                }
+                
+                Section("sort.title") {
+                    ForEach(SortOrder.allCases, id: \.self) { order in
+                        Button {
+                            sortOrder = order
+                        } label: {
+                            Label(LocalizedStringKey(order.rawValue), systemImage: order.icon)
+                                .foregroundColor(sortOrder == order ? .blue : .primary)
                         }
                     }
+                }
+            } label: {
+                Label("more.tools", systemImage: "ellipsis.circle")
+            }
+        }
+    }
+    
+    @ToolbarContentBuilder
+    private var addMenuToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                Button {
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyyMMdd"
+                    newFolderName = formatter.string(from: Date())
+                    showCreateFolder = true
                 } label: {
-                    Label("more.tools", systemImage: "ellipsis.circle")
+                    Label("browser.create_folder", systemImage: "folder.badge.plus")
                 }
-            }
-            
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button {
-                        let formatter = DateFormatter()
-                        formatter.dateFormat = "yyyyMMdd"
-                        newFolderName = formatter.string(from: Date())
-                        showCreateFolder = true
-                    } label: {
-                        Label("browser.create_folder", systemImage: "folder.badge.plus")
-                    }
-                    
+                
+                Divider()
+                
+                Button {
+                    showFilePicker = true
+                } label: {
+                    Label("browser.upload_file", systemImage: "doc.badge.plus")
+                }
+                
+                Button {
+                    showPhotoPicker = true
+                } label: {
+                    Label("browser.upload_photo", systemImage: "photo.badge.plus")
+                }
+                
+                if activeUploadCount > 0 {
                     Divider()
                     
                     Button {
-                        showFilePicker = true
+                        showUploadProgress = true
                     } label: {
-                        Label("browser.upload_file", systemImage: "doc.badge.plus")
+                        Label("上传进度 (\(activeUploadCount))", systemImage: "arrow.up.circle")
                     }
-                    
-                    Button {
-                        showPhotoPicker = true
-                    } label: {
-                        Label("browser.upload_photo", systemImage: "photo.badge.plus")
-                    }
-                    
-                    if activeUploadCount > 0 {
-                        Divider()
-                        
-                        Button {
-                            showUploadProgress = true
-                        } label: {
-                            Label("上传进度 (\(activeUploadCount))", systemImage: "arrow.up.circle")
-                        }
-                    }
-                } label: {
-                    Image(systemName: "plus")
                 }
+            } label: {
+                Image(systemName: "plus")
             }
+        }
+    }
 
     }
     
