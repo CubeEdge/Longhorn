@@ -362,79 +362,88 @@ struct FileBrowserView: View {
             
             switch viewMode {
             case .list:
-                List(selection: isSelectionMode ? $selectedPaths : nil) {
-                    ForEach(displayedFiles) { file in
-                        FileRowView(
-                            file: file,
-                            isSelectionMode: isSelectionMode,
-                            isSelected: selectedPaths.contains(file.path),
-                            onAction: { action in
-                                handleFileAction(action, for: file)
-                            }
-                        )
-                        .tag(file.path)
-                        .contextMenu {
-                            fileContextMenu(file)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                deleteFile(file)
-                            } label: {
-                                Label("删除", systemImage: "trash")
-                            }
-                            
-                            Button {
-                                toggleStar(file)
-                            } label: {
-                                Label(
-                                    file.isStarred == true ? "取消收藏" : "收藏",
-                                    systemImage: file.isStarred == true ? "star.slash" : "star"
-                                )
-                            }
-                            .tint(.orange)
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                .refreshable {
-                    await loadFiles(forceRefresh: true)
-                }
-                .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
-                
+                listModeContent
             case .grid:
-                ScrollView {
-                    LazyVGrid(columns: [
-                        GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 16)
-                    ], spacing: 16) {
-                        ForEach(displayedFiles) { file in
-                            FileGridItemView(
-                                file: file,
-                                isSelectionMode: isSelectionMode,
-                                isSelected: selectedPaths.contains(file.path),
-                                onTap: {
-                                    if isSelectionMode {
-                                        toggleSelection(file.path)
-                                    }
-                                },
-                                onAction: { action in
-                                    handleFileAction(action, for: file)
-                                }
-                            )
-                            .contextMenu {
-                                fileContextMenu(file)
-                            }
-                        }
-                    }
-                    .padding()
-                    .padding()
-                }
-                .refreshable {
-                    await loadFiles(forceRefresh: true)
-                }
+                gridModeContent
             }
         }
     }
+    
+    @ViewBuilder
+    private var listModeContent: some View {
+        List(selection: isSelectionMode ? $selectedPaths : nil) {
+            ForEach(displayedFiles) { file in
+                FileRowView(
+                    file: file,
+                    isSelectionMode: isSelectionMode,
+                    isSelected: selectedPaths.contains(file.path),
+                    onAction: { action in
+                        handleFileAction(action, for: file)
+                    }
+                )
+                .tag(file.path)
+                .contextMenu {
+                    fileContextMenu(file)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        deleteFile(file)
+                    } label: {
+                        Label("删除", systemImage: "trash")
+                    }
+                    
+                    Button {
+                        toggleStar(file)
+                    } label: {
+                        Label(
+                            file.isStarred == true ? "取消收藏" : "收藏",
+                            systemImage: file.isStarred == true ? "star.slash" : "star"
+                        )
+                    }
+                    .tint(.orange)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .refreshable {
+            await store.refreshFiles(path: path)  // Fixed: use store.refreshFiles
+        }
+        .environment(\.editMode, .constant(isSelectionMode ? .active : .inactive))
     }
+    
+    @ViewBuilder
+    private var gridModeContent: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 16)
+            ], spacing: 16) {
+                ForEach(displayedFiles) { file in
+                    FileGridItemView(
+                        file: file,
+                        isSelectionMode: isSelectionMode,
+                        isSelected: selectedPaths.contains(file.path),
+                        onTap: {
+                            if isSelectionMode {
+                                toggleSelection(file.path)
+                            }
+                        },
+                        onAction: { action in
+                            handleFileAction(action, for: file)
+                        }
+                    )
+                    .contextMenu {
+                        fileContextMenu(file)
+                    }
+                }
+            }
+            .padding()
+            .padding()
+        }
+        .refreshable {
+            await store.refreshFiles(path: path) // Fixed: use store.refreshFiles
+        }
+    }
+
     
     // MARK: - 批量操作栏
     
