@@ -53,7 +53,7 @@ struct SharesListView: View {
             // 内容
             ZStack {
                 if isLoading {
-                    ProgressView("status.loading")
+                    ProgressView(String(localized: "browser.loading"))
                 } else if let error = errorMessage {
                     ContentUnavailableView(
                         String(localized: "alert.error"),
@@ -68,6 +68,11 @@ struct SharesListView: View {
                         collectionsContent
                     }
                 }
+            }
+        }
+        .onAppear {
+            Task {
+                await loadData()
             }
         }
         .navigationTitle(Text("quick.my_shares"))
@@ -243,32 +248,32 @@ struct SharesListView: View {
     
     // MARK: - 数据加载
     
-    private func loadData() {
-        isLoading = true
-        errorMessage = nil
-        print("SharesListView: loadData started")
+    private func loadData() async {
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+            print("SharesListView: loadData started")
+        }
         
-        Task {
-            do {
-                async let sharesTask = ShareService.shared.getMyShares()
-                async let collectionsTask = ShareService.shared.getMyCollections()
-                
-                print("SharesListView: Requesting shares and collections...")
-                let (shares, collections) = try await (sharesTask, collectionsTask)
-                print("SharesListView: Received \(shares.count) shares, \(collections.count) collections")
-                
-                await MainActor.run {
-                    self.shares = shares
-                    self.collections = collections
-                    self.isLoading = false
-                    print("SharesListView: Data loaded successfully")
-                }
-            } catch {
-                print("SharesListView: loadData failed with error: \(error)")
-                await MainActor.run {
-                    self.errorMessage = error.localizedDescription
-                    self.isLoading = false
-                }
+        do {
+            async let sharesTask = ShareService.shared.getMyShares()
+            async let collectionsTask = ShareService.shared.getMyCollections()
+            
+            print("SharesListView: Requesting shares and collections...")
+            let (shares, collections) = try await (sharesTask, collectionsTask)
+            print("SharesListView: Received \(shares.count) shares, \(collections.count) collections")
+            
+            await MainActor.run {
+                self.shares = shares
+                self.collections = collections
+                self.isLoading = false
+                print("SharesListView: Data loaded successfully")
+            }
+        } catch {
+            print("SharesListView: loadData failed with error: \(error)")
+            await MainActor.run {
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
             }
         }
     }

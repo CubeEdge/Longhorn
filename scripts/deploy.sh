@@ -11,7 +11,7 @@ echo "🚀 Deploying Longhorn to $SERVER_HOST..."
 
 # 1. Sync Server Code (excluding data/config)
 echo "📤 Syncing Server Code..."
-rsync -avz --delete \
+rsync -avzc --delete \
     --exclude='node_modules' \
     --exclude='.env' \
     --exclude='*.db' \
@@ -27,7 +27,7 @@ rsync -avz --delete \
 
 # 2. Sync Client Code
 echo "📤 Syncing Client Code..."
-rsync -avz --delete \
+rsync -avzc --delete \
     --exclude='node_modules' \
     --exclude='dist' \
     --exclude='.DS_Store' \
@@ -56,6 +56,7 @@ ssh -t $SERVER_HOST "/bin/zsh -l -c \"
     # Enforce Cluster Mode & Zero Downtime Reload
     # 'reload' allows 0-second downtime updates if running in cluster mode
     pm2 reload longhorn --update-env || pm2 start index.js --name longhorn -i max
+    pm2 reload longhorn-watcher || true
 
     echo '✅ Deployment Complete!'
 \""
