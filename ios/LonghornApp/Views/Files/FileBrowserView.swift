@@ -815,6 +815,7 @@ struct FileBrowserView: View {
             }
             
             files = loadedFiles
+            store.setFiles(loadedFiles, for: path)  // Sync to shared store
             
             // 如果是从缓存加载，可以显示一个小指示(可选)
             if fromCache && !silent {
