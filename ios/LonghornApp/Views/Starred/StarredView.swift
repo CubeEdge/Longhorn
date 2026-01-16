@@ -336,6 +336,17 @@ struct StarredView: View {
         }
     }
     
+    private func unstarItem(_ item: StarredItem) {
+        itemToUnstar = item
+        showSingleUnstarConfirmation = true
+    }
+    
+    private func navigateToFolder(_ item: StarredItem) {
+        // 导航逻辑这里需要 context，通常是由 NavigationLink 处理，或者这里做其他操作
+        // 如果是简单的打印或者暂时空置
+        print("Navigate to folder: \(item.fullPath)")
+    }
+    
     private func toggleSelection(_ id: Int) {
         if selectedIds.contains(id) {
             selectedIds.remove(id)
