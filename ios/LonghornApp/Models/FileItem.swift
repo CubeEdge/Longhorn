@@ -10,8 +10,8 @@ import UniformTypeIdentifiers
 
 /// 文件项模型
 struct FileItem: Codable, Identifiable, Hashable {
-    let name: String
-    let path: String
+    var name: String
+    var path: String
     let isDirectory: Bool
     let size: Int64?
     let modifiedAt: Date?
