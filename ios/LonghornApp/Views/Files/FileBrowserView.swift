@@ -105,44 +105,7 @@ struct FileBrowserView: View {
     
     var body: some View {
         ZStack {
-            // 错误状态
-            if let error = errorMessage {
-                ContentUnavailableView(
-                    String(localized: "alert.error"),
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error)
-                )
-                .overlay(alignment: .bottom) {
-                    Button(String(localized: "action.retry")) {
-                        Task { await store.refreshFiles(path: path) }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .padding(.bottom, 40)
-                }
-            } 
-            // 首次加载且无缓存
-            else if store.isFirstLoad(for: path) {
-                ProgressView(String(localized: "browser.loading"))
-                    .progressViewStyle(.circular)
-            }
-            // 空状态
-            else if displayedFiles.isEmpty {
-                if isSearching && !searchText.isEmpty {
-                    ContentUnavailableView(
-                        String(localized: "search.no_results"),
-                        systemImage: "magnifyingglass",
-                        description: Text("No results for \"\(searchText)\"")
-                    )
-                } else {
-                    ContentUnavailableView(
-                        String(localized: "browser.empty"),
-                        systemImage: "folder",
-                        description: Text("browser.empty")
-                    )
-                }
-            } else {
-                fileListContent
-            }
+            mainContent
         }
         .navigationTitle(pathTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -303,6 +266,50 @@ struct FileBrowserView: View {
             if let file = renameFile {
                 Text("重命名 \"\(file.name)\"")
             }
+        }
+    }
+    
+    // MARK: - 主视图内容
+    
+    @ViewBuilder
+    private var mainContent: some View {
+        // 错误状态
+        if let error = errorMessage {
+            ContentUnavailableView(
+                String(localized: "alert.error"),
+                systemImage: "exclamationmark.triangle",
+                description: Text(error)
+            )
+            .overlay(alignment: .bottom) {
+                Button(String(localized: "action.retry")) {
+                    Task { await store.refreshFiles(path: path) }
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.bottom, 40)
+            }
+        } 
+        // 首次加载且无缓存
+        else if store.isFirstLoad(for: path) {
+            ProgressView(String(localized: "browser.loading"))
+                .progressViewStyle(.circular)
+        }
+        // 空状态
+        else if displayedFiles.isEmpty {
+            if isSearching && !searchText.isEmpty {
+                ContentUnavailableView(
+                    String(localized: "search.no_results"),
+                    systemImage: "magnifyingglass",
+                    description: Text("No results for \"\(searchText)\"")
+                )
+            } else {
+                ContentUnavailableView(
+                    String(localized: "browser.empty"),
+                    systemImage: "folder",
+                    description: Text("browser.empty")
+                )
+            }
+        } else {
+            fileListContent
         }
     }
     
