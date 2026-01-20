@@ -26,6 +26,7 @@ struct FilePreviewSheet: View {
     @State private var videoPlayer: AVPlayer?
     @State private var showOSD = true  // OSD可见状态
     @State private var isStarred: Bool  // 收藏状态
+    @State private var showInfoSheet = false  // 文件信息sheet
     
     @State private var webViewError: String? // Debug state
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
@@ -112,6 +113,9 @@ struct FilePreviewSheet: View {
                 }
             }
         }
+        .sheet(isPresented: $showInfoSheet) {
+            FileInfoSheet(file: file)
+        }
     }
     
     // MARK: - 顶部栏
@@ -143,6 +147,14 @@ struct FilePreviewSheet: View {
                     onShare()
                 } label: {
                     Label("分享链接", systemImage: "square.and.arrow.up")
+                }
+                
+                Divider()
+                
+                Button {
+                    showInfoSheet = true
+                } label: {
+                    Label("文件信息", systemImage: "info.circle")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -397,11 +409,7 @@ struct FilePreviewSheet: View {
             .padding(.vertical, 12)
             
             HStack(spacing: 20) {
-                if let size = file.size {
-                    Label(formatFileSize(size), systemImage: "doc")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.8))
-                }
+                // 移除底部文件大小显示
                 
                 if let uploader = file.uploaderName {
                     Label(uploader, systemImage: "person")
