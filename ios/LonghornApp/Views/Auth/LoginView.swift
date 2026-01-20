@@ -90,10 +90,11 @@ struct LoginView: View {
                     .frame(width: 80, height: 80)
                     .shadow(color: accentColor.opacity(0.4), radius: 20, x: 0, y: 10)
                 
-                Image(systemName: "externaldrive.fill.badge.checkmark")
-                    .font(.system(size: 36, weight: .semibold))
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 40, weight: .semibold))
                     .foregroundColor(.black)
             }
+            .rotationEffect(.degrees(-5))
             .scaleEffect(isAnimating ? 1.0 : 0.8)
             .opacity(isAnimating ? 1.0 : 0.5)
             .animation(.spring(response: 0.6, dampingFraction: 0.7), value: isAnimating)
