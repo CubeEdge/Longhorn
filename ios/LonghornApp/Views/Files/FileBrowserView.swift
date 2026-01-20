@@ -820,11 +820,24 @@ struct FileBrowserView: View {
         // 1. 强制刷新时（如下拉刷新），必须等待服务器响应
         //    这样 .refreshable 的指示器才会在数据加载完成后消失
         if forceRefresh {
-            if !silent {
+            // 仅在首次加载（无数据）时显示全屏 Loading
+            // 有数据时，下拉刷新依靠系统自带的 refreshable 指示器
+            if !silent && files.isEmpty {
                 isLoading = true
             }
             errorMessage = nil
-            await refreshFromServer(silent: silent)
+            
+            if !silent {
+                // 下拉刷新体验优化：增加 0.5 秒最小驻留时间，防止列表迅速回弹
+                // 并行执行：实际刷新 + 最小计时
+                async let fetch: () = refreshFromServer(silent: silent)
+                async let delay: () = Task.sleep(nanoseconds: 500_000_000)
+                _ = await (fetch, delay)
+            } else {
+                await refreshFromServer(silent: silent)
+            }
+            
+            isLoading = false
             return
         }
         
@@ -973,6 +986,20 @@ struct FileBrowserView: View {
             selectedPaths = [file.path]
             isCopyMode = false
             showMoveSheet = true
+        case .copy:
+            copySourceFile = file
+            isCopyMode = true
+            showMoveSheet = true
+        case .rename:
+            renameFile = file
+            if file.isDirectory {
+                newFileName = file.name
+            } else {
+                newFileName = (file.name as NSString).deletingPathExtension
+            }
+            showRenameAlert = true
+        case .details:
+            statsFile = file
         case .delete:
             fileToDelete = file
             showSingleDeleteConfirmation = true
@@ -1448,6 +1475,9 @@ enum FileAction {
     case toggleStar
     case download
     case move
+    case copy
+    case rename
+    case details
     case delete
     case share
 }
@@ -1554,12 +1584,24 @@ struct FileRowView: View {
                         Label("action.share", systemImage: "square.and.arrow.up")
                     }
                     
+                    Button { onAction(.download) } label: {
+                        Label("action.download", systemImage: "arrow.down.circle")
+                    }
+
                     Button { onAction(.move) } label: {
                         Label("action.move", systemImage: "folder")
                     }
                     
-                    Button { onAction(.download) } label: {
-                        Label("action.download", systemImage: "arrow.down.circle")
+                    Button { onAction(.copy) } label: {
+                        Label("action.copy_to", systemImage: "doc.on.doc")
+                    }
+                    
+                    Button { onAction(.rename) } label: {
+                        Label("action.rename", systemImage: "pencil")
+                    }
+                    
+                    Button { onAction(.details) } label: {
+                        Label("stats.details", systemImage: "info.circle")
                     }
                     
                     Divider()
@@ -1653,12 +1695,24 @@ struct FileGridItemView: View {
                         Label("action.share", systemImage: "square.and.arrow.up")
                     }
                     
+                    Button { onAction(.download) } label: {
+                        Label("action.download", systemImage: "arrow.down.circle")
+                    }
+
                     Button { onAction(.move) } label: {
                         Label("action.move", systemImage: "folder")
                     }
                     
-                    Button { onAction(.download) } label: {
-                        Label("action.download", systemImage: "arrow.down.circle")
+                    Button { onAction(.copy) } label: {
+                        Label("action.copy_to", systemImage: "doc.on.doc")
+                    }
+                    
+                    Button { onAction(.rename) } label: {
+                        Label("action.rename", systemImage: "pencil")
+                    }
+                    
+                    Button { onAction(.details) } label: {
+                        Label("stats.details", systemImage: "info.circle")
                     }
                     
                     Divider()
