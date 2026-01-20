@@ -831,7 +831,7 @@ struct FileBrowserView: View {
                 // 下拉刷新体验优化：增加 0.5 秒最小驻留时间，防止列表迅速回弹
                 // 并行执行：实际刷新 + 最小计时
                 async let fetch: () = refreshFromServer(silent: silent)
-                async let delay: () = Task.sleep(nanoseconds: 500_000_000)
+                async let delay: ()? = try? Task.sleep(nanoseconds: 500_000_000)
                 _ = await (fetch, delay)
             } else {
                 await refreshFromServer(silent: silent)
