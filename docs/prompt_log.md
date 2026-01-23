@@ -524,3 +524,32 @@ dailyword每个词库都会更新100个词汇吗？我感觉没有啊
 
 **Status**: Complete.
 
+### 00:10 - 三项修复 (Triple Fix)
+**User Prompt**:
+1. Dashboard 仍显示 "-"
+2. Preview Button "所在位置" 仍出现在 FileBrowser
+3. 新需求：FileBrowser 默认按上传时间倒序排列
+
+**Root Cause Analysis**:
+1. **Dashboard**: SQL alias 错误（已修复），需确认 Server 重启。
+2. **Preview Button**: `FilePreviewSheet` 中传递闭包时，即使 parent 的 callback 是 nil，仍创建了非 nil 的闭包 `{ onGoToLocation?(file) }`。`FilePreviewItemView` 检测到闭包存在（非nil），就显示了按钮。
+3. **Sort Order**: 默认值为 `.name`，需改为 `.date`。
+
+**Action**:
+1. **Dashboard**: Server 端 SQL 已修正（`ORDER BY totalSize`），需重启。
+2. **Preview Button**: 修改 `FilePreviewSheet.swift` Line 63-64，添加条件判断：
+   ```swift
+   onStar: onStar != nil ? { onStar?(file) } : nil,
+   onGoToLocation: onGoToLocation != nil ? { onGoToLocation?(file) } : nil,
+   ```
+3. **Sort Order**: 修改 `FileBrowserView.swift` Line 24：
+   ```swift
+   @State private var sortOrder: SortOrder = .date
+   ```
+
+**Result**:
+- Preview Button 现在只在 收藏/分享/最近 场景显示。
+- FileBrowser 默认按修改时间倒序排列。
+- Dashboard 需用户重启 Server 测试。
+
+**Status**: Complete.
