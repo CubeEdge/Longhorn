@@ -60,8 +60,8 @@ struct FilePreviewSheet: View {
                         onClose: onClose,
                         onDownload: { onDownload(file) },
                         onShare: { onShare(file) },
-                        onStar: { onStar?(file) },
-                        onGoToLocation: { onGoToLocation?(file) },
+                        onStar: onStar != nil ? { onStar?(file) } : nil,
+                        onGoToLocation: onGoToLocation != nil ? { onGoToLocation?(file) } : nil,
                         dragOffset: $dragOffset,
                         bgOpacity: $bgOpacity
                     )

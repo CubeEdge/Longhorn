@@ -507,3 +507,20 @@ dailyword每个词库都会更新100个词汇吗？我感觉没有啊
 
 **Status**: Complete.
 
+### 22:45 - 再次修复 Dashboard SQL (Dashboard Fix 2)
+```
+[API] Response: {"error":"no such column: total_size"}
+```
+**User Prompt**:
+- Dashboard 仍报错 500，提示 `no such column: total_size`。
+
+**Action**:
+- 发现 `Top Uploaders` 查询中别名为 `totalSize` (camelCase)，但 `ORDER BY` 使用了 `total_size` (snake_case)。
+- 修复：改为 `ORDER BY totalSize DESC`。
+
+**Result**:
+- Server 端代码已修正，需重启生效。
+- 关于 Preview Button：所有代码检查确认正确，极大可能是 iOS App 未重新编译导致旧代码残留。
+
+**Status**: Complete.
+
