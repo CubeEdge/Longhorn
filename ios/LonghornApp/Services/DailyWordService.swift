@@ -51,13 +51,41 @@ class DailyWordService: ObservableObject {
         synthesizer.speak(utterance)
     }
     
-    // MARK: - Local Data Logic
+    // MARK: - Server API Logic
     
     private func fetchNewWord() {
         self.isLoading = true
-        // Fetch immediately
-        self.currentWord = DailyWordsData.getRandomWord(language: self.currentLanguage, level: self.currentLevel)
-        self.isLoading = false
+        
+        // Build URL (use server base URL from environment or hardcode for now)
+        let baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://192.168.50.2:4000"
+        let lang = currentLanguage.rawValue
+        let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst() // Normalize
+        
+        guard let url = URL(string: "\(baseURL)/api/vocabulary/random?language=\(lang)&level=\(lvl)") else {
+            self.isLoading = false
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                
+                if let data = data {
+                    do {
+                        let word = try JSONDecoder().decode(WordEntry.self, from: data)
+                        self?.currentWord = word
+                    } catch {
+                        print("DailyWord decode error: \(error)")
+                        // Fallback to local data if API fails
+                        self?.currentWord = DailyWordsData.getRandomWord(language: self?.currentLanguage ?? .en, level: self?.currentLevel)
+                    }
+                } else {
+                    print("DailyWord fetch error: \(error?.localizedDescription ?? "Unknown")")
+                    // Fallback to local
+                    self?.currentWord = DailyWordsData.getRandomWord(language: self?.currentLanguage ?? .en, level: self?.currentLevel)
+                }
+            }
+        }.resume()
     }
     
     private func loadPreferences() {

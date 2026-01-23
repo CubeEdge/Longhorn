@@ -50,7 +50,7 @@ struct WordExample: Codable, Identifiable {
 }
 
 struct WordEntry: Codable, Identifiable {
-    let id: String
+    let id: Int
     let word: String
     let phonetic: String?
     let meaning: String
@@ -60,10 +60,10 @@ struct WordEntry: Codable, Identifiable {
     let image: String?
     let level: String?
     
-    // Fallback ID generation if missing (though server provides it)
+    // Fallback decoding for flexibility
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
         self.word = try container.decode(String.self, forKey: .word)
         self.phonetic = try container.decodeIfPresent(String.self, forKey: .phonetic)
         self.meaning = try container.decode(String.self, forKey: .meaning)
@@ -74,7 +74,7 @@ struct WordEntry: Codable, Identifiable {
         self.level = try container.decodeIfPresent(String.self, forKey: .level)
     }
     
-    init(id: String = UUID().uuidString, word: String, phonetic: String?, meaning: String, meaningZh: String, partOfSpeech: String?, examples: [WordExample], image: String?, level: String?) {
+    init(id: Int = 0, word: String, phonetic: String?, meaning: String, meaningZh: String, partOfSpeech: String?, examples: [WordExample], image: String?, level: String?) {
         self.id = id
         self.word = word
         self.phonetic = phonetic
@@ -86,13 +86,14 @@ struct WordEntry: Codable, Identifiable {
         self.level = level
     }
 
+    // Server returns snake_case
     enum CodingKeys: String, CodingKey {
         case id
         case word
         case phonetic
         case meaning
-        case meaningZh
-        case partOfSpeech
+        case meaningZh = "meaning_zh"
+        case partOfSpeech = "part_of_speech"
         case examples
         case image
         case level
