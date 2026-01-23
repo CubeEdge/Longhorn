@@ -301,3 +301,45 @@ Fixing UI Issues
 - **Web Uploader**: Root cause is missing `file_stats` or `uploader_id` in SQLite DB. Plan: DB Fix Script.
 
 **Status**: Planning / Backlog Update.
+
+---
+
+## 2026-01-23
+
+### 20:50 - 系统修复与iOS增强 (System Fixing & iOS Polish)
+```
+1. Dashboard 还是空的
+2. Web Uploader 还是 Unknown
+3. iOS 想要文件夹文件数和滑动回弹
+```
+**User Prompt**:
+- 反馈系统 Dashboard 修复后仍无效。
+- 反馈 Web Uploader 始终 Unknown。
+- 提出 iOS 预览新需求。
+
+**Analysis & Action**:
+1. **Dashboard**: 发现 `server/index.js` 中 `topUploaders` 映射逻辑使用了旧字段名 (`file_count` vs `fileCount`)。**修复**: 移除错误的 `.map`，直接返回 SQL 结果。
+2. **Web Uploader**: 发现 Web 请求路径为部门代码 (MS) 而 DB 存的是全名。**修复**: 后端实现路径别名 (Omni-Matcher)。
+3. **iOS Preview**:
+   - 实现异步加载 `childCount`。
+   - 实现边界 `DragGesture` 提示。
+   - 修复 `fetchFiles` 编译错误。
+
+**Result**:
+- Dashboard 恢复正常。
+- Web Uploader 恢复正常。
+- iOS 新功能验证通过。
+
+### 21:00 - 文档治理 (Documentation Alignment)
+```
+为什么由三个 prompt md？
+我的 prompt 历史呢？
+```
+**User Prompt**:
+- 质疑文档混乱 (`prompt_log`, `DEV_LOG`, etc)。
+- 要求保留清晰的 Prompt Log。
+
+**Action**:
+- 恢复 `prompt_log.md` (曾误改为 Archive)。
+- 确认 APLM 框架：`BACKLOG` (Plan), `DEV_LOG` (Tech), `PROMPT_LOG` (Conversation), `SYSTEM_CONTEXT` (Context).
+- 同步所有文档。

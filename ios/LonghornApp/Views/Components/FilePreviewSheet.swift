@@ -91,30 +91,48 @@ struct FilePreviewSheet: View {
                 VStack {
                     Spacer()
                     Text(toast)
-                        .font(.subheadline)
+                        .font(.subheadline.medium()) // Slightly bolder
                         .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(20)
-                        .padding(.bottom, 50)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial) // Glassmorphism
+                        .background(Color.black.opacity(0.4))
+                        .cornerRadius(24)
+                        .shadow(radius: 10)
+                        .padding(.bottom, 120) // Lift up to avoid covering bottom bar
                 }
-                .transition(.opacity)
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        withAnimation {
-                            activeToast = nil
-                        }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(), value: activeToast)
+            }
+        }
+        .statusBar(hidden: true)
+        .onChange(of: activeToast) { newValue in
+            if newValue != nil {
+                // Auto-dismiss after 2 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation {
+                         // Only clear if it hasn't changed to something else in the meantime
+                         if activeToast == newValue {
+                             activeToast = nil
+                         }
                     }
                 }
             }
         }
-        .statusBar(hidden: true)
     }
     
     @State private var activeToast: String?
     
     private func showToast(message: String) {
+        // Force UI update even if message is same to trigger animation/timer
+        if activeToast == message {
+             // Reset briefly to re-trigger if needed, or rely on onChange
+             // Simple approach: set it directly. onChange will handle timer.
+             // If timer is already running, it will clear it.
+             // Best to debounce or just let existing timer finish?
+             // User wants it to disappear.
+             return 
+        }
         withAnimation {
             activeToast = message
         }
