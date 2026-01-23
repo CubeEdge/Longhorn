@@ -1131,8 +1131,8 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
         const topUploaders = db.prepare(`
             SELECT 
                 u.username,
-                COUNT(DISTINCT s.path) as file_count,
-                COALESCE(SUM(s.size), 0) as total_size
+                COUNT(DISTINCT s.path) as fileCount,
+                COALESCE(SUM(s.size), 0) as totalSize
             FROM users u
             LEFT JOIN file_stats s ON u.id = s.uploader_id
             WHERE s.uploader_id IS NOT NULL
@@ -2320,17 +2320,7 @@ app.post('/api/files/hit', authenticate, (req, res) => {
     }
 });
 
-app.get('/api/files/stats', authenticate, (req, res) => {
-    const { path: itemPath } = req.query;
-    const history = db.prepare(`
-        SELECT u.username, l.count, l.last_access 
-        FROM access_logs l
-        JOIN users u ON l.user_id = u.id
-        WHERE l.path = ?
-                    ORDER BY l.last_access DESC
-                    `).all(itemPath);
-    res.json(history);
-});
+
 
 app.post('/api/folders', authenticate, async (req, res) => {
     const { path: requestedSubPath, name } = req.body;
