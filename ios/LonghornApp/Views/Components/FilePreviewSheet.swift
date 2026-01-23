@@ -69,8 +69,55 @@ struct FilePreviewSheet: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never)) // Hide default dots
+            .simultaneousGesture(
+                DragGesture()
+                    .onEnded { value in
+                        // Detect Swipe at Boundaries
+                        let isLeftSwipe = value.translation.width < -50
+                        let isRightSwipe = value.translation.width > 50
+                        
+                        let currentIndex = allFiles.firstIndex(where: { $0.id == currentFileId }) ?? 0
+                        
+                        if isRightSwipe && currentIndex == 0 {
+                            showToast(message: "已经是第一个文件了")
+                        } else if isLeftSwipe && currentIndex == allFiles.count - 1 {
+                            showToast(message: "已经是最后一个文件了")
+                        }
+                    }
+            )
+            
+            // Toast Overlay
+            if let toast = activeToast {
+                VStack {
+                    Spacer()
+                    Text(toast)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(20)
+                        .padding(.bottom, 50)
+                }
+                .transition(.opacity)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation {
+                            activeToast = nil
+                        }
+                    }
+                }
+            }
         }
         .statusBar(hidden: true)
+    }
+    
+    @State private var activeToast: String?
+    
+    private func showToast(message: String) {
+        withAnimation {
+            activeToast = message
+        }
     }
 }
 
@@ -100,6 +147,8 @@ struct FilePreviewItemView: View {
     @State private var showInfoSheet = false
     
     @State private var webViewError: String?
+    @State private var childCount: Int?
+    @State private var isLoadingChildren = false
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     init(file: FileItem, isCurrent: Bool, onClose: @escaping () -> Void, onDownload: @escaping () -> Void, onShare: @escaping () -> Void, onStar: (() -> Void)?, onGoToLocation: (() -> Void)?, dragOffset: Binding<CGSize>, bgOpacity: Binding<Double>) {
@@ -528,6 +577,16 @@ struct FilePreviewItemView: View {
                              .font(.subheadline)
                              .foregroundColor(.secondary)
                      }
+                     
+                     // Folder Child Count
+                     if let count = childCount {
+                         Text("\(count) 个项")
+                             .font(.subheadline.bold())
+                             .foregroundColor(.accentColor)
+                     } else if isLoadingChildren {
+                         ProgressView()
+                             .controlSize(.small)
+                     }
                  }
                  
                  Divider()
@@ -540,6 +599,20 @@ struct FilePreviewItemView: View {
              }
              .frame(maxWidth: .infinity, maxHeight: .infinity)
              .background(Color.black.opacity(0.5)) // Slightly darker background for focus
+             .task {
+                 // Load folder items count
+                 if childCount == nil {
+                     isLoadingChildren = true
+                     // Simulate or fetch (using FileService)
+                     // Since we don't have a direct "count" API, we might need to list files
+                     // Or just leave it if API doesn't support.
+                     // Let's try listing (lightweight-ish)
+                     if let files = try? await FileService.shared.fetchFiles(path: file.path) {
+                         childCount = files.count
+                     }
+                     isLoadingChildren = false
+                 }
+             }
              
         } else if ["mp4", "mov", "m4v", "avi", "hevc"].contains(ext) {
              let remoteURL = buildPreviewURL(for: file)
