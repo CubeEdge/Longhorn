@@ -2251,6 +2251,12 @@ app.get('/api/files', authenticate, async (req, res) => {
                 `).get(`%/${item.name}`);
             }
 
+            // Debug logging for unknown uploader
+            if (!dbStats) {
+                const verifyStart = db.prepare('SELECT count(*) as c FROM file_stats WHERE path = ?').get(itemPath);
+                console.log(`[Debug] Unknown Uploader: Path="${itemPath}" | DB_Count=${verifyStart ? verifyStart.c : 'err'}`);
+            }
+
             if (!dbStats && (itemPath.includes('运营部') || itemPath.includes('市场部'))) {
                 console.log(`[Debug] Query MISS: "${itemPath}" | Hex: ${Buffer.from(itemPath).toString('hex')}`);
             }

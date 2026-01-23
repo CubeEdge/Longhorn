@@ -506,6 +506,41 @@ struct FilePreviewItemView: View {
                 }
             }
             
+        } else if file.isDirectory {
+             // Folder Preview
+             VStack(spacing: 24) {
+                 Image(systemName: "folder.fill")
+                     .font(.system(size: 100))
+                     .foregroundColor(Color(red: 1.0, green: 0.82, blue: 0.0)) // Mega folder yellow
+                 
+                 VStack(spacing: 8) {
+                     Text(file.name)
+                         .font(.title2.bold())
+                         .foregroundColor(.white)
+                         .multilineTextAlignment(.center)
+                     
+                     Text(formatFileSize(file.size))
+                         .font(.headline)
+                         .foregroundColor(.white.opacity(0.8))
+                     
+                     if file.accessCount > 0 {
+                         Text("\(String(localized: "stats.files")): \(file.accessCount)") // Reusing accessCount label for now or just generic info
+                             .font(.subheadline)
+                             .foregroundColor(.secondary)
+                     }
+                 }
+                 
+                 Divider()
+                     .frame(width: 200)
+                     .background(Color.white.opacity(0.2))
+                 
+                 Text("TYPE_FOLDER_DESC") // Placeholder or localized string "Folder"
+                     .font(.caption)
+                     .foregroundColor(.secondary)
+             }
+             .frame(maxWidth: .infinity, maxHeight: .infinity)
+             .background(Color.black.opacity(0.5)) // Slightly darker background for focus
+             
         } else if ["mp4", "mov", "m4v", "avi", "hevc"].contains(ext) {
              let remoteURL = buildPreviewURL(for: file)
              ZStack {
