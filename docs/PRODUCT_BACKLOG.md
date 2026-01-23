@@ -10,9 +10,13 @@
 
 ## 📋 待办事项 (Backlog - To Do)
 
-### [Feature] 全局 Toast 多语言支持
+### [Feature] 全局多语言完善
 - **优先级**: 低 (Low)
-- **描述**: 确保每一个弹出的 Toast 消息都已本地化（部分后端返回的消息可能仍是硬编码）。
+- **描述**: 
+  - 个人中心 Dashboard 仍有英文（"Upload", "Storage", "Starred"）
+  - 部分 Toast 消息可能仍是硬编码
+  - 统一处理所有 UI 文本的本地化
+- **状态**: 待开发 (Backlog)
 
 ---
 
