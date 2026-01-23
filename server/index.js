@@ -1088,15 +1088,27 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
         const getDirectorySize = (dirPath) => {
             let totalSize = 0;
             const getAllFiles = (dir) => {
-                const items = fs.readdirSync(dir);
-                for (const item of items) {
-                    const fullPath = path.join(dir, item);
-                    const stat = fs.statSync(fullPath);
-                    if (stat.isDirectory()) {
-                        getAllFiles(fullPath);
-                    } else {
-                        totalSize += stat.size;
+                try {
+                    const items = fs.readdirSync(dir);
+                    for (const item of items) {
+                        // Skip macOS system folders
+                        if (item.startsWith('.')) continue;
+
+                        const fullPath = path.join(dir, item);
+                        try {
+                            const stat = fs.statSync(fullPath);
+                            if (stat.isDirectory()) {
+                                getAllFiles(fullPath);
+                            } else {
+                                totalSize += stat.size;
+                            }
+                        } catch (err) {
+                            // Skip files/folders that can't be accessed (permission denied, etc.)
+                            console.warn(`Skipping inaccessible path: ${fullPath}`);
+                        }
                     }
+                } catch (err) {
+                    console.warn(`Cannot read directory: ${dir}`, err.message);
                 }
             };
             if (fs.existsSync(dirPath)) {
