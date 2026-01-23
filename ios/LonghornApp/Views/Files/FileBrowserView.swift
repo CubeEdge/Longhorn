@@ -150,9 +150,7 @@ struct FileBrowserView: View {
         }
 
         .sheet(item: $statsFile) { file in
-            FileStatsView(file: file) {
-                statsFile = nil
-            }
+            FileDetailSheet(file: file)
         }
         .confirmationDialog(
             String(localized: "browser.delete_confirm_message"),
@@ -249,19 +247,19 @@ struct FileBrowserView: View {
         }
         .fullScreenCover(item: $previewFile) { file in
             FilePreviewSheet(
-                file: file,
-                previewURL: previewURL,
+                initialFile: file,
+                allFiles: displayedFiles,
                 onClose: {
                     previewFile = nil
                 },
-                onDownload: {
-                    downloadFile(file)
+                onDownload: { downloadTarget in
+                    downloadFile(downloadTarget)
                 },
-                onShare: {
-                    shareFile = file
+                onShare: { shareTarget in
+                    shareFile = shareTarget
                 },
-                onStar: {
-                    toggleStar(file)
+                onStar: { starTarget in
+                    toggleStar(starTarget)
                 }
             )
         }
@@ -1989,4 +1987,217 @@ struct FolderSelectionView: View {
         FileBrowserView(path: "MS")
     }
 }
+
+// MARK: - 统一的文件详情视图
+
+struct FileDetailSheet: View {
+    let file: FileItem
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var selectedTab = 0
+    @State private var accessLogs: [AccessLog] = []
+    @State private var isLoadingLogs = false
+    @State private var errorMsg: String?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Segmented Control
+                Picker("Tabs", selection: $selectedTab) {
+                    Text("title.file_info").tag(0)
+                    Text("title.access_logs").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding()
+                
+                TabView(selection: $selectedTab) {
+                    // Tab 0: Basic Info
+                    infoList
+                        .tag(0)
+                    
+                    // Tab 1: Access Logs
+                    logsList
+                        .tag(1)
+                }
+                #if os(iOS)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                #endif
+            }
+            .navigationTitle(file.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("action.close") {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                // 预加载日志
+                if file.accessCount ?? 0 > 0 {
+                    await loadLogs()
+                }
+            }
+        }
+    }
+    
+    // MARK: - Info Tab
+    
+    private var infoList: some View {
+        List {
+            Section {
+                // 文件名
+                LabeledContent("label.name", value: file.name)
+                
+                // 大小
+                LabeledContent("label.size", value: file.formattedSize)
+                
+                // 类型
+                let ext = (file.name as NSString).pathExtension.uppercased()
+                if !ext.isEmpty {
+                    LabeledContent("label.type", value: ext)
+                }
+            }
+            
+            Section("label.upload_info") {
+                // 上传者
+                if let uploader = file.uploaderName {
+                    LabeledContent("label.uploader", value: uploader)
+                } else {
+                    LabeledContent("label.uploader", value: "-")
+                }
+                
+                // 上传时间
+                if let date = file.modifiedAt {
+                    LabeledContent("label.upload_date", value: formatDate(date))
+                } else {
+                    LabeledContent("label.upload_date", value: "-")
+                }
+            }
+            
+            Section("label.statistics") {
+                // 访问次数
+                if let count = file.accessCount {
+                    LabeledContent("label.access_count", value: "\(count)")
+                } else {
+                    LabeledContent("label.access_count", value: "0")
+                }
+                
+                // 分享次数
+                if let shareCount = file.shareCount {
+                    LabeledContent("label.share_count", value: "\(shareCount)")
+                } else {
+                    LabeledContent("label.share_count", value: "0")
+                }
+                
+                // 收藏次数
+                if let starCount = file.starCount {
+                    LabeledContent("label.star_count", value: "\(starCount)")
+                } else {
+                    LabeledContent("label.star_count", value: "0")
+                }
+            }
+            
+            Section("label.path") {
+                Text(file.path)
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = file.path
+                        } label: {
+                            Label("action.copy", systemImage: "doc.on.doc")
+                        }
+                    }
+            }
+        }
+    }
+    
+    // MARK: - Logs Tab
+    
+    private var logsList: some View {
+        Group {
+            if isLoadingLogs && accessLogs.isEmpty {
+                ProgressView()
+            } else if let error = errorMsg {
+                ContentUnavailableView(
+                    "stats.load_error",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error)
+                )
+            } else if accessLogs.isEmpty {
+                ContentUnavailableView(
+                    "stats.no_logs",
+                    systemImage: "chart.bar.doc.horizontal",
+                    description: Text(String(localized: "stats.no_logs_desc", defaultValue: "该文件暂无访问记录"))
+                )
+            } else {
+                List(accessLogs) { log in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(log.username ?? String(localized: "stats.unknown_user"))
+                                .font(.headline)
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Text("label.access_count")
+                                Text("\(log.count)")
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        }
+                        
+                        HStack {
+                            if let email = log.email {
+                                Text(email)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(log.formattedLastAccess)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .refreshable {
+                    await loadLogs()
+                }
+            }
+        }
+        .onChange(of: selectedTab) { newValue in
+            if newValue == 1 && accessLogs.isEmpty {
+                Task {
+                    await loadLogs()
+                }
+            }
+        }
+    }
+    
+    private func loadLogs() async {
+        isLoadingLogs = true
+        errorMsg = nil
+        do {
+            let logs = try await FileService.shared.getFileStats(path: file.path)
+            await MainActor.run {
+                self.accessLogs = logs
+                self.isLoadingLogs = false
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMsg = error.localizedDescription
+                self.isLoadingLogs = false
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let displayFormatter = DateFormatter()
+        displayFormatter.dateStyle = .medium
+        displayFormatter.timeStyle = .short
+        displayFormatter.locale = Locale.current
+        return displayFormatter.string(from: date)
+    }
+}
+
 

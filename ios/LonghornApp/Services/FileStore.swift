@@ -100,12 +100,30 @@ class FileStore: ObservableObject {
         loadingStates[path] = false
     }
     
-    /// 乐观更新：删除文件
     func deleteFile(_ file: FileItem, in path: String) {
         if var files = cache[path] {
             files.removeAll { $0.path == file.path }
             cache[path] = files
         }
+    }
+    
+    /// 乐观更新：添加文件
+    func addFile(_ file: FileItem, to path: String) {
+        var files = cache[path] ?? []
+        // 避免重复
+        if !files.contains(where: { $0.path == file.path }) {
+            files.append(file)
+            // 重新排序? 暂时放在末尾或按名称排序
+            files.sort { ($0.isDirectory ? 0 : 1, $0.name) < ($1.isDirectory ? 0 : 1, $1.name) }
+            cache[path] = files
+        }
+    }
+    
+    /// 强制清除特定路径的缓存（用于移动/上传后）
+    func invalidateCache(for path: String) {
+        cache.removeValue(forKey: path)
+        lastUpdated.removeValue(forKey: path)
+        loadingStates.removeValue(forKey: path)
     }
     
     /// 乐观更新：重命名文件

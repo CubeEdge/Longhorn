@@ -25,8 +25,12 @@ struct StarredView: View {
     @State private var showSingleUnstarConfirmation = false
     
     // 预览
-    @State private var previewItem: StarredItem?
+    @State private var previewFile: FileItem?
     @State private var previewURL: URL?
+    
+    // 为了兼容 FilePreviewSheet 的 callback
+    @State private var showShareSheet = false
+    @State private var shareFile: FileItem?
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
@@ -120,7 +124,7 @@ struct StarredView: View {
             }
             Button("action.cancel", role: .cancel) {}
         } message: { count in
-            Text("starred.confirm_unstar_count \(count)")
+            Text(String(format: String(localized: "starred.confirm_unstar_count"), count))
         }
         // 单条取消收藏确认
         .confirmationDialog(
@@ -136,9 +140,45 @@ struct StarredView: View {
                 itemToUnstar = nil
             }
         } message: { item in
-            Text("starred.confirm_unstar_message \(item.displayName)")
+            Text(String(format: String(localized: "starred.confirm_unstar_message"), item.displayName))
         }
-        .quickLookPreview($previewURL)
+        .fullScreenCover(item: $previewFile) { file in
+            let allFiles = starredItems
+                .filter { $0.isDirectory != true }
+                .compactMap { $0.toFileItem() }
+            
+            FilePreviewSheet(
+                initialFile: file,
+                allFiles: allFiles,
+                onClose: {
+                    previewFile = nil
+                },
+                onDownload: { downloadTarget in
+                    // Start download
+                },
+                onShare: { shareTarget in
+                    shareFile = shareTarget
+                    showShareSheet = true
+                },
+                onStar: { starTarget in
+                    Task { await refreshData() }
+                },
+                onGoToLocation: { locationTarget in
+                    previewFile = nil
+                    NavigationManager.shared.jumpToPath = (locationTarget.path as NSString).deletingLastPathComponent
+                    NavigationManager.shared.selectedTab = .home
+                }
+            )
+        }
+        .sheet(item: $shareFile) { file in
+            ShareDialogView(
+                filePath: file.path,
+                fileName: file.name,
+                onDismiss: { shareFile = nil }
+            )
+            .presentationDetents([.fraction(0.7)])
+            .presentationDragIndicator(.visible)
+        }
     }
     
     // MARK: - 列表视图
@@ -150,7 +190,8 @@ struct StarredView: View {
                     item: item,
                     isSelectionMode: isSelectionMode,
                     isSelected: selectedIds.contains(item.id),
-                    onPreview: { previewItem(item) }
+                    onPreview: { previewItem(item) },
+                    onUnstar: { unstarItem(item) }
                 )
                 .tag(item.id)
                 .contextMenu {
@@ -217,7 +258,7 @@ struct StarredView: View {
             
             Spacer()
             
-            Text("common.selected_count \(selectedIds.count)")
+            Text(String(format: String(localized: "common.selected_count"), selectedIds.count))
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             
@@ -297,10 +338,8 @@ struct StarredView: View {
     
     // MARK: - 方法
     
-    /// 首次加载 - 进入页面时调用
     private func loadData() async {
         errorMessage = nil
-        
         do {
             let items = try await FileService.shared.getStarredFiles()
             await MainActor.run {
@@ -308,7 +347,6 @@ struct StarredView: View {
                 self.isFirstLoad = false
             }
         } catch is CancellationError {
-            // 任务被取消时不显示错误
             print("StarredView: loadData cancelled")
         } catch {
             print("StarredView: loadData failed: \(error)")
@@ -321,7 +359,6 @@ struct StarredView: View {
         }
     }
     
-    /// 下拉刷新 / 事件触发刷新 - 静默更新
     private func refreshData() async {
         do {
             let items = try await FileService.shared.getStarredFiles()
@@ -330,7 +367,6 @@ struct StarredView: View {
                 self.errorMessage = nil
             }
         } catch is CancellationError {
-            // 静默忽略
         } catch {
             print("StarredView: refreshData failed: \(error)")
         }
@@ -342,8 +378,6 @@ struct StarredView: View {
     }
     
     private func navigateToFolder(_ item: StarredItem) {
-        // 导航逻辑这里需要 context，通常是由 NavigationLink 处理，或者这里做其他操作
-        // 如果是简单的打印或者暂时空置
         print("Navigate to folder: \(item.fullPath)")
     }
     
@@ -364,50 +398,31 @@ struct StarredView: View {
     }
     
     private func previewItem(_ item: StarredItem) {
-        Task {
-            do {
-                let url = try await APIClient.shared.downloadFile(path: item.fullPath)
-                await MainActor.run {
-                    previewURL = url
-                }
-            } catch {
-                print("Preview failed: \(error)")
-            }
-        }
+        self.previewFile = item.toFileItem()
     }
     
-
-    
-    /// 确认取消收藏单个项目（带 Toast 反馈）
     private func confirmUnstarItem(_ item: StarredItem) {
         Task {
             do {
                 try await FileService.shared.unstarFile(id: item.id)
-                // 乐观更新本地数据
                 await MainActor.run {
                     starredItems.removeAll { $0.id == item.id }
                     itemToUnstar = nil
                 }
-                // 通知其他视图刷新
                 NotificationCenter.default.post(name: .starredDidChange, object: nil)
-                // 成功提示
                 ToastManager.shared.show(String(localized: "starred.unstar_success"), type: .success)
             } catch {
                 print("Unstar failed: \(error)")
-                // 失败提示
                 ToastManager.shared.show(String(localized: "starred.unstar_failed"), type: .error)
-                // 失败时刷新以恢复状态
                 await refreshData()
             }
         }
     }
     
-    /// 批量取消收藏（带 Toast 反馈）
     private func unstarSelectedItems() {
         Task {
             var successCount = 0
             var failCount = 0
-            
             for id in selectedIds {
                 do {
                     try await FileService.shared.unstarFile(id: id)
@@ -417,15 +432,12 @@ struct StarredView: View {
                     failCount += 1
                 }
             }
-            // 乐观更新
             await MainActor.run {
                 starredItems.removeAll { selectedIds.contains($0.id) }
                 selectedIds.removeAll()
                 isSelectionMode = false
             }
-            // 通知其他视图
             NotificationCenter.default.post(name: .starredDidChange, object: nil)
-            // 结果提示
             if failCount == 0 {
                 ToastManager.shared.show(String(localized: "starred.unstar_batch_success \(successCount)"), type: .success)
             } else {
@@ -442,52 +454,52 @@ struct StarredItemRow: View {
     var isSelectionMode: Bool = false
     var isSelected: Bool = false
     var onPreview: () -> Void = {}
+    var onUnstar: () -> Void = {}
     
     var body: some View {
         if isSelectionMode {
             rowContent
+        } else if item.isDirectory == true {
+            ZStack {
+                rowContent
+                NavigationLink("", destination: FileBrowserView(path: item.fullPath))
+                    .opacity(0)
+            }
         } else {
-            NavigationLink {
-                if item.isDirectory == true {
-                    FileBrowserView(path: item.fullPath)
-                } else {
-                    FileDetailView(item: item)
-                }
-            } label: {
+            Button(action: onPreview) {
                 rowContent
             }
+            .buttonStyle(.plain)
         }
     }
     
     private var rowContent: some View {
         HStack(spacing: 14) {
-            // 图标
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(iconColor.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                
-                Image(systemName: iconName)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(iconColor)
+            if isImageOrVideo {
+                ThumbnailView(path: item.fullPath, size: 44)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: iconName)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
             }
             
-            // 信息
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayName)
                     .font(.system(size: 15, weight: .medium))
                     .lineLimit(1)
                 
-                HStack(spacing: 8) {
-                    // 路径
-                    Text(item.fullPath)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
+                Text(item.fullPath)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
                 
                 HStack(spacing: 12) {
-                    // 大小
                     if let size = item.size, item.isDirectory != true {
                         let formatter = ByteCountFormatter()
                         Text(formatter.string(fromByteCount: size))
@@ -495,73 +507,47 @@ struct StarredItemRow: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    // 收藏时间
-                    if let starredAt = item.starredAt {
-                        if let date = parseDate(starredAt) {
-                            Text(date, style: .date)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
-                        }
+                    if let starredAt = item.starredAt, let date = parseDate(starredAt) {
+                        Text(date, style: .date)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            
             Spacer()
-            
-            if !isSelectionMode {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.orange)
-            }
         }
         .padding(.vertical, 6)
     }
     
     private var iconName: String {
-        if item.isDirectory == true {
-            return "folder.fill"
-        }
-        
-        // 根据扩展名判断
+        if item.isDirectory == true { return "folder.fill" }
         let ext = (item.displayName as NSString).pathExtension.lowercased()
         switch ext {
-        case "jpg", "jpeg", "png", "gif", "webp", "heic":
-            return "photo.fill"
-        case "mp4", "mov", "m4v", "avi":
-            return "film.fill"
-        case "mp3", "m4a", "wav", "aac":
-            return "music.note"
-        case "pdf":
-            return "doc.fill"
-        case "doc", "docx":
-            return "doc.text.fill"
-        case "xls", "xlsx":
-            return "tablecells.fill"
-        case "zip", "rar", "7z":
-            return "doc.zipper"
-        default:
-            return "doc.fill"
+        case "jpg", "jpeg", "png", "gif", "webp", "heic": return "photo.fill"
+        case "mp4", "mov", "m4v", "avi": return "film.fill"
+        case "mp3", "m4a", "wav", "aac": return "music.note"
+        case "pdf": return "doc.fill"
+        case "doc", "docx": return "doc.text.fill"
+        case "xls", "xlsx": return "tablecells.fill"
+        default: return "doc.fill"
         }
     }
     
     private var iconColor: Color {
-        if item.isDirectory == true {
-            return .blue
-        }
-        
+        if item.isDirectory == true { return .blue }
         let ext = (item.displayName as NSString).pathExtension.lowercased()
         switch ext {
-        case "jpg", "jpeg", "png", "gif", "webp", "heic":
-            return .green
-        case "mp4", "mov", "m4v", "avi":
-            return .purple
-        case "mp3", "m4a", "wav", "aac":
-            return .orange
-        case "pdf":
-            return .red
-        default:
-            return .gray
+        case "jpg", "jpeg", "png", "gif", "webp", "heic": return .green
+        case "mp4", "mov", "m4v", "avi": return .purple
+        case "mp3", "m4a", "wav", "aac": return .orange
+        case "pdf": return .red
+        default: return .gray
         }
+    }
+    
+    private var isImageOrVideo: Bool {
+        let ext = (item.displayName as NSString).pathExtension.lowercased()
+        return ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "mp4", "mov", "m4v", "avi", "mkv", "hevc"].contains(ext)
     }
     
     private func parseDate(_ string: String) -> Date? {
@@ -583,15 +569,20 @@ struct StarredGridItem: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // 图标区域
             ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(height: 100)
-                
-                Image(systemName: iconName)
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(iconColor)
+                if isImageOrVideo {
+                    ThumbnailView(path: item.fullPath, size: 100)
+                        .frame(height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                } else {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(iconColor.opacity(0.12))
+                        .frame(height: 100)
+                    
+                    Image(systemName: iconName)
+                        .font(.system(size: 40, weight: .medium))
+                        .foregroundColor(iconColor)
+                }
             }
             .overlay(alignment: .topLeading) {
                 if isSelectionMode {
@@ -610,7 +601,6 @@ struct StarredGridItem: View {
                 }
             }
             
-            // 信息
             VStack(spacing: 4) {
                 Text(item.displayName)
                     .font(.system(size: 13, weight: .medium))
@@ -636,28 +626,19 @@ struct StarredGridItem: View {
     }
     
     private var iconName: String {
-        if item.isDirectory == true {
-            return "folder.fill"
-        }
-        
+        if item.isDirectory == true { return "folder.fill" }
         let ext = (item.displayName as NSString).pathExtension.lowercased()
         switch ext {
-        case "jpg", "jpeg", "png", "gif", "webp", "heic":
-            return "photo.fill"
-        case "mp4", "mov", "m4v", "avi":
-            return "film.fill"
-        case "mp3", "m4a", "wav", "aac":
-            return "music.note"
-        case "pdf":
-            return "doc.fill"
-        default:
-            return "doc.fill"
+        case "jpg", "jpeg", "png", "gif", "webp", "heic": return "photo.fill"
+        case "mp4", "mov", "m4v", "avi": return "film.fill"
+        case "mp3", "m4a", "wav", "aac": return "music.note"
+        case "pdf": return "doc.fill"
+        default: return "doc.fill"
         }
     }
     
     private var iconColor: Color {
         if item.isDirectory == true { return .blue }
-        
         let ext = (item.displayName as NSString).pathExtension.lowercased()
         switch ext {
         case "jpg", "jpeg", "png", "gif", "webp", "heic": return .green
@@ -667,77 +648,10 @@ struct StarredGridItem: View {
         default: return .gray
         }
     }
-}
-
-// MARK: - 文件详情视图
-
-struct FileDetailView: View {
-    let item: StarredItem
-    @State private var previewURL: URL?
-    @State private var isLoading = true
     
-    var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("status.loading")
-            } else if let url = previewURL {
-                QuickLookPreview(url: url)
-            } else {
-                VStack(spacing: 24) {
-                    Image(systemName: item.isDirectory == true ? "folder.fill" : "doc.fill")
-                        .font(.system(size: 64))
-                        .foregroundColor(.gray)
-                    
-                    Text(item.displayName)
-                        .font(.system(size: 20, weight: .semibold))
-                    
-                    if let size = item.size {
-                        let formatter = ByteCountFormatter()
-                        Text("\(String(localized: "label.size")): \(formatter.string(fromByteCount: size))")
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Text("\(String(localized: "label.path")): \(item.fullPath)")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    Button {
-                        Task {
-                            await downloadAndPreview()
-                        }
-                    } label: {
-                        Label("file.download_preview", systemImage: "arrow.down.circle.fill")
-                            .font(.headline)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                }
-            }
-        }
-        .navigationTitle(item.displayName)
-        .task {
-            await downloadAndPreview()
-        }
-    }
-    
-    private func downloadAndPreview() async {
-        isLoading = true
-        do {
-            let url = try await APIClient.shared.downloadFile(path: item.fullPath)
-            await MainActor.run {
-                previewURL = url
-                isLoading = false
-            }
-        } catch {
-            print("Download failed: \(error)")
-            await MainActor.run {
-                isLoading = false
-            }
-        }
+    private var isImageOrVideo: Bool {
+        let ext = (item.displayName as NSString).pathExtension.lowercased()
+        return ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "mp4", "mov", "m4v", "avi", "mkv", "hevc"].contains(ext)
     }
 }
 
@@ -754,6 +668,8 @@ extension FileItem {
         self.uploaderName = nil
         self.isStarred = nil
         self.accessCount = nil
+        self.shareCount = nil
+        self.starCount = nil
     }
 }
 

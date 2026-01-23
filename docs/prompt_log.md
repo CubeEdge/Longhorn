@@ -4,6 +4,66 @@
 
 ---
 
+## 2026-01-22
+
+### 08:30 - 严重故障：Admin/Member 数据不可见 (Empty Folder/403)
+```
+能够进去，但是仍然出现错误500，随后一会儿显示空。网页版也没有内容。
+以前admin可以查看所有问题，现在admin登录也是什么都看不见了。
+```
+**故障现象**:
+1. iOS 端 Orange 用户进入 "运营部" 报 403。
+2. 修复 403 后，进入显示 "Folder is empty"。
+3. 随后连 Admin 用户也看显示为空。
+
+**排查过程**:
+1. **第一阶段：权限与路径**
+   - 发现 User 数据重载逻辑问题，修复 `authenticate` 中未获取最新 `department_name` 问题。
+   - 发现 `DISK_A` 路径配置差异（服务器配置指向 `/Volumes/fileserver`，但脚本一度强制改为 `./data/DiskA`）。
+   - 误删本地 `server/data/DiskA` 软链接，导致回退到默认配置时找不到目标。
+   - **修复**: 恢复 `server/data/DiskA` -> `/Volumes/fileserver` 软链接；清理 `deploy.sh` 恢复默认环境读取。
+
+2. **第二阶段：数据库 Schema 不一致 (Root Cause)**
+   - 路径修复后，Admin 恢复，但 User 仍报错。
+   - 日志捕获 `SqliteError: no such column: department_name`。
+   - **原因**: 生产环境 `users` 表是旧版本创建，缺少 `department_name` 冗余列。代码直接查询该列导致 500/Crash。
+   - **修复**: 修改 SQL 查询，改为 `LEFT JOIN departments` 获取部门名称，不再依赖 `users` 表中的冗余列。
+
+**最终结果**:
+- 修复了 `authenticate` 中间件的 SQL 查询逻辑。
+- 恢复了服务器文件系统链接。
+- admin 和 orange 用户均恢复正常访问。
+
+---
+
+## 2026-01-19
+
+### 22:00 - 收藏功能全面优化
+```
+1. 收藏列表点击图片加载慢，需要使用FilePreviewView
+2. 收藏列表需要显示缩略图
+3. 移除行右侧取消收藏按钮
+4. 批量收藏toggle逻辑和速度问题
+5. 多语言翻译缺失
+```
+**实现**:
+1. **StarredView 预览**: 使用 `FilePreviewView` 统一预览体验，添加 `StarredItem.toFileItem()` 转换方法
+2. **缩略图显示**: `StarredItemRow` 和 `StarredGridItem` 使用 `ThumbnailView` 显示图片/视频缩略图
+3. **移除按钮**: 移除列表行右侧取消收藏小按钮，用户通过左滑操作取消
+4. **批量收藏**: 重写 `batchToggleStar()` 实现 toggle 逻辑 + 乐观更新 + 并发执行
+5. **翻译**: 填充 `action.star`, `starred.folder`, `status.loading`, `status.downloaded`, `toast.unstarred_success`, `toast.batch_star_toggle` 等翻译键
+
+### 17:00 - 服务端收藏逻辑修复
+```
+收藏图标更新速度慢，ETag导致304响应
+```
+**修复**:
+1. **ETag**: `/api/files` ETag 生成包含用户收藏数量
+2. **Starred Query**: 增强匹配逻辑支持精确路径和后缀匹配
+3. **乐观更新**: `performStar`/`performUnstar` 同时更新本地数组和 FileStore 缓存
+
+---
+
 ## 2026-01-14
 
 ### 18:30 - 服务端崩溃修复
@@ -224,3 +284,20 @@ Fixing UI Issues
 ```
 搜索页面，全中文。
 ```
+
+## 2026-01-23
+
+### 15:45 - Doc Consolidation & Bug Analysis
+**User Request**:
+1. Make `SYSTEM_CONTEXT` a "Common Memory".
+2. Ensure `promptlog` updates automatically.
+3. Daily Word: Add 100+ words & Smart Refresh.
+4. Web: Fix "Unknown Uploader".
+
+**Action**:
+- **Docs**: Comprehensive Rewrite of `SYSTEM_CONTEXT.md` (Chinese).
+- **Log**: Established manual protocol to update `docs/prompt_log.md` (this entry).
+- **Daily Word**: Analyzed code. Found Client-Side implementation (`DailyWord.tsx`) vs Unused Server-Side API (`/api/vocabulary`). Plan: Migrate to Server API.
+- **Web Uploader**: Root cause is missing `file_stats` or `uploader_id` in SQLite DB. Plan: DB Fix Script.
+
+**Status**: Planning / Backlog Update.

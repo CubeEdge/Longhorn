@@ -36,13 +36,13 @@
 				<key>focused</key>
 				<string></string>
 				<key>leading</key>
-				<string>    private var isVideo: Bool {
-        videoExtensions.contains((file.name as NSString).pathExtension.lowercased())
+				<string>                        .font(.system(size: 22))
+                    Text("action.share")
     </string>
 				<key>trailing</key>
-				<string>}
-    
-    private var isImage: Bool {
+				<string>                    .font(.caption2)
+                }
+            }
 </string>
 			</dict>
 			<key>title</key>

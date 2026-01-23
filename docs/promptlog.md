@@ -1,5 +1,15 @@
 # Prompt Log
 
+## [V13.4.0] - 2026-01-21
+**Commit**: bf5cb8e
+**Changes**:
+- **Fix**: Resolved major compilation errors in `StarredView.swift` by refactoring the structural hierarchy and brace matching.
+- **Fix**: Fixed "Expected declaration" error in `SharesListView.swift` caused by a redundant closing brace.
+- **Fix**: Resolved `Cannot find 'FileDetailSheet' in scope` error by merging the component into `FileBrowserView.swift` to ensure global visibility across targets.
+- **Resources**: Integrated `Localizable.xcstrings` for comprehensive multi-language support (CN, EN, DE, JA).
+- **Cleanup**: Removed redundant `FileDetailSheet.swift` and `FileStatsView.swift` shims where necessary.
+
+
 ## [V13.2.0] - 2026-01-16
 **Commit**: 5434829
 **Changes**:

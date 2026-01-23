@@ -1,5 +1,24 @@
 # Changelog
 
+## [14.0.0] - 2026-01-16
+### Added
+- **Smart Refresh Architecture**: 实装基于 SWR (Stale-While-Revalidate) 模式的智能刷新方案。
+    - **Data Stores**: 新增 `FileStore`, `DashboardStore`, `ShareStore` 内存缓存层。
+    - **Global Event Bus**: 引入 `AppNotifications` 全局事件模型，实现跨视图同步（如：文件浏览器收藏后，星标页即时更新）。
+- **Maintenance**: 
+    - 新增 `AppNotifications.swift` 用于统一管理通知。
+    - 登出时自动清理所有内存缓存。
+    - `docs/OPS.md` 增加 Mac mini 开机自启动、自动登录及服务持久化配置指南。
+
+## [13.2.0] - 2026-01-16
+### Changed
+- **Delete UX**: 优化分享删除确认框，从顶部固定移动至删除按钮附近弹出，符合 iOS 原生交互习惯。
+- **Preview Optimization**: 图片预览加载逻辑重构，解决大文件或弱网下 0% 状态卡顿问题。
+- **Cache Manager**: `PreviewCacheManager` 优化，引入防抖磁盘写入，消除主线程卡顿。
+### Fixed
+- **Property Names**: 修复 `ShareLink` 模型属性引用错误（`fileName`/`filePath`）。
+- **Bug Fix**: 修复 `SharesListView` 中因括号不匹配导致的编译错误。
+
 ## [13.1.0] - 2026-01-14
 ### Fixed
 - **JSON Syntax**: 修复 `Localizable.xcstrings` 格式错误导致的应用崩溃。

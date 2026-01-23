@@ -43,7 +43,7 @@ class ToastManager: ObservableObject {
     
     func show(_ message: String, type: ToastType = .info, duration: TimeInterval = 2.0) {
         Task { @MainActor in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.snappy(duration: 0.25)) {
                 self.currentToast = Toast(message: message, type: type, duration: duration)
             }
             

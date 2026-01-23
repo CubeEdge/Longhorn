@@ -100,22 +100,18 @@ struct GrantPermissionSheet: View {
                 }
             }
             .sheet(isPresented: $showFolderPicker) {
-                NavigationStack {
-                    DestinationFolderPicker(
-                        onSelect: { path in
-                            folderPath = path
-                            showFolderPicker = false
-                        }
-                    )
-                    .navigationTitle(Text("action.select"))
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("action.cancel") {
-                                showFolderPicker = false
-                            }
-                        }
+                DestinationFolderPicker(
+                    initialPath: folderPath.isEmpty ? nil : folderPath,
+                    title: String(localized: "action.select"),
+                    confirmButtonTitle: String(localized: "action.select"),  // 使用"选择"而不是"移动"
+                    onSelect: { path in
+                        folderPath = path
+                        showFolderPicker = false
+                    },
+                    onCancel: {
+                        showFolderPicker = false
                     }
-                }
+                )
             }
         }
     }

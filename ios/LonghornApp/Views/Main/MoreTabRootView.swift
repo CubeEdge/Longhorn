@@ -107,7 +107,7 @@ struct MoreTabRootView: View {
                 // Section 3: Utilities
                 Section(header: Text("more.tools")) {
                     NavigationLink(destination: SettingsView()) { // Assuming SettingsView handles Language
-                        Label("settings.title", systemImage: "gear")
+                        Label("settings.title", systemImage: "gearshape.fill")
                     }
                     
                     NavigationLink(destination: RecycleBinListView()) {

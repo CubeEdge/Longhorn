@@ -15,11 +15,11 @@ struct SearchListView: View {
     @State private var selectedType: FileTypeFilter = .all
     
     enum FileTypeFilter: String, CaseIterable {
-        case all = "全部"
-        case image = "图片"
-        case video = "视频"
-        case document = "文档"
-        case audio = "音频"
+        case all = "filter.all"
+        case image = "filter.image"
+        case video = "filter.video"
+        case document = "filter.document"
+        case audio = "filter.audio"
         
         var typeParameter: String? {
             switch self {
@@ -29,6 +29,10 @@ struct SearchListView: View {
             case .document: return "document"
             case .audio: return "audio"
             }
+        }
+        
+        var localizedName: String {
+            String(localized: LocalizedStringResource(stringLiteral: self.rawValue))
         }
         
         var icon: String {
@@ -49,7 +53,7 @@ struct SearchListView: View {
                 HStack(spacing: 12) {
                     ForEach(FileTypeFilter.allCases, id: \.self) { type in
                         FilterChip(
-                            title: type.rawValue,
+                            title: type.localizedName,
                             icon: type.icon,
                             isSelected: selectedType == type
                         ) {
@@ -74,7 +78,7 @@ struct SearchListView: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(.secondary)
                             
-                            Text("搜索文件和文件夹")
+                            Text("search.instruction")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -85,9 +89,9 @@ struct SearchListView: View {
                 } else if results.isEmpty && !isSearching {
                     Section {
                         ContentUnavailableView(
-                            "未找到结果",
+                            String(localized: "search.no_results"),
                             systemImage: "magnifyingglass",
-                            description: Text("尝试使用其他关键词或筛选条件")
+                            description: Text("search.no_results.description")
                         )
                     }
                     .listRowBackground(Color.clear)
@@ -97,8 +101,8 @@ struct SearchListView: View {
                             if file.isDirectory {
                                 FileBrowserView(path: file.path)
                             } else {
-                                // 预览文件
-                                Text("文件详情: \(file.name)")
+                                // 预览文件 - 在搜索中目前保持简单
+                                Text("search.file_detail \(file.name)")
                             }
                         } label: {
                             FileRowView(file: file)
@@ -108,8 +112,8 @@ struct SearchListView: View {
             }
             .listStyle(.plain)
         }
-        .navigationTitle("搜索")
-        .searchable(text: $searchText, prompt: "搜索文件名...")
+        .navigationTitle("search.title")
+        .searchable(text: $searchText, prompt: Text("search.placeholder"))
         .onSubmit(of: .search) {
             performSearch()
         }
@@ -121,7 +125,7 @@ struct SearchListView: View {
         }
         .overlay {
             if isSearching {
-                ProgressView("搜索中...")
+                ProgressView("search.searching")
             }
         }
     }

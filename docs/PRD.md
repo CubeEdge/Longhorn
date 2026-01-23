@@ -1,7 +1,8 @@
 # Longhorn 企业文件管理系统 - 产品需求文档 (PRD)
 
-**版本：** 13.2.0  
-**最后更新：** 2026-01-16  
+**版本：** 13.4.1
+**最后更新：** 2026-01-22
+
 **状态：** 生产环境运行中 (V13)
 
 ---
@@ -65,7 +66,31 @@ Longhorn 是一款面向企业内部的**轻量级文件管理与协作系统**�
 
 ---
 
-## 3. 最近更新 (V13.1.0)
+## 3. 最近更新 (V13.4.1)
+
+### 3.1 紧急修复与稳定性
+- **数据库兼容性修复**：
+  - 修复 `authenticate` 中间件直接查询 `users.department_name` 导致的崩溃问题。改为标准的 `LEFT JOIN` 查询，兼容旧版本数据库 Schema。
+- **iOS 权限修复**：
+  - 解决部门名称含中文（如 "运营部"）导致的 403 权限错误，增加 Unicode NFC 标准化处理。
+- **环境配置标准化**：
+  - 明确 `DISK_A` 存储路径配置，确立 `server/data/DiskA` -> `/Volumes/fileserver` 的软链接部署规范。
+
+### 3.2 之前的更新 (V13.4.0)
+
+### 3.1 架构与稳定性增强
+- **组件内聚化 (Component Inlining)**：
+  - 针对 iOS App 中跨视图共享的 `FileDetailSheet` 组件，采用内聚化策略（合并至 `FileBrowserView`），绕过 Xcode 工程索引导致的 Target 链接错误，显著提升编译稳定性。
+- **UI 逻辑统一**：
+  - 收藏、搜索、浏览及分享列表全面对接 `FilePreviewSheet` 与 `FileDetailSheet`，实现“一处修改，全局生效”。
+
+### 3.2 资源国际化
+- **String Catalogs (xcstrings)**：
+  - 迁移旧有的多语言映射至 iOS 新型 `Localizable.xcstrings` 格式，支持可视化管理和更精确的 Context 匹配。
+  - 覆盖范围涵盖：操作提示、权限说明、部门名称及所有 UI 标签。
+
+## 4. 之前的更新 (V13.1.0)
+
 
 ### 3.1 真实数据与统计
 - **部门概览 (Real-time Stats)**：

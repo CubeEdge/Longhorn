@@ -16,7 +16,7 @@ struct FolderPickerView: View {
                     HStack {
                         Image(systemName: "arrow.turn.up.left")
                             .foregroundColor(.blue)
-                        Text("返回上一级")
+                        Text("folder_picker.go_up")
                             .foregroundColor(.primary)
                     }
                 }
@@ -29,7 +29,7 @@ struct FolderPickerView: View {
                 Text(error)
                     .foregroundColor(.red)
             } else if items.isEmpty {
-                Text("此文件夹为空或没有子文件夹")
+                Text("folder_picker.empty")
                     .foregroundColor(.secondary)
                     .italic()
             } else {
@@ -40,14 +40,14 @@ struct FolderPickerView: View {
                         Text(item.name)
                         Spacer()
                         
-                        Button("进入") {
+                        Button("folder_picker.enter") {
                             loadFiles(path: item.path)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                         .foregroundColor(.blue)
                         .padding(.trailing, 8)
                         
-                        Button("选择") {
+                        Button("action.select") {
                             onSelect(item.path)
                         }
                         .buttonStyle(BorderedButtonStyle())
@@ -55,7 +55,7 @@ struct FolderPickerView: View {
                 }
             }
         }
-        .navigationTitle(currentPath.isEmpty ? "根目录" : currentPath)
+        .navigationTitle(currentPath.isEmpty ? String(localized: "folder_picker.root") : currentPath)
         .onAppear {
             loadFiles(path: currentPath)
         }

@@ -13,6 +13,8 @@ struct ShareLink: Codable, Identifiable {
     let userId: Int?
     let filePath: String
     let fileName: String?
+    let fileSize: Int64?
+    let uploaderName: String?
     let token: String
     let expiresAt: String?
     let createdAt: String
@@ -25,6 +27,8 @@ struct ShareLink: Codable, Identifiable {
         case userId = "user_id"
         case filePath = "file_path"
         case fileName = "file_name"
+        case fileSize = "file_size"
+        case uploaderName = "uploader_name"
         case token
         case expiresAt = "expires_at"
         case createdAt = "created_at"

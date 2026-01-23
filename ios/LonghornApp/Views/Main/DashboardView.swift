@@ -10,6 +10,7 @@ struct DashboardView: View {
     
     @State private var showWordSheet = false
     @State private var searchText = ""
+    @State private var previewFile: FileItem?
     
     var body: some View {
         NavigationView {
@@ -19,7 +20,7 @@ struct DashboardView: View {
                     searchHeader
                     
                     // 2. Recent Files
-                    if !recentManager.recentFiles.isEmpty {
+                    if !recentManager.filteredFiles.isEmpty {
                         recentFilesSection
                     }
                     
@@ -42,6 +43,30 @@ struct DashboardView: View {
                     dailyWordService.nextWord() // Silent load
                 }
             }
+        }
+        .fullScreenCover(item: $previewFile) { file in
+            FilePreviewSheet(
+                initialFile: file,
+                allFiles: recentManager.filteredFiles,
+                onClose: { previewFile = nil },
+                onDownload: { downloadTarget in
+                    // Logic handled inside sheet
+                },
+                onShare: { shareTarget in
+                    // Logic handled inside sheet
+                },
+                onStar: { starTarget in
+                     Task {
+                         try? await FileService.shared.toggleStar(path: starTarget.path)
+                     }
+                },
+                onGoToLocation: { locationTarget in
+                    previewFile = nil
+                    // Extract parent path
+                    let parentPath = (locationTarget.path as NSString).deletingLastPathComponent
+                    NavigationManager.shared.navigateTo(path: parentPath)
+                }
+            )
         }
     }
     
@@ -89,8 +114,13 @@ struct DashboardView: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    ForEach(recentManager.recentFiles) { file in
-                         FileCard(file: file)
+                    ForEach(recentManager.filteredFiles) { file in
+                        Button {
+                            previewFile = file
+                        } label: {
+                            FileCard(file: file)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }

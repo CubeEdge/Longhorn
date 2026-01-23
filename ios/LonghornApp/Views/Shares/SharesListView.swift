@@ -22,6 +22,12 @@ struct SharesListView: View {
     @State private var editShareItem: ShareLink?
     @State private var editCollectionItem: ShareCollection?
     
+    // 预览
+    @State private var previewFile: FileItem?
+    @State private var previewShare: ShareLink?
+    @State private var showShareSheet = false
+    @State private var shareFile: FileItem?
+    
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
     enum ShareTab: String, CaseIterable {
@@ -135,6 +141,61 @@ struct SharesListView: View {
                 )
             }
         }
+        .fullScreenCover(item: $previewShare) { share in
+            let file = FileItem(
+                name: share.fileName ?? (share.filePath as NSString).lastPathComponent,
+                path: share.filePath,
+                isDirectory: false,
+                size: share.fileSize,
+                uploaderName: share.uploaderName,
+                accessCount: share.accessCount
+            )
+            // Construct allFiles for paging
+            let allFiles = store.shares.map { share in
+                FileItem(
+                    name: share.fileName ?? (share.filePath as NSString).lastPathComponent,
+                    path: share.filePath,
+                    isDirectory: false,
+                    size: share.fileSize,
+                    uploaderName: share.uploaderName,
+                    accessCount: share.accessCount
+                )
+            }
+            
+            FilePreviewSheet(
+                initialFile: file,
+                allFiles: allFiles,
+                onClose: {
+                    previewShare = nil
+                },
+                onDownload: { _ in
+                    // Download handled internally
+                },
+                onShare: { _ in
+                    // Already shared - copy link
+                    let url = ShareService.shared.getShareURL(token: share.token)
+                    UIPasteboard.general.string = url
+                    ToastManager.shared.show(String(localized: "link.copied"), type: .success)
+                },
+                onStar: { _ in
+                    // ShareLink might not support starring directly here or needs separate API
+                },
+                onGoToLocation: { locationTarget in
+                    previewShare = nil
+                    NavigationManager.shared.jumpToPath = (locationTarget.path as NSString).deletingLastPathComponent
+                    NavigationManager.shared.selectedTab = .home
+                }
+            )
+        }
+        .sheet(item: $shareFile) { file in
+            ShareDialogView(
+                filePath: file.path,
+                fileName: file.name,
+                onDismiss: { shareFile = nil }
+            )
+            .presentationDetents([.fraction(0.7)])
+            .presentationDragIndicator(.visible)
+        }
     }
     
     private var currentSelectionCount: Int {
@@ -170,6 +231,18 @@ struct SharesListView: View {
                         }, onDelete: {
                             deleteShare(share)
                         })
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isSelectionMode {
+                                if selectedShareIds.contains(share.id) {
+                                    selectedShareIds.remove(share.id)
+                                } else {
+                                    selectedShareIds.insert(share.id)
+                                }
+                            } else {
+                                openPreview(for: share)
+                            }
+                        }
                         .tag(share.id)
                     }
                 }
@@ -231,7 +304,7 @@ struct SharesListView: View {
             
             Spacer()
             
-            Text("common.selected_count \(count)")
+            Text(String(format: String(localized: "common.selected_count"), count))
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             
@@ -290,8 +363,11 @@ struct SharesListView: View {
                 selectedCollectionIds.removeAll()
             }
             isSelectionMode = false
-            await store.refreshData()
         }
+    }
+    
+    private func openPreview(for share: ShareLink) {
+        previewShare = share
     }
 }
 
@@ -307,33 +383,61 @@ struct ShareItemRow: View {
     
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
     
+    private let imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"]
+    private let videoExtensions = ["mp4", "mov", "m4v", "avi", "mkv", "hevc"]
+    
+    private var isMediaFile: Bool {
+        let ext = (share.filePath as NSString).pathExtension.lowercased()
+        return imageExtensions.contains(ext) || videoExtensions.contains(ext)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 文件名
-            HStack {
-                Image(systemName: "doc.fill")
-                    .foregroundColor(.secondary)
+            // 文件名 + 缩略图
+            HStack(spacing: 12) {
+                // 缩略图或图标
+                if isMediaFile {
+                    ThumbnailView(path: share.filePath, size: 44)
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.15))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "doc.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.secondary)
+                    }
+                }
                 
-                Text(share.fileName ?? String(localized: "file.type.generic"))
-                    .font(.system(size: 15, weight: .semibold))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(share.fileName ?? String(localized: "file.type.generic"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                    
+                    // 状态标签行
+                    HStack(spacing: 8) {
+                        if share.isExpired {
+                            Text("share.status.expired")
+                                .font(.system(size: 11, weight: .medium))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.red.opacity(0.15))
+                                .foregroundColor(.red)
+                                .cornerRadius(4)
+                        }
+                        if share.hasPassword {
+                            HStack(spacing: 2) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 10))
+                                Text("share.status.protected")
+                                    .font(.system(size: 11))
+                            }
+                            .foregroundColor(.orange)
+                        }
+                    }
+                }
                 
                 Spacer()
-                
-                // 状态标签
-                if share.isExpired {
-                    Text("share.status.expired")
-                        .font(.system(size: 11, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.red.opacity(0.15))
-                        .foregroundColor(.red)
-                        .cornerRadius(4)
-                } else if share.hasPassword {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.orange)
-                }
             }
             
             // 信息行
@@ -717,5 +821,22 @@ struct EditShareSheet: View {
 #Preview {
     NavigationStack {
         SharesListView()
+    }
+}
+
+// Private extension for preview
+fileprivate extension FileItem {
+    init(name: String, path: String, isDirectory: Bool, size: Int64?, uploaderName: String?, accessCount: Int?) {
+        self.name = name
+        self.path = path
+        self.isDirectory = isDirectory
+        self.size = size
+        self.modifiedAt = nil
+        self.uploaderId = nil
+        self.uploaderName = uploaderName
+        self.isStarred = nil
+        self.accessCount = accessCount
+        self.shareCount = nil
+        self.starCount = nil
     }
 }

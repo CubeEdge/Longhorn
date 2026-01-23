@@ -287,6 +287,7 @@ struct ShareDialogView: View {
                 await MainActor.run {
                     shareResult = result
                     isLoading = false
+                    AppEvents.notifySharesChanged()
                 }
             } catch let error as APIError {
                 await MainActor.run {

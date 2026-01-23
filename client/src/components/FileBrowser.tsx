@@ -1710,7 +1710,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         <div className="preview-content">{renderPreviewContent(previewFile)}</div>
                         <div className="preview-actions">
                             <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '16px' }}>
-                                {formatSize(previewFile.size)} • {t('file.uploader')}: {previewFile.uploader || 'unknown'} • {t('file.total_access')}: {previewFile.accessCount || 0}
+                                {t('file.uploader')}: {previewFile.uploader || 'unknown'} • {t('file.total_access')}: {previewFile.accessCount || 0}
                             </div>
                         </div>
                     </div>

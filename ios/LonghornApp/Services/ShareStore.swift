@@ -20,8 +20,19 @@ class ShareStore: ObservableObject {
     // 缓存有效期（例如 5 分钟）
     private var lastUpdated: Date?
     private let cacheValidityDuration: TimeInterval = 300
+    private var cancellables = Set<AnyCancellable>()
     
-    private init() {}
+    private init() {
+        // 监听分享变更通知
+        NotificationCenter.default.publisher(for: .sharesDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    await self?.refreshData(showLoading: false)
+                }
+            }
+            .store(in: &cancellables)
+    }
     
     /// 加载数据：如果缓存有效则不请求，否则后台刷新
     func loadDataIfNeeded() async {

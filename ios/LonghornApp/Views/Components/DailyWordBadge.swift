@@ -118,14 +118,18 @@ struct DailyWordSheet: View {
                                 
                                 Text(word.meaning)
                                     .font(.body)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Divider()
                                 
                                 Text(word.meaningZh)
                                     .font(.body)
                                     .foregroundColor(.blue)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding()
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 120, alignment: .top) // Fixed minHeight to prevent jitter
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(16)
                             
@@ -135,30 +139,39 @@ struct DailyWordSheet: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 
-                                ForEach(word.examples) { example in
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack(alignment: .top, spacing: 8) {
-                                            Text("•")
-                                                .foregroundColor(.blue)
-                                                .font(.headline)
-                                            
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(example.sentence)
-                                                    .font(.system(.body, design: .serif)) // Serif for examples
-                                                    .fontWeight(.medium)
-                                                    .fixedSize(horizontal: false, vertical: true)
-                                                    .foregroundColor(.primary)
+                                if !word.examples.isEmpty {
+                                    ForEach(word.examples) { example in
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            HStack(alignment: .top, spacing: 8) {
+                                                Text("•")
+                                                    .foregroundColor(.blue)
+                                                    .font(.headline)
                                                 
-                                                Text(example.translation)
-                                                    .font(.footnote)
-                                                    .foregroundColor(.secondary)
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text(example.sentence)
+                                                        .font(.system(.body, design: .serif))
+                                                        .fontWeight(.medium)
+                                                        .fixedSize(horizontal: false, vertical: true)
+                                                        .foregroundColor(.primary)
+                                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                                    
+                                                    Text(example.translation)
+                                                        .font(.footnote)
+                                                        .foregroundColor(.secondary)
+                                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                                }
                                             }
                                         }
-                                        .padding(.vertical, 4)
                                     }
+                                } else {
+                                    Text("...") // Placeholder
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
                             .padding()
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 160, alignment: .top) // Fixed minHeight for stability
                             .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(16)
                         } else {

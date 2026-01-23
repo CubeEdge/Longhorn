@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var languageManager: LanguageManager
+    @StateObject private var recentManager = RecentFilesManager.shared
     @State private var serverURL = APIClient.shared.baseURL
     @State private var cacheCleared = false
     
@@ -14,6 +15,14 @@ struct SettingsView: View {
                 )) {
                     ForEach(AppLanguage.allCases) { lang in
                         Text(lang.displayName).tag(lang)
+                    }
+                }
+            }
+            
+            Section(header: Text("settings.recent")) {
+                Picker("settings.recent_period", selection: $recentManager.period) {
+                    ForEach(RecentPeriod.allCases) { period in
+                        Text(period.displayName).tag(period)
                     }
                 }
             }

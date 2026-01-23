@@ -333,89 +333,88 @@ struct PhotoPickerView: View {
         uploadedBytes = 0
         uploadSpeed = 0
         
-        Task {
-            // 第一阶段：收集所有文件数据和大小
-            var filesToUpload: [(data: Data, ext: String, size: Int64)] = []
+        Task { @MainActor in
+            typealias UploadJob = (url: URL, size: Int64, ext: String)
             
-            for item in items {
-                do {
-                    if let data = try await item.loadTransferable(type: Data.self) {
-                        let ext = getFileExtension(for: item)
-                        let size = Int64(data.count)
-                        filesToUpload.append((data: data, ext: ext, size: size))
+            let stream = AsyncStream(UploadJob.self) { continuation in
+                Task {
+                    for item in items {
+                        if !isUploading { break }
+                        
+                        do {
+                            // 使用 FileTransferable 获取文件 URL (避免加载 Data 到内存)
+                            if let taskFile = try await item.loadTransferable(type: TaskFile.self) {
+                                let attributes = try FileManager.default.attributesOfItem(atPath: taskFile.url.path)
+                                let size = attributes[.size] as? Int64 ?? 0
+                                let ext = taskFile.url.pathExtension
+                                
+                                await MainActor.run {
+                                    totalBytes += size
+                                }
+                                
+                                continuation.yield((url: taskFile.url, size: size, ext: ext))
+                            }
+                        } catch {
+                            print("Load failed: \(error)")
+                            await MainActor.run {
+                                itemsProcessed += 1
+                            }
+                        }
                     }
-                } catch {
-                    print("Load failed: \(error)")
+                    continuation.finish()
                 }
             }
             
-            // 计算总大小
-            let calculatedTotalBytes = filesToUpload.reduce(0) { $0 + $1.size }
-            await MainActor.run {
-                totalBytes = calculatedTotalBytes
-            }
+            // 消费者 logic stays similar but simplified
+            var completedFilesBytes: Int64 = 0
             
-            // 第二阶段：逐个上传文件并监听实时进度
-            var completedFilesBytes: Int64 = 0  // 已完成文件的总字节数
-            
-            for (index, fileInfo) in filesToUpload.enumerated() {
-                do {
-                    // 创建临时文件
-                    let fileName = "\(UUID().uuidString).\(fileInfo.ext)"
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-                    try fileInfo.data.write(to: tempURL)
-                    
-                    // 启动异步监听进度的任务
-                    let progressTask = Task { @MainActor in
-                        // 监听 UploadService 中最新任务的进度
-                        let uploadService = UploadService.shared
-                        while isUploading {
-                            // 查找当前文件对应的上传任务
-                            if let currentTask = uploadService.activeTasks.last,
-                               currentTask.status == .uploading || currentTask.status == .merging {
-                                // 计算总进度：已完成文件字节 + 当前文件已上传字节
-                                let currentProgress = completedFilesBytes + currentTask.uploadedBytes
-                                uploadedBytes = currentProgress
-                                
-                                // 计算速度
-                                if let startTime = uploadStartTime {
-                                    let elapsed = Date().timeIntervalSince(startTime)
-                                    if elapsed > 0 && currentProgress > 0 {
-                                        uploadSpeed = Double(currentProgress) / elapsed
-                                    }
-                                }
+            // 启动进度监听
+            let progressTask = Task { @MainActor in
+                let uploadService = UploadService.shared
+                while isUploading {
+                    // Update Progress Logic
+                    if let currentTask = uploadService.activeTasks.last,
+                       (currentTask.status == .uploading || currentTask.status == .merging) {
+                         // Only update if currentTask is actually 'alive' and we are processing it
+                         // Note: We might want to verify task.fileName or id match, but .last is usually correct given sequential upload
+                        
+                        let currentJobBytes = currentTask.uploadedBytes
+                        uploadedBytes = completedFilesBytes + currentJobBytes
+                        
+                        if let startTime = uploadStartTime {
+                            let elapsed = Date().timeIntervalSince(startTime)
+                            if elapsed > 0 && uploadedBytes > 0 {
+                                uploadSpeed = Double(uploadedBytes) / elapsed
                             }
-                            try? await Task.sleep(nanoseconds: 100_000_000) // 每0.1秒更新一次
+                        }
+                    } else {
+                        // In between tasks
+                        if uploadedBytes < completedFilesBytes {
+                            uploadedBytes = completedFilesBytes
                         }
                     }
-                    
-                    // 执行上传
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+            }
+            
+            for await job in stream {
+                if !isUploading { break }
+                
+                do {
                     try await UploadService.shared.uploadFile(
-                        fileURL: tempURL,
+                        fileURL: job.url,
                         destinationPath: destinationPath
                     )
                     
-                    // 取消进度监听
-                    progressTask.cancel()
-                    
-                    // 更新已完成文件总字节数
-                    completedFilesBytes += fileInfo.size
+                    completedFilesBytes += job.size
                     
                     await MainActor.run {
-                        uploadedBytes = completedFilesBytes
-                        itemsProcessed = index + 1
-                        
-                        // 更新速度
-                        if let startTime = uploadStartTime {
-                            let elapsed = Date().timeIntervalSince(startTime)
-                            if elapsed > 0 {
-                                uploadSpeed = Double(completedFilesBytes) / elapsed
-                            }
-                        }
+                        itemsProcessed += 1
+                        uploadedBytes = completedFilesBytes // Ensure we sync at end of file
                     }
                     
-                    // 删除临时文件
-                    try? FileManager.default.removeItem(at: tempURL)
+                    try? FileManager.default.removeItem(at: job.url)
+                    
                 } catch {
                     print("Upload failed: \(error)")
                     await MainActor.run {
@@ -423,6 +422,8 @@ struct PhotoPickerView: View {
                     }
                 }
             }
+            
+            progressTask.cancel()
             
             await MainActor.run {
                 isUploading = false
@@ -473,6 +474,26 @@ struct PhotoPickerView: View {
             return String(format: String(localized: "upload.remaining_minutes"), Int(remainingSeconds / 60))
         } else {
             return String(format: String(localized: "upload.remaining_hours"), Int(remainingSeconds / 3600))
+        }
+    }
+}
+
+// MARK: - 辅助结构
+
+struct TaskFile: Transferable {
+    let url: URL
+    
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .item) { taskFile in
+            SentTransferredFile(taskFile.url)
+        } importing: { received in
+            // Must copy to temporary location as received file might be deleted
+            let fileName = received.file.lastPathComponent
+            let dst = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(fileName)")
+            // Remove if exists
+            try? FileManager.default.removeItem(at: dst)
+            try FileManager.default.copyItem(at: received.file, to: dst)
+            return TaskFile(url: dst)
         }
     }
 }

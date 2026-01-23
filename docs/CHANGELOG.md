@@ -1,5 +1,31 @@
 # Changelog
 
+## [13.4.1] - 2026-01-22
+### Emergency Fix
+- **Database Schema Compatibility**: Fixed a critical server crash when authenticating users. The server previously expected a `department_name` column in the `users` table, which did not exist in the production database. The query was rewritten to use a `LEFT JOIN` with the `departments` table, ensuring stability without requiring risky schema migrations.
+- **iOS 403 Permission Error**: Resolved an issue where localized department names (e.g., "运营部") caused access denial on iOS. Implemented strict Unicode NFC normalization to match server-side logic.
+- **Storage Configuration**: Hardened the server deployment script to ensure `DISK_A` correctly points to the external storage volume (`/Volumes/fileserver`) via a managed symlink, preventing "Empty Folder" states.
+
+## [13.3.0] - 2026-01-19
+### Added
+- **Starred Thumbnails**: 收藏列表和网格视图现在显示图片/视频缩略图，而非通用图标。
+- **Starred Preview**: 收藏列表点击文件使用 `FilePreviewView` 统一预览体验，包含收藏、下载、分享按钮。
+- **Batch Star Toggle**: 批量收藏支持 Toggle 逻辑（已收藏则取消，未收藏则收藏），使用乐观更新和并发执行。
+- **StarredItem.toFileItem()**: 添加类型转换方法支持与 FilePreviewView 集成。
+
+### Fixed
+- **Translations**: 填充多个缺失的翻译键：
+  - `action.star`, `starred.folder`, `status.loading`, `status.downloaded`
+  - `toast.unstarred_success`, `toast.batch_star_toggle`
+  - `starred.unstar_batch_success`, `starred.unstar_batch_partial`
+- **Starred UI**: 移除收藏列表行右侧的取消收藏按钮（用户可通过左滑操作）。
+- **Server ETag**: 修复 `/api/files` ETag 生成逻辑，包含用户收藏状态，确保收藏变更时客户端刷新。
+- **Server Starred Query**: 增强收藏文件匹配逻辑，支持精确路径和后缀匹配。
+- **Optimistic Updates**: 修复 `performStar`/`performUnstar` 同时更新本地数组和 FileStore 缓存，实现即时 UI 响应。
+
+### Changed
+- **FileService.starFile 409 Handling**: 服务端返回 409 (已收藏) 时客户端视为成功，避免不必要的回滚。
+
 ## [13.2.0] - 2026-01-16
 ### Added
 - **Share Language**: iOS App 分享和批量分享弹窗新增“语言设置” (中文/English)，生成的分享链接将使用指定语言。

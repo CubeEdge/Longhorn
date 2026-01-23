@@ -21,6 +21,49 @@ const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
+// Multer Setup
+const upload = multer({ dest: path.join(DISK_A, '.uploads') });
+const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
+
+// Database Initialization
+const db = new Database(DB_PATH, { verbose: console.log });
+db.pragma('journal_mode = WAL');
+
+// Ensure tables exist
+db.exec(`
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        code TEXT UNIQUE
+    );
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        role TEXT,
+        department_id INTEGER,
+        department_name TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(department_id) REFERENCES departments(id)
+    );
+    CREATE TABLE IF NOT EXISTS permissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        folder_path TEXT,
+        access_type TEXT,
+        expires_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS stars (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        file_path TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, file_path)
+    );
+`);
+
 // Department display mapping (code -> display name for UI)
 const DEPT_DISPLAY_MAP = {
     'OP': '运营部 (OP)',
@@ -130,13 +173,37 @@ const SHARE_I18N = {
 
 const getShareI18n = (lang = 'zh') => SHARE_I18N[lang] || SHARE_I18N.zh;
 
+// Chinese name to Code mapping (Global)
+const NAME_TO_CODE = {
+    '运营部': 'OP',
+    '市场部': 'MS',
+    '研发中心': 'RD',
+    '研发部': 'RD',
+    '综合管理': 'GE',
+    '通用台面': 'RE'
+};
+
 // Resolve frontend paths - normalize to uppercase department codes
 function resolvePath(requestPath) {
     if (!requestPath) return '';
 
-    const segments = requestPath.split('/').filter(Boolean);
+    // Log initial path
+    // console.log(`[PathResolve] Input: "${requestPath}"`);
+
+    // Normalize to NFC to Ensure Chinese characters match JS string literals
+    // iOS/macOS often sends NFD (Decomposed), while JS uses NFC.
+    const normalizedPath = requestPath.normalize('NFC');
+
+    const segments = normalizedPath.split('/').filter(Boolean);
     if (segments.length > 0) {
-        const firstSegmentUpper = segments[0].toUpperCase();
+        let firstSegment = segments[0];
+
+        // Try mapping Chinese -> Code
+        if (NAME_TO_CODE[firstSegment]) {
+            firstSegment = NAME_TO_CODE[firstSegment];
+        }
+
+        const firstSegmentUpper = firstSegment.toUpperCase();
         // Validate and normalize department code
         if (VALID_DEPT_CODES.includes(firstSegmentUpper)) {
             segments[0] = firstSegmentUpper;
@@ -145,205 +212,44 @@ function resolvePath(requestPath) {
     return segments.join('/');
 }
 
-// Ensure base directories exist (Department folders are handled by defaultDepts loop below)
-fs.ensureDirSync(DISK_A);
-fs.ensureDirSync(RECYCLE_DIR);
-fs.ensureDirSync(THUMB_DIR);
-
-// Multer Configuration for Uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const requestedPath = req.query.path || '';
-        let resolvedPath = resolvePath(requestedPath);
-
-        // If path resolves to empty, default to user's personal space
-        if (!resolvedPath || resolvedPath === '') {
-            resolvedPath = `Members/${req.user.username}`;
-        }
-
-        // Auto-fix: If resolving to "Members" (root) and user is not Admin,
-        // force it to their personal directory.
-        if (resolvedPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
-            resolvedPath = `Members/${req.user.username}`;
-        }
-
-        const targetDir = path.join(DISK_A, resolvedPath);
-        console.log(`[Multer] Requested: "${requestedPath}" → Resolved: "${resolvedPath}" → Target: "${targetDir}"`);
-        fs.ensureDirSync(targetDir);
-        cb(null, targetDir);
-    },
-    filename: (req, file, cb) => {
-        // [User Request] Keep original filename, no date prefix
-        // Handle filename encoding for Chinese characters manually if needed, 
-        // but Multer typically handles originalname UTF8 correctly in modern Node.
-        // We ensure it's decoded properly.
-        const name = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        cb(null, name || file.originalname);
-    }
-});
-const upload = multer({ storage });
-
-// Database Setup
-const db = new Database(DB_PATH);
-console.log(`[Database] Omni-Fix v11 active. DB File: ${path.resolve(DB_PATH)}`);
-// Enable WAL mode for better concurrency during uploads
-db.pragma('journal_mode = WAL');
-db.exec(`
-  CREATE TABLE IF NOT EXISTS departments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE
-  );
-
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT,
-    role TEXT DEFAULT 'Member', -- Admin, Lead, Member
-    department_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(department_id) REFERENCES departments(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS shares (
-    id TEXT PRIMARY KEY,
-    path TEXT,
-    expires_at DATETIME,
-    language TEXT DEFAULT 'zh',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS permissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    folder_path TEXT,
-    access_type TEXT DEFAULT 'Read', -- Full, Read
-    expires_at DATETIME, -- NULL for permanent
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS file_stats (
-    path TEXT PRIMARY KEY,
-    uploader_id INTEGER,
-    access_count INTEGER DEFAULT 0,
-    last_access DATETIME,
-    FOREIGN KEY(uploader_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS access_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    path TEXT,
-    user_id INTEGER,
-    count INTEGER DEFAULT 0,
-    last_access DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(path, user_id),
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS recycle_bin (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    original_path TEXT,
-    deleted_path TEXT,
-    deletion_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    user_id INTEGER,
-    is_directory BOOLEAN,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
-`);
-
-// Migration for existing tables
-try { db.exec("ALTER TABLE users ADD COLUMN department_id INTEGER;"); } catch (e) { }
-try { db.exec("UPDATE users SET role = 'Member' WHERE role = 'user';"); } catch (e) { }
-try { db.exec("UPDATE users SET role = 'Admin' WHERE role = 'admin';"); } catch (e) { }
-try { db.exec("ALTER TABLE permissions ADD COLUMN access_type TEXT DEFAULT 'Read';"); } catch (e) { }
-try { db.exec("ALTER TABLE permissions ADD COLUMN expires_at DATETIME;"); } catch (e) { }
-try { db.exec("ALTER TABLE permissions ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"); } catch (e) { }
-try { db.exec("ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;"); } catch (e) { }
-
-// Phase 2: Quick Access Features Tables
-try {
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS starred_files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            starred_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, file_path),
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_starred_user ON starred_files(user_id);
-        
-        CREATE TABLE IF NOT EXISTS share_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            file_path TEXT NOT NULL,
-            share_token TEXT UNIQUE NOT NULL,
-            password TEXT,
-            expires_at DATETIME,
-            access_count INTEGER DEFAULT 0,
-            last_accessed DATETIME,
-            language TEXT DEFAULT 'zh',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_share_token ON share_links(share_token);
-        CREATE INDEX IF NOT EXISTS idx_share_user ON share_links(user_id);
-    `);
-
-    // Migration for language column
-    try { db.exec("ALTER TABLE share_links ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
-    try { db.exec("ALTER TABLE shares ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
-    try { db.exec("ALTER TABLE share_collections ADD COLUMN language TEXT DEFAULT 'zh';"); } catch (e) { }
-    console.log('[Database] Phase 2 tables created successfully');
-} catch (e) {
-    console.log('[Database] Phase 2 tables might already exist:', e.message);
+// DEBUG: Log Hex to inspect encoding issues
+function logHex(str, label) {
+    if (!str) return;
+    console.log(`[HEX] ${label}: "${str}" -> ${Buffer.from(str).toString('hex')}`);
 }
 
-// Add default admin if not exists
-const adminPassword = bcrypt.hashSync('admin123', 10);
-db.prepare('INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', adminPassword, 'Admin');
-
-// Pre-seed departments (pure English codes)
-const defaultDepts = ['OP', 'MS', 'RD', 'RE'];
-
-defaultDepts.forEach(code => {
-    try {
-        db.prepare('INSERT OR IGNORE INTO departments (name) VALUES (?)').run(code);
-        const deptPath = path.join(DISK_A, code);
-        fs.ensureDirSync(deptPath);
-    } catch (e) { }
-});
-
-const ensureUserFolders = (user) => {
-    if (user.role === 'Admin') return;
-    // Personal folders now under top-level Members/ directory only
-    const personalPath = path.join(DISK_A, 'Members', user.username);
-    fs.ensureDirSync(personalPath);
-};
-
-// Middleware & Helpers (Moved to top to prevent ReferenceError)
+// Authentication Middleware
 const authenticate = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        jwt.verify(token, JWT_SECRET, (err, decoded) => {
+            if (err) {
+                return res.sendStatus(403);
+            }
 
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        // Fetch full user info including department
-        const user = db.prepare(`
-            SELECT u.*, d.name as department_name 
-            FROM users u 
-            LEFT JOIN departments d ON u.department_id = d.id 
-            WHERE u.id = ?
-        `).get(decoded.id);
+            // Reload user from DB to ensure latest role/department info
+            const user = db.prepare(`
+                SELECT u.id, u.username, u.role, u.department_id, d.name as department_name 
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE u.id = ?
+            `).get(decoded.id);
 
-        if (!user) return res.status(401).json({ error: 'User no longer exists' });
-        req.user = user;
-        next();
-    } catch (err) {
-        res.status(401).json({ error: 'Invalid token' });
+            if (!user) {
+                return res.sendStatus(401);
+            }
+
+            req.user = user;
+            next();
+        });
+    } else {
+        res.sendStatus(401);
     }
 };
+
+// Check if user has permission for a path
+// ... (fs.ensureDirSync calls remain unchanged) ...
 
 const hasPermission = (user, folderPath, accessType = 'Read') => {
     try {
@@ -353,7 +259,17 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
     if (user.role === 'Admin') return true;
 
     const normalizedPath = folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-    const deptName = user.department_name;
+
+    // Normalize DB Department Name to Code if necessary
+    let deptName = user.department_name;
+
+    // Handle "Name (Code)" format (e.g. "运营部 (OP)" -> "OP")
+    const codeMatch = deptName ? deptName.match(/\(([A-Za-z]+)\)$/) : null;
+    if (codeMatch) {
+        deptName = codeMatch[1];
+    } else if (deptName && NAME_TO_CODE[deptName]) {
+        deptName = NAME_TO_CODE[deptName];
+    }
 
     // 1. Check personal space: Members/username
     const personalPath = `members/${user.username.toLowerCase()}`;
@@ -388,6 +304,20 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
     }
 
     return false;
+};
+
+// Ensure user folders exist (Members/{username})
+const ensureUserFolders = (user) => {
+    try {
+        const personalPath = path.join(DISK_A, 'Members', user.username);
+        fs.ensureDirSync(personalPath);
+
+        // Removed implicit recycle bin creation to avoid clutter
+        // const trashPath = path.join(personalPath, '.Trash');
+        // fs.ensureDirSync(trashPath);
+    } catch (e) {
+        console.error(`[Init] Failed to ensure folders for ${user.username}:`, e.message);
+    }
 };
 
 async function moveItemToRecycle(subPath, userId) {
@@ -443,7 +373,14 @@ app.use(compression()); // Enable gzip compression
 app.use(cors());
 app.use(express.json());
 
-// Health Check Route (Moved down to avoid blocking UI)
+// GLOBAL LOGGER
+// GLOBAL LOGGER
+app.use((req, res, next) => {
+    console.log(`[HTTP] ${req.method} ${req.url} | IP: ${req.ip}`);
+    next();
+});
+
+// Health Check Route
 app.get('/api/status', (req, res) => {
     res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
 });
@@ -725,6 +662,40 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
     }
 });
 
+// 🔍 DEBUG ENDPOINT (For diagnosis of Remote Server State)
+app.get('/api/debug/info', authenticate, (req, res) => {
+    try {
+        const users = db.prepare('SELECT id, username, role, department_id, created_at FROM users').all();
+        const depts = db.prepare('SELECT * FROM departments').all();
+
+        // Test Path Resolution
+        const testPathCN = resolvePath('运营部');
+        const testPathAL = resolvePath('OP');
+
+        // Test Permission Logic
+        const permCheck = {
+            user: { username: req.user.username, role: req.user.role, dept: req.user.department_name },
+            check_OP: hasPermission(req.user, 'OP', 'Read'),
+            check_CN: hasPermission(req.user, '运营部', 'Read')
+        };
+
+        res.json({
+            serverTime: new Date().toISOString(),
+            currentUser: req.user,
+            users: users,
+            departments: depts,
+            pathResolution: {
+                '运营部': testPathCN,
+                'OP': testPathAL
+            },
+            permissionCheck: permCheck,
+            env: process.env
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Upload Route
 app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
     const receiveTime = Date.now();
@@ -777,7 +748,6 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
 });
 
 // Chunked Upload - Receive individual chunks
-const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
 app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (req, res) => {
     try {
         const { uploadId, fileName, chunkIndex, totalChunks, path: uploadPath } = req.body;
@@ -1196,6 +1166,50 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
     }
 });
 
+// Record file access (for access logging)
+app.post('/api/files/access', authenticate, (req, res) => {
+    try {
+        const { path: filePath } = req.body;
+        if (!filePath) {
+            return res.status(400).json({ error: 'Path is required' });
+        }
+
+        const userId = req.user.id;
+        const username = req.user.username;
+
+        // Update or insert access log
+        const existing = db.prepare(`
+            SELECT id, count FROM access_logs 
+            WHERE path = ? AND user_id = ?
+        `).get(filePath, userId);
+
+        if (existing) {
+            db.prepare(`
+                UPDATE access_logs 
+                SET count = count + 1, last_access = datetime('now')
+                WHERE id = ?
+            `).run(existing.id);
+        } else {
+            db.prepare(`
+                INSERT INTO access_logs (path, user_id, username, count, last_access)
+                VALUES (?, ?, ?, 1, datetime('now'))
+            `).run(filePath, userId, username);
+        }
+
+        // Also update file_stats access_count
+        db.prepare(`
+            UPDATE file_stats 
+            SET access_count = access_count + 1
+            WHERE path = ?
+        `).run(filePath);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Access Log] Error:', err);
+        res.status(500).json({ error: 'Failed to record access' });
+    }
+});
+
 // Dynamic Permissions Management
 app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
     const { user_id, folder_path, access_type, expiry_option } = req.body;
@@ -1232,7 +1246,7 @@ app.get('/api/files/recent', authenticate, async (req, res) => {
                     path: row.path,
                     size: stats.size,
                     mtime: stats.mtime,
-                    accessCount: row.access_count,
+                    access_count: row.access_count,
                     uploader: row.uploader
                 });
             }
@@ -1439,7 +1453,7 @@ app.get('/api/starred', authenticate, (req, res) => {
                 mtime: stats.mtime,
                 isDirectory: stats.isDirectory,
                 starredAt: item.starred_at,
-                accessCount: dbStats ? dbStats.access_count : 0,
+                access_count: dbStats ? dbStats.access_count : 0,
                 uploader: dbStats ? dbStats.uploader : 'unknown'
             };
         });
@@ -1473,10 +1487,12 @@ app.post('/api/starred', authenticate, (req, res) => {
         `).run(req.user.id, path);
         res.json({ success: true, id: result.lastInsertRowid });
     } catch (err) {
-        if (err.code === 'SQLITE_CONSTRAINT') {
+        console.error('[Starred Error]', err.message, err.code);
+        // Handle both SQLITE_CONSTRAINT and SQLITE_CONSTRAINT_UNIQUE
+        if (err.code && err.code.includes('SQLITE_CONSTRAINT')) {
             return res.status(409).json({ error: 'File already starred' });
         }
-        res.status(500).json({ error: 'Failed to star file' });
+        res.status(500).json({ error: 'Failed to star file', details: err.message });
     }
 });
 
@@ -1579,20 +1595,44 @@ function generateShareToken() {
 app.get('/api/shares', authenticate, (req, res) => {
     try {
         const rawShares = db.prepare(`
-            SELECT id, user_id, file_path, 
-                   share_token as token, expires_at, access_count, created_at, language,
-                   (password IS NOT NULL AND password != '') as has_password
-            FROM share_links 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
+            SELECT sl.id, sl.user_id, sl.file_path, 
+                   sl.share_token as token, sl.expires_at, sl.access_count, sl.created_at, sl.language,
+                   (sl.password IS NOT NULL AND sl.password != '') as has_password,
+                   fs.size as file_size,
+                   u.username as uploader_name
+            FROM share_links sl
+            LEFT JOIN file_stats fs ON sl.file_path = fs.path
+            LEFT JOIN users u ON fs.uploader_id = u.id
+            WHERE sl.user_id = ?
+            ORDER BY sl.created_at DESC
         `).all(req.user.id);
 
-        // Transform data for iOS compatibility
-        const shares = rawShares.map(s => ({
-            ...s,
-            file_name: s.file_path ? s.file_path.split('/').pop() : null,
-            has_password: Boolean(s.has_password)  // Convert 0/1 to boolean
-        }));
+        // Transform data for iOS compatibility, getting file size from filesystem if not in DB
+        const shares = rawShares.map(s => {
+            let fileSize = s.file_size;
+            let uploaderName = s.uploader_name;
+
+            // If file_size is null, try to get from filesystem
+            if (!fileSize && s.file_path) {
+                try {
+                    const fullPath = path.join(DISK_A, s.file_path);
+                    if (fs.existsSync(fullPath)) {
+                        const stats = fs.statSync(fullPath);
+                        fileSize = stats.size;
+                    }
+                } catch (e) {
+                    console.error('[Shares] Error getting file size:', e.message);
+                }
+            }
+
+            return {
+                ...s,
+                file_name: s.file_path ? s.file_path.split('/').pop() : null,
+                file_size: fileSize,
+                uploader: uploaderName || 'unknown',
+                has_password: Boolean(s.has_password)
+            };
+        });
 
         res.json(shares);
     } catch (err) {
@@ -2100,7 +2140,7 @@ app.get('/api/files/stats', authenticate, (req, res) => {
 
     try {
         const stats = db.prepare(`
-            SELECT l.count, l.last_access, u.username, u.email
+            SELECT l.count, l.last_access, u.username
             FROM access_logs l
             JOIN users u ON l.user_id = u.id
             WHERE l.path = ?
@@ -2125,11 +2165,20 @@ app.get('/api/files', authenticate, async (req, res) => {
 
     const fullPath = path.join(DISK_A, subPath);
 
-    console.log(`[/api/files] Requested: "${requestedPath}" → Resolved: "${subPath}" → Full: "${fullPath}"`);
+    // 🔍 DEBUG LOGGING
+    console.log(`[FILES] Query Path: "${requestedPath}"`);
+    console.log(`[FILES] Resolved SubPath: "${subPath}"`);
+    console.log(`[FILES] Full Path: "${fullPath}"`);
+    console.log(`[FILES] User: ${req.user.username} (Role: ${req.user.role}, Dept: ${req.user.department_name})`);
+    console.log(`[FILES] Resolved SubPath: "${subPath}"`);
+    console.log(`[FILES] User: ${req.user.username} (Role: ${req.user.role}, Dept: ${req.user.department_name})`);
 
     // Check Read permissions for the subPath
     if (!hasPermission(req.user, subPath, 'Read')) {
+        console.log(`[FILES] ❌ Permission Denied for user ${req.user.username} on ${subPath}`);
         return res.status(403).json({ error: 'Permission denied' });
+    } else {
+        console.log(`[FILES] ✅ Permission Granted`);
     }
 
     // Handle File Download
@@ -2144,8 +2193,19 @@ app.get('/api/files', authenticate, async (req, res) => {
     try {
         // Check write permissions - both Full and Contributor can write
         const canWrite = hasPermission(req.user, subPath, 'Full') || hasPermission(req.user, subPath, 'Contributor');
-        const items = (await fs.readdir(fullPath, { withFileTypes: true }))
-            .filter(item => !item.name.startsWith('.'));
+        let items = [];
+        try {
+            console.log(`[FILES] Reading directory: ${fullPath}`);
+            items = (await fs.readdir(fullPath, { withFileTypes: true }))
+                .filter(item => !item.name.startsWith('.'));
+            console.log(`[FILES] Found ${items.length} items`);
+        } catch (e) {
+            console.error(`[FILES] ReadDir Error: ${e.message}`);
+            // If folder doesn't exist on disk but permission granted (e.g. valid DB dept but no folder)
+            items = [];
+        }
+
+        // Generate ETag source data (names + mtime + size)
 
         // Generate ETag source data (names + mtime + size)
         // Note: For deep folders, getFolderSize is expensive, so we exclude folder sizes from ETag calculation for speed
@@ -2155,8 +2215,11 @@ app.get('/api/files', authenticate, async (req, res) => {
             return `${item.name}-${stats.mtime.getTime()}-${item.isDirectory() ? 'dir' : stats.size}`;
         }).join('|');
 
+        // Include user's starred count in ETag so it invalidates when starred changes
+        const userStarredCount = db.prepare('SELECT COUNT(*) as count FROM starred_files WHERE user_id = ?').get(req.user.id)?.count || 0;
+
         // Simple hash for ETag
-        const etag = 'W/"' + require('crypto').createHash('md5').update(etagData).digest('hex') + '"';
+        const etag = 'W/"' + require('crypto').createHash('md5').update(etagData + '|starred:' + userStarredCount).digest('hex') + '"';
 
         // Check If-None-Match
         if (req.headers['if-none-match'] === etag) {
@@ -2195,14 +2258,33 @@ app.get('/api/files', authenticate, async (req, res) => {
             // Calculate folder size if directory
             const size = item.isDirectory() ? getFolderSize(fullItemPath) : stats.size;
 
+            // Check if file is starred by current user
+            // Match by exact path, suffix with slash, or just filename (for root level)
+            const starredRecord = db.prepare(`
+                SELECT 1 FROM starred_files 
+                WHERE user_id = ? AND (file_path = ? OR file_path LIKE ? OR file_path = ?)
+            `).get(req.user.id, itemPath, `%/${item.name}`, item.name);
+            const isStarred = starredRecord ? true : false;
+
+            // 🐛 Debug log - will be removed after fix confirmed
+            if (isStarred) {
+                console.log(`⭐ [Starred] Match: user=${req.user.id}, file="${item.name}"`);
+            }
+            // Log first file of each request to verify user ID
+            if (items.indexOf(item) === 0) {
+                const userStarred = db.prepare('SELECT file_path FROM starred_files WHERE user_id = ?').all(req.user.id);
+                console.log(`📋 [Starred Check] User=${req.user.id}, Starred count=${userStarred.length}, First file path="${itemPath}"`);
+            }
+
             return {
                 name: item.name,
                 isDirectory: item.isDirectory(),
                 path: itemPath,
                 size: size,
                 mtime: stats.mtime,
-                accessCount: dbStats ? dbStats.access_count : 0,
-                uploader: dbStats ? dbStats.uploader : 'unknown'
+                access_count: dbStats ? dbStats.access_count : 0,
+                uploader: dbStats ? dbStats.uploader : 'unknown',
+                starred: isStarred
             };
         });
         res.json({ items: result, userCanWrite: canWrite });
@@ -2703,6 +2785,98 @@ app.delete('/api/recycle-bin-clear', authenticate, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// Recycle Bin Thumbnail API - serves thumbnails for files in recycle bin
+app.get('/api/recycle-bin/thumbnail', authenticate, async (req, res) => {
+    try {
+        const filePath = req.query.path;
+        if (!filePath) {
+            return res.status(400).json({ error: 'Missing path parameter' });
+        }
+
+        const decodedPath = decodeURIComponent(filePath);
+        const size = parseInt(req.query.size) || 200;
+
+        // Validate file extension
+        const ext = path.extname(decodedPath).toLowerCase();
+        const imageFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff'];
+        const ffmpegFormats = ['.mov', '.mp4', '.m4v', '.avi', '.mkv', '.hevc', '.heic', '.heif'];
+        const supportedFormats = [...imageFormats, ...ffmpegFormats];
+
+        if (!supportedFormats.includes(ext)) {
+            return res.status(400).json({ error: 'Unsupported format for thumbnails' });
+        }
+
+        // Use RECYCLE_DIR instead of DISK_A
+        const sourcePath = path.join(RECYCLE_DIR, decodedPath);
+        if (!fs.existsSync(sourcePath)) {
+            return res.status(404).json({ error: 'File not found in recycle bin' });
+        }
+
+        // Generate cache key with recycle prefix
+        const cacheKey = `recycle_${decodedPath.replace(/[\/\\]/g, '_')}_${size}.webp`;
+        const cachePath = path.join(THUMB_DIR, cacheKey);
+
+        // Check cache
+        if (fs.existsSync(cachePath)) {
+            try {
+                const sourceStat = fs.statSync(sourcePath);
+                const cacheStat = fs.statSync(cachePath);
+                if (cacheStat.size > 0 && cacheStat.mtime > sourceStat.mtime) {
+                    const cacheData = await fs.readFile(cachePath);
+                    res.set('Cache-Control', 'public, max-age=604800');
+                    res.set('Content-Type', 'image/webp');
+                    return res.send(cacheData);
+                }
+            } catch (err) {
+                // Continue to regeneration
+            }
+        }
+
+        // Generate thumbnail
+        if (imageFormats.includes(ext)) {
+            // Use sharp for standard images
+            const sharp = require('sharp');
+            const thumbBuffer = await sharp(sourcePath)
+                .resize(size, size, { fit: 'cover', position: 'center' })
+                .webp({ quality: 75 })
+                .toBuffer();
+
+            await fs.writeFile(cachePath, thumbBuffer);
+            res.set('Cache-Control', 'public, max-age=604800');
+            res.set('Content-Type', 'image/webp');
+            return res.send(thumbBuffer);
+        } else {
+            // Use ffmpeg for videos/HEIC
+            const { spawn } = require('child_process');
+            const tempPath = path.join(THUMB_DIR, `temp_${Date.now()}.jpg`);
+
+            await new Promise((resolve, reject) => {
+                const ffmpeg = spawn('ffmpeg', [
+                    '-i', sourcePath,
+                    '-ss', '00:00:01',
+                    '-vframes', '1',
+                    '-vf', `scale=${size}:${size}:force_original_aspect_ratio=increase,crop=${size}:${size}`,
+                    '-y', tempPath
+                ]);
+                ffmpeg.on('close', (code) => code === 0 ? resolve() : reject(new Error('ffmpeg failed')));
+                ffmpeg.on('error', reject);
+            });
+
+            const sharp = require('sharp');
+            const thumbBuffer = await sharp(tempPath).webp({ quality: 75 }).toBuffer();
+            await fs.writeFile(cachePath, thumbBuffer);
+            await fs.remove(tempPath);
+
+            res.set('Cache-Control', 'public, max-age=604800');
+            res.set('Content-Type', 'image/webp');
+            return res.send(thumbBuffer);
+        }
+    } catch (err) {
+        console.error('[Recycle Thumbnail Error]', err.message);
+        res.status(500).json({ error: 'Failed to generate thumbnail' });
     }
 });
 

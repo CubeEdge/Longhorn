@@ -19,6 +19,22 @@ class FileService {
     func getFiles(path: String) async throws -> [FileItem] {
         let queryItems = [URLQueryItem(name: "path", value: path)]
         let response: FilesResponse = try await APIClient.shared.get("/api/files", queryItems: queryItems)
+        
+        // 🐛 调试：打印服务器返回的 starred 状态
+        for file in response.items {
+            if file.isStarred == true {
+                print("⭐ [DEBUG] Starred file found: \(file.name), isStarred=\(String(describing: file.isStarred))")
+            }
+        }
+        if response.items.first(where: { $0.isStarred == true }) == nil {
+            print("⚠️ [DEBUG] No starred files in response for path: \(path), count: \(response.items.count)")
+        }
+        
+        // 🐛 调试：打印服务器返回的文件信息，特别是 uploader
+        for file in response.items {
+            print("📄 [DEBUG] File: \(file.name), uploader: \(file.uploaderName ?? "nil"), starred: \(String(describing: file.isStarred))")
+        }
+        
         return response.items
     }
     
@@ -108,7 +124,7 @@ class FileService {
     
     /// 收藏文件
     func starFile(path: String) async throws {
-        let request = StarRequest(file_path: path)
+        let request = StarRequest(path: path)
         try await APIClient.shared.post("/api/starred", body: request)
     }
     
@@ -162,8 +178,8 @@ class FileService {
     /// 获取文件夹树
     func getFolderTree(rootPath: String = "") async throws -> [FolderTreeItem] {
         let queryItems = [URLQueryItem(name: "root", value: rootPath)]
-        let response: FolderTreeResponse = try await APIClient.shared.get("/api/folders/tree", queryItems: queryItems)
-        return response.folders
+        // Server returns [FolderTreeItem], not { folders: ... }
+        return try await APIClient.shared.get("/api/folders/tree", queryItems: queryItems)
     }
     
     // MARK: - 分享操作
@@ -213,7 +229,28 @@ class FileService {
         let queryItems = [URLQueryItem(name: "path", value: path)]
         return try await APIClient.shared.get("/api/files/stats", queryItems: queryItems)
     }
+    /// 获取我的分享记录
+    func getMyShares() async throws -> [ShareLink] {
+        return try await APIClient.shared.get("/api/share/my")
+    }
+    
+    /// 记录文件访问（用于访问日志）
+    func recordFileAccess(path: String) async {
+        // Fire and forget - don't block UI for logging
+        do {
+            let request = FileAccessRequest(path: path)
+            try await APIClient.shared.post("/api/files/access", body: request)
+        } catch {
+            print("Failed to record file access: \(error)")
+        }
+    }
 }
+
+private struct FileAccessRequest: Codable {
+    let path: String
+}
+
+private struct EmptyResponse: Codable {}
 
 // MARK: - 请求/响应结构
 
@@ -259,6 +296,11 @@ private struct BulkDeleteRequest: Codable {
 private struct BulkMoveRequest: Codable {
     let paths: [String]
     let destination: String
+    
+    enum CodingKeys: String, CodingKey {
+        case paths
+        case destination = "targetDir"
+    }
 }
 
 private struct RenameRequest: Codable {
@@ -283,7 +325,7 @@ private struct UpdateShareRequest: Codable {
 }
 
 private struct StarRequest: Codable {
-    let file_path: String
+    let path: String  // 服务器期望 path 而非 file_path
 }
 
 private struct StarredCheckResponse: Codable {
@@ -316,17 +358,20 @@ struct DepartmentOverviewStats: Codable {
     let departmentName: String?
 }
 
-struct FolderTreeItem: Codable, Identifiable {
+struct FolderTreeItem: Codable, Identifiable, Hashable {
+    let uuid = UUID() // Renamed to avoid conflict with Identifiable's 'id'
     let name: String
     let path: String
-    let children: [FolderTreeItem]?
+    var children: [FolderTreeItem]?
+    
+    enum CodingKeys: String, CodingKey {
+        case name, path, children
+    }
     
     var id: String { path }
 }
 
-private struct FolderTreeResponse: Codable {
-    let folders: [FolderTreeItem]
-}
+
 
 // MARK: - 分享相关模型
 
@@ -369,4 +414,5 @@ struct ShareItem: Codable, Identifiable {
     var shareURL: String {
         "\(APIClient.shared.baseURL)/s/\(shareCode)"
     }
+
 }

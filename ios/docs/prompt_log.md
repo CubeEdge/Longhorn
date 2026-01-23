@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-01-16
+
+### 18:10 - 运维与自启动优化
+```
+因为出现意外，mac mini关机了... 应该做些什么使得服务器一旦开机，就自动运行必要的服务器和程序？
+```
+**实现**:
+1. 更新 `docs/OPS.md`，增加 "开机自启动配置" 章节。
+2. 涵盖三个层级：硬件层（pmset）、进程层（pm2 startup/save）、网络层（cloudflared service）。
+3. 补充“自动登录”作为 Ready 状态的关键前提说明。
+
+### 17:40 - 智能刷新架构 Phase 2, 3, 4
+```
+请继续进行执行iOS 智能刷新架构方案计划，Phase2, Phase3和Phase4。
+```
+**实现**:
+1. **Phase 2 & 3**: 完善 `FileStore` 和 `DashboardStore`。
+2. **Phase 4 (事件总线)**: 
+    - 创建 `AppNotifications.swift` 统一定义通知。
+    - `FileBrowserView` 和 `FilePreviewSheet` 收藏后触发 `starredDidChange` 通知。
+    - `StarredView` 订阅通知实现即时刷新。
+3. **登出清理**: `AuthManager` 登出时调用各 Store 的 `clearCache`。
+
+### 13:00 - 分享删除 UX 优化 (iOS 标准锚定)
+```
+Fixing Share Delete UX: 这里的删除确认，应该像iOS那样，在删除按键附近出现，而不是死死在顶上。
+优化图片预览加载速度（0%卡住几秒的问题）。
+```
+**实现**:
+1. **删除锚定**: 将 `confirmationDialog` 从 `SharesListView` 全局移动到 `ShareItemRow` 和 `CollectionItemRow` 内部，实现 iOS 标准的 ActionSheet/Popover 弹出效果。
+2. **预览提速**: 
+    - 优化 `PreviewCacheManager`：移除同步保存逻辑，改用防抖 (Debounce) 保存，避免阻塞主线程。
+    - 优化 `FilePreviewSheet`：在任务开始时立即显示加载状态，并并行检查缓存与发起下载。
+3. **修复**: 修复 `ShareLink` 属性名错误（`fileName`/`filePath`），完善删除后的 Toast 反馈。
+
+---
+
 ## 2026-01-14
 
 ### 14:55 - 深度本地化与XCStrings修复

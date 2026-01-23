@@ -2,8 +2,11 @@ import SwiftUI
 
 struct BrowseView: View {
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var navManager: NavigationManager
     @StateObject private var dailyWordService = DailyWordService.shared
     @StateObject private var recentManager = RecentFilesManager.shared
+    
+    @State private var navPath = NavigationPath()
     
     // Departments (Hardcoded for now as per MainTabView logic)
     private let departments = [
@@ -36,7 +39,7 @@ struct BrowseView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navPath) {
             List {
                 // MARK: - Search
                 Section {
@@ -59,6 +62,7 @@ struct BrowseView: View {
                             HStack {
                                 Image(systemName: dept.iconName) // Dynamic icon
                                     .foregroundColor(.blue)
+                                .foregroundColor(.blue)
                                 Text(dept.displayName)
                                     .foregroundColor(.primary)
                             }
@@ -92,7 +96,7 @@ struct BrowseView: View {
                     }
                     
                     NavigationLink(destination: StarredView()) {
-                        Label("quick.starred", systemImage: "star")
+                        Label("quick.starred", systemImage: "star.fill")
                     }
                     
                     NavigationLink(destination: RecentFilesListView()) {
@@ -107,6 +111,9 @@ struct BrowseView: View {
             }
             .listStyle(InsetGroupedListStyle())
             .navigationTitle(Text("tab.browse"))
+            .navigationDestination(for: String.self) { path in
+                FileBrowserView(path: path)
+            }
             .sheet(isPresented: $showWordSheet) {
                 DailyWordSheet(service: dailyWordService)
             }
@@ -124,10 +131,17 @@ struct BrowseView: View {
                     }
                 }
             }
+            .onChange(of: navManager.jumpToPath) { _, newPath in
+                if let path = newPath {
+                    print("[Navigation] Jumping to path: \(path)")
+                    navPath.append(path)
+                    navManager.jumpToPath = nil // Consume event
+                }
+            }
         }
     }
 }
-
+ 
 // Wrapper to handle navigation to department files
 struct DepartmentFileBrowserWrapper: View {
     let department: Department

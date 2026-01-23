@@ -40,6 +40,8 @@ struct MainTabView: View {
         iPhoneLayout
     }
     
+    @StateObject private var navManager = NavigationManager.shared
+    
     // MARK: - iPhone Layout
     private var iPhoneLayout: some View {
         TabView(selection: $selectedTab) {
@@ -65,6 +67,13 @@ struct MainTabView: View {
                 .tag(Tab.more)
         }
         .tint(Color(red: 1.0, green: 0.82, blue: 0.0))
+        .environmentObject(navManager)
+        .onChange(of: navManager.selectedTab) { _, newTab in
+            if let tab = newTab {
+                selectedTab = tab
+                navManager.selectedTab = nil // Reset request
+            }
+        }
     }
 }
 

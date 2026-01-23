@@ -25,12 +25,13 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
             .id(languageManager.currentLanguageCode)
             
-            // Toast Overlay
+            // Toast Overlay - 底部显示
             if let toast = toastManager.currentToast {
                 ToastView(toast: toast)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(100)
-                    .padding(.top, 60) // Safe Area / Dynamic Island padding
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 100) // 避开TabBar
             }
         }
     }

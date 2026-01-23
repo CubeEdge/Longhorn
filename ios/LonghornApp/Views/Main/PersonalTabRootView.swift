@@ -71,11 +71,11 @@ struct PersonalTabRootView: View {
                 // MARK: - Other Links (Optional)
                 Section {
                     NavigationLink(destination: StarredView()) {
-                        Label("stats.starred", systemImage: "star.square.fill")
+                        Label("stats.starred", systemImage: "star.fill")
                             .foregroundColor(.primary)
                     }
                     NavigationLink(destination: SharesListView()) {
-                        Label("quick.my_shares", systemImage: "link.circle.fill")
+                        Label("quick.my_shares", systemImage: "square.and.arrow.up")
                             .foregroundColor(.primary)
                     }
                 }

@@ -57,7 +57,7 @@ struct LocalizationHelper {
         return name
     }
     
-    private static func localizedByCode(_ code: String) -> String? {
+    public static func localizedByCode(_ code: String) -> String? {
         let key = "dept.\(code)"
         
         // 1. Get saved language code or default to system/en

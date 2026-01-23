@@ -21,18 +21,18 @@ struct RecycleBinListView: View {
     var body: some View {
         ZStack {
             if isLoading {
-                ProgressView("加载中...")
+                ProgressView("common.loading")
             } else if let error = errorMessage {
                 ContentUnavailableView(
-                    "加载失败",
+                    String(localized: "error.load_failed"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(error)
                 )
             } else if items.isEmpty {
                 ContentUnavailableView(
-                    "回收站为空",
+                    String(localized: "recycle_bin.empty"),
                     systemImage: "trash",
-                    description: Text("删除的文件会在这里保留30天")
+                    description: Text("recycle_bin.empty_description")
                 )
             } else {
                 VStack(spacing: 0) {
@@ -49,7 +49,7 @@ struct RecycleBinListView: View {
                                     Button {
                                         restoreItem(item)
                                     } label: {
-                                        Label("恢复", systemImage: "arrow.uturn.backward")
+                                        Label("recycle_bin.restore", systemImage: "arrow.uturn.backward")
                                     }
                                     .tint(.green)
                                 }
@@ -57,7 +57,7 @@ struct RecycleBinListView: View {
                                     Button(role: .destructive) {
                                         permanentlyDeleteItem(item)
                                     } label: {
-                                        Label("永久删除", systemImage: "trash.fill")
+                                        Label("recycle_bin.delete_permanently", systemImage: "trash.fill")
                                     }
                                 }
                         }
@@ -67,12 +67,12 @@ struct RecycleBinListView: View {
                 }
             }
         }
-        .navigationTitle("回收站")
+        .navigationTitle(Text("recycle_bin.title"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack {
                     if !items.isEmpty {
-                        Button(isSelectionMode ? "完成" : "选择") {
+                        Button(isSelectionMode ? String(localized: "action.done") : String(localized: "action.select")) {
                             isSelectionMode.toggle()
                             if !isSelectionMode {
                                 selectedIds.removeAll()
@@ -84,26 +84,26 @@ struct RecycleBinListView: View {
                         Button(role: .destructive) {
                             showClearConfirm = true
                         } label: {
-                            Text("清空")
+                            Text("recycle_bin.clear")
                                 .foregroundColor(.red)
                         }
                     }
                 }
             }
         }
-        .confirmationDialog("确定要清空回收站吗？", isPresented: $showClearConfirm, titleVisibility: .visible) {
-            Button("清空回收站", role: .destructive) {
+        .confirmationDialog(String(localized: "recycle_bin.confirm_clear"), isPresented: $showClearConfirm, titleVisibility: .visible) {
+            Button(String(localized: "recycle_bin.clear_all"), role: .destructive) {
                 clearAll()
             }
-            Button("取消", role: .cancel) { }
+            Button("action.cancel", role: .cancel) { }
         } message: {
-            Text("此操作不可撤销，所有文件将被永久删除。")
+            Text("recycle_bin.clear_warning")
         }
-        .confirmationDialog("确定要永久删除所选的\(selectedIds.count)个项目吗？", isPresented: $showBatchDeleteConfirm, titleVisibility: .visible) {
-            Button("永久删除", role: .destructive) {
+        .confirmationDialog(String(format: String(localized: "recycle_bin.confirm_delete_count"), selectedIds.count), isPresented: $showBatchDeleteConfirm, titleVisibility: .visible) {
+            Button(String(localized: "recycle_bin.delete_permanently"), role: .destructive) {
                 batchDelete()
             }
-            Button("取消", role: .cancel) { }
+            Button("action.cancel", role: .cancel) { }
         }
         .refreshable {
             await loadItems()
@@ -117,7 +117,7 @@ struct RecycleBinListView: View {
     
     private var batchActionBar: some View {
         HStack {
-            Button(selectedIds.count == items.count ? "取消全选" : "全选") {
+            Button(selectedIds.count == items.count ? String(localized: "common.deselect_all") : String(localized: "common.select_all")) {
                 if selectedIds.count == items.count {
                     selectedIds.removeAll()
                 } else {
@@ -128,7 +128,7 @@ struct RecycleBinListView: View {
             
             Spacer()
             
-            Text("已选 \(selectedIds.count) 项")
+            Text(String(format: String(localized: "common.selected_count"), selectedIds.count))
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
             
@@ -164,7 +164,15 @@ struct RecycleBinListView: View {
         errorMessage = nil
         
         do {
+            // Add slight delay for smoother refresh UX
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             items = try await FileService.shared.getRecycleBin()
+        } catch is CancellationError {
+            return
+        } catch let error as URLError where error.code == .cancelled {
+            return
+        } catch let error as NSError where error.code == NSURLErrorCancelled {
+            return
         } catch let error as APIError {
             errorMessage = error.errorDescription
         } catch {
@@ -233,17 +241,24 @@ struct RecycleBinListView: View {
 struct RecycleBinItemRow: View {
     let item: RecycleBinItem
     
+    private let imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"]
+    
     var body: some View {
         HStack(spacing: 14) {
-            // 图标
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: item.isDirectory ? "folder.fill" : "doc.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.gray)
+            // 缩略图或图标
+            if isImageFile {
+                // 使用 deleted_path 获取回收站中的缩略图
+                RecycleBinThumbnailView(path: item.deletedPath, size: 44)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: item.isDirectory ? "folder.fill" : "doc.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.gray)
+                }
             }
             
             // 信息
@@ -254,7 +269,7 @@ struct RecycleBinItemRow: View {
                     .strikethrough(true, color: .secondary)
                 
                 HStack(spacing: 8) {
-                    Text("原位置: \(item.originalPath)")
+                    Text(String(format: String(localized: "recycle_bin.original_location"), item.originalPath))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -265,7 +280,7 @@ struct RecycleBinItemRow: View {
             
             // 删除时间
             VStack(alignment: .trailing, spacing: 2) {
-                Text("删除于")
+                Text("recycle_bin.deleted_at")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 
@@ -285,6 +300,98 @@ struct RecycleBinItemRow: View {
         let displayFormatter = DateFormatter()
         displayFormatter.dateFormat = "MM/dd"
         return displayFormatter.string(from: date)
+    }
+    
+    private var isImageFile: Bool {
+        let ext = (item.name as NSString).pathExtension.lowercased()
+        return imageExtensions.contains(ext)
+    }
+}
+
+// MARK: - 回收站缩略图视图
+struct RecycleBinThumbnailView: View {
+    let path: String
+    var size: CGFloat = 44
+    
+    @State private var image: UIImage?
+    @State private var isLoading = true
+    @State private var loadFailed = false
+    
+    private var thumbnailURL: URL? {
+        // 回收站缩略图使用特殊的 API 端点
+        let cleanPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let encodedPath = cleanPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanPath
+        return URL(string: "\(APIClient.shared.baseURL)/api/recycle-bin/thumbnail?path=\(encodedPath)&size=\(Int(size * 2))")
+    }
+    
+    var body: some View {
+        Group {
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipped()
+                    .cornerRadius(8)
+                    .overlay(
+                        // 删除线效果
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                    )
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.15))
+                        .frame(width: size, height: size)
+                    
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.5)
+                    } else {
+                        Image(systemName: "photo.fill")
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+        }
+        .task {
+            await loadThumbnail()
+        }
+    }
+    
+    private func loadThumbnail() async {
+        guard let url = thumbnailURL else {
+            loadFailed = true
+            isLoading = false
+            return
+        }
+        
+        do {
+            var request = URLRequest(url: url)
+            if let token = AuthManager.shared.token {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let loadedImage = UIImage(data: data) else {
+                loadFailed = true
+                isLoading = false
+                return
+            }
+            
+            await MainActor.run {
+                image = loadedImage
+                isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                loadFailed = true
+                isLoading = false
+            }
+        }
     }
 }
 

@@ -67,12 +67,12 @@ struct BatchShareDialogView: View {
             }
             
             // 语言设置
-            Section(header: Text("语言设置")) {
-                Picker("界面语言", selection: $selectedLanguage) {
-                    Text("中文").tag("zh")
-                    Text("English").tag("en")
-                    Text("Deutsch").tag("de")
-                    Text("日本語").tag("ja")
+            Section(header: Text("share.language_settings")) {
+                Picker("share.ui_language", selection: $selectedLanguage) {
+                    Text("language.zh").tag("zh")
+                    Text("language.en").tag("en")
+                    Text("language.de").tag("de")
+                    Text("language.ja").tag("ja")
                 }
                 .pickerStyle(.menu)
             }
@@ -127,7 +127,7 @@ struct BatchShareDialogView: View {
                 
                 Button {
                     UIPasteboard.general.string = result.shareUrl
-                    ToastManager.shared.show("链接已复制", type: .success)
+                    ToastManager.shared.show(String(localized: "share.link_copied"), type: .success)
                 } label: {
                     Label("action.copy_link", systemImage: "doc.on.doc")
                         .font(.system(size: 16, weight: .semibold))
@@ -174,10 +174,10 @@ struct BatchShareDialogView: View {
     
     private func languageName(_ code: String) -> String {
         switch code {
-        case "zh": return "中文"
-        case "en": return "English"
-        case "de": return "Deutsch"
-        case "ja": return "日本語"
+        case "zh": return String(localized: "language.zh")
+        case "en": return String(localized: "language.en")
+        case "de": return String(localized: "language.de")
+        case "ja": return String(localized: "language.ja")
         default: return code
         }
     }

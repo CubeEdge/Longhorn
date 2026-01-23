@@ -19,6 +19,7 @@ struct FilePreviewView: View {
     @State private var isDownloadingOriginal = false
     @State private var hasOriginal = false
     @State private var showShareSheet = false
+    @State private var showInfoSheet = false
     @Environment(\.dismiss) private var dismiss
     
     // Remote URL for streaming video
@@ -57,6 +58,13 @@ struct FilePreviewView: View {
         .navigationTitle(file.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showInfoSheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+            }
             ToolbarItem(placement: .bottomBar) {
                 bottomToolbar
             }
@@ -65,6 +73,9 @@ struct FilePreviewView: View {
             if let url = localURL {
                 ShareSheet(activityItems: [url])
             }
+        }
+        .sheet(isPresented: $showInfoSheet) {
+            FileDetailSheet(file: file)
         }
         .task {
             print("[Preview] View loaded for: \(file.name) (path: \(file.path))")
@@ -350,3 +361,5 @@ struct QuickLookPreview: UIViewControllerRepresentable {
         }
     }
 }
+
+

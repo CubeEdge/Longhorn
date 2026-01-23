@@ -19,11 +19,13 @@ struct FileItem: Codable, Identifiable, Hashable {
     let uploaderName: String?
     let isStarred: Bool?
     let accessCount: Int?
+    let shareCount: Int?
+    let starCount: Int?
     
     // 使用 path 作为唯一标识
     var id: String { path }
     
-    init(name: String, path: String, isDirectory: Bool, size: Int64?, modifiedAt: Date?, uploaderId: Int?, uploaderName: String?, isStarred: Bool?, accessCount: Int?) {
+    init(name: String, path: String, isDirectory: Bool, size: Int64? = nil, modifiedAt: Date? = nil, uploaderId: Int? = nil, uploaderName: String? = nil, isStarred: Bool? = nil, accessCount: Int? = nil, shareCount: Int? = nil, starCount: Int? = nil) {
         self.name = name
         self.path = path
         self.isDirectory = isDirectory
@@ -33,6 +35,8 @@ struct FileItem: Codable, Identifiable, Hashable {
         self.uploaderName = uploaderName
         self.isStarred = isStarred
         self.accessCount = accessCount
+        self.shareCount = shareCount
+        self.starCount = starCount
     }
 
     enum CodingKeys: String, CodingKey {
@@ -43,6 +47,8 @@ struct FileItem: Codable, Identifiable, Hashable {
         case uploaderName = "uploader_name"
         case isStarred = "starred"
         case accessCount = "access_count"
+        case shareCount = "share_count"
+        case starCount = "star_count"
     }
     
     init(from decoder: Decoder) throws {
@@ -55,6 +61,8 @@ struct FileItem: Codable, Identifiable, Hashable {
         uploaderName = try container.decodeIfPresent(String.self, forKey: .uploaderName)
         isStarred = try container.decodeIfPresent(Bool.self, forKey: .isStarred)
         accessCount = try container.decodeIfPresent(Int.self, forKey: .accessCount)
+        shareCount = try container.decodeIfPresent(Int.self, forKey: .shareCount)
+        starCount = try container.decodeIfPresent(Int.self, forKey: .starCount)
         
         // 解析日期 - 支持多种格式
         if let mtimeString = try container.decodeIfPresent(String.self, forKey: .modifiedAt) {
@@ -186,6 +194,7 @@ struct FileItem: Codable, Identifiable, Hashable {
 }
 
 /// 收藏项
+/// 收藏项
 struct StarredItem: Codable, Identifiable {
     let id: Int
     let filePath: String
@@ -211,6 +220,23 @@ struct StarredItem: Codable, Identifiable {
     var fullPath: String {
         path ?? filePath
     }
+    
+    /// 转换为 FileItem 以便使用 FilePreviewView
+    func toFileItem() -> FileItem {
+        FileItem(
+            name: displayName,
+            path: fullPath,
+            isDirectory: isDirectory ?? false,
+            size: size,
+            modifiedAt: nil,
+            uploaderId: nil,
+            uploaderName: nil,
+            isStarred: true,
+            accessCount: nil,
+            shareCount: nil,
+            starCount: nil
+        )
+    }
 }
 
 /// 回收站项
@@ -220,13 +246,42 @@ struct RecycleBinItem: Codable, Identifiable {
     let originalPath: String
     let deletedPath: String
     let deletionDate: String
-    let isDirectory: Bool
+    let userId: Int?
+    let deletedBy: String?  // JOIN 返回的用户名
+    private let _isDirectory: IntBool  // SQLite 返回 0/1
+    
+    var isDirectory: Bool { _isDirectory.value }
     
     enum CodingKeys: String, CodingKey {
         case id, name
         case originalPath = "original_path"
         case deletedPath = "deleted_path"
         case deletionDate = "deletion_date"
-        case isDirectory = "is_directory"
+        case userId = "user_id"
+        case deletedBy = "deleted_by"
+        case _isDirectory = "is_directory"
+    }
+}
+
+/// 辅助类型：将 SQLite 的 0/1 转换为 Bool
+struct IntBool: Codable {
+    let value: Bool
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        // 尝试解码为 Bool
+        if let boolValue = try? container.decode(Bool.self) {
+            value = boolValue
+        // 尝试解码为 Int (0/1)
+        } else if let intValue = try? container.decode(Int.self) {
+            value = intValue != 0
+        } else {
+            value = false
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
     }
 }

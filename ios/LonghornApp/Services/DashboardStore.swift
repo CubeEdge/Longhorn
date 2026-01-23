@@ -127,3 +127,24 @@ class DashboardStore: ObservableObject {
         deptStatsLastUpdated = nil
     }
 }
+
+// MARK: - Navigation Manager (Global)
+
+class NavigationManager: ObservableObject {
+    static let shared = NavigationManager()
+    
+    // Path to navigate to in the File Browser
+    @Published var jumpToPath: String?
+    
+    // Request to switch tabs
+    @Published var selectedTab: MainTabView.Tab?
+    
+    private init() {}
+    
+    func navigateTo(path: String) {
+        // Switch to browse tab
+        selectedTab = .home
+        // Set path
+        jumpToPath = path
+    }
+}
