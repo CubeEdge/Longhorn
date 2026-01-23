@@ -5,7 +5,7 @@
         "word": "Hallo",
         "phonetic": "[haˈloː]",
         "meaning": "Informelle Begrüßung",
-        "meaning_zh": "你好 (非正式)",
+        "meaning_zh": "你好(非正式)",
         "part_of_speech": "Interj.",
         "examples": [
             {
@@ -44,8 +44,8 @@
         "level": "A1",
         "word": "Bitte",
         "phonetic": "[ˈbɪtə]",
-        "meaning": "Höfliche Bitte oder Antwort auf Danke",
-        "meaning_zh": "请 / 不客气",
+        "meaning": "Höfliche Bitte",
+        "meaning_zh": "请/不客气",
         "part_of_speech": "Adv.",
         "examples": [
             {
@@ -84,7 +84,7 @@
         "level": "A1",
         "word": "Wasser",
         "phonetic": "[ˈvasɐ]",
-        "meaning": "Klare Flüssigkeit zum Trinken",
+        "meaning": "Flüssigkeit zum Trinken",
         "meaning_zh": "水",
         "part_of_speech": "n.",
         "examples": [
@@ -104,13 +104,13 @@
         "level": "A1",
         "word": "Buch",
         "phonetic": "[buːx]",
-        "meaning": "Gedruckte Seiten zum Lesen",
+        "meaning": "Gedruckte Seiten",
         "meaning_zh": "书",
         "part_of_speech": "n.",
         "examples": [
             {
                 "sentence": "Ich lese ein Buch.",
-                "translation": "我在读一本书。"
+                "translation": "我在读书。"
             },
             {
                 "sentence": "Das Buch ist interessant.",
@@ -124,7 +124,7 @@
         "level": "A1",
         "word": "Tisch",
         "phonetic": "[tɪʃ]",
-        "meaning": "Möbelstück zum Essen oder Arbeiten",
+        "meaning": "Möbelstück",
         "meaning_zh": "桌子",
         "part_of_speech": "n.",
         "examples": [
@@ -134,7 +134,7 @@
             },
             {
                 "sentence": "Wir essen am Tisch.",
-                "translation": "我们在桌子旁吃饭。"
+                "translation": "我们在桌旁吃饭。"
             }
         ],
         "image": "🪑"
@@ -151,13 +151,121 @@
             {
                 "sentence": "Der Stuhl ist bequem.",
                 "translation": "椅子很舒服。"
-            },
-            {
-                "sentence": "Ich sitze auf dem Stuhl.",
-                "translation": "我坐在椅子上。"
             }
         ],
         "image": "💺"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Tür",
+        "phonetic": "[tyːɐ̯]",
+        "meaning": "Eingang",
+        "meaning_zh": "门",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Tür ist offen.",
+                "translation": "门是开着的。"
+            }
+        ],
+        "image": "🚪"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Fenster",
+        "phonetic": "[ˈfɛnstɐ]",
+        "meaning": "Glasöffnung",
+        "meaning_zh": "窗户",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Fenster ist groß.",
+                "translation": "窗户很大。"
+            }
+        ],
+        "image": "🪟"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Auto",
+        "phonetic": "[ˈaʊto]",
+        "meaning": "Fahrzeug",
+        "meaning_zh": "汽车",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Mein Auto ist rot.",
+                "translation": "我的车是红色的。"
+            }
+        ],
+        "image": "🚗"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Baum",
+        "phonetic": "[baʊm]",
+        "meaning": "Pflanze",
+        "meaning_zh": "树",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Baum ist groß.",
+                "translation": "树很大。"
+            }
+        ],
+        "image": "🌳"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Blume",
+        "phonetic": "[ˈbluːmə]",
+        "meaning": "Pflanze mit Blüte",
+        "meaning_zh": "花",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Blume ist schön.",
+                "translation": "花很美。"
+            }
+        ],
+        "image": "🌸"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Sonne",
+        "phonetic": "[ˈzɔnə]",
+        "meaning": "Stern am Himmel",
+        "meaning_zh": "太阳",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Sonne scheint.",
+                "translation": "太阳在照耀。"
+            }
+        ],
+        "image": "☀️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Mond",
+        "phonetic": "[moːnt]",
+        "meaning": "Nachthimmel",
+        "meaning_zh": "月亮",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Mond ist hell.",
+                "translation": "月亮很亮。"
+            }
+        ],
+        "image": "🌙"
     },
     {
         "language": "de",
@@ -171,10 +279,6 @@
             {
                 "sentence": "Er ist mein bester Freund.",
                 "translation": "他是我最好的朋友。"
-            },
-            {
-                "sentence": "Ich treffe meine Freunde.",
-                "translation": "我去见我的朋友们。"
             }
         ],
         "image": "👬"
@@ -184,17 +288,13 @@
         "level": "A2",
         "word": "Arbeit",
         "phonetic": "[ˈaʁbaɪt]",
-        "meaning": "Tätigkeit um Geld zu verdienen",
+        "meaning": "Tätigkeit",
         "meaning_zh": "工作",
         "part_of_speech": "n.",
         "examples": [
             {
                 "sentence": "Ich gehe zur Arbeit.",
                 "translation": "我去上班。"
-            },
-            {
-                "sentence": "Die Arbeit ist schwer.",
-                "translation": "工作很难。"
             }
         ],
         "image": "💼"
@@ -211,50 +311,134 @@
             {
                 "sentence": "Meine Familie ist groß.",
                 "translation": "我的家庭很大。"
-            },
-            {
-                "sentence": "Ich liebe meine Familie.",
-                "translation": "我爱我的家人。"
             }
         ],
         "image": "👨‍👩‍👧‍👦"
     },
     {
         "language": "de",
+        "level": "A2",
+        "word": "Schule",
+        "phonetic": "[ˈʃuːlə]",
+        "meaning": "Bildungseinrichtung",
+        "meaning_zh": "学校",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich gehe zur Schule.",
+                "translation": "我去上学。"
+            }
+        ],
+        "image": "🏫"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Gesundheit",
+        "phonetic": "[ɡəˈzʊnthaɪt]",
+        "meaning": "Wohlbefinden",
+        "meaning_zh": "健康",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Gesundheit ist wichtig.",
+                "translation": "健康很重要。"
+            }
+        ],
+        "image": "💪"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Liebe",
+        "phonetic": "[ˈliːbə]",
+        "meaning": "Zuneigung",
+        "meaning_zh": "爱",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Liebe ist schön.",
+                "translation": "爱很美好。"
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Zeit",
+        "phonetic": "[tsaɪt]",
+        "meaning": "Dauer",
+        "meaning_zh": "时间",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich habe keine Zeit.",
+                "translation": "我没有时间。"
+            }
+        ],
+        "image": "⏰"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Geld",
+        "phonetic": "[ɡɛlt]",
+        "meaning": "Zahlungsmittel",
+        "meaning_zh": "钱",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich brauche Geld.",
+                "translation": "我需要钱。"
+            }
+        ],
+        "image": "💰"
+    },
+    {
+        "language": "de",
         "level": "B1",
         "word": "Erfahrung",
         "phonetic": "[ɛɐˈfaːʁʊŋ]",
-        "meaning": "Wissen durch praktisches Erleben",
+        "meaning": "Wissen durch Erleben",
         "meaning_zh": "经验",
         "part_of_speech": "n.",
         "examples": [
             {
                 "sentence": "Ich habe viel Erfahrung.",
                 "translation": "我有很多经验。"
-            },
-            {
-                "sentence": "Diese Erfahrung war wichtig.",
-                "translation": "这个经历很重要。"
             }
         ],
         "image": "🎓"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Verantwortung",
+        "phonetic": "[fɛɐˈantvɔʁtʊŋ]",
+        "meaning": "Pflicht",
+        "meaning_zh": "责任",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das ist meine Verantwortung.",
+                "translation": "这是我的责任。"
+            }
+        ],
+        "image": "🤝"
     },
     {
         "language": "en",
         "level": "Advanced",
         "word": "Eloquent",
         "phonetic": "/ˈɛləkwənt/",
-        "meaning": "Fluent and persuasive in speaking or writing",
-        "meaning_zh": "雄辩的，有说服力的",
+        "meaning": "Fluent and persuasive",
+        "meaning_zh": "雄辩的",
         "part_of_speech": "adj.",
         "examples": [
             {
                 "sentence": "She gave an eloquent speech.",
-                "translation": "她发表了一场雄辩的演讲。"
-            },
-            {
-                "sentence": "His writing is eloquent and moving.",
-                "translation": "他的文字雄辩且动人。"
+                "translation": "她发表了雄辩的演讲。"
             }
         ],
         "image": "🗣️"
@@ -264,17 +448,13 @@
         "level": "Advanced",
         "word": "Meticulous",
         "phonetic": "/məˈtɪkjələs/",
-        "meaning": "Showing great attention to detail",
+        "meaning": "Attention to detail",
         "meaning_zh": "一丝不苟的",
         "part_of_speech": "adj.",
         "examples": [
             {
                 "sentence": "He is meticulous in his work.",
                 "translation": "他工作一丝不苟。"
-            },
-            {
-                "sentence": "The plan was meticulously crafted.",
-                "translation": "这个计划精心制定。"
             }
         ],
         "image": "🔍"
@@ -284,17 +464,13 @@
         "level": "Advanced",
         "word": "Ephemeral",
         "phonetic": "/ɪˈfɛmərəl/",
-        "meaning": "Lasting for a very short time",
+        "meaning": "Short-lived",
         "meaning_zh": "短暂的",
         "part_of_speech": "adj.",
         "examples": [
             {
-                "sentence": "The beauty of cherry blossoms is ephemeral.",
-                "translation": "樱花之美是短暂的。"
-            },
-            {
-                "sentence": "Fame can be ephemeral.",
-                "translation": "名声可能是短暂的。"
+                "sentence": "Cherry blossoms are ephemeral.",
+                "translation": "樱花是短暂的。"
             }
         ],
         "image": "🌸"
@@ -304,17 +480,13 @@
         "level": "Advanced",
         "word": "Pragmatic",
         "phonetic": "/præɡˈmætɪk/",
-        "meaning": "Dealing with things sensibly and realistically",
+        "meaning": "Practical approach",
         "meaning_zh": "务实的",
         "part_of_speech": "adj.",
         "examples": [
             {
-                "sentence": "We need a pragmatic approach.",
-                "translation": "我们需要务实的方法。"
-            },
-            {
-                "sentence": "She is very pragmatic.",
-                "translation": "她非常务实。"
+                "sentence": "We need a pragmatic solution.",
+                "translation": "我们需要务实的解决方案。"
             }
         ],
         "image": "🎯"
@@ -324,17 +496,13 @@
         "level": "Advanced",
         "word": "Resilient",
         "phonetic": "/rɪˈzɪliənt/",
-        "meaning": "Able to withstand or recover quickly from difficulties",
+        "meaning": "Able to recover",
         "meaning_zh": "有韧性的",
         "part_of_speech": "adj.",
         "examples": [
             {
-                "sentence": "Children are remarkably resilient.",
-                "translation": "孩子们有惊人的韧性。"
-            },
-            {
-                "sentence": "The economy proved resilient.",
-                "translation": "经济证明了其韧性。"
+                "sentence": "Children are resilient.",
+                "translation": "孩子们有韧性。"
             }
         ],
         "image": "💪"
@@ -344,17 +512,13 @@
         "level": "Advanced",
         "word": "Ubiquitous",
         "phonetic": "/juːˈbɪkwɪtəs/",
-        "meaning": "Present, appearing, or found everywhere",
+        "meaning": "Found everywhere",
         "meaning_zh": "无处不在的",
         "part_of_speech": "adj.",
         "examples": [
             {
-                "sentence": "Smartphones are ubiquitous today.",
-                "translation": "智能手机如今无处不在。"
-            },
-            {
-                "sentence": "Coffee shops are ubiquitous in cities.",
-                "translation": "咖啡店在城市里无处不在。"
+                "sentence": "Smartphones are ubiquitous.",
+                "translation": "智能手机无处不在。"
             }
         ],
         "image": "📱"
@@ -364,20 +528,304 @@
         "level": "Advanced",
         "word": "Tenacious",
         "phonetic": "/təˈneɪʃəs/",
-        "meaning": "Tending to keep a firm hold; persistent",
-        "meaning_zh": "坚韧不拔的",
+        "meaning": "Persistent",
+        "meaning_zh": "坚韧的",
         "part_of_speech": "adj.",
         "examples": [
             {
-                "sentence": "She is tenacious in pursuing goals.",
-                "translation": "她在追求目标时坚韧不拔。"
-            },
-            {
-                "sentence": "His tenacious grip never loosened.",
-                "translation": "他紧紧抓住从不松手。"
+                "sentence": "She is tenacious.",
+                "translation": "她很坚韧。"
             }
         ],
         "image": "🦾"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Ambiguous",
+        "phonetic": "/æmˈbɪɡjuəs/",
+        "meaning": "Unclear meaning",
+        "meaning_zh": "模棱两可的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "The message was ambiguous.",
+                "translation": "信息模棱两可。"
+            }
+        ],
+        "image": "❓"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Benevolent",
+        "phonetic": "/bəˈnɛvələnt/",
+        "meaning": "Kind and generous",
+        "meaning_zh": "仁慈的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is a benevolent leader.",
+                "translation": "他是位仁慈的领导。"
+            }
+        ],
+        "image": "😇"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Candid",
+        "phonetic": "/ˈkændɪd/",
+        "meaning": "Honest and direct",
+        "meaning_zh": "坦率的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She gave a candid response.",
+                "translation": "她给出了坦率的回答。"
+            }
+        ],
+        "image": "💬"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Diligent",
+        "phonetic": "/ˈdɪlɪdʒənt/",
+        "meaning": "Hardworking",
+        "meaning_zh": "勤奋的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is a diligent student.",
+                "translation": "他是个勤奋的学生。"
+            }
+        ],
+        "image": "📚"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Enigmatic",
+        "phonetic": "/ˌɛnɪɡˈmætɪk/",
+        "meaning": "Mysterious",
+        "meaning_zh": "神秘的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She has an enigmatic smile.",
+                "translation": "她有神秘的微笑。"
+            }
+        ],
+        "image": "🤔"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Flourish",
+        "phonetic": "/ˈflɜrɪʃ/",
+        "meaning": "Grow vigorously",
+        "meaning_zh": "繁荣",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "The business flourished.",
+                "translation": "生意兴隆。"
+            }
+        ],
+        "image": "🌱"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Gratitude",
+        "phonetic": "/ˈɡrætɪtud/",
+        "meaning": "Thankfulness",
+        "meaning_zh": "感激",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "I feel gratitude.",
+                "translation": "我感到感激。"
+            }
+        ],
+        "image": "🙏"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Harmony",
+        "phonetic": "/ˈhɑrməni/",
+        "meaning": "Agreement",
+        "meaning_zh": "和谐",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "They live in harmony.",
+                "translation": "他们和睦相处。"
+            }
+        ],
+        "image": "☮️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Integrity",
+        "phonetic": "/ɪnˈtɛɡrəti/",
+        "meaning": "Honesty",
+        "meaning_zh": "正直",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "She has integrity.",
+                "translation": "她很正直。"
+            }
+        ],
+        "image": "⚖️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Jovial",
+        "phonetic": "/ˈdʒoʊviəl/",
+        "meaning": "Cheerful",
+        "meaning_zh": "愉快的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is jovial.",
+                "translation": "他很愉快。"
+            }
+        ],
+        "image": "😄"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Keen",
+        "phonetic": "/kin/",
+        "meaning": "Eager",
+        "meaning_zh": "热切的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She is keen to learn.",
+                "translation": "她热衷于学习。"
+            }
+        ],
+        "image": "👀"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Luminous",
+        "phonetic": "/ˈluːmɪnəs/",
+        "meaning": "Bright",
+        "meaning_zh": "发光的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "The moon is luminous.",
+                "translation": "月亮很明亮。"
+            }
+        ],
+        "image": "✨"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Modest",
+        "phonetic": "/ˈmɑdɪst/",
+        "meaning": "Humble",
+        "meaning_zh": "谦虚的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is modest.",
+                "translation": "他很谦虚。"
+            }
+        ],
+        "image": "🙇"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Nurture",
+        "phonetic": "/ˈnɜrtʃər/",
+        "meaning": "Care for",
+        "meaning_zh": "培养",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Nurture your talents.",
+                "translation": "培养你的才能。"
+            }
+        ],
+        "image": "🌱"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Optimistic",
+        "phonetic": "/ˌɑptɪˈmɪstɪk/",
+        "meaning": "Hopeful",
+        "meaning_zh": "乐观的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Stay optimistic.",
+                "translation": "保持乐观。"
+            }
+        ],
+        "image": "😊"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Peculiar",
+        "phonetic": "/pɪˈkjuliər/",
+        "meaning": "Strange",
+        "meaning_zh": "奇特的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "That's peculiar.",
+                "translation": "那很奇特。"
+            }
+        ],
+        "image": "🤨"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Quintessential",
+        "phonetic": "/ˌkwɪntɪˈsɛnʃəl/",
+        "meaning": "Perfect example",
+        "meaning_zh": "典型的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "He is quintessentially British.",
+                "translation": "他是典型的英国人。"
+            }
+        ],
+        "image": "👌"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Resolute",
+        "phonetic": "/ˈrɛzəlut/",
+        "meaning": "Determined",
+        "meaning_zh": "坚决的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She is resolute.",
+                "translation": "她很坚决。"
+            }
+        ],
+        "image": "💪"
     },
     {
         "language": "ja",
@@ -385,16 +833,12 @@
         "word": "こんにちは",
         "phonetic": "konnichiwa",
         "meaning": "日中の挨拶",
-        "meaning_zh": "你好（白天）",
+        "meaning_zh": "你好(白天)",
         "part_of_speech": "感動詞",
         "examples": [
             {
                 "sentence": "こんにちは、元気ですか？",
                 "translation": "你好，你好吗？"
-            },
-            {
-                "sentence": "こんにちは、田中さん。",
-                "translation": "你好，田中先生。"
             }
         ],
         "image": "👋"
@@ -404,17 +848,13 @@
         "level": "N5",
         "word": "ありがとう",
         "phonetic": "arigatou",
-        "meaning": "感謝の言葉",
+        "meaning": "感謝",
         "meaning_zh": "谢谢",
         "part_of_speech": "感動詞",
         "examples": [
             {
                 "sentence": "ありがとう、助かりました。",
                 "translation": "谢谢，帮大忙了。"
-            },
-            {
-                "sentence": "本当にありがとう。",
-                "translation": "真的非常感谢。"
             }
         ],
         "image": "🙏"
@@ -424,17 +864,13 @@
         "level": "N5",
         "word": "すみません",
         "phonetic": "sumimasen",
-        "meaning": "謝罪や呼びかけ",
-        "meaning_zh": "对不起 / 不好意思",
+        "meaning": "謝罪",
+        "meaning_zh": "对不起",
         "part_of_speech": "感動詞",
         "examples": [
             {
                 "sentence": "すみません、遅れました。",
                 "translation": "对不起，我迟到了。"
-            },
-            {
-                "sentence": "すみません、ちょっといいですか？",
-                "translation": "不好意思，可以打扰一下吗？"
             }
         ],
         "image": "🙇"
@@ -451,10 +887,6 @@
             {
                 "sentence": "おはよう、よく寝た？",
                 "translation": "早上好，睡得好吗？"
-            },
-            {
-                "sentence": "おはようございます。",
-                "translation": "早上好（礼貌）。"
             }
         ],
         "image": "🌅"
@@ -464,17 +896,13 @@
         "level": "N5",
         "word": "さようなら",
         "phonetic": "sayounara",
-        "meaning": "別れの挨拶",
+        "meaning": "別れ",
         "meaning_zh": "再见",
         "part_of_speech": "感動詞",
         "examples": [
             {
                 "sentence": "さようなら、また明日。",
                 "translation": "再见，明天见。"
-            },
-            {
-                "sentence": "さようなら、元気でね。",
-                "translation": "再见，保重。"
             }
         ],
         "image": "👋"
@@ -491,10 +919,6 @@
             {
                 "sentence": "水を飲みます。",
                 "translation": "喝水。"
-            },
-            {
-                "sentence": "水が冷たいです。",
-                "translation": "水很冷。"
             }
         ],
         "image": "💧"
@@ -511,30 +935,150 @@
             {
                 "sentence": "本を読みます。",
                 "translation": "读书。"
-            },
-            {
-                "sentence": "この本は面白いです。",
-                "translation": "这本书很有趣。"
             }
         ],
         "image": "📖"
     },
     {
         "language": "ja",
+        "level": "N5",
+        "word": "学校",
+        "phonetic": "gakkou",
+        "meaning": "教育機関",
+        "meaning_zh": "学校",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "学校に行きます。",
+                "translation": "去学校。"
+            }
+        ],
+        "image": "🏫"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "先生",
+        "phonetic": "sensei",
+        "meaning": "教師",
+        "meaning_zh": "老师",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "先生は優しいです。",
+                "translation": "老师很温柔。"
+            }
+        ],
+        "image": "👨‍🏫"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "学生",
+        "phonetic": "gakusei",
+        "meaning": "勉強する人",
+        "meaning_zh": "学生",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "私は学生です。",
+                "translation": "我是学生。"
+            }
+        ],
+        "image": "🎓"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "家",
+        "phonetic": "ie",
+        "meaning": "住む場所",
+        "meaning_zh": "家",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "家に帰ります。",
+                "translation": "回家。"
+            }
+        ],
+        "image": "🏠"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "車",
+        "phonetic": "kuruma",
+        "meaning": "乗り物",
+        "meaning_zh": "车",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "車で行きます。",
+                "translation": "开车去。"
+            }
+        ],
+        "image": "🚗"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "食べる",
+        "phonetic": "taberu",
+        "meaning": "食事する",
+        "meaning_zh": "吃",
+        "part_of_speech": "動詞",
+        "examples": [
+            {
+                "sentence": "ご飯を食べます。",
+                "translation": "吃饭。"
+            }
+        ],
+        "image": "🍚"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "飲む",
+        "phonetic": "nomu",
+        "meaning": "液体を摂る",
+        "meaning_zh": "喝",
+        "part_of_speech": "動詞",
+        "examples": [
+            {
+                "sentence": "お茶を飲みます。",
+                "translation": "喝茶。"
+            }
+        ],
+        "image": "🍵"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "行く",
+        "phonetic": "iku",
+        "meaning": "移動する",
+        "meaning_zh": "去",
+        "part_of_speech": "動詞",
+        "examples": [
+            {
+                "sentence": "学校に行きます。",
+                "translation": "去学校。"
+            }
+        ],
+        "image": "🚶"
+    },
+    {
+        "language": "ja",
         "level": "N4",
         "word": "友達",
         "phonetic": "tomodachi",
-        "meaning": "仲の良い人",
+        "meaning": "仲間",
         "meaning_zh": "朋友",
         "part_of_speech": "名詞",
         "examples": [
             {
                 "sentence": "友達と遊びます。",
                 "translation": "和朋友玩。"
-            },
-            {
-                "sentence": "私の友達です。",
-                "translation": "这是我的朋友。"
             }
         ],
         "image": "👬"
@@ -551,30 +1095,150 @@
             {
                 "sentence": "仕事に行きます。",
                 "translation": "去上班。"
-            },
-            {
-                "sentence": "仕事が忙しいです。",
-                "translation": "工作很忙。"
             }
         ],
         "image": "💼"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "会社",
+        "phonetic": "kaisha",
+        "meaning": "企業",
+        "meaning_zh": "公司",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "会社で働きます。",
+                "translation": "在公司工作。"
+            }
+        ],
+        "image": "🏢"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "時間",
+        "phonetic": "jikan",
+        "meaning": "期間",
+        "meaning_zh": "时间",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "時間がない。",
+                "translation": "没时间。"
+            }
+        ],
+        "image": "⏰"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "お金",
+        "phonetic": "okane",
+        "meaning": "通貨",
+        "meaning_zh": "钱",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "お金が必要です。",
+                "translation": "需要钱。"
+            }
+        ],
+        "image": "💰"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "天気",
+        "phonetic": "tenki",
+        "meaning": "気候",
+        "meaning_zh": "天气",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "今日の天気はいいです。",
+                "translation": "今天天气好。"
+            }
+        ],
+        "image": "☀️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "元気",
+        "phonetic": "genki",
+        "meaning": "健康",
+        "meaning_zh": "健康/精神",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "元気ですか？",
+                "translation": "你好吗？"
+            }
+        ],
+        "image": "💪"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "便利",
+        "phonetic": "benri",
+        "meaning": "使いやすい",
+        "meaning_zh": "方便",
+        "part_of_speech": "形容動詞",
+        "examples": [
+            {
+                "sentence": "とても便利です。",
+                "translation": "很方便。"
+            }
+        ],
+        "image": "👍"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "大切",
+        "phonetic": "taisetsu",
+        "meaning": "重要",
+        "meaning_zh": "重要",
+        "part_of_speech": "形容動詞",
+        "examples": [
+            {
+                "sentence": "家族は大切です。",
+                "translation": "家人很重要。"
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "経験",
+        "phonetic": "keiken",
+        "meaning": "体験",
+        "meaning_zh": "经验",
+        "part_of_speech": "名詞",
+        "examples": [
+            {
+                "sentence": "経験が大事です。",
+                "translation": "经验很重要。"
+            }
+        ],
+        "image": "🎓"
     },
     {
         "language": "zh",
         "level": "Idioms",
         "word": "一帆风顺",
         "phonetic": "yī fān fēng shùn",
-        "meaning": "比喻非常顺利，没有阻碍",
+        "meaning": "比喻非常顺利",
         "meaning_zh": "一切顺利",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "祝你工作一帆风顺！",
-                "translation": "祝你工作一切顺利！"
-            },
-            {
-                "sentence": "希望新的一年一帆风顺。",
-                "translation": "希望新年一切顺利。"
+                "translation": "祝你工作顺利！"
             }
         ],
         "image": "⛵"
@@ -584,17 +1248,13 @@
         "level": "Idioms",
         "word": "画龙点睛",
         "phonetic": "huà lóng diǎn jīng",
-        "meaning": "比喻在关键处加上一笔，使整体生动起来",
+        "meaning": "关键一笔",
         "meaning_zh": "点石成金",
         "part_of_speech": "成语",
         "examples": [
             {
-                "sentence": "这句话画龙点睛，整篇文章都活了。",
-                "translation": "这句话点睛之笔，整篇文章都活了。"
-            },
-            {
-                "sentence": "最后的总结画龙点睛。",
-                "translation": "最后的总结起到了画龙点睛的作用。"
+                "sentence": "这句话画龙点睛。",
+                "translation": "这句话是点睛之笔。"
             }
         ],
         "image": "🐉"
@@ -604,17 +1264,13 @@
         "level": "Idioms",
         "word": "雪中送炭",
         "phonetic": "xuě zhōng sòng tàn",
-        "meaning": "在别人遇到困难时给予帮助",
+        "meaning": "困难时帮助",
         "meaning_zh": "及时帮助",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "你的帮助真是雪中送炭。",
-                "translation": "你的帮助真是及时雨。"
-            },
-            {
-                "sentence": "朋友雪中送炭，令人感动。",
-                "translation": "朋友在困难时帮助，令人感动。"
+                "translation": "你的帮助很及时。"
             }
         ],
         "image": "❄️"
@@ -624,17 +1280,13 @@
         "level": "Idioms",
         "word": "马到成功",
         "phonetic": "mǎ dào chéng gōng",
-        "meaning": "形容事情顺利，一开始就成功",
-        "meaning_zh": "立即成功",
+        "meaning": "立即成功",
+        "meaning_zh": "立刻成功",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "祝你马到成功！",
                 "translation": "祝你立刻成功！"
-            },
-            {
-                "sentence": "希望这次项目马到成功。",
-                "translation": "希望这次项目顺利成功。"
             }
         ],
         "image": "🐴"
@@ -644,17 +1296,13 @@
         "level": "Idioms",
         "word": "锦上添花",
         "phonetic": "jǐn shàng tiān huā",
-        "meaning": "比喻好上加好",
+        "meaning": "好上加好",
         "meaning_zh": "更加完美",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "你的建议真是锦上添花。",
-                "translation": "你的建议让事情更完美了。"
-            },
-            {
-                "sentence": "这次合作锦上添花。",
-                "translation": "这次合作让一切更完美。"
+                "translation": "你的建议让事情更完美。"
             }
         ],
         "image": "💐"
@@ -664,17 +1312,13 @@
         "level": "Idioms",
         "word": "众志成城",
         "phonetic": "zhòng zhì chéng chéng",
-        "meaning": "大家齐心协力，就像坚固的城墙一样不可摧毁",
-        "meaning_zh": "团结一致",
+        "meaning": "团结一致",
+        "meaning_zh": "齐心协力",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "众志成城，我们一定能克服困难。",
-                "translation": "团结一致，我们一定能克服困难。"
-            },
-            {
-                "sentence": "团队众志成城，完成了任务。",
-                "translation": "团队齐心协力，完成了任务。"
+                "translation": "团结一致，能克服困难。"
             }
         ],
         "image": "🏰"
@@ -684,19 +1328,303 @@
         "level": "Idioms",
         "word": "水到渠成",
         "phonetic": "shuǐ dào qú chéng",
-        "meaning": "比喻条件成熟，事情自然会成功",
-        "meaning_zh": "自然而成",
+        "meaning": "自然成功",
+        "meaning_zh": "顺理成章",
         "part_of_speech": "成语",
         "examples": [
             {
                 "sentence": "只要努力，水到渠成。",
-                "translation": "只要努力，自然会成功。"
-            },
-            {
-                "sentence": "这件事水到渠成，不必着急。",
-                "translation": "这件事会自然成功，不必着急。"
+                "translation": "只要努力，自然成功。"
             }
         ],
         "image": "💦"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "井底之蛙",
+        "phonetic": "jǐng dǐ zhī wā",
+        "meaning": "见识短浅",
+        "meaning_zh": "眼界狭窄",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "不要做井底之蛙。",
+                "translation": "不要目光短浅。"
+            }
+        ],
+        "image": "🐸"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "守株待兔",
+        "phonetic": "shǒu zhū dài tù",
+        "meaning": "不劳而获",
+        "meaning_zh": "坐等其成",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "不能守株待兔。",
+                "translation": "不能坐等机会。"
+            }
+        ],
+        "image": "🐰"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "亡羊补牢",
+        "phonetic": "wáng yáng bǔ láo",
+        "meaning": "及时补救",
+        "meaning_zh": "为时未晚",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "亡羊补牢，为时未晚。",
+                "translation": "及时补救还不晚。"
+            }
+        ],
+        "image": "🐑"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "塞翁失马",
+        "phonetic": "sài wēng shī mǎ",
+        "meaning": "祸福相依",
+        "meaning_zh": "因祸得福",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "塞翁失马，焉知非福。",
+                "translation": "坏事可能变好事。"
+            }
+        ],
+        "image": "🐴"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "滴水穿石",
+        "phonetic": "dī shuǐ chuān shí",
+        "meaning": "坚持不懈",
+        "meaning_zh": "持之以恒",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "滴水穿石，贵在坚持。",
+                "translation": "持之以恒最重要。"
+            }
+        ],
+        "image": "💧"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "金玉满堂",
+        "phonetic": "jīn yù mǎn táng",
+        "meaning": "财富丰盛",
+        "meaning_zh": "大富大贵",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝你金玉满堂。",
+                "translation": "祝你财富满堂。"
+            }
+        ],
+        "image": "💎"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "如鱼得水",
+        "phonetic": "rú yú dé shuǐ",
+        "meaning": "得心应手",
+        "meaning_zh": "非常顺利",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "他在新环境如鱼得水。",
+                "translation": "他在新环境很适应。"
+            }
+        ],
+        "image": "🐟"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "鹏程万里",
+        "phonetic": "péng chéng wàn lǐ",
+        "meaning": "前程远大",
+        "meaning_zh": "大展宏图",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝你鹏程万里。",
+                "translation": "祝你前程远大。"
+            }
+        ],
+        "image": "🦅"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "心想事成",
+        "phonetic": "xīn xiǎng shì chéng",
+        "meaning": "愿望实现",
+        "meaning_zh": "如愿以偿",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝你心想事成。",
+                "translation": "祝你如愿以偿。"
+            }
+        ],
+        "image": "⭐"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "百折不挠",
+        "phonetic": "bǎi zhé bù náo",
+        "meaning": "坚韧不拔",
+        "meaning_zh": "永不放弃",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "要有百折不挠的精神。",
+                "translation": "要有坚韧不拔的精神。"
+            }
+        ],
+        "image": "💪"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "厚积薄发",
+        "phonetic": "hòu jī bó fā",
+        "meaning": "积累后爆发",
+        "meaning_zh": "量变质变",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "成功需要厚积薄发。",
+                "translation": "成功需要积累。"
+            }
+        ],
+        "image": "📚"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "精益求精",
+        "phonetic": "jīng yì qiú jīng",
+        "meaning": "追求完美",
+        "meaning_zh": "不断改进",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "要精益求精。",
+                "translation": "要追求完美。"
+            }
+        ],
+        "image": "✨"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "锲而不舍",
+        "phonetic": "qiè ér bù shě",
+        "meaning": "坚持到底",
+        "meaning_zh": "永不放弃",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "要锲而不舍地努力。",
+                "translation": "要坚持不懈地努力。"
+            }
+        ],
+        "image": "🔨"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "龙马精神",
+        "phonetic": "lóng mǎ jīng shén",
+        "meaning": "精神抖擞",
+        "meaning_zh": "精力充沛",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "老人龙马精神。",
+                "translation": "老人精神很好。"
+            }
+        ],
+        "image": "🐲"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "风调雨顺",
+        "phonetic": "fēng tiáo yǔ shùn",
+        "meaning": "天气和顺",
+        "meaning_zh": "国泰民安",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝愿风调雨顺。",
+                "translation": "祝愿风调雨顺。"
+            }
+        ],
+        "image": "🌾"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "五谷丰登",
+        "phonetic": "wǔ gǔ fēng dēng",
+        "meaning": "丰收",
+        "meaning_zh": "收成好",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "今年五谷丰登。",
+                "translation": "今年收成很好。"
+            }
+        ],
+        "image": "🌾"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "步步高升",
+        "phonetic": "bù bù gāo shēng",
+        "meaning": "不断晋升",
+        "meaning_zh": "节节高",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝你步步高升。",
+                "translation": "祝你不断晋升。"
+            }
+        ],
+        "image": "📈"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "花好月圆",
+        "phonetic": "huā hǎo yuè yuán",
+        "meaning": "圆满幸福",
+        "meaning_zh": "美满",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "祝你花好月圆。",
+                "translation": "祝你幸福美满。"
+            }
+        ],
+        "image": "🌕"
     }
 ]
