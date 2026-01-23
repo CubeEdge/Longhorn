@@ -362,3 +362,38 @@ bug，一旦出现了已经是第一个xxx，或者最后一个xxx；就不消�
    - 决定在每次 `notify_user` 中增加【文档同步】小节，明确列出更新了哪些文档。
 
 **Status**: Ready.
+
+### 21:10 - 每日一词 2.0 (Daily Word 2.0 - Server Migration)
+```
+LGTM (Plan Approved)
+```
+**User Prompt**:
+- 批准了 Daily Word 2.0 实施计划。
+
+**Action**:
+1. **Server**:
+   - 创建 SQLite `vocabulary` 表。
+   - 实现 `/api/vocabulary/random` API。
+   - 移除旧版文件系统词汇逻辑。
+   - 编写种子数据脚本 (`init_vocab.js`)。
+2. **Web (React)**:
+   - 重构 `DailyWord.tsx`，使用 `fetchWord` 对接 API。
+   - 修复 Modal 刷新按钮逻辑。
+3. **iOS**:
+   - 待后续接入 API（目前仍使用本地词库）。
+
+**Result**:
+- Server API 验证通过 (`curl` 返回有效词汇 JSON)。
+- Web 组件编译通过，功能正常。
+
+### 21:15 - 文档治理提醒 (APLM Reminder)
+```
+你为什么没有更新prompt log和product backlog呢？
+```
+**User Prompt**:
+- 提醒每次操作后必须同步更新三个核心文档 (DEV_LOG, prompt_log, BACKLOG)。
+
+**Action**:
+- 立即补充本轮文档更新。
+
+**Status**: In Progress.
