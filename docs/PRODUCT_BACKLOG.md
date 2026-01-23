@@ -23,7 +23,7 @@
     1. **扩容**: 每个语种 (中/英/德/日) 词库扩充至 100+ 词汇。
     2. **交互**: 每次打开 App 或刷新时，强制从词库中随机抽取新词 (Smart Refresh)。
     3. **架构**: 从前端硬编码 (Client-Side) 迁移至后端 API `/api/vocabulary` (Server-Side)，以支持动态更新和轻量化前端。
-- **状态**: ✅ 已完成 (Server/Web) | ⏳ iOS 待接入
+- **状态**: ✅ 已完成 (Server/Web/iOS)
 
 ### [Feature] 全局 Toast 多语言支持
 - **优先级**: 低 (Low)

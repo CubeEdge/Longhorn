@@ -397,3 +397,23 @@ LGTM (Plan Approved)
 - 立即补充本轮文档更新。
 
 **Status**: In Progress.
+
+### 21:17 - 每日一词 2.0 iOS 端 (Daily Word 2.0 - iOS)
+```
+请继续处理daily word 2.0，web端和iOS端。
+```
+**User Prompt**:
+- 要求继续完成 Daily Word 2.0 的 iOS 端接入。
+
+**Action**:
+1. **iOS Model (`DailyWord.swift`)**:
+   - `WordEntry.id` 改为 `Int` 类型。
+   - `CodingKeys` 映射 `meaning_zh`, `part_of_speech` 等 snake_case 字段。
+2. **iOS Service (`DailyWordService.swift`)**:
+   - `fetchNewWord()` 改用 `URLSession` 调用 `/api/vocabulary/random`。
+   - 网络失败时回退到本地词库。
+
+**Result**:
+- iOS 代码编译就绪，待真机/模拟器验证。
+
+**Status**: Complete.
