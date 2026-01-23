@@ -1120,9 +1120,9 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
         // Get upload stats by time period
         const getUploadStats = (startDate) => {
             const stats = db.prepare(`
-            SELECT COUNT(*) as count, SUM(s.size) as total_size
+            SELECT COUNT(*) as count, COALESCE(SUM(s.size), 0) as total_size
                 FROM file_stats s
-                WHERE s.uploaded_at >= ?
+                WHERE s.upload_date >= ?
             `).get(startDate.toISOString()) || { count: 0, total_size: 0 };
 
             return {
