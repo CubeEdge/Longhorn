@@ -489,3 +489,21 @@ dailyword每个词库都会更新100个词汇吗？我感觉没有啊
 - API 测试通过，每次返回不同词汇。
 
 **Status**: Complete.
+
+### 22:14 - Dashboard SQL 修复 (Dashboard SQL Fix)
+```
+[API] Response: {"error":"no such column: total_size"}
+```
+**User Prompt**:
+- Dashboard 仍报错：SQL 查询使用不存在的列。
+
+**Action**:
+- 发现 SQL 错误：查询使用 `uploaded_at` 列，但数据库实际列名是 `upload_date`。
+- 修复：`WHERE s.upload_date >= ?`（原为 `uploaded_at`）
+- 添加 `COALESCE` 确保 NULL 安全。
+
+**Result**:
+- Dashboard API 现在应该正常返回数据。
+
+**Status**: Complete.
+

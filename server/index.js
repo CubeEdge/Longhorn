@@ -1150,7 +1150,7 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
             LEFT JOIN file_stats s ON u.id = s.uploader_id
             WHERE s.uploader_id IS NOT NULL
             GROUP BY u.id, u.username
-            ORDER BY total_size DESC
+            ORDER BY totalSize DESC
             LIMIT 5
         `).all();
 
