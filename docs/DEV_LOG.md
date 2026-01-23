@@ -32,6 +32,9 @@
         - 实现 Cache-First 策略：启动时立即显示缓存词汇。
         - API 后台更新，静默刷新 UI。
         - UserDefaults 持久化缓存。
+    - **Dashboard Bug 修复**:
+        - Server 端跳过无权限访问的系统文件夹（`.TemporaryItems` 等）。
+        - 解决 Admin 仪表盘 500 错误。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。

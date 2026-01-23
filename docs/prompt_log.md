@@ -442,3 +442,28 @@ admin仍然看不到概览的更新，这个地方仍然不工作。
 - Dashboard 问题已定位，需进一步测试。
 
 **Status**: In Progress.
+
+### 21:40 - Dashboard 修复 & 文件预览按钮确认 (Dashboard Fix + File Preview)
+```
+admin的更多，里面的dashboard仍然不工作，没有更新数据。
+filebrowser的预览画面，不显示所在文件夹这个按键。但是在我的收藏，我的分享，最近文件的预览画面，都要显示这个按键。
+```
+**User Prompt**:
+- Dashboard 仍显示 "-"，并提供了错误日志：`EACCES: permission denied, scandir '.../.TemporaryItems'`
+- 需求：FileBrowser 预览**隐藏**"所在文件夹"按钮，收藏/分享/最近**显示**按钮。
+
+**Action**:
+1. **Dashboard Bug**:
+   - 根本原因：Server 扫描 DiskA 时遇到 macOS 系统文件夹权限错误。
+   - 修复：`getDirectorySize` 添加 try-catch，跳过以 `.` 开头的系统文件夹。
+2. **文件预览按钮**:
+   - 确认代码已正确实现：`bottomInfoBar` 根据 `onGoToLocation != nil` 条件显示按钮。
+   - 验证所有调用点：
+     - FileBrowserView: **不传** `onGoToLocation` ✅
+     - StarredView/SharesListView/RecentFilesListView: **传递** `onGoToLocation` ✅
+
+**Result**:
+- Dashboard 现在可正常加载（Server 重启后生效）。
+- 文件预览按钮逻辑已符合需求，无需修改。
+
+**Status**: Complete.

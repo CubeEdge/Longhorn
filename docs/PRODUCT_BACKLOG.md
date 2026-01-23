@@ -10,18 +10,6 @@
 
 ## 📋 待办事项 (Backlog - To Do)
 
-### [Bug] iOS Admin Dashboard 数据显示为 "-"
-- **优先级**: 高 (High)
-- **描述**: Admin 用户在 iOS "概览" 中看到的系统统计数据为 "-"，疑似 JSON 解析失败。
-- **状态**: 调查中 (Under Investigation)
-
-### [Feature] 文件预览"所在文件夹"按钮显示逻辑
-- **优先级**: 中 (Medium)
-- **描述**: 
-  - FileBrowser 预览时：隐藏"所在文件夹"按钮（已在当前文件夹）
-  - 收藏/分享/最近文件 预览时：显示"所在文件夹"按钮（需要导航）
-- **状态**: 待开发 (Backlog)
-
 ### [Feature] 全局 Toast 多语言支持
 - **优先级**: 低 (Low)
 - **描述**: 确保每一个弹出的 Toast 消息都已本地化（部分后端返回的消息可能仍是硬编码）。
@@ -38,6 +26,9 @@
 ## ✅ 已完成 (History)
 
 - [x] **每日一词 2.0**: Server API (`/api/vocabulary/random`) + Web/iOS 客户端迁移完成。
+- [x] **每日一词 UX 优化**: iOS Cache-First 加载，启动即显示。
+- [x] **Dashboard Permission Bug**: Server 跳过系统文件夹，修复 Admin 仪表盘 500 错误。
+- [x] **文件预览按钮逻辑**: FileBrowser 预览隐藏"所在文件夹"，其他场景显示（已实现）。
 - [x] **Admin Uploader Bug**: 后端路径别名匹配修复，解决 Web 端 Unknown 上传者问题。
 - [x] **iOS 相册式交互**: 下拉关闭、左右滑动切换、滑动边界回弹 Toast。
 - [x] **iOS 编译错误修复**: `RecentFilesListView.swift` 闭包签名修复。
