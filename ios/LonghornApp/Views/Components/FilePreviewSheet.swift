@@ -607,7 +607,7 @@ struct FilePreviewItemView: View {
                      // Since we don't have a direct "count" API, we might need to list files
                      // Or just leave it if API doesn't support.
                      // Let's try listing (lightweight-ish)
-                     if let files = try? await FileService.shared.fetchFiles(path: file.path) {
+                     if let files = try? await FileService.shared.getFiles(path: file.path) {
                          childCount = files.count
                      }
                      isLoadingChildren = false
