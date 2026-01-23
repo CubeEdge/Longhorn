@@ -1,0 +1,86 @@
+[
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Hallo",
+        "phonetic": "[haˈloː]",
+        "meaning": "Informelle Begrüßung",
+        "meaning_zh": "你好 (非正式)",
+        "part_of_speech": "Interj.",
+        "examples": [
+            {
+                "sentence": "Hallo, wie geht es dir?",
+                "translation": "你好，你好吗？"
+            },
+            {
+                "sentence": "Sag hallo zu deinem Vater!",
+                "translation": "代我向你父亲问好！"
+            }
+        ],
+        "image": "👋"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Tschüss",
+        "phonetic": "[tʃyːs]",
+        "meaning": "Informelle Verabschiedung",
+        "meaning_zh": "再见 (非正式)",
+        "part_of_speech": "Interj.",
+        "examples": [
+            {
+                "sentence": "Tschüss, bis morgen!",
+                "translation": "再见，明天见！"
+            }
+        ],
+        "image": "👋"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "私",
+        "phonetic": "わたし / watashi",
+        "meaning": "一人称",
+        "meaning_zh": "我",
+        "part_of_speech": "代名詞",
+        "examples": [
+            {
+                "sentence": "私は学生です。",
+                "translation": "我是学生。"
+            }
+        ],
+        "image": "🙋"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Serendipity",
+        "phonetic": "/ˌserənˈdɪpɪti/",
+        "meaning": "Finding value by luck",
+        "meaning_zh": "意外发现美好事物的运气",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Finding this café was pure serendipity.",
+                "translation": "发现这家咖啡馆纯属机缘巧合。"
+            }
+        ],
+        "image": "✨"
+    },
+    {
+        "language": "zh",
+        "level": "Idioms",
+        "word": "画龙点睛",
+        "phonetic": "huà lóng diǎn jīng",
+        "meaning": "Making a key point",
+        "meaning_zh": "画龙点睛",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "这句话真是画龙点睛。",
+                "translation": "This sentence is the finishing touch."
+            }
+        ],
+        "image": "🐉"
+    }
+]

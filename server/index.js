@@ -1256,52 +1256,61 @@ app.get('/api/files/recent', authenticate, async (req, res) => {
 
 // ==================== SEARCH API ====================
 // --- Vocabulary API (Daily Word V13) ---
-app.get('/api/vocabulary', async (req, res) => {
+// Vocabulary API (SQLite Driven)
+app.get('/api/vocabulary/random', (req, res) => {
+    const { language, level } = req.query;
+
+    // Base query
+    let sql = 'SELECT * FROM vocabulary';
+    const params = [];
+    const conditions = [];
+
+    if (language) {
+        conditions.push('language = ?');
+        params.push(language);
+    }
+
+    if (level) {
+        conditions.push('level = ?');
+        params.push(level);
+    }
+
+    if (conditions.length > 0) {
+        sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    // Order by random
+    sql += ' ORDER BY RANDOM() LIMIT 1';
+
     try {
-        const { lang = 'en', level, limit = 50, exclude_ids } = req.query;
-        const limitNum = parseInt(limit) || 50;
-
-        let excludeSet = new Set();
-        if (exclude_ids) {
-            const ids = exclude_ids.split(',');
-            ids.forEach(id => excludeSet.add(id));
+        const word = db.prepare(sql).get(...params);
+        if (word) {
+            // Parse JSON examples
+            try {
+                word.examples = JSON.parse(word.examples);
+            } catch (e) {
+                word.examples = [];
+            }
+            res.json(word);
+        } else {
+            res.status(404).json({ error: 'No words found' });
         }
+    } catch (err) {
+        console.error('Vocabulary error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
-        const vocabPath = path.join(__dirname, 'data/vocab', `${lang}.json`);
-        if (!fs.existsSync(vocabPath)) {
-            // Return empty if language not found
-            return res.json({ items: [], hasMore: false });
-        }
+// List available levels for a language
+app.get('/api/vocabulary/levels', (req, res) => {
+    const { language } = req.query;
+    if (!language) return res.status(400).json({ error: 'Language required' });
 
-        const words = await fs.readJson(vocabPath);
-
-        // Filter by level if provided
-        let filtered = words;
-        if (level) {
-            filtered = words.filter(w => w.level === level);
-        }
-
-        // Filter out seen IDs
-        const available = filtered.filter(w => !excludeSet.has(w.id));
-
-        // Shuffle available words to provide random "new" content
-        // Fisher-Yates shuffle
-        for (let i = available.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [available[i], available[j]] = [available[j], available[i]];
-        }
-
-        const selected = available.slice(0, limitNum);
-
-        res.json({
-            items: selected,
-            // Simple heuristic for hasMore: if we filtered out stuff or if original list is huge
-            hasMore: available.length > limitNum
-        });
-
-    } catch (error) {
-        console.error('Vocabulary API Error:', error);
-        res.status(500).json({ error: 'Failed to fetch vocabulary' });
+    try {
+        const rows = db.prepare('SELECT DISTINCT level FROM vocabulary WHERE language = ?').all(language);
+        res.json(rows.map(r => r.level));
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
     }
 });
 
