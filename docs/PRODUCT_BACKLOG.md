@@ -10,6 +10,11 @@
 
 ## 📋 待办事项 (Backlog - To Do)
 
+### [Bug] iOS Admin Dashboard 数据显示为 "-"
+- **优先级**: 高 (High)
+- **描述**: Admin 用户在 iOS "概览" 中看到的系统统计数据为 "-"，疑似 JSON 解析失败。
+- **状态**: 调查中 (Under Investigation)
+
 ### [Feature] 全局 Toast 多语言支持
 - **优先级**: 低 (Low)
 - **描述**: 确保每一个弹出的 Toast 消息都已本地化（部分后端返回的消息可能仍是硬编码）。

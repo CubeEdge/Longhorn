@@ -28,6 +28,10 @@
         - **API**: 实现 `GET /api/vocabulary/random` 接口，支持按语言和难度筛选。
         - **Web**: 更新组件使用服务端 API，支持动态获取和刷新。
         - **iOS**: 更新 `DailyWordService` 使用 `URLSession` 调用 API，`WordEntry` 模型兼容 snake_case。
+    - **iOS Daily Word UX 优化**:
+        - 实现 Cache-First 策略：启动时立即显示缓存词汇。
+        - API 后台更新，静默刷新 UI。
+        - UserDefaults 持久化缓存。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。

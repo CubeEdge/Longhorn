@@ -417,3 +417,28 @@ LGTM (Plan Approved)
 - iOS 代码编译就绪，待真机/模拟器验证。
 
 **Status**: Complete.
+
+### 21:26 - 每日一词 UX 优化 & Dashboard Bug (Daily Word UX + Dashboard)
+```
+每日一词，加载不出来。也不是加载不出来，而是等很久。
+admin仍然看不到概览的更新，这个地方仍然不工作。
+```
+**User Prompt**:
+- 每日一词加载慢，希望立即显示（利用缓存/后台加载）。
+- Admin Dashboard 概览数据仍显示 "-"。
+
+**Action**:
+1. **iOS Daily Word**:
+   - 实现 Cache-First 策略：启动时立即显示 UserDefaults 缓存词汇。
+   - API 在后台静默更新，成功后刷新 UI 并缓存。
+   - 移除 `isLoading` 状态，避免"Loading..." 阻塞。
+2. **Dashboard Bug**:
+   - 确认 Server `/api/admin/stats` 端点存在。
+   - 对比 Server 返回字段与 iOS `SystemStats` 模型。
+   - 发现潜在类型不匹配（Int vs Int64），待进一步验证。
+
+**Result**:
+- Daily Word 现在启动即显示，无需等待网络。
+- Dashboard 问题已定位，需进一步测试。
+
+**Status**: In Progress.
