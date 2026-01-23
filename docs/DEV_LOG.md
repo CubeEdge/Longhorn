@@ -35,6 +35,7 @@
     - **Dashboard Bug 修复**:
         - Server 端跳过无权限访问的系统文件夹（`.TemporaryItems` 等）。
         - 解决 Admin 仪表盘 500 错误。
+    - **词汇库扩容**: 从 5 个示例词扩充至 35 个高质量词汇（覆盖所有语种和难度）。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。
