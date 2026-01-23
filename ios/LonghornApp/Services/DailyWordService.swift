@@ -51,41 +51,57 @@ class DailyWordService: ObservableObject {
         synthesizer.speak(utterance)
     }
     
-    // MARK: - Server API Logic
+    // MARK: - Server API Logic (Cache-First Strategy)
+    
+    private let cacheKey = "longhorn_daily_word_cache"
     
     private func fetchNewWord() {
-        self.isLoading = true
+        // 1. IMMEDIATELY show cached or local word (no loading state)
+        if let cachedWord = loadCachedWord() {
+            self.currentWord = cachedWord
+        } else {
+            // Fallback to local data if no cache
+            self.currentWord = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
+        }
         
-        // Build URL (use server base URL from environment or hardcode for now)
+        // 2. Fetch from server in BACKGROUND (silent update)
         let baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://192.168.50.2:4000"
         let lang = currentLanguage.rawValue
-        let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst() // Normalize
+        let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst()
         
         guard let url = URL(string: "\(baseURL)/api/vocabulary/random?language=\(lang)&level=\(lvl)") else {
-            self.isLoading = false
             return
         }
         
         URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                
-                if let data = data {
-                    do {
-                        let word = try JSONDecoder().decode(WordEntry.self, from: data)
-                        self?.currentWord = word
-                    } catch {
-                        print("DailyWord decode error: \(error)")
-                        // Fallback to local data if API fails
-                        self?.currentWord = DailyWordsData.getRandomWord(language: self?.currentLanguage ?? .en, level: self?.currentLevel)
-                    }
-                } else {
-                    print("DailyWord fetch error: \(error?.localizedDescription ?? "Unknown")")
-                    // Fallback to local
-                    self?.currentWord = DailyWordsData.getRandomWord(language: self?.currentLanguage ?? .en, level: self?.currentLevel)
+            guard let data = data else {
+                print("DailyWord fetch error: \(error?.localizedDescription ?? "Unknown")")
+                return
+            }
+            
+            do {
+                let word = try JSONDecoder().decode(WordEntry.self, from: data)
+                DispatchQueue.main.async {
+                    self?.currentWord = word
+                    self?.cacheWord(word)
                 }
+            } catch {
+                print("DailyWord decode error: \(error)")
             }
         }.resume()
+    }
+    
+    private func cacheWord(_ word: WordEntry) {
+        if let data = try? JSONEncoder().encode(word) {
+            UserDefaults.standard.set(data, forKey: "\(cacheKey)_\(currentLanguage.rawValue)")
+        }
+    }
+    
+    private func loadCachedWord() -> WordEntry? {
+        guard let data = UserDefaults.standard.data(forKey: "\(cacheKey)_\(currentLanguage.rawValue)") else {
+            return nil
+        }
+        return try? JSONDecoder().decode(WordEntry.self, from: data)
     }
     
     private func loadPreferences() {
