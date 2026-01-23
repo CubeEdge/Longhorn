@@ -17,6 +17,16 @@
     - 使用带逻辑判断的 `DragGesture` 以忽略水平位移，而非使用 `UIGestureRecognizer`，以保持 SwiftUI 纯度。
     - 对于大图优先加载缩略图以提升性能。
 
+### 任务: 修复系统与网络交互 (System Dashboard & Web Uploader Fixes)
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **后端**: 修复 `Server` SQL 查询逻辑，实现 "Omni-Matcher" 别名匹配（兼容 `MS` 和 `市场部 (MS)` 路径），彻底解决 Web 端 Uploader Unknown 问题。
+    - **后端**: 修复 `SystemStats` 接口 JSON 字段映射问题 (`snake_case` vs `camelCase`)，解决 Dashboard 白屏。
+    - **iOS**: 增强 `FilePreviewSheet`，实现文件夹内容数量异步加载 (`childCount`) 和滑动边界 Toast 提示。
+- **关键技术**:
+    - SQLite `LEFT JOIN` 查询优化与路径标准化 (NFC/NFD + Aliases)。
+    - SwiftUI `simultaneousGesture` 处理 TabView 边界手势。
+
 ---
 
 ## 会话: 2026-01-22

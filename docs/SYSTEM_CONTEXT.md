@@ -73,7 +73,7 @@
 
 ### 已知问题 (Known Issues)
 *   **侧边栏部门重复**: 数据库脏数据导致，需清理旧的中文名部门记录 (参考 `deployment.md` 3.1)。
-*   **Unknown Uploader**: 历史文件或新建文件夹可能缺失 `uploader_id`，导致 Member 无法删除。修复命令: `UPDATE file_stats SET uploader_id=1 WHERE uploader_id IS NULL`.
+*   **Unknown Uploader**: (已通过 Omni-Matcher 修复) 历史文件路径格式差异导致的问题已解决。
 *   **iOS 预览黑屏**: 确保使用 `item: $binding` 而非 `isPresented: $bool` 触发 `fullScreenCover`。
 *   **M1 GPU 限制**: `ffmpeg` 主要靠 CPU 软解/硬解，大量并发视频处理可能导致服务卡顿。
 

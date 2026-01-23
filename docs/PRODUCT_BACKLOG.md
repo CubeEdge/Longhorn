@@ -30,25 +30,24 @@
 - **描述**: 确保每一个弹出的 Toast 消息都已本地化（部分后端返回的消息可能仍是硬编码）。
 
 ### [Bug] Admin 上传者显示为 "Unknown"
-- **优先级**: 高 (High)
+- **状态**: ✅ 已修复 (Fixed)
 - **描述**: 网页端文件列表显示 "Unknown" 上传者。
-- **原因分析**: 数据库 `.map` 联表查询逻辑正确，但 `file_stats` 表中可能缺失文件记录，或 `uploader_id` 字段为 NULL (历史遗留数据)。
-- **修复方案**: 
-    1. 执行 SQL 修复脚本: `UPDATE file_stats SET uploader_id=1 WHERE uploader_id IS NULL`.
-    2. 检查 `index.js` 中的文件扫描入库逻辑 (ensure file_stats sync)。
+- **修复**: 后端实现路径别名匹配 (Code <-> Name)，解决 App 与 Web 路径格式不一致问题。
 
 ---
 
 ## 🐛 问题追踪 (Bug Tracker - Known Issues)
 
 ### [UI] 部门浏览器空状态 (Department Browser Empty State)
-- **状态**: Open
-- **描述**: 部分文件夹初始状态显示为空或报错 403（部分修复，需持续监控）。
+- **状态**: Open (需持续监控)
 
 ---
 
 ## ✅ 已完成 (History)
 
+- [x] **Web Uploader 修复**: 实现后端路径智能匹配。
+- [x] **Dashboard 修复**: 修复 API 字段映射。
+- [x] **iOS 交互增强**: 文件夹预览数量显示 + 滑动边界回弹提示。
 - [x] **iOS App 重构**: 重构为 `FilePreviewSheet` (Pager) + `FilePreviewItemView` 结构。
 - [x] **权限修复**: 修复了 Orange 用户在 "运营部" (OP) 的 403 错误。
 - [x] **本地化**: 增加了 德语/日语 的基础支持。
