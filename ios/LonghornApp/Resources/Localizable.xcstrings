@@ -59,6 +59,16 @@
         }
       }
     },
+    "%@: %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$lld"
+          }
+        }
+      }
+    },
     "%lld" : {
 
     },
@@ -8057,6 +8067,9 @@
           }
         }
       }
+    },
+    "TYPE_FOLDER_DESC" : {
+
     },
     "upload.clear_completed" : {
       "extractionState" : "manual",

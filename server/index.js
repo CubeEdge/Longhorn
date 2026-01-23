@@ -1077,6 +1077,7 @@ app.get('/api/user/permissions', authenticate, (req, res) => {
 
 // System Stats API (for Dashboard)
 app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
+    console.log('[SystemStats] Request received from user:', req.user.username);
     try {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1153,11 +1154,7 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
                 total: totalAvailable,
                 percentage: totalAvailable > 0 ? Math.round((totalUsed / totalAvailable) * 100) : 0
             },
-            topUploaders: topUploaders.map(u => ({
-                username: u.username,
-                fileCount: u.file_count,
-                totalSize: u.total_size
-            })),
+            topUploaders,
             totalFiles
         });
     } catch (err) {
@@ -2232,13 +2229,32 @@ app.get('/api/files', authenticate, async (req, res) => {
             const itemPath = path.join(subPath, item.name).normalize('NFC');
             const fullItemPath = path.join(fullPath, item.name);
             const stats = fs.statSync(fullItemPath);
-            // Ultimate Omni-Matcher: Try Exact -> NFC -> NFD -> Suffix Match
+            // Ultimate Omni-Matcher: Try Exact -> NFC -> NFD -> Suffix Match -> ALIAS
+            // 1. Generate path aliases (Dept Code <-> Dept Name)
+            const pathVariants = [itemPath, itemPath.normalize('NFC'), itemPath.normalize('NFD')];
+
+            // Try identifying Department prefix and add alias
+            Object.entries(DEPT_DISPLAY_MAP).forEach(([code, displayName]) => {
+                // If path starts with Code (e.g. "MS/"), add Name alias (e.g. "市场部 (MS)/")
+                if (itemPath.startsWith(code + '/') || itemPath === code) {
+                    pathVariants.push(itemPath.replace(code, displayName));
+                }
+                // If path starts with Name (e.g. "市场部 (MS)/"), add Code alias (e.g. "MS/")
+                else if (itemPath.startsWith(displayName + '/') || itemPath === displayName) {
+                    pathVariants.push(itemPath.replace(displayName, code));
+                }
+            });
+
+            // Deduplicate variants
+            const uniqueVariants = [...new Set(pathVariants)];
+            const placeholders = uniqueVariants.map(() => '?').join(',');
+
             let dbStats = db.prepare(`
                 SELECT s.access_count, u.username as uploader 
                 FROM file_stats s 
                 LEFT JOIN users u ON s.uploader_id = u.id 
-                WHERE s.path = ? OR s.path = ? OR s.path = ?
-            `).get(itemPath, itemPath.normalize('NFC'), itemPath.normalize('NFD'));
+                WHERE s.path IN (${placeholders})
+            `).get(...uniqueVariants);
 
             if (!dbStats) {
                 // Fuzzy fallback: Match by file name suffix
@@ -2250,6 +2266,14 @@ app.get('/api/files', authenticate, async (req, res) => {
                     LIMIT 1
                 `).get(`%/${item.name}`);
             }
+
+            // Explicit Debug for Uploader Issue
+            if (dbStats && dbStats.uploader === null) {
+                console.log(`[Debug] Uploader IS NULL for path: ${itemPath} (uploader_id might be missing/invalid)`);
+            } else if (dbStats) {
+                // console.log(`[Debug] Uploader found: ${dbStats.uploader} for ${itemPath}`);
+            }
+
 
             // Debug logging for unknown uploader
             if (!dbStats) {

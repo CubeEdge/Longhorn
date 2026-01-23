@@ -519,12 +519,12 @@ struct FilePreviewItemView: View {
                          .foregroundColor(.white)
                          .multilineTextAlignment(.center)
                      
-                     Text(formatFileSize(file.size))
+                     Text(formatFileSize(file.size ?? 0))
                          .font(.headline)
                          .foregroundColor(.white.opacity(0.8))
                      
-                     if file.accessCount > 0 {
-                         Text("\(String(localized: "stats.files")): \(file.accessCount)") // Reusing accessCount label for now or just generic info
+                     if (file.accessCount ?? 0) > 0 {
+                         Text("\(String(localized: "stats.files")): \(file.accessCount ?? 0)") // Reusing accessCount label for now or just generic info
                              .font(.subheadline)
                              .foregroundColor(.secondary)
                      }
