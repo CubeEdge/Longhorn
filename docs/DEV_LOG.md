@@ -22,10 +22,11 @@
 - **变更内容**:
     - **后端**: 修复 `Server` SQL 查询逻辑，实现 "Omni-Matcher" 别名匹配（兼容 `MS` 和 `市场部 (MS)` 路径），彻底解决 Web 端 Uploader Unknown 问题。
     - **后端**: 修复 `SystemStats` 接口 JSON 字段映射问题 (`snake_case` vs `camelCase`)，解决 Dashboard 白屏。
-    - **iOS**: 增强 `FilePreviewSheet`，实现文件夹内容数量异步加载 (`childCount`) 和滑动边界 Toast 提示。
+    - **iOS**: 增强 `FilePreviewSheet`，实现文件夹内容数量异步加载 (`childCount`) 和滑动边界 Toast 提示（修复了 Toast 滞留 Bug 并优化了样式）。
 - **关键技术**:
     - SQLite `LEFT JOIN` 查询优化与路径标准化 (NFC/NFD + Aliases)。
     - SwiftUI `simultaneousGesture` 处理 TabView 边界手势。
+    - SwiftUI `.onChange` 替代 `onAppear` 处理 Toast 自动消失逻辑。
 
 ---
 

@@ -343,3 +343,22 @@ Fixing UI Issues
 - 恢复 `prompt_log.md` (曾误改为 Archive)。
 - 确认 APLM 框架：`BACKLOG` (Plan), `DEV_LOG` (Tech), `PROMPT_LOG` (Conversation), `SYSTEM_CONTEXT` (Context).
 - 同步所有文档。
+
+### 21:05 - 体验打磨 (UI Polish)
+```
+bug，一旦出现了已经是第一个xxx，或者最后一个xxx；就不消失了。
+你应该参考toast提示的方式...
+你如何确保这个4个文档每次都在更新？
+```
+**User Prompt**:
+- 反馈 iOS Toast 滞留 bug，挡住按钮。建议参考标准 Toast 样式。
+- 询问如何确保文档同步（APLM 可见性）。
+
+**Action**:
+1. **iOS Fix**:
+   - 重构 `activeToast` 改用 `.onChange` 监听，确保 2s 自送消失。
+   - 样式优化：改为胶囊状均玻璃拟态，位置上移 120pt，避免遮挡底部操作栏。
+2. **Process**:
+   - 决定在每次 `notify_user` 中增加【文档同步】小节，明确列出更新了哪些文档。
+
+**Status**: Ready.

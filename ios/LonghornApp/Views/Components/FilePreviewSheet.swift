@@ -91,7 +91,7 @@ struct FilePreviewSheet: View {
                 VStack {
                     Spacer()
                     Text(toast)
-                        .font(.subheadline.medium()) // Slightly bolder
+                        .font(.subheadline.weight(.medium)) // Correct modifier
                         .foregroundColor(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
