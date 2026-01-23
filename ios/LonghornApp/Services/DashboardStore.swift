@@ -78,11 +78,17 @@ class DashboardStore: ObservableObject {
         }
         
         do {
+            print("DashboardStore: Fetching system stats...")
             let stats = try await AdminService.shared.fetchSystemStats()
+            print("DashboardStore: Successfully loaded system stats - Files: \(stats.totalFiles), Storage: \(stats.storage.used)")
             self.systemStats = stats
             self.systemStatsLastUpdated = Date()
         } catch {
-            print("DashboardStore: Failed to load system stats: \(error)")
+            print("DashboardStore: ❌ Failed to load system stats")
+            print("DashboardStore: Error details: \(error)")
+            if let decodingError = error as? DecodingError {
+                print("DashboardStore: Decoding error description: \(decodingError)")
+            }
         }
         
         systemStatsLoading = false
