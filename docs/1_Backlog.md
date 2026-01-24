@@ -1,25 +1,23 @@
-# 产品待办事项 & 路线图 (Product Backlog & Roadmap)
+# 产品待办事项 & 路线图
 
 **概述**: 本文档跟踪 Kinefinity Longhorn 项目的高级功能、已知 Bug 和产品路线图。这是"计划"与"构建"的单一事实来源。
 
-## 🚀 当前冲刺 (Active Sprint - Current Focus)
+## 🚀 当前冲刺
 
-## 🚀 当前冲刺 (Active Sprint - Current Focus)
-
-### [Feature] Daily Word 刷新机制 (Smart Refresh Logic)
-- **优先级**: 高 (High)
+### [Feature] Daily Word 刷新机制
+- **优先级**: 高
 - **描述**: 
   - **启动策略**: 每次冷启动检查本地词库是否满足 100 个，并尝试静默更新。
   - **手动刷新**: 在 UI 上提供强制刷新入口（如下拉刷新或设置按钮），触发 API 立即拉取新词。
   - **进度反馈**: 显示 "Updating vocabulary..." 等非阻塞 Toast。
-- **状态**: 🔴 待开始 (To Do)
+- **状态**: ✅ 已完成 (v1.1)
 
 ---
 
-## 📋 待办事项 (Backlog - To Do)
+## 📋 待办事项
 
 ### [Feature] 全局多语言完善
-- **优先级**: 低 (Low)
+- **优先级**: 低
 - **描述**: 
   - 个人中心 Dashboard 仍有英文（"Upload", "Storage", "Starred"）
   - 部分 Toast 消息可能仍是硬编码
@@ -28,16 +26,16 @@
 
 ---
 
-## 🐛 问题追踪 (Bug Tracker - Known Issues)
+## 🐛 问题追踪
 
-### [UI] 部门浏览器空状态 (Department Browser Empty State)
+### [UI] 部门浏览器空状态
 - **状态**: Open (需持续监控)
 
 ---
 
-## ✅ 已完成 (History)
+## ✅ 已完成 (历史记录)
 
-- [x] **每日一词内容扩容**: 已达成单库 100+ (De:105, En:108, Ja:102, Zh:108, Total: 423)。
+- [x] **每日一词内容扩容**: 已达成单库 100+ (德/英/日/中, 总计 423)。
 - [x] **每日一词 2.0**: Server API (`/api/vocabulary/random`) + Web/iOS 客户端迁移完成。
 - [x] **每日一词 UX 优化**: iOS Cache-First 加载，启动即显示。
 - [x] **Dashboard Permission Bug**: Server 跳过系统文件夹，修复 Admin 仪表盘 500 错误。
@@ -56,7 +54,7 @@
 
 ---
 
-## 📝 产品笔记 & 决策 (Product Notes & Decisions)
+## 📝 产品笔记 & 决策
 
 - **UI 风格**: Kinefinity 黄色 + 毛玻璃拟态 (Glassmorphism)。
 - **平台**: iOS (SwiftUI) + Web (React) + Node.js (Express)。

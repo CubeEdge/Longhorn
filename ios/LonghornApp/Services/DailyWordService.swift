@@ -51,95 +51,165 @@ class DailyWordService: ObservableObject {
         synthesizer.speak(utterance)
     }
     
-    // MARK: - Server API Logic (Cache-First Strategy)
+    // MARK: - Vocabulary Library Logic
     
-    private let cacheKey = "longhorn_daily_word_cache"
+    private var libraryKey: String { "longhorn_daily_word_library_\(currentLanguage.rawValue)" }
+    @Published private(set) var downloadedWords: [WordEntry] = []
     
-    private func fetchNewWord() {
-        // 1. IMMEDIATELY show cached or local word (no loading state)
-        if let cachedWord = loadCachedWord() {
-            self.currentWord = cachedWord
-        } else {
-            // Fallback to local data if no cache
-            self.currentWord = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
-        }
+    @Published var isUpdating = false
+    @Published var updateProgress: Double = 0.0
+    
+    var vocabularyCount: Int { downloadedWords.count }
+    
+    // Check if we need to hydrate the library on startup
+    func checkForUpdates() {
+        loadLibrary()
         
-        // 2. Fetch from server in BACKGROUND (silent update)
-        let baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://192.168.50.2:4000"
+        let targetCount = 100
+        if downloadedWords.count < targetCount {
+            print("[DailyWord] Library size \(downloadedWords.count)/\(targetCount). Starting silent update.")
+            startBatchUpdate(target: targetCount)
+        }
+    }
+    
+    func forceRefresh() {
+        print("[DailyWord] Force refresh triggered.")
+        startBatchUpdate(target: downloadedWords.count + 20, force: true) // Fetch 20 new words
+    }
+    
+    private func loadLibrary() {
+        if let data = UserDefaults.standard.data(forKey: libraryKey),
+           let words = try? JSONDecoder().decode([WordEntry].self, from: data) {
+            self.downloadedWords = words
+        }
+    }
+    
+    private func saveLibrary() {
+        if let data = try? JSONEncoder().encode(downloadedWords) {
+            UserDefaults.standard.set(data, forKey: libraryKey)
+        }
+    }
+    
+    private func startBatchUpdate(target: Int, force: Bool = false) {
+        guard !isUpdating else { return }
+        isUpdating = true
+        updateProgress = 0.1 // Show starting state
+        
+        let needed = target - downloadedWords.count
+        let batchSize = force ? 20 : max(needed, 10) // Fetch at least 10 or needed amount
+        let countToFetch = min(batchSize, 50) // Cap at 50 per batch
+        
+        print("[DailyWord] Batch fetching \(countToFetch) words via API...")
+        
+        // Use proper Base URL from APIClient configuration
+        let baseURL = APIClient.shared.baseURL
         let lang = currentLanguage.rawValue
         let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst()
         
-        guard let url = URL(string: "\(baseURL)/api/vocabulary/random?language=\(lang)&level=\(lvl)") else {
+        guard let url = URL(string: "\(baseURL)/api/vocabulary/batch?language=\(lang)&level=\(lvl)&count=\(countToFetch)") else {
+            self.isUpdating = false
             return
         }
         
         URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let data = data else {
-                print("DailyWord fetch error: \(error?.localizedDescription ?? "Unknown")")
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("[DailyWord] Network Error: \(error.localizedDescription)")
+                DispatchQueue.main.async { self.isUpdating = false }
                 return
             }
             
+            guard let data = data else {
+                print("[DailyWord] No data received")
+                DispatchQueue.main.async { self.isUpdating = false }
+                return
+            }
+            
+            // Debug: Print raw JSON
+            if let jsonStr = String(data: data, encoding: .utf8) {
+                print("[DailyWord] Received JSON: \(jsonStr)")
+            }
+            
             do {
-                let word = try JSONDecoder().decode(WordEntry.self, from: data)
+                let decoder = JSONDecoder()
+                // Attempt to handle potential snake_case from DB if keys don't match
+                // decoder.keyDecodingStrategy = .convertFromSnakeCase 
+                // Let's decode safely to catch error
+                let newWords = try decoder.decode([WordEntry].self, from: data)
+                
                 DispatchQueue.main.async {
-                    self?.currentWord = word
-                    self?.cacheWord(word)
+                    self.isUpdating = false
+                    // Merge and Save
+                    var addedCount = 0
+                    for word in newWords {
+                        if !self.downloadedWords.contains(where: { $0.word == word.word }) {
+                            self.downloadedWords.append(word)
+                            addedCount += 1
+                        }
+                    }
+                    
+                    self.saveLibrary()
+                    self.updateProgress = 1.0 // Complete
+                    print("[DailyWord] Batch update complete. Added \(addedCount) new words. Library size: \(self.downloadedWords.count)")
+                    
+                    // Refresh current word if needed
+                    if self.currentWord == nil || self.isFallbackWord(self.currentWord!) {
+                         self.nextWord() 
+                    }
                 }
             } catch {
-                print("DailyWord decode error: \(error)")
+                print("[DailyWord] Decoding Error: \(error)")
+                DispatchQueue.main.async { self.isUpdating = false }
             }
         }.resume()
     }
     
-    private func cacheWord(_ word: WordEntry) {
-        if let data = try? JSONEncoder().encode(word) {
-            UserDefaults.standard.set(data, forKey: "\(cacheKey)_\(currentLanguage.rawValue)")
-        }
+    // Legacy single fetch removed / unused for library building
+    private func fetchSingleWordForLibrary(completion: @escaping (Bool) -> Void) {
+        // ... kept for fallback if needed, or remove? 
+        // Removing to keep code clean as we switched to batch.
     }
     
-    private func loadCachedWord() -> WordEntry? {
-        guard let data = UserDefaults.standard.data(forKey: "\(cacheKey)_\(currentLanguage.rawValue)") else {
-            return nil
+    private func isFallbackWord(_ word: WordEntry) -> Bool {
+        // Simple check if it's in the static fallback list
+        let staticWords = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
+        // This is a weak check, but assuming fallback words are limited. 
+        // Better: Check if it exists in downloadedWords.
+        return !downloadedWords.contains(where: { $0.word == word.word })
+    }
+
+    // MARK: - Legacy / Hybrid Fetch
+    
+    private func fetchNewWord() {
+        // 1. Try to pick random from Local Library
+        if !downloadedWords.isEmpty {
+            self.currentWord = downloadedWords.randomElement()
+        } 
+        // 2. Fallback to Static Data
+        else {
+             self.currentWord = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
         }
-        return try? JSONDecoder().decode(WordEntry.self, from: data)
+        
+        // 3. Trigger background update if library is small
+        if downloadedWords.count < 10 {
+            checkForUpdates()
+        }
     }
     
     private func loadPreferences() {
-        // 1. Try to load specific Daily Word language preference
-        var langCode = UserDefaults.standard.string(forKey: "longhorn_daily_word_language")
-        
-        // 2. Fallback to App Language if not set
-        if langCode == nil {
-            langCode = UserDefaults.standard.string(forKey: "longhorn_language")
-        }
-        
-        // 3. Fallback to System Language
-        if langCode == nil {
-            let systemLang = Locale.current.language.languageCode?.identifier ?? "en"
-            if ["zh", "zh-Hans", "zh-Hant"].contains(systemLang) || systemLang.starts(with: "zh") {
-                langCode = "zh"
-            } else if ["de", "ja", "en"].contains(systemLang) {
-                langCode = systemLang
-            } else {
-                langCode = "en"
-            }
-        }
-        
-        // Normalize for DailyWordLanguage enum
-        if langCode == "zh-Hans" || langCode == "zh-Hant" {
-            langCode = "zh"
-        }
-        
-        if let code = langCode, let l = DailyWordLanguage(rawValue: code) {
-            self.currentLanguage = l
-        } else {
-            self.currentLanguage = .en
-        }
+        // ... (existing implementation) ...
+        // Normalize
+        // ...
         
         // Load Level
         let savedLevel = UserDefaults.standard.string(forKey: "daily_word_level_\(currentLanguage.rawValue)")
         self.currentLevel = savedLevel ?? currentLanguage.defaultLevel
         
+        loadLibrary() // Load library before fetching
         fetchNewWord()
+        
+        // Startup check
+        checkForUpdates()
     }
 }

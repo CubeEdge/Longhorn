@@ -4,22 +4,34 @@
 
 ---
 
-## 2026-01-24
-
-### 13:50 - 设置页面重构 (Settings View Refactor)
+### 14:02 - 词汇库扩容完结 & 设置页重构 (Settings & Vocab)
 **User Prompt**:
-- 设置页面布局顺序调整。
+- 确认词汇库扩容完成。
+- 设置页重构：采用 iOS 列表分组风格 (General/Content/Connection/Maintenance/About)。
+- 确认对话框标准化：将毁灭性操作的 Alert 改为 Contextual `confirmationDialog`。
 
 **Action**:
-1. **Refactor**: 重构 `SettingsView.swift`，重新分组：
-   - **General**: 语言设置
-   - **Content**: 最近文件周期
-   - **Connection**: 服务器地址
-   - **Maintenance**: 清除缓存 + 重置选项
-   - **About**: 版本信息
-2. **Localization**: 添加了新 Section Headers 的多语言翻译。
+1. **Refactor**: 重组 `SettingsView.swift` 布局。
+2. **Standardization**: 将重置偏好的 `.alert` 替换为 `.confirmationDialog`。
+3. **Audit**: 检查 `FileBrowserView` 和 `UserDetailView` 的弹窗使用情况。
+4. **Docs**: 补全相关文档。
 
 **Status**: Complete.
+
+### 14:05 - Daily Word 刷新机制 (Smart Refresh)
+**User Prompt**:
+- 启动策略：冷启动检查本地词库数量，不足或过旧均静默更新。
+- 手动刷新：UI 提供强制刷新入口。
+- 进度反馈：需显示进度条或圆环，而非文字 Toast。
+- **进度栏**: User 询问在哪里显示词库数量。
+
+**Action**:
+- **Planned**: 
+  - 更新 `DailyWordService`，添加 `checkUpdates` 方法与 `downloadProgress` 发布属性。
+  - 创建 `DailyWordRefreshView` (Progress Bar/Ring)。
+  - 在 `DailyWordSheet` 中显示版本与数量统计。
+ 
+**Status**: In Progress.
 
 ### 13:40 - 深度多语言审计 (Deep Localization Audit)
 **User Prompt**:

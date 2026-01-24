@@ -258,12 +258,38 @@ struct DailyWordSheet: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                    HStack(spacing: 16) {
+                        // Library Count & Refresh
+                        HStack(spacing: 4) {
+                            if service.isUpdating {
+                                ProgressView(value: service.updateProgress)
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .frame(width: 16, height: 16)
+                            } else {
+                                Image(systemName: "books.vertical.fill")
+                                    .font(.caption2)
+                                Text("\(service.vocabularyCount)")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                            }
+                        }
+                        .foregroundColor(.secondary)
+                        .onTapGesture {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            if !service.isUpdating {
+                                service.forceRefresh()
+                            }
+                        }
+                        
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
         }
+
     }
 }

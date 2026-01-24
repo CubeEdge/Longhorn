@@ -66,8 +66,9 @@ struct WordEntry: Codable, Identifiable {
         self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
         self.word = try container.decode(String.self, forKey: .word)
         self.phonetic = try container.decodeIfPresent(String.self, forKey: .phonetic)
-        self.meaning = try container.decode(String.self, forKey: .meaning)
-        self.meaningZh = try container.decode(String.self, forKey: .meaningZh)
+        // Handle optional/null meanings gracefully
+        self.meaning = try container.decodeIfPresent(String.self, forKey: .meaning) ?? ""
+        self.meaningZh = try container.decodeIfPresent(String.self, forKey: .meaningZh) ?? ""
         self.partOfSpeech = try container.decodeIfPresent(String.self, forKey: .partOfSpeech)
         self.examples = try container.decodeIfPresent([WordExample].self, forKey: .examples) ?? []
         self.image = try container.decodeIfPresent(String.self, forKey: .image)

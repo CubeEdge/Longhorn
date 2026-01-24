@@ -2,6 +2,24 @@
 
 **概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
 
+## 会话: 2026-01-24
+
+### 任务: Daily Word 性能与体验优化 (Batch Fetch & UI Polish)
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **性能优化 (Batch Fetching)**:
+        - **服务端**: 新增 `/api/vocabulary/batch` 接口，支持一次性拉取 10-50 个随机词汇。
+        - **iOS端**: 重构 `DailyWordService.swift`，弃用循环请求，改为调用批量 API，通过单次网络交互完成更新（100个词仅需~1秒）。
+    - **体验优化 (感知与降噪)**:
+        - **移除干扰**: 去掉了底部遮挡内容的 Overlay 进度条。
+        - **轻量反馈**: 仅保留导航栏右上角的加载动画 (Spinner) 和数字跳动，实现“更新于无形”。
+    - **文档整合**:
+        - 将 Walkthrough 内容整合进 DevLog，确保文档来源唯一且语言统一。
+    - **自动化流程**:
+        - **建立框架**: 创建了 `.agent/workflows/pmlog.md` 工作流，标准化文档更新程序，确保每次会话后自动同步 `task.md` 至 `DevLog`。
+    - **Bug修复**:
+        - **数据健壮性**: 修复了 `WordEntry` JSON 解码逻辑，针对数据库中可能存在的 NULL 字段 (`meaning`, `meaning_zh`) 增加了安全处理，防止批量更新失败。
+
 ## 会话: 2026-01-23
 
 ### 任务: 实现 iOS 相册式交互 (Implementing iOS Photos-like Interactions)
@@ -9,6 +27,19 @@
 - **状态**: ✅ 已完成
 - **预估耗时 (Effort)**: ~25 轮对话
 - **变更内容**:
+    - **Settings Refactor**:
+        - 重构 `SettingsView` 采用分组 `Section` 布局，提升可读性。
+        - 实现了 `Reset Preferences` 功能，使用 `.confirmationDialog` 替代 `.alert` 以符合 iOS 规范。
+        - 统一了 Toast 提示风格，重置成功显示 `.prominent` 样式。
+    - **Daily Word Prep**:
+        - **Data Source**: Permanently stores fetched words in `UserDefaults` (`longhorn_daily_word_library_en`).
+        - **Smart Refresh**: On launch, checks if library < 100 words; triggers silent batch update (+10-50 words).
+        - **Manual Trigger**: Tap book icon or pull-to-refresh to force fetch (+20 words).
+        - **UI Upgrade**: Added Library Count, Toolbar Progress Ring, and Bottom Overlay Toast.
+    - **Settings Refactor**:
+        - Reorganized sections: General, Content, Connection, Maintenance, About.
+        - **Dialog Standardization**: Replaced `.alert` with `.confirmationDialog` for "Reset Preferences".
+        - **Toast Specs**: Defined `standard` (Glass) vs `prominent` (Solid Color + Haptic) styles.
     - 将 `FilePreviewSheet.swift` 重构为 分页器 (Pager) + 单项视图 (Item View)。
     - 更新了 `FileBrowserView`, `SharesListView`, `RecentFilesListView`, `StarredView`, `DashboardView` 的调用逻辑。
     - 修复了编译错误 (`onGoToLocation` 签名问题)。

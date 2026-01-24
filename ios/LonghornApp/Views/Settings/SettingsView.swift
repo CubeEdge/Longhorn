@@ -62,11 +62,15 @@ struct SettingsView: View {
                     Label("settings.reset_preferences", systemImage: "arrow.counterclockwise.circle.fill")
                         .foregroundColor(.red)
                 }
-                .alert("settings.reset_preferences", isPresented: $showResetAlert) {
-                    Button("action.cancel", role: .cancel) { }
-                    Button("action.confirm", role: .destructive) {
+                .confirmationDialog(
+                    String(localized: "settings.reset_preferences"),
+                    isPresented: $showResetAlert,
+                    titleVisibility: .visible
+                ) {
+                    Button(String(localized: "action.confirm"), role: .destructive) {
                         resetPreferences()
                     }
+                    Button(String(localized: "action.cancel"), role: .cancel) { }
                 } message: {
                     Text("settings.reset_message")
                 }
