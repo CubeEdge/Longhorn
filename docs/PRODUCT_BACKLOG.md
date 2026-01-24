@@ -16,7 +16,7 @@
   - 个人中心 Dashboard 仍有英文（"Upload", "Storage", "Starred"）
   - 部分 Toast 消息可能仍是硬编码
   - 统一处理所有 UI 文本的本地化
-- **状态**: 待开发 (Backlog)
+- **状态**: ✅ 已完成 (v1.1)
 
 ---
 
@@ -42,6 +42,7 @@
 - [x] **iOS App 重构**: 重构为 `FilePreviewSheet` (Pager) + `FilePreviewItemView` 结构。
 - [x] **权限修复**: 修复了 Orange 用户在 "运营部" (OP) 的 403 错误。
 - [x] **本地化**: 增加了 德语/日语 的基础支持。
+- [x] **全局多语言完善**: Dashboard (Admin/Personal) 完成中文化，支持 key 缺失时的自动 fallback。
 
 ---
 
