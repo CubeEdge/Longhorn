@@ -38,6 +38,8 @@
     - **词汇库扩容**: 从 5 个示例词扩充至 100 个高质量词汇（覆盖所有语种和难度）。
     - **Preview Button 修复**: 修正闭包 nil 传递逻辑，FileBrowser 预览不再显示"所在位置"按钮。
     - **默认排序优化**: FileBrowser 默认按日期倒序（最新优先）。
+    - **Dashboard 本地化**: 完成 Admin 和个人中心 Dashboard 的多语言支持。
+    - **状态持久化**: 使用 `@AppStorage` 记住用户的排序方式和视图模式。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。
