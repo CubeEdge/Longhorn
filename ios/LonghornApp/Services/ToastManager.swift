@@ -27,10 +27,16 @@ enum ToastType {
     }
 }
 
+enum ToastStyle {
+    case standard   // Glassmorphic, subtle
+    case prominent  // Solid color, bold, haptic feedback
+}
+
 struct Toast: Equatable, Identifiable {
     let id = UUID()
     let message: String
     let type: ToastType
+    let style: ToastStyle
     let duration: TimeInterval
 }
 
@@ -41,10 +47,21 @@ class ToastManager: ObservableObject {
     
     private init() {}
     
-    func show(_ message: String, type: ToastType = .info, duration: TimeInterval = 2.0) {
+    func show(_ message: String, type: ToastType = .info, style: ToastStyle = .standard, duration: TimeInterval = 2.0) {
         Task { @MainActor in
+            // Haptic feedback for prominent toasts
+            if style == .prominent {
+                let generator = UINotificationFeedbackGenerator()
+                switch type {
+                case .success: generator.notificationOccurred(.success)
+                case .error: generator.notificationOccurred(.error)
+                case .warning: generator.notificationOccurred(.warning)
+                default: break
+                }
+            }
+            
             withAnimation(.snappy(duration: 0.25)) {
-                self.currentToast = Toast(message: message, type: type, duration: duration)
+                self.currentToast = Toast(message: message, type: type, style: style, duration: duration)
             }
             
             // Auto hide
