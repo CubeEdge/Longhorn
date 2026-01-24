@@ -153,7 +153,7 @@ struct SystemDashboardView: View {
             Section(header: Text("more.system_overview")) {
                 DetailStatRow(title: String(localized: "stats.files"), value: "\(stats.totalFiles)", icon: "doc.on.doc.fill", color: .purple)
                 DetailStatRow(title: String(localized: "stats.storage"), value: ByteCountFormatter.string(fromByteCount: stats.storage.used, countStyle: .file), icon: "xmark.bin.fill", color: .red)
-                DetailStatRow(title: String(localized: "stats.storage_percent").replacingOccurrences(of: "%@", with: "\(stats.storage.percentage)%"), icon: "chart.pie.fill", color: .blue)
+                DetailStatRow(title: String(localized: "stats.storage_share"), value: "\(stats.storage.percentage)%", icon: "chart.pie.fill", color: .blue)
                 DetailStatRow(title: String(localized: "stats.today_files"), value: "\(stats.todayStats.count)", icon: "arrow.up.circle", color: .green)
             }
             

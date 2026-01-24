@@ -282,6 +282,23 @@
         }
       }
     },
+    "stats.storage_share" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage Share"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储占比"
+          }
+        }
+      }
+    },
     "“%@”" : {
 
     },
