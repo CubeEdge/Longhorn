@@ -2490,22 +2490,25 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
                     continue;
                 }
             }
-            // Start from root and build the tree
-            const tree = buildTree('');
+            return nodes;
+        };
 
-            // Add root node
-            const result = [{
-                path: '',
-                name: '根目录',
-                children: tree
-            }];
+        // Start from root and build the tree
+        const tree = buildTree('');
 
-            res.json(result);
-        } catch (err) {
-            console.error('Folder tree error:', err);
-            res.status(500).json({ error: err.message });
-        }
-    });
+        // Add root node
+        const result = [{
+            path: '',
+            name: '根目录',
+            children: tree
+        }];
+
+        res.json(result);
+    } catch (err) {
+        console.error('Folder tree error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Placeholder for a single vocabulary fetch endpoint, inferred from the provided snippet
 // This block was not fully provided in the instruction, but its error handling and
