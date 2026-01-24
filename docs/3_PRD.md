@@ -150,9 +150,9 @@ Longhorn 是一款面向企业内部的**轻量级文件管理与协作系统**�
 
 所有产品相关文档归档于 `product_docs/` 目录：
 
-- `product_docs/PRD.md`: 本文档。
-- `product_docs/prompt_log.md`: AI 交互与需求变更流水账。
-- `product_docs/prompt_version.md`: 版本迭代记录表。
-- `product_docs/deployment.md`:服务器部署与维护指南（**新**）。
-- `docs/iOS_Dev_Guide.md`: iOS App 开发与技术架构指南（**新**）。
+- `docs/1_Backlog.md`: **产品待办与状态** (能够看到所有功能、需求及完成情况)。
+- `docs/2_PromptLog.md`: **AI 交互日志** (追踪历史对话与决策)。
+- `docs/3_PRD.md`: **产品需求文档** (当前文档，功能规格说明)。
+- `docs/4_DevLog.md`: **开发技术日志** (技术决策与架构记录)。
+- `docs/iOS_Dev_Guide.md`: iOS App 开发与技术架构指南。
 
