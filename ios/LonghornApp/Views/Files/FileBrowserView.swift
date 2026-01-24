@@ -20,8 +20,8 @@ struct FileBrowserView: View {
     @StateObject private var store = FileStore.shared  // Smart caching store
     @State private var isLoading = true
     @State private var errorMessage: String?
-    @State private var viewMode: ViewMode = .list
-    @State private var sortOrder: SortOrder = .date
+    @AppStorage("fileViewMode") private var viewMode: ViewMode = .list
+    @AppStorage("fileSortOrder") private var sortOrder: SortOrder = .date
     
     // 选择模式
     @State private var isSelectionMode = false

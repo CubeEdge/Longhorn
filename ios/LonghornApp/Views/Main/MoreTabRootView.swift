@@ -150,20 +150,20 @@ struct SystemDashboardView: View {
     
     var body: some View {
         List {
-            Section(header: Text("核心指标")) {
-                DetailStatRow(title: "总文件数", value: "\(stats.totalFiles)", icon: "doc.on.doc.fill", color: .purple)
-                DetailStatRow(title: "已用存储", value: ByteCountFormatter.string(fromByteCount: stats.storage.used, countStyle: .file), icon: "xmark.bin.fill", color: .red)
-                DetailStatRow(title: "存储总量的", value: "\(stats.storage.percentage)%", icon: "chart.pie.fill", color: .blue)
-                DetailStatRow(title: "今日上传", value: "\(stats.todayStats.count)", icon: "arrow.up.circle", color: .green)
+            Section(header: Text("more.system_overview")) {
+                DetailStatRow(title: String(localized: "stats.files"), value: "\(stats.totalFiles)", icon: "doc.on.doc.fill", color: .purple)
+                DetailStatRow(title: String(localized: "stats.storage"), value: ByteCountFormatter.string(fromByteCount: stats.storage.used, countStyle: .file), icon: "xmark.bin.fill", color: .red)
+                DetailStatRow(title: String(localized: "stats.storage_percent").replacingOccurrences(of: "%@", with: "\(stats.storage.percentage)%"), icon: "chart.pie.fill", color: .blue)
+                DetailStatRow(title: String(localized: "stats.today_files"), value: "\(stats.todayStats.count)", icon: "arrow.up.circle", color: .green)
             }
             
-            Section(header: Text("存储分析")) {
+            Section(header: Text("more.data_overview")) {
                 NavigationLink(destination: Text("Coming Soon: Storage Chart")) {
-                    Label("查看存储趋势", systemImage: "chart.xyaxis.line")
+                    Label(String(localized: "more.check_storage_trend"), systemImage: "chart.xyaxis.line")
                 }
             }
         }
-        .navigationTitle("系统仪表盘")
+        .navigationTitle(Text("more.system_overview"))
         .listStyle(InsetGroupedListStyle())
     }
 }
