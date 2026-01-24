@@ -6,6 +6,21 @@
 
 ## 2026-01-24
 
+### 13:50 - 设置页面重构 (Settings View Refactor)
+**User Prompt**:
+- 设置页面布局顺序调整。
+
+**Action**:
+1. **Refactor**: 重构 `SettingsView.swift`，重新分组：
+   - **General**: 语言设置
+   - **Content**: 最近文件周期
+   - **Connection**: 服务器地址
+   - **Maintenance**: 清除缓存 + 重置选项
+   - **About**: 版本信息
+2. **Localization**: 添加了新 Section Headers 的多语言翻译。
+
+**Status**: Complete.
+
 ### 13:40 - 深度多语言审计 (Deep Localization Audit)
 **User Prompt**:
 - 发现 "unstar" 的提示仍是英文，要求更仔细检查。

@@ -9,7 +9,8 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("settings.language")) {
+            // 1. General
+            Section(header: Text("settings.general")) {
                 Picker("settings.app_language", selection: Binding(
                     get: { languageManager.currentLanguage },
                     set: { languageManager.setLanguage($0) }
@@ -20,7 +21,8 @@ struct SettingsView: View {
                 }
             }
             
-            Section(header: Text("settings.recent")) {
+            // 2. Content
+            Section(header: Text("settings.content")) {
                 Picker("settings.recent_period", selection: $recentManager.period) {
                     ForEach(RecentPeriod.allCases) { period in
                         Text(period.displayName).tag(period)
@@ -28,7 +30,8 @@ struct SettingsView: View {
                 }
             }
             
-            Section(header: Text("settings.server")) {
+            // 3. Connection
+            Section(header: Text("settings.connection")) {
                 TextField("settings.server_url", text: $serverURL)
                     .textContentType(.URL)
                     .autocapitalization(.none)
@@ -37,16 +40,9 @@ struct SettingsView: View {
                     }
             }
             
-            Section(header: Text("settings.about")) {
-                HStack {
-                    Text("settings.version")
-                    Spacer()
-                    Text("1.0.0")
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Section(header: Text("settings.cache")) {
+            // 4. Maintenance
+            Section(header: Text("settings.maintenance")) {
+                // Clear Cache
                 Button(role: .destructive) {
                     clearAllCache()
                 } label: {
@@ -58,10 +54,8 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(cacheCleared)
-            }
-            
-            // Advanced / Danger Zone
-            Section(header: Text("settings.advanced")) {
+                
+                // Reset Preferences
                 Button(role: .destructive) {
                     showResetAlert = true
                 } label: {
@@ -75,6 +69,16 @@ struct SettingsView: View {
                     }
                 } message: {
                     Text("settings.reset_message")
+                }
+            }
+            
+            // 5. About
+            Section(header: Text("settings.about")) {
+                HStack {
+                    Text("settings.version")
+                    Spacer()
+                    Text("1.0.0")
+                        .foregroundColor(.secondary)
                 }
             }
         }
