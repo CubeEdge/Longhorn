@@ -275,7 +275,7 @@ struct FilePreviewView: View {
                 self.previewImage = nil // Will show ProgressView placeholder
                 self.isLoading = false
             }
-            ToastManager.shared.show("预览加载失败，请点击下载原图", type: .warning)
+            ToastManager.shared.show(String(localized: "toast.preview_failed"), type: .warning)
             return
         }
         
@@ -308,11 +308,11 @@ struct FilePreviewView: View {
                 self.hasOriginal = true
                 self.isDownloadingOriginal = false
             }
-            ToastManager.shared.show("原图已下载", type: .success)
+            ToastManager.shared.show(String(localized: "toast.original_downloaded"), type: .success)
         } catch {
             print("[Preview] Download original failed: \(error)")
             await MainActor.run { self.isDownloadingOriginal = false }
-            ToastManager.shared.show("下载失败", type: .error)
+            ToastManager.shared.show(String(localized: "toast.download_failed"), type: .error)
         }
     }
 }
