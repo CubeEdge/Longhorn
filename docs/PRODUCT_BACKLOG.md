@@ -4,7 +4,15 @@
 
 ## 🚀 当前冲刺 (Active Sprint - Current Focus)
 
-*(暂无活跃任务)*
+## 🚀 当前冲刺 (Active Sprint - Current Focus)
+
+### [Content] 每日一词内容扩容 (Vocabulary Expansion)
+- **优先级**: 高 (High)
+- **状态**: 🟡 进行中 (In Progress)
+- **描述**: 
+  - 当前每个语种仅有 25 个词汇 (Total 100)。
+  - 目标：扩充至每个语种 100 个词汇 (Total 400)。
+  - 涉及：生成高质量 JSON 数据并重新 Seed 数据库。
 
 ---
 
