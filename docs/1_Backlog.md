@@ -6,13 +6,13 @@
 
 ## 🚀 当前冲刺 (Active Sprint - Current Focus)
 
-### [Content] 每日一词内容扩容 (Vocabulary Expansion)
+### [Feature] Daily Word 刷新机制 (Smart Refresh Logic)
 - **优先级**: 高 (High)
-- **状态**: � 部分完成 (Partially Completed - 317/400)
 - **描述**: 
-  - **当前进度**: De:85, En:69, Ja:75, Zh:88。
-  - **目标**: 继续扩充至单库 100+。
-  - **涉及**: 需持续注入高质量词汇。
+  - **启动策略**: 每次冷启动检查本地词库是否满足 100 个，并尝试静默更新。
+  - **手动刷新**: 在 UI 上提供强制刷新入口（如下拉刷新或设置按钮），触发 API 立即拉取新词。
+  - **进度反馈**: 显示 "Updating vocabulary..." 等非阻塞 Toast。
+- **状态**: 🔴 待开始 (To Do)
 
 ---
 
@@ -37,6 +37,7 @@
 
 ## ✅ 已完成 (History)
 
+- [x] **每日一词内容扩容**: 已达成单库 100+ (De:105, En:108, Ja:102, Zh:108, Total: 423)。
 - [x] **每日一词 2.0**: Server API (`/api/vocabulary/random`) + Web/iOS 客户端迁移完成。
 - [x] **每日一词 UX 优化**: iOS Cache-First 加载，启动即显示。
 - [x] **Dashboard Permission Bug**: Server 跳过系统文件夹，修复 Admin 仪表盘 500 错误。
