@@ -1626,5 +1626,3477 @@
             }
         ],
         "image": "🌕"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Apfel",
+        "phonetic": "[ˈapfl̩]",
+        "meaning": "Beliebtes Obst",
+        "meaning_zh": "苹果",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich esse einen Apfel.",
+                "translation": "我吃一个苹果。"
+            }
+        ],
+        "image": "🍎"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Brot",
+        "phonetic": "[bʁoːt]",
+        "meaning": "Gebäck",
+        "meaning_zh": "面包",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Frisches Brot riecht gut.",
+                "translation": "新鲜面包闻起来很香。"
+            }
+        ],
+        "image": "🍞"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Milch",
+        "phonetic": "[mɪlç]",
+        "meaning": "Weißes Getränk",
+        "meaning_zh": "牛奶",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich trinke Milch.",
+                "translation": "我喝牛奶。"
+            }
+        ],
+        "image": "🥛"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Katze",
+        "phonetic": "[ˈkatsə]",
+        "meaning": "Haustier",
+        "meaning_zh": "猫",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Katze schläft.",
+                "translation": "猫在睡觉。"
+            }
+        ],
+        "image": "🐱"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Hund",
+        "phonetic": "[hʊnt]",
+        "meaning": "Haustier",
+        "meaning_zh": "狗",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Hund bellt.",
+                "translation": "狗在叫。"
+            }
+        ],
+        "image": "🐶"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Stadt",
+        "phonetic": "[ʃtat]",
+        "meaning": "Große Siedlung",
+        "meaning_zh": "城市",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Stadt ist laut.",
+                "translation": "城市很吵。"
+            }
+        ],
+        "image": "🏙️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Land",
+        "phonetic": "[lant]",
+        "meaning": "Nation oder Gegend",
+        "meaning_zh": "国家/乡村",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Land ist schön.",
+                "translation": "这个国家很美。"
+            }
+        ],
+        "image": "🏳️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Fluss",
+        "phonetic": "[flʊs]",
+        "meaning": "Fließendes Wasser",
+        "meaning_zh": "河流",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Fluss ist lang.",
+                "translation": "这条河很长。"
+            }
+        ],
+        "image": "🌊"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Berg",
+        "phonetic": "[bɛʁk]",
+        "meaning": "Hohe Erhebung",
+        "meaning_zh": "山",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Berg ist hoch.",
+                "translation": "这座山很高。"
+            }
+        ],
+        "image": "🏔️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Meer",
+        "phonetic": "[meːɐ̯]",
+        "meaning": "Großes Gewässer",
+        "meaning_zh": "海",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich liebe das Meer.",
+                "translation": "我爱大海。"
+            }
+        ],
+        "image": "🌊"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Reise",
+        "phonetic": "[ˈʁaɪzə]",
+        "meaning": "Unterwegs sein",
+        "meaning_zh": "旅行",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Reise war lang.",
+                "translation": "旅途很长。"
+            }
+        ],
+        "image": "🧳"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Ticket",
+        "phonetic": "[ˈtɪkət]",
+        "meaning": "Fahrkarte",
+        "meaning_zh": "票",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich brauche ein Ticket.",
+                "translation": "我需要一张票。"
+            }
+        ],
+        "image": "🎫"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Hotel",
+        "phonetic": "[hoˈtɛl]",
+        "meaning": "Unterkunft",
+        "meaning_zh": "酒店",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Hotel ist teuer.",
+                "translation": "酒店很贵。"
+            }
+        ],
+        "image": "🏨"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Zimmer",
+        "phonetic": "[ˈt͡sɪmɐ]",
+        "meaning": "Raum",
+        "meaning_zh": "房间",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Zimmer ist sauber.",
+                "translation": "房间很干净。"
+            }
+        ],
+        "image": "🛏️"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Schlüssel",
+        "phonetic": "[ˈʃlʏsl̩]",
+        "meaning": "Öffner",
+        "meaning_zh": "钥匙",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Wo ist mein Schlüssel?",
+                "translation": "我的钥匙在哪？"
+            }
+        ],
+        "image": "🔑"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Garten",
+        "phonetic": "[ˈɡaʁtn̩]",
+        "meaning": "Grünfläche",
+        "meaning_zh": "花园",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Garten blüht.",
+                "translation": "花园百花盛开。"
+            }
+        ],
+        "image": "🏡"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Woche",
+        "phonetic": "[ˈvɔxə]",
+        "meaning": "7 Tage",
+        "meaning_zh": "周",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Nächste Woche habe ich frei.",
+                "translation": "下周我有空。"
+            }
+        ],
+        "image": "📅"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Monat",
+        "phonetic": "[ˈmoːnat]",
+        "meaning": "30 Tage",
+        "meaning_zh": "月",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Monat ist vorbei.",
+                "translation": "这个月结束了。"
+            }
+        ],
+        "image": "🗓️"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Jahr",
+        "phonetic": "[jaːɐ̯]",
+        "meaning": "365 Tage",
+        "meaning_zh": "年",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Frohes neues Jahr!",
+                "translation": "新年快乐！"
+            }
+        ],
+        "image": "🎉"
+    },
+    {
+        "language": "de",
+        "level": "A2",
+        "word": "Morgen",
+        "phonetic": "[ˈmɔʁɡn̩]",
+        "meaning": "Tagesbeginn",
+        "meaning_zh": "早晨",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Guten Morgen!",
+                "translation": "早上好！"
+            }
+        ],
+        "image": "🌅"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Entwickeln",
+        "phonetic": "[ɛntˈvɪkl̩n]",
+        "meaning": "Erschaffen",
+        "meaning_zh": "开发/发展",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Wir entwickeln eine App.",
+                "translation": "我们正在开发一个App。"
+            }
+        ],
+        "image": "💻"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Kunde",
+        "phonetic": "[ˈkʊndə]",
+        "meaning": "Käufer",
+        "meaning_zh": "客户",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Kunde ist König.",
+                "translation": "顾客是上帝。"
+            }
+        ],
+        "image": "👔"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Erfolg",
+        "phonetic": "[ɛɐ̯ˈfɔlk]",
+        "meaning": "Gutes Ergebnis",
+        "meaning_zh": "成功",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Viel Erfolg!",
+                "translation": "祝你成功！"
+            }
+        ],
+        "image": "🏆"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Problem",
+        "phonetic": "[pʁoˈbleːm]",
+        "meaning": "Schwierigkeit",
+        "meaning_zh": "问题",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Kein Problem.",
+                "translation": "没问题。"
+            }
+        ],
+        "image": "✅"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Lösung",
+        "phonetic": "[ˈløːzʊŋ]",
+        "meaning": "Antwort auf Problem",
+        "meaning_zh": "解决方案",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Wir suchen eine Lösung.",
+                "translation": "我们在寻找解决方案。"
+            }
+        ],
+        "image": "💡"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Chance",
+        "phonetic": "[ʃɑ̃ːs]",
+        "meaning": "Möglichkeit",
+        "meaning_zh": "机会",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das ist deine Chance.",
+                "translation": "这是你的机会。"
+            }
+        ],
+        "image": "🎲"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Risiko",
+        "phonetic": "[ˈʁiːziko]",
+        "meaning": "Gefahr",
+        "meaning_zh": "风险",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Risiko ist hoch.",
+                "translation": "风险很高。"
+            }
+        ],
+        "image": "⚠️"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Sicherheit",
+        "phonetic": "[ˈzɪçɐhaɪt]",
+        "meaning": "Schutz",
+        "meaning_zh": "安全",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Sicherheit geht vor.",
+                "translation": "安全第一。"
+            }
+        ],
+        "image": "🛡️"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Freiheit",
+        "phonetic": "[ˈfʁaɪhaɪt]",
+        "meaning": "Unabhängigkeit",
+        "meaning_zh": "自由",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Freiheit ist wichtig.",
+                "translation": "自由很重要。"
+            }
+        ],
+        "image": "🕊️"
+    },
+    {
+        "language": "de",
+        "level": "B1",
+        "word": "Frieden",
+        "phonetic": "[ˈfʁiːdn̩]",
+        "meaning": "Kein Krieg",
+        "meaning_zh": "和平",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Wir wollen Frieden.",
+                "translation": "我们要和平。"
+            }
+        ],
+        "image": "✌️"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Gesellschaft",
+        "phonetic": "[ɡəˈzɛlʃaft]",
+        "meaning": "Gemeinschaft",
+        "meaning_zh": "社会",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Gesellschaft ändert sich.",
+                "translation": "社会在改变。"
+            }
+        ],
+        "image": "👥"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Wirtschaft",
+        "phonetic": "[ˈvɪʁtʃaft]",
+        "meaning": "Ökonomie",
+        "meaning_zh": "经济",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Wirtschaft wächst.",
+                "translation": "经济在增长。"
+            }
+        ],
+        "image": "📈"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Politik",
+        "phonetic": "[poliˈtiːk]",
+        "meaning": "Staatsführung",
+        "meaning_zh": "政治",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Politik ist kompliziert.",
+                "translation": "政治很复杂。"
+            }
+        ],
+        "image": "🏛️"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Kultur",
+        "phonetic": "[kʊlˈtuːɐ̯]",
+        "meaning": "Kunst und Lebensart",
+        "meaning_zh": "文化",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich mag fremde Kulturen.",
+                "translation": "我喜欢外国文化。"
+            }
+        ],
+        "image": "🎭"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Kunst",
+        "phonetic": "[kʊnst]",
+        "meaning": "Kreativität",
+        "meaning_zh": "艺术",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Kunst ist subjektiv.",
+                "translation": "艺术是主观的。"
+            }
+        ],
+        "image": "🎨"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Musik",
+        "phonetic": "[muˈziːk]",
+        "meaning": "Klangkunst",
+        "meaning_zh": "音乐",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Musik entspannt.",
+                "translation": "音乐让人放松。"
+            }
+        ],
+        "image": "🎵"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Forschung",
+        "phonetic": "[ˈfɔʁʃʊŋ]",
+        "meaning": "Wissenschaft",
+        "meaning_zh": "研究",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Forschung ist teuer.",
+                "translation": "研究很昂贵。"
+            }
+        ],
+        "image": "🔬"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Umwelt",
+        "phonetic": "[ˈʊmvɛlt]",
+        "meaning": "Natur",
+        "meaning_zh": "环境",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Schützt die Umwelt.",
+                "translation": "保护环境。"
+            }
+        ],
+        "image": "🌍"
+    },
+    {
+        "language": "de",
+        "level": "B2",
+        "word": "Bildung",
+        "phonetic": "[ˈbɪldʊŋ]",
+        "meaning": "Lernen",
+        "meaning_zh": "教育",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Bildung ist der Schlüssel.",
+                "translation": "教育是关键。"
+            }
+        ],
+        "image": "🎓"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Nachhaltigkeit",
+        "phonetic": "[ˈnaːxhaltɪçkaɪt]",
+        "meaning": "Langlebigkeit",
+        "meaning_zh": "可持续性",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Nachhaltigkeit ist Trend.",
+                "translation": "可持续性是趋势。"
+            }
+        ],
+        "image": "♻️"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Innovation",
+        "phonetic": "[ɪnovaˈt͡si̯oːn]",
+        "meaning": "Erneuerung",
+        "meaning_zh": "创新",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Innovation treibt an.",
+                "translation": "创新驱动发展。"
+            }
+        ],
+        "image": "🚀"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Strategie",
+        "phonetic": "[ʃtʁateˈɡiː]",
+        "meaning": "Plan",
+        "meaning_zh": "战略",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Wir haben eine Strategie.",
+                "translation": "我们有战略。"
+            }
+        ],
+        "image": "♟️"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Analyse",
+        "phonetic": "[anaˈlyːzə]",
+        "meaning": "Untersuchung",
+        "meaning_zh": "分析",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Analyse ist fertig.",
+                "translation": "分析完成了。"
+            }
+        ],
+        "image": "📊"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Konzept",
+        "phonetic": "[kɔnˈt͡sɛpt]",
+        "meaning": "Entwurf",
+        "meaning_zh": "概念",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Konzept überzeugt.",
+                "translation": "这个概念令人信服。"
+            }
+        ],
+        "image": "📝"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Qualität",
+        "phonetic": "[kvaliˈtɛːt]",
+        "meaning": "Güte",
+        "meaning_zh": "质量",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Qualität vor Quantität.",
+                "translation": "质量重于数量。"
+            }
+        ],
+        "image": "💎"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Effizienz",
+        "phonetic": "[ɛfiˈt͡si̯ɛnt͡s]",
+        "meaning": "Wirkungsgrad",
+        "meaning_zh": "效率",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Effizienz steigern.",
+                "translation": "提高效率。"
+            }
+        ],
+        "image": "⚡"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Vision",
+        "phonetic": "[viˈzi̯oːn]",
+        "meaning": "Zukunftsbild",
+        "meaning_zh": "愿景",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Er hat eine Vision.",
+                "translation": "他有一个愿景。"
+            }
+        ],
+        "image": "🔭"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Mission",
+        "phonetic": "[mɪˈsi̯oːn]",
+        "meaning": "Auftrag",
+        "meaning_zh": "使命",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Unsere Mission ist klar.",
+                "translation": "我们的使命很明确。"
+            }
+        ],
+        "image": "🚩"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Ziel",
+        "phonetic": "[t͡siːl]",
+        "meaning": "Endpunkt",
+        "meaning_zh": "目标",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Ziel erreichen.",
+                "translation": "达到目标。"
+            }
+        ],
+        "image": "🎯"
+    },
+    {
+        "language": "de",
+        "level": "C1",
+        "word": "Weg",
+        "phonetic": "[veːk]",
+        "meaning": "Route",
+        "meaning_zh": "道路/方法",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Weg ist das Ziel.",
+                "translation": "过程即是目标。"
+            }
+        ],
+        "image": "🛣️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Mutter",
+        "phonetic": "[ˈmʊtɐ]",
+        "meaning": "Elternteil",
+        "meaning_zh": "母亲",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Meine Mutter ist nett.",
+                "translation": "我妈妈很好。"
+            }
+        ],
+        "image": "👩"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Vater",
+        "phonetic": "[ˈfaːtɐ]",
+        "meaning": "Elternteil",
+        "meaning_zh": "父亲",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Mein Vater arbeitet.",
+                "translation": "我爸爸在工作。"
+            }
+        ],
+        "image": "👨"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Kind",
+        "phonetic": "[kɪnt]",
+        "meaning": "Nachwuchs",
+        "meaning_zh": "孩子",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Kind spielt.",
+                "translation": "孩子在玩。"
+            }
+        ],
+        "image": "👶"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Mann",
+        "phonetic": "[man]",
+        "meaning": "Erwachsener",
+        "meaning_zh": "男人",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Mann ist groß.",
+                "translation": "那个男人很高。"
+            }
+        ],
+        "image": "👨"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Frau",
+        "phonetic": "[fʁaʊ]",
+        "meaning": "Erwachsene",
+        "meaning_zh": "女人",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Die Frau liest.",
+                "translation": "那个女人在读书。"
+            }
+        ],
+        "image": "👩"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Junge",
+        "phonetic": "[ˈjʊŋə]",
+        "meaning": "Kind",
+        "meaning_zh": "男孩",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Der Junge läuft.",
+                "translation": "那个男孩在跑。"
+            }
+        ],
+        "image": "👦"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Mädchen",
+        "phonetic": "[ˈmɛːtçən]",
+        "meaning": "Kind",
+        "meaning_zh": "女孩",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Mädchen singt.",
+                "translation": "那个女孩在唱歌。"
+            }
+        ],
+        "image": "👧"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Essen",
+        "phonetic": "[ˈɛsn̩]",
+        "meaning": "Nahrung",
+        "meaning_zh": "食物",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Das Essen ist lecker.",
+                "translation": "食物很好吃。"
+            }
+        ],
+        "image": "🍽️"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Trinken",
+        "phonetic": "[ˈtʁɪŋkn̩]",
+        "meaning": "Getränk",
+        "meaning_zh": "饮料",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Ich möchte etwas trinken.",
+                "translation": "我想喝点东西。"
+            }
+        ],
+        "image": "🥤"
+    },
+    {
+        "language": "de",
+        "level": "A1",
+        "word": "Schlafen",
+        "phonetic": "[ˈʃlaːfn̩]",
+        "meaning": "Ruhen",
+        "meaning_zh": "睡觉",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Ich will schlafen.",
+                "translation": "我想睡觉。"
+            }
+        ],
+        "image": "😴"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Synergy",
+        "phonetic": "/ˈsɪnərdʒi/",
+        "meaning": "Combined effect",
+        "meaning_zh": "协同效应",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Team synergy is key.",
+                "translation": "团队协同是关键。"
+            }
+        ],
+        "image": "🤝"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Paradigm",
+        "phonetic": "/ˈpærədaɪm/",
+        "meaning": "Typical example",
+        "meaning_zh": "范式",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "A paradigm shift.",
+                "translation": "范式转移。"
+            }
+        ],
+        "image": "🔄"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Cognitive",
+        "phonetic": "/ˈkɒɡnɪtɪv/",
+        "meaning": "Mental process",
+        "meaning_zh": "认知的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Cognitive skills.",
+                "translation": "认知能力。"
+            }
+        ],
+        "image": "🧠"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Aesthetic",
+        "phonetic": "/iːsˈθɛtɪk/",
+        "meaning": "Beauty appreciation",
+        "meaning_zh": "审美的/美学",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Aesthetic appeal.",
+                "translation": "美学吸引力。"
+            }
+        ],
+        "image": "🎨"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Altruism",
+        "phonetic": "/ˈæltruɪzəm/",
+        "meaning": "Selflessness",
+        "meaning_zh": "利他主义",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Act of altruism.",
+                "translation": "利他行为。"
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Cacophony",
+        "phonetic": "/kəˈkɒfəni/",
+        "meaning": "Harsh mixture of sounds",
+        "meaning_zh": "刺耳的杂音",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "A cacophony of alarms.",
+                "translation": "警报的嘈杂声。"
+            }
+        ],
+        "image": "📢"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Debilitating",
+        "phonetic": "/dɪˈbɪlɪteɪtɪŋ/",
+        "meaning": "Weakening",
+        "meaning_zh": "使衰弱的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Debilitating disease.",
+                "translation": "使人衰弱的疾病。"
+            }
+        ],
+        "image": "🤒"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Ebullient",
+        "phonetic": "/ɪˈbʌliənt/",
+        "meaning": "Cheerful and full of energy",
+        "meaning_zh": "热情洋溢的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She sounded ebullient.",
+                "translation": "她听起来热情洋溢。"
+            }
+        ],
+        "image": "😃"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Facetious",
+        "phonetic": "/fəˈsiːʃəs/",
+        "meaning": "Inappropriate humor",
+        "meaning_zh": "爱开玩笑的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Stop being facetious.",
+                "translation": "别开玩笑了。"
+            }
+        ],
+        "image": "😜"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Garrulous",
+        "phonetic": "/ˈɡærələs/",
+        "meaning": "Excessively talkative",
+        "meaning_zh": "喋喋不休的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A garrulous neighbor.",
+                "translation": "喋喋不休的邻居。"
+            }
+        ],
+        "image": "🗣️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Hackneyed",
+        "phonetic": "/ˈhæknid/",
+        "meaning": "Overused",
+        "meaning_zh": "陈腐的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Hackneyed phrases.",
+                "translation": "陈词滥调。"
+            }
+        ],
+        "image": "🦜"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Idiosyncrasy",
+        "phonetic": "/ˌɪdɪəˈsɪŋkrəsi/",
+        "meaning": "Peculiar feature",
+        "meaning_zh": "特质/癖好",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "Everyone has idiosyncrasies.",
+                "translation": "每个人都有怪癖。"
+            }
+        ],
+        "image": "🤪"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Juxtapose",
+        "phonetic": "/ˌdʒʌkstəˈpoʊz/",
+        "meaning": "Place together",
+        "meaning_zh": "并列",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Juxtapose two images.",
+                "translation": "并列两张图片。"
+            }
+        ],
+        "image": "🌗"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Kinetic",
+        "phonetic": "/kɪˈnɛtɪk/",
+        "meaning": "Relating to motion",
+        "meaning_zh": "运动的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Kinetic energy.",
+                "translation": "动能。"
+            }
+        ],
+        "image": "🏃"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Laconic",
+        "phonetic": "/ləˈkɒnɪk/",
+        "meaning": "Using few words",
+        "meaning_zh": "简练的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "His laconic reply.",
+                "translation": "他简练的回答。"
+            }
+        ],
+        "image": "🤐"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Magnanimous",
+        "phonetic": "/mæɡˈnænɪməs/",
+        "meaning": "Generous",
+        "meaning_zh": "宽宏大量的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A magnanimous gesture.",
+                "translation": "宽宏大量的姿态。"
+            }
+        ],
+        "image": "🤲"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Nebulous",
+        "phonetic": "/ˈnɛbjʊləs/",
+        "meaning": "Vague",
+        "meaning_zh": "模糊的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Nebulous concepts.",
+                "translation": "模糊的概念。"
+            }
+        ],
+        "image": "☁️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Obfuscate",
+        "phonetic": "/ˈɒbfʌskeɪt/",
+        "meaning": "Unclear",
+        "meaning_zh": "使模糊/混淆",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Don't obfuscate the truth.",
+                "translation": "不要混淆真相。"
+            }
+        ],
+        "image": "🌫️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Palatable",
+        "phonetic": "/ˈpælətəbl/",
+        "meaning": "Pleasant to taste",
+        "meaning_zh": "美味的/可接受的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A palatable solution.",
+                "translation": "一个可接受的方案。"
+            }
+        ],
+        "image": "🍲"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Quixotic",
+        "phonetic": "/kwɪkˈsɒtɪk/",
+        "meaning": "Unrealistic",
+        "meaning_zh": "堂吉诃德式的/不切实际的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A quixotic quest.",
+                "translation": "不切实际的追求。"
+            }
+        ],
+        "image": "🦄"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Rancorous",
+        "phonetic": "/ˈræŋkərəs/",
+        "meaning": "Bitterness",
+        "meaning_zh": "怨恨的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A rancorous debate.",
+                "translation": "充满怨恨的辩论。"
+            }
+        ],
+        "image": "😠"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Sagacious",
+        "phonetic": "/səˈɡeɪʃəs/",
+        "meaning": "Wise",
+        "meaning_zh": "睿智的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Sagacious advice.",
+                "translation": "睿智的建议。"
+            }
+        ],
+        "image": "🦉"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Taciturn",
+        "phonetic": "/ˈtæsɪtɜːrn/",
+        "meaning": "Reserved",
+        "meaning_zh": "沉默寡言的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A taciturn man.",
+                "translation": "沉默寡言的人。"
+            }
+        ],
+        "image": "😶"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Ubiquity",
+        "phonetic": "/juːˈbɪkwɪti/",
+        "meaning": "Being everywhere",
+        "meaning_zh": "普遍存在",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "The ubiquity of internet.",
+                "translation": "互联网的普及。"
+            }
+        ],
+        "image": "🌐"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Vacillate",
+        "phonetic": "/ˈvæsɪleɪt/",
+        "meaning": "Waver",
+        "meaning_zh": "动摇/犹豫",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Vacillate between choices.",
+                "translation": "在选择间犹豫。"
+            }
+        ],
+        "image": "⚖️"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Wistful",
+        "phonetic": "/ˈwɪstfʊl/",
+        "meaning": "Regretful longing",
+        "meaning_zh": "惆怅的/渴望的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A wistful smile.",
+                "translation": "惆怅的微笑。"
+            }
+        ],
+        "image": "😔"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Xenophile",
+        "phonetic": "/ˈzɛnəfaɪl/",
+        "meaning": "Lover of foreign things",
+        "meaning_zh": "喜好外来事物者",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "He is a xenophile.",
+                "translation": "他喜欢外国事物。"
+            }
+        ],
+        "image": "🌍"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Yielding",
+        "phonetic": "/ˈjiːldɪŋ/",
+        "meaning": "Compliant",
+        "meaning_zh": "顺从的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A yielding personality.",
+                "translation": "顺从的性格。"
+            }
+        ],
+        "image": "🙇"
+    },
+    {
+        "language": "en",
+        "level": "Advanced",
+        "word": "Zealous",
+        "phonetic": "/ˈzɛləs/",
+        "meaning": "Fervent",
+        "meaning_zh": "热情的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Zealous supporter.",
+                "translation": "热情的支持者。"
+            }
+        ],
+        "image": "🔥"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Abundant",
+        "phonetic": "/əˈbʌndənt/",
+        "meaning": "Plentiful",
+        "meaning_zh": "丰富的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Abundant resources.",
+                "translation": "丰富的资源。"
+            }
+        ],
+        "image": "🧺"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Brief",
+        "phonetic": "/briːf/",
+        "meaning": "Short",
+        "meaning_zh": "简短的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "A brief meeting.",
+                "translation": "简短的会议。"
+            }
+        ],
+        "image": "⏱️"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Capable",
+        "phonetic": "/ˈkeɪpəbl/",
+        "meaning": "Able",
+        "meaning_zh": "有能力的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "She is capable.",
+                "translation": "她很有能力。"
+            }
+        ],
+        "image": "💪"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Diverse",
+        "phonetic": "/daɪˈvɜːrs/",
+        "meaning": "Varied",
+        "meaning_zh": "多样的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Diverse culture.",
+                "translation": "多元文化。"
+            }
+        ],
+        "image": "🌈"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Efficient",
+        "phonetic": "/ɪˈfɪʃənt/",
+        "meaning": "Effective",
+        "meaning_zh": "高效的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Efficient workflow.",
+                "translation": "高效的工作流。"
+            }
+        ],
+        "image": "⚡"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Fundamental",
+        "phonetic": "/ˌfʌndəˈmɛntl/",
+        "meaning": "Basic",
+        "meaning_zh": "基础的/根本的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Fundamental rights.",
+                "translation": "基本权利。"
+            }
+        ],
+        "image": "🧱"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Genuine",
+        "phonetic": "/ˈdʒɛnjuɪn/",
+        "meaning": "Real",
+        "meaning_zh": "真实的/真诚的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Genuine leather.",
+                "translation": "真皮。"
+            }
+        ],
+        "image": "🏷️"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Hollow",
+        "phonetic": "/ˈhɒloʊ/",
+        "meaning": "Empty inside",
+        "meaning_zh": "中空的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Hollow tree.",
+                "translation": "空心树。"
+            }
+        ],
+        "image": "🕳️"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Ideal",
+        "phonetic": "/laɪˈdɪəl/",
+        "meaning": "Perfect",
+        "meaning_zh": "理想的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Ideal situation.",
+                "translation": "理想情况。"
+            }
+        ],
+        "image": "⭐"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Justify",
+        "phonetic": "/ˈdʒʌstɪfaɪ/",
+        "meaning": "Prove right",
+        "meaning_zh": "证明...正当",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Justify the cost.",
+                "translation": "证明费用合理。"
+            }
+        ],
+        "image": "⚖️"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Logical",
+        "phonetic": "/ˈlɒdʒɪkl/",
+        "meaning": "Reasonable",
+        "meaning_zh": "有逻辑的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Logical step.",
+                "translation": "合乎逻辑的步骤。"
+            }
+        ],
+        "image": "🧠"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Maintain",
+        "phonetic": "/meɪnˈteɪn/",
+        "meaning": "Keep up",
+        "meaning_zh": "维持/保养",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Maintain the car.",
+                "translation": "保养汽车。"
+            }
+        ],
+        "image": "🔧"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Neutral",
+        "phonetic": "/ˈnjuːtrəl/",
+        "meaning": "Impartial",
+        "meaning_zh": "中立的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Neutral ground.",
+                "translation": "中立地带。"
+            }
+        ],
+        "image": "🏳️"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Observe",
+        "phonetic": "/əbˈzɜːrv/",
+        "meaning": "Watch",
+        "meaning_zh": "观察",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "Observe the stars.",
+                "translation": "观察星星。"
+            }
+        ],
+        "image": "🔭"
+    },
+    {
+        "language": "en",
+        "level": "Intermediate",
+        "word": "Passive",
+        "phonetic": "/ˈpæsɪv/",
+        "meaning": "Inactive",
+        "meaning_zh": "被动的",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "Passive income.",
+                "translation": "被动收入。"
+            }
+        ],
+        "image": "📉"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "猫",
+        "phonetic": "ねこ",
+        "meaning": "Animal",
+        "meaning_zh": "猫",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "猫が好きです。",
+                "translation": "我喜欢猫。"
+            }
+        ],
+        "image": "🐱"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "犬",
+        "phonetic": "いぬ",
+        "meaning": "Animal",
+        "meaning_zh": "狗",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "犬が走る。",
+                "translation": "狗在跑。"
+            }
+        ],
+        "image": "🐶"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "山",
+        "phonetic": "やま",
+        "meaning": "Mountain",
+        "meaning_zh": "山",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "山に登る。",
+                "translation": "登山。"
+            }
+        ],
+        "image": "⛰️"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "川",
+        "phonetic": "かわ",
+        "meaning": "River",
+        "meaning_zh": "河",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "川で泳ぐ。",
+                "translation": "在河里游泳。"
+            }
+        ],
+        "image": "🌊"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "花",
+        "phonetic": "はな",
+        "meaning": "Flower",
+        "meaning_zh": "花",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "花が咲く。",
+                "translation": "花开了。"
+            }
+        ],
+        "image": "🌸"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "空",
+        "phonetic": "そら",
+        "meaning": "Sky",
+        "meaning_zh": "天空",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "空が青い。",
+                "translation": "天很蓝。"
+            }
+        ],
+        "image": "☁️"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "月",
+        "phonetic": "つき",
+        "meaning": "Moon",
+        "meaning_zh": "月亮",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "月がきれい。",
+                "translation": "月亮很美。"
+            }
+        ],
+        "image": "🌙"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "日",
+        "phonetic": "ひ",
+        "meaning": "Sun/Day",
+        "meaning_zh": "太阳/日子",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "いい日です。",
+                "translation": "好日子。"
+            }
+        ],
+        "image": "☀️"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "人",
+        "phonetic": "ひと",
+        "meaning": "Person",
+        "meaning_zh": "人",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "あの人は誰？",
+                "translation": "那个人是谁？"
+            }
+        ],
+        "image": "👤"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "目",
+        "phonetic": "め",
+        "meaning": "Eye",
+        "meaning_zh": "眼睛",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "目が大きい。",
+                "translation": "眼睛很大。"
+            }
+        ],
+        "image": "👁️"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "口",
+        "phonetic": "くち",
+        "meaning": "Mouth",
+        "meaning_zh": "嘴巴",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "口を開ける。",
+                "translation": "张开嘴。"
+            }
+        ],
+        "image": "👄"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "手",
+        "phonetic": "て",
+        "meaning": "Hand",
+        "meaning_zh": "手",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "手を洗う。",
+                "translation": "洗手。"
+            }
+        ],
+        "image": "✋"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "足",
+        "phonetic": "あし",
+        "meaning": "Foot/Leg",
+        "meaning_zh": "脚/腿",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "足が速い。",
+                "translation": "跑得快。"
+            }
+        ],
+        "image": "🦶"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "駅",
+        "phonetic": "えき",
+        "meaning": "Station",
+        "meaning_zh": "车站",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "駅に行く。",
+                "translation": "去车站。"
+            }
+        ],
+        "image": "🚉"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "店",
+        "phonetic": "みせ",
+        "meaning": "Shop",
+        "meaning_zh": "商店",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "店に入る。",
+                "translation": "进店。"
+            }
+        ],
+        "image": "🏪"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "道",
+        "phonetic": "みち",
+        "meaning": "Road",
+        "meaning_zh": "道路",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "道を歩く。",
+                "translation": "走路。"
+            }
+        ],
+        "image": "🛣️"
+    },
+    {
+        "language": "ja",
+        "level": "N5",
+        "word": "上",
+        "phonetic": "うえ",
+        "meaning": "Up/Above",
+        "meaning_zh": "上面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "机の上。",
+                "translation": "桌子上。"
+            }
+        ],
+        "image": "⬆️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "下",
+        "phonetic": "した",
+        "meaning": "Down/Below",
+        "meaning_zh": "下面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "椅子の下。",
+                "translation": "椅子下。"
+            }
+        ],
+        "image": "⬇️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "右",
+        "phonetic": "みぎ",
+        "meaning": "Right",
+        "meaning_zh": "右",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "右に曲がる。",
+                "translation": "向右转。"
+            }
+        ],
+        "image": "➡️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "左",
+        "phonetic": "ひだり",
+        "meaning": "Left",
+        "meaning_zh": "左",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "左を見る。",
+                "translation": "向左看。"
+            }
+        ],
+        "image": "⬅️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "中",
+        "phonetic": "なか",
+        "meaning": "Inside",
+        "meaning_zh": "里面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "箱の中。",
+                "translation": "箱子里。"
+            }
+        ],
+        "image": "📦"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "外",
+        "phonetic": "そと",
+        "meaning": "Outside",
+        "meaning_zh": "外面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "外に出る。",
+                "translation": "出去。"
+            }
+        ],
+        "image": "🏞️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "前",
+        "phonetic": "まえ",
+        "meaning": "Front/Before",
+        "meaning_zh": "前面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "駅の前。",
+                "translation": "车站前。"
+            }
+        ],
+        "image": "⏩"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "後",
+        "phonetic": "あと",
+        "meaning": "After/Back",
+        "meaning_zh": "后面",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "後で行く。",
+                "translation": "稍后去。"
+            }
+        ],
+        "image": "⏪"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "時",
+        "phonetic": "とき",
+        "meaning": "Time",
+        "meaning_zh": "时候",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "子供の時。",
+                "translation": "小时候。"
+            }
+        ],
+        "image": "⏰"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "間",
+        "phonetic": "あいだ",
+        "meaning": "Between",
+        "meaning_zh": "中间",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "AとBの間。",
+                "translation": "A和B之间。"
+            }
+        ],
+        "image": "↔️"
+    },
+    {
+        "language": "ja",
+        "level": "N4",
+        "word": "週",
+        "phonetic": "しゅう",
+        "meaning": "Week",
+        "meaning_zh": "周",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "来週。",
+                "translation": "下周。"
+            }
+        ],
+        "image": "📅"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "心",
+        "phonetic": "こころ",
+        "meaning": "Heart/Mind",
+        "meaning_zh": "心",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "心が広い。",
+                "translation": "心胸宽广。"
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "愛",
+        "phonetic": "あい",
+        "meaning": "Love",
+        "meaning_zh": "爱",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "愛してる。",
+                "translation": "我爱你。"
+            }
+        ],
+        "image": "💑"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "夢",
+        "phonetic": "ゆめ",
+        "meaning": "Dream",
+        "meaning_zh": "梦想",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "夢を見る。",
+                "translation": "做梦。"
+            }
+        ],
+        "image": "💭"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "力",
+        "phonetic": "ちから",
+        "meaning": "Power",
+        "meaning_zh": "力量",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "力持ち。",
+                "translation": "力气大。"
+            }
+        ],
+        "image": "💪"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "風",
+        "phonetic": "かぜ",
+        "meaning": "Wind",
+        "meaning_zh": "风",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "風が強い。",
+                "translation": "风很大。"
+            }
+        ],
+        "image": "🍃"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "雨",
+        "phonetic": "あめ",
+        "meaning": "Rain",
+        "meaning_zh": "雨",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "雨が降る。",
+                "translation": "下雨。"
+            }
+        ],
+        "image": "🌧️"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "雪",
+        "phonetic": "ゆき",
+        "meaning": "Snow",
+        "meaning_zh": "雪",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "雪が降る。",
+                "translation": "下雪。"
+            }
+        ],
+        "image": "❄️"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "海",
+        "phonetic": "うみ",
+        "meaning": "Sea",
+        "meaning_zh": "海",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "海に行く。",
+                "translation": "去海边。"
+            }
+        ],
+        "image": "🌊"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "色",
+        "phonetic": "いろ",
+        "meaning": "Color",
+        "meaning_zh": "颜色",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "何色？",
+                "translation": "什么颜色？"
+            }
+        ],
+        "image": "🎨"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "青",
+        "phonetic": "あお",
+        "meaning": "Blue",
+        "meaning_zh": "蓝色",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "青い空。",
+                "translation": "蓝天。"
+            }
+        ],
+        "image": "🔵"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "赤",
+        "phonetic": "あか",
+        "meaning": "Red",
+        "meaning_zh": "红色",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "赤い花。",
+                "translation": "红花。"
+            }
+        ],
+        "image": "🔴"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "白",
+        "phonetic": "しろ",
+        "meaning": "White",
+        "meaning_zh": "白色",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "白い雲。",
+                "translation": "白云。"
+            }
+        ],
+        "image": "⚪"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "黒",
+        "phonetic": "くろ",
+        "meaning": "Black",
+        "meaning_zh": "黑色",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "黒い猫。",
+                "translation": "黑猫。"
+            }
+        ],
+        "image": "⚫"
+    },
+    {
+        "language": "ja",
+        "level": "N3",
+        "word": "金",
+        "phonetic": "きん",
+        "meaning": "Gold",
+        "meaning_zh": "金",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "金メダル。",
+                "translation": "金牌。"
+            }
+        ],
+        "image": "🥇"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "銀",
+        "phonetic": "ぎん",
+        "meaning": "Silver",
+        "meaning_zh": "银",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "銀のスプーン。",
+                "translation": "银勺。"
+            }
+        ],
+        "image": "🥈"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "音",
+        "phonetic": "おと",
+        "meaning": "Sound",
+        "meaning_zh": "声音",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "いい音。",
+                "translation": "好听的声音。"
+            }
+        ],
+        "image": "🔊"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "声",
+        "phonetic": "こえ",
+        "meaning": "Voice",
+        "meaning_zh": "声音(人)",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "大きな声。",
+                "translation": "大声。"
+            }
+        ],
+        "image": "🗣️"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "光",
+        "phonetic": "ひかり",
+        "meaning": "Light",
+        "meaning_zh": "光",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "明るい光。",
+                "translation": "明亮的光。"
+            }
+        ],
+        "image": "🔦"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "闇",
+        "phonetic": "やみ",
+        "meaning": "Darkness",
+        "meaning_zh": "黑暗",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "闇の中。",
+                "translation": "黑暗中。"
+            }
+        ],
+        "image": "🌑"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "和",
+        "phonetic": "わ",
+        "meaning": "Harmony/Japan",
+        "meaning_zh": "和/日本",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "平和。",
+                "translation": "和平。"
+            }
+        ],
+        "image": "🇯🇵"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "洋",
+        "phonetic": "よう",
+        "meaning": "Western/Ocean",
+        "meaning_zh": "洋",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "洋服。",
+                "translation": "洋装。"
+            }
+        ],
+        "image": "👗"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "公",
+        "phonetic": "おおやけ",
+        "meaning": "Public",
+        "meaning_zh": "公",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "公園。",
+                "translation": "公园。"
+            }
+        ],
+        "image": "⛲"
+    },
+    {
+        "language": "ja",
+        "level": "N2",
+        "word": "私",
+        "phonetic": "わたくし",
+        "meaning": "Private/I",
+        "meaning_zh": "私",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "私立。",
+                "translation": "私立。"
+            }
+        ],
+        "image": "🔒"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "你好",
+        "phonetic": "nǐ hǎo",
+        "meaning": "Hello",
+        "meaning_zh": "你好",
+        "part_of_speech": "Int.",
+        "examples": [
+            {
+                "sentence": "你好吗？",
+                "translation": "How are you?"
+            }
+        ],
+        "image": "👋"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "谢谢",
+        "phonetic": "xiè xie",
+        "meaning": "Thank you",
+        "meaning_zh": "谢谢",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "谢谢你的帮助。",
+                "translation": "Thanks for your help."
+            }
+        ],
+        "image": "🙏"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "不客气",
+        "phonetic": "bú kè qi",
+        "meaning": "You're welcome",
+        "meaning_zh": "不客气",
+        "part_of_speech": "Int.",
+        "examples": [
+            {
+                "sentence": "不客气。",
+                "translation": "You are welcome."
+            }
+        ],
+        "image": "🤝"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "对不起",
+        "phonetic": "duì bu qǐ",
+        "meaning": "Sorry",
+        "meaning_zh": "对不起",
+        "part_of_speech": "Int.",
+        "examples": [
+            {
+                "sentence": "对不起，我迟到了。",
+                "translation": "Sorry I'm late."
+            }
+        ],
+        "image": "🙇"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "再见",
+        "phonetic": "zài jiàn",
+        "meaning": "Goodbye",
+        "meaning_zh": "再见",
+        "part_of_speech": "Int.",
+        "examples": [
+            {
+                "sentence": "明天见，再见。",
+                "translation": "See you tomorrow, bye."
+            }
+        ],
+        "image": "👋"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "我是",
+        "phonetic": "wǒ shì",
+        "meaning": "I am",
+        "meaning_zh": "我是",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我是学生。",
+                "translation": "I am a student."
+            }
+        ],
+        "image": "🙋"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "喜欢",
+        "phonetic": "xǐ huan",
+        "meaning": "Like",
+        "meaning_zh": "喜欢",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我喜欢苹果。",
+                "translation": "I like apples."
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "吃",
+        "phonetic": "chī",
+        "meaning": "Eat",
+        "meaning_zh": "吃",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "吃饭。",
+                "translation": "Eat meal."
+            }
+        ],
+        "image": "🍜"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "喝",
+        "phonetic": "hē",
+        "meaning": "Drink",
+        "meaning_zh": "喝",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "喝水。",
+                "translation": "Drink water."
+            }
+        ],
+        "image": "🥛"
+    },
+    {
+        "language": "zh",
+        "level": "HSK1",
+        "word": "看",
+        "phonetic": "kàn",
+        "meaning": "Look/Read",
+        "meaning_zh": "看",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "看书。",
+                "translation": "Read book."
+            }
+        ],
+        "image": "👀"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "听",
+        "phonetic": "tīng",
+        "meaning": "Listen",
+        "meaning_zh": "听",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "听音乐。",
+                "translation": "Listen to music."
+            }
+        ],
+        "image": "👂"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "说",
+        "phonetic": "shuō",
+        "meaning": "Speak",
+        "meaning_zh": "说",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "说中文。",
+                "translation": "Speak Chinese."
+            }
+        ],
+        "image": "🗣️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "读",
+        "phonetic": "dú",
+        "meaning": "Read",
+        "meaning_zh": "读",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "读书。",
+                "translation": "Read book."
+            }
+        ],
+        "image": "📖"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "写",
+        "phonetic": "xiě",
+        "meaning": "Write",
+        "meaning_zh": "写",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "写字。",
+                "translation": "Write characters."
+            }
+        ],
+        "image": "✍️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "做",
+        "phonetic": "zuò",
+        "meaning": "Do/Make",
+        "meaning_zh": "做",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "做饭。",
+                "translation": "Cook."
+            }
+        ],
+        "image": "🍳"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "去",
+        "phonetic": "qù",
+        "meaning": "Go",
+        "meaning_zh": "去",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "去学校。",
+                "translation": "Go to school."
+            }
+        ],
+        "image": "🚶"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "来",
+        "phonetic": "lái",
+        "meaning": "Come",
+        "meaning_zh": "来",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "来这里。",
+                "translation": "Come here."
+            }
+        ],
+        "image": "📍"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "买",
+        "phonetic": "mǎi",
+        "meaning": "Buy",
+        "meaning_zh": "买",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "买东西。",
+                "translation": "Buy things."
+            }
+        ],
+        "image": "🛒"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "卖",
+        "phonetic": "mài",
+        "meaning": "Sell",
+        "meaning_zh": "卖",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "卖给谁？",
+                "translation": "Sell to whom?"
+            }
+        ],
+        "image": "💰"
+    },
+    {
+        "language": "zh",
+        "level": "HSK2",
+        "word": "有",
+        "phonetic": "yǒu",
+        "meaning": "Have",
+        "meaning_zh": "有",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我有一只猫。",
+                "translation": "I have a cat."
+            }
+        ],
+        "image": "🐱"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "没有",
+        "phonetic": "méi yǒu",
+        "meaning": "Don't have",
+        "meaning_zh": "没有",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我没有钱。",
+                "translation": "I don't have money."
+            }
+        ],
+        "image": "🙅"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "想",
+        "phonetic": "xiǎng",
+        "meaning": "Want/Think",
+        "meaning_zh": "想",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我想睡觉。",
+                "translation": "I want to sleep."
+            }
+        ],
+        "image": "💭"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "要",
+        "phonetic": "yào",
+        "meaning": "Want/Need",
+        "meaning_zh": "要",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我要这个。",
+                "translation": "I want this."
+            }
+        ],
+        "image": "👉"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "给",
+        "phonetic": "gěi",
+        "meaning": "Give",
+        "meaning_zh": "给",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "给你。",
+                "translation": "Give you."
+            }
+        ],
+        "image": "🎁"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "打",
+        "phonetic": "dǎ",
+        "meaning": "Hit/Play",
+        "meaning_zh": "打",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "打电话。",
+                "translation": "Make a phone call."
+            }
+        ],
+        "image": "📞"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "穿",
+        "phonetic": "chuān",
+        "meaning": "Wear",
+        "meaning_zh": "穿",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "穿衣服。",
+                "translation": "Wear clothes."
+            }
+        ],
+        "image": "👕"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "戴",
+        "phonetic": "dài",
+        "meaning": "Wear (accessories)",
+        "meaning_zh": "戴",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "戴眼镜。",
+                "translation": "Wear glasses."
+            }
+        ],
+        "image": "👓"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "开",
+        "phonetic": "kāi",
+        "meaning": "Open/Drive",
+        "meaning_zh": "开",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "开车。",
+                "translation": "Drive car."
+            }
+        ],
+        "image": "🚗"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "关",
+        "phonetic": "guān",
+        "meaning": "Close",
+        "meaning_zh": "关",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "关门。",
+                "translation": "Close door."
+            }
+        ],
+        "image": "🚪"
+    },
+    {
+        "language": "zh",
+        "level": "HSK3",
+        "word": "坐",
+        "phonetic": "zuò",
+        "meaning": "Sit/Take",
+        "meaning_zh": "坐",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "坐飞机。",
+                "translation": "Take airplane."
+            }
+        ],
+        "image": "✈️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "站",
+        "phonetic": "zhàn",
+        "meaning": "Stand/Station",
+        "meaning_zh": "站",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "站起来。",
+                "translation": "Stand up."
+            }
+        ],
+        "image": "🧍"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "走",
+        "phonetic": "zǒu",
+        "meaning": "Walk",
+        "meaning_zh": "走",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "走路。",
+                "translation": "Walk."
+            }
+        ],
+        "image": "🚶"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "跑",
+        "phonetic": "pǎo",
+        "meaning": "Run",
+        "meaning_zh": "跑",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "跑步。",
+                "translation": "Run."
+            }
+        ],
+        "image": "🏃"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "跳",
+        "phonetic": "tiào",
+        "meaning": "Jump",
+        "meaning_zh": "跳",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "跳高。",
+                "translation": "High jump."
+            }
+        ],
+        "image": "🦘"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "睡",
+        "phonetic": "shuì",
+        "meaning": "Sleep",
+        "meaning_zh": "睡",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "睡觉。",
+                "translation": "Sleep."
+            }
+        ],
+        "image": "😴"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "起",
+        "phonetic": "qǐ",
+        "meaning": "Rise",
+        "meaning_zh": "起",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "起床。",
+                "translation": "Get up."
+            }
+        ],
+        "image": "🛌"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "笑",
+        "phonetic": "xiào",
+        "meaning": "Laugh",
+        "meaning_zh": "笑",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "大笑。",
+                "translation": "Laugh loud."
+            }
+        ],
+        "image": "😄"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "哭",
+        "phonetic": "kū",
+        "meaning": "Cry",
+        "meaning_zh": "哭",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "别哭。",
+                "translation": "Don't cry."
+            }
+        ],
+        "image": "😭"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "爱",
+        "phonetic": "ài",
+        "meaning": "Love",
+        "meaning_zh": "爱",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "我爱你。",
+                "translation": "I love you."
+            }
+        ],
+        "image": "❤️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK4",
+        "word": "恨",
+        "phonetic": "hèn",
+        "meaning": "Hate",
+        "meaning_zh": "恨",
+        "part_of_speech": "v.",
+        "examples": [
+            {
+                "sentence": "不恨。",
+                "translation": "No hate."
+            }
+        ],
+        "image": "😡"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "家",
+        "phonetic": "jiā",
+        "meaning": "Family/Home",
+        "meaning_zh": "家",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "回家。",
+                "translation": "Go home."
+            }
+        ],
+        "image": "🏠"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "国",
+        "phonetic": "guó",
+        "meaning": "Country",
+        "meaning_zh": "国",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "国家。",
+                "translation": "Country."
+            }
+        ],
+        "image": "🇨🇳"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "人",
+        "phonetic": "rén",
+        "meaning": "Person",
+        "meaning_zh": "人",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "中国人。",
+                "translation": "Chinese person."
+            }
+        ],
+        "image": "🧑"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "天",
+        "phonetic": "tiān",
+        "meaning": "Sky/Day",
+        "meaning_zh": "天",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "今天。",
+                "translation": "Today."
+            }
+        ],
+        "image": "📅"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "地",
+        "phonetic": "dì",
+        "meaning": "Ground",
+        "meaning_zh": "地",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "地上。",
+                "translation": "On the ground."
+            }
+        ],
+        "image": "🌏"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "水",
+        "phonetic": "shuǐ",
+        "meaning": "Water",
+        "meaning_zh": "水",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "喝水。",
+                "translation": "Drink water."
+            }
+        ],
+        "image": "💧"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "火",
+        "phonetic": "huǒ",
+        "meaning": "Fire",
+        "meaning_zh": "火",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "着火。",
+                "translation": "On fire."
+            }
+        ],
+        "image": "🔥"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "木",
+        "phonetic": "mù",
+        "meaning": "Wood",
+        "meaning_zh": "木",
+        "part_of_speech": "n.",
+        "examples": [
+            {
+                "sentence": "木头。",
+                "translation": "Wood."
+            }
+        ],
+        "image": "🪵"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "大",
+        "phonetic": "dà",
+        "meaning": "Big",
+        "meaning_zh": "大",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很大。",
+                "translation": "Very big."
+            }
+        ],
+        "image": "🐘"
+    },
+    {
+        "language": "zh",
+        "level": "HSK5",
+        "word": "小",
+        "phonetic": "xiǎo",
+        "meaning": "Small",
+        "meaning_zh": "小",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很小。",
+                "translation": "Very small."
+            }
+        ],
+        "image": "🐜"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "多",
+        "phonetic": "duō",
+        "meaning": "Many",
+        "meaning_zh": "多",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很多。",
+                "translation": "Many."
+            }
+        ],
+        "image": "➕"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "少",
+        "phonetic": "shǎo",
+        "meaning": "Few",
+        "meaning_zh": "少",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很少。",
+                "translation": "Few."
+            }
+        ],
+        "image": "➖"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "冷",
+        "phonetic": "lěng",
+        "meaning": "Cold",
+        "meaning_zh": "冷",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很冷。",
+                "translation": "Very cold."
+            }
+        ],
+        "image": "❄️"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "热",
+        "phonetic": "rè",
+        "meaning": "Hot",
+        "meaning_zh": "热",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很热。",
+                "translation": "Very hot."
+            }
+        ],
+        "image": "🔥"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "快",
+        "phonetic": "kuài",
+        "meaning": "Fast",
+        "meaning_zh": "快",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很快。",
+                "translation": "Very fast."
+            }
+        ],
+        "image": "🚀"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "慢",
+        "phonetic": "màn",
+        "meaning": "Slow",
+        "meaning_zh": "慢",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很慢。",
+                "translation": "Very slow."
+            }
+        ],
+        "image": "🐢"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "好",
+        "phonetic": "hǎo",
+        "meaning": "Good",
+        "meaning_zh": "好",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "很好。",
+                "translation": "Very good."
+            }
+        ],
+        "image": "👍"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "坏",
+        "phonetic": "huài",
+        "meaning": "Bad",
+        "meaning_zh": "坏",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "坏人。",
+                "translation": "Bad person."
+            }
+        ],
+        "image": "👎"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "新",
+        "phonetic": "xīn",
+        "meaning": "New",
+        "meaning_zh": "新",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "新年。",
+                "translation": "New year."
+            }
+        ],
+        "image": "🆕"
+    },
+    {
+        "language": "zh",
+        "level": "HSK6",
+        "word": "旧",
+        "phonetic": "jiù",
+        "meaning": "Old",
+        "meaning_zh": "旧",
+        "part_of_speech": "adj.",
+        "examples": [
+            {
+                "sentence": "旧书。",
+                "translation": "Old book."
+            }
+        ],
+        "image": "📚"
+    },
+    {
+        "language": "zh",
+        "level": "Idiom",
+        "word": "对牛弹琴",
+        "phonetic": "duì niú tán qín",
+        "meaning": "Casting pearls before swine",
+        "meaning_zh": "对牛弹琴",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "没用，这是对牛弹琴。",
+                "translation": "Useless, it's casting pearls before swine."
+            }
+        ],
+        "image": "🐮"
+    },
+    {
+        "language": "zh",
+        "level": "Idiom",
+        "word": "掩耳盗铃",
+        "phonetic": "yǎn ěr dào líng",
+        "meaning": "Self-deception",
+        "meaning_zh": "掩耳盗铃",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "这是掩耳盗铃。",
+                "translation": "This is self-deception."
+            }
+        ],
+        "image": "🔔"
+    },
+    {
+        "language": "zh",
+        "level": "Idiom",
+        "word": "刻舟求剑",
+        "phonetic": "kè zhōu qiú jiàn",
+        "meaning": "Stuck in ways",
+        "meaning_zh": "刻舟求剑",
+        "part_of_speech": "成语",
+        "examples": [
+            {
+                "sentence": "做事不能刻舟求剑。",
+                "translation": "Don't be stuck in your ways."
+            }
+        ],
+        "image": "⛵"
     }
 ]
