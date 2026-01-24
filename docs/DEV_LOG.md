@@ -40,6 +40,8 @@
     - **默认排序优化**: FileBrowser 默认按日期倒序（最新优先）。
     - **Dashboard 本地化**: 完成 Admin 和个人中心 Dashboard 的多语言支持。
     - **状态持久化**: 使用 `@AppStorage` 记住用户的排序方式和视图模式。
+    - **Toast 系统升级**: 实现分级提示（Standard/Prominent），支持触感反馈。
+    - **重置功能**: 设置页新增偏好重置，支持 Alert 二次确认和强反馈。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。

@@ -553,3 +553,22 @@ dailyword每个词库都会更新100个词汇吗？我感觉没有啊
 - Dashboard 需用户重启 Server 测试。
 
 **Status**: Complete.
+
+### 13:10 - Toast 系统升级与重置功能 (Toast System & Reset Feature)
+**User Prompt**:
+1. 需求：设置页增加"恢复所有状态"开关，需确认和提示。
+2. 需求：设计 Toast 分级系统（强/弱提示），并给出方案。
+
+**Action**:
+1. **Design**: 创建 `implementation_plan.md`，定义了 Weak (Glassmorphism) 和 Strong (Solid Color + Haptic) 两种 Toast 风格。
+2. **Implementation**:
+   - `ToastManager/ToastView`: 支持 `style` 参数 (`.standard` / `.prominent`)。
+   - `SettingsView`: 新增"高级"区 -> "重置所有偏好设置" 按钮。
+   - **交互流程**: 点击重置 -> 弹出 Alert 确认 -> 清除 `UserDefaults` -> 显示 Strong Success Toast。
+3. **Localization**: 添加了相关中英文 Keys。
+
+**Result**:
+- 设置页现在有了安全的重置功能。
+- Toast 提示现在具备了视觉层级，关键操作反馈更明显。
+
+**Status**: Complete.
