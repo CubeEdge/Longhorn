@@ -44,8 +44,8 @@ struct ToastView: View {
 
 #Preview {
     VStack {
-        ToastView(toast: Toast(message: "文件上传成功", type: .success, duration: 2))
-        ToastView(toast: Toast(message: "网络连接失败", type: .error, duration: 2))
+        ToastView(toast: Toast(message: "文件上传成功", type: .success, style: .prominent, duration: 2))
+        ToastView(toast: Toast(message: "网络连接失败", type: .error, style: .standard, duration: 2))
     }
     .padding()
     .background(Color.gray)
