@@ -1122,7 +1122,7 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
             const stats = db.prepare(`
             SELECT COUNT(*) as count, COALESCE(SUM(s.size), 0) as total_size
                 FROM file_stats s
-                WHERE s.upload_date >= ?
+                WHERE s.uploaded_at >= ?
             `).get(startDate.toISOString()) || { count: 0, total_size: 0 };
 
             return {
