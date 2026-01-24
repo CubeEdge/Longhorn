@@ -572,3 +572,40 @@ dailyword每个词库都会更新100个词汇吗？我感觉没有啊
 - Toast 提示现在具备了视觉层级，关键操作反馈更明显。
 
 **Status**: Complete.
+
+### 13:20 - Toast 样式审计 (Toast Style Audit)
+**User Prompt**:
+- 继续完善，要求升级关键操作的 Toast 提示。
+
+**Action**:
+- 审计了 `FileBrowserView` 和 `ShareDialogView`。
+- 将以下操作的 Toast 升级为 **强提示 (.prominent)**：
+  - 文件：删除、移动、重命名、复制、新建文件夹。
+  - 分享：复制链接、复制密码。
+- 保持 **弱提示 (.standard)**：
+  - 收藏/取消收藏 (操作频繁/非决定性)。
+  - 网络错误 (避免过度惊扰)。
+
+**Result**:
+- 关键操作（如删除）现在会有明显的视觉反馈和触感反馈。
+
+**Status**: Complete.
+
+### 13:25 - 编译错误修复 (Build Fixes)
+**User Prompt**:
+1. `SettingsView.swift`: Scope error (private func inside body).
+2. `ToastView.swift`: Missing argument `style` in Preview.
+3. `MoreTabRootView.swift`: Missing argument `value` in DetailStatRow.
+
+**Action**:
+1. **SettingsView**: 重构代码结构，将 helper funcs 移出 `body`。
+2. **ToastView**: 修复 Preview 调用。
+3. **MoreTabRootView**: 
+   - 发现 `DetailStatRow` 调用缺少 `value` 参数。
+   - 新增 Key `stats.storage_share` ("存储占比")。
+   - 修正调用为 `title: "存储占比", value: "XX%"`。
+
+**Result**:
+- 修复所有编译错误。
+
+**Status**: Complete.

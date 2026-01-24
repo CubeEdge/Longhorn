@@ -329,7 +329,7 @@ struct SharesListView: View {
         Task {
             do {
                 try await store.deleteShare(share.id)
-                ToastManager.shared.show(String(localized: "share.delete_success"), type: .success)
+                ToastManager.shared.show(String(localized: "share.delete_success"), type: .success, style: .prominent)
             } catch {
                 print("Delete share failed: \(error)")
                 ToastManager.shared.show(String(localized: "share.delete_failed"), type: .error)
@@ -341,7 +341,7 @@ struct SharesListView: View {
         Task {
             do {
                 try await store.deleteCollection(collection.id)
-                ToastManager.shared.show(String(localized: "share.delete_success"), type: .success)
+                ToastManager.shared.show(String(localized: "share.delete_success"), type: .success, style: .prominent)
             } catch {
                 print("Delete collection failed: \(error)")
                 ToastManager.shared.show(String(localized: "share.delete_failed"), type: .error)
