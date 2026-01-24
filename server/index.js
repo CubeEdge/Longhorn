@@ -2547,7 +2547,7 @@ app.get('/api/vocabulary/batch', (req, res) => {
         let limit = parseInt(count) || 20;
         if (limit > 50) limit = 50; // Cap at 50
 
-        let sql = 'SELECT data FROM vocabulary';
+        let sql = 'SELECT * FROM vocabulary';
         const params = [];
         const conditions = [];
 
@@ -2570,7 +2570,16 @@ app.get('/api/vocabulary/batch', (req, res) => {
 
         const rows = db.prepare(sql).all(params);
 
-        const words = rows.map(row => JSON.parse(row.data));
+        const words = rows.map(word => {
+            try {
+                if (word.examples && typeof word.examples === 'string') {
+                    word.examples = JSON.parse(word.examples);
+                }
+            } catch (e) {
+                word.examples = [];
+            }
+            return word;
+        });
         res.json(words);
     } catch (err) {
         console.error('[Vocabulary] Batch Error:', err);
