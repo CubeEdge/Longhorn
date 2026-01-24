@@ -381,6 +381,53 @@ app.use((req, res, next) => {
 });
 
 // Health Check Route
+// Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
+app.get('/api/vocabulary/batch', (req, res) => {
+    try {
+        const { language, level, count } = req.query;
+        let limit = parseInt(count) || 20;
+        if (limit > 50) limit = 50; // Cap at 50
+
+        let sql = 'SELECT * FROM vocabulary';
+        const params = [];
+        const conditions = [];
+
+        if (language) {
+            conditions.push('language = ?');
+            params.push(language);
+        }
+        if (level) {
+            conditions.push('level = ?');
+            params.push(level);
+        }
+
+        if (conditions.length > 0) {
+            sql += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        // Randomly select N rows
+        sql += ` ORDER BY RANDOM() LIMIT ?`;
+        params.push(limit);
+
+        const rows = db.prepare(sql).all(params);
+
+        const words = rows.map(word => {
+            try {
+                if (word.examples && typeof word.examples === 'string') {
+                    word.examples = JSON.parse(word.examples);
+                }
+            } catch (e) {
+                word.examples = [];
+            }
+            return word;
+        });
+        res.json(words);
+    } catch (err) {
+        console.error('[Vocabulary] Batch Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/status', (req, res) => {
     res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
 });
@@ -1326,61 +1373,7 @@ app.get('/api/vocabulary/levels', (req, res) => {
     }
 });
 
-// Batch Vocabulary Fetch (Optimized for Updates)
-app.get('/api/vocabulary/batch', (req, res) => {
-    try {
-        const { language, level, count } = req.query;
-        let limit = parseInt(count) || 20;
-        if (limit > 50) limit = 50; // Cap at 50
-
-        // Note: 'vocabulary' table has 'data' column with full JSON?
-        // Let's verify the schema. 'data' column was used in the previous attempt but line 1302 uses 'examples' and 'word'.
-        // If the table schema is `vocabulary (id, language, level, word, examples, meaning, ...)` then we should fetch columns.
-        // If the schema matches what I assumed (fetching specific columns), proceed.
-
-        // Wait, line 1298 uses `db.prepare(sql).get(...params)` and returns `word`.
-        // Line 1302 uses `word.examples = JSON.parse(word.examples);`
-        // So the table is columns, NOT just a 'data' blob.
-
-        // CORRECTION: Fetch all columns and map them.
-        let sql = 'SELECT * FROM vocabulary';
-        const params = [];
-        const conditions = [];
-
-        if (language) {
-            conditions.push('language = ?');
-            params.push(language);
-        }
-        if (level) {
-            conditions.push('level = ?');
-            params.push(level);
-        }
-
-        if (conditions.length > 0) {
-            sql += ' WHERE ' + conditions.join(' AND ');
-        }
-
-        // Randomly select N rows
-        sql += ` ORDER BY RANDOM() LIMIT ?`;
-        params.push(limit);
-
-        const rows = db.prepare(sql).all(params);
-
-        const words = rows.map(word => {
-            try {
-                word.examples = JSON.parse(word.examples);
-            } catch (e) {
-                word.examples = [];
-            }
-            return word;
-        });
-
-        res.json(words);
-    } catch (err) {
-        console.error('[Vocabulary] Batch Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+// Duplicate route removed (Moved to top)
 
 app.get('/api/search', authenticate, async (req, res) => {
     try {
@@ -2541,51 +2534,7 @@ app.get('/api/folders/tree', authenticate, async (req, res) => {
 // If there was an intention to add a single vocabulary endpoint, it would need its full definition.
 
 // Batch Vocabulary Fetch (Optimized for Updates)
-app.get('/api/vocabulary/batch', (req, res) => {
-    try {
-        const { language, level, count } = req.query;
-        let limit = parseInt(count) || 20;
-        if (limit > 50) limit = 50; // Cap at 50
-
-        let sql = 'SELECT * FROM vocabulary';
-        const params = [];
-        const conditions = [];
-
-        if (language) {
-            conditions.push('language = ?');
-            params.push(language);
-        }
-        if (level) {
-            conditions.push('level = ?');
-            params.push(level);
-        }
-
-        if (conditions.length > 0) {
-            sql += ' WHERE ' + conditions.join(' AND ');
-        }
-
-        // Randomly select N rows
-        sql += ` ORDER BY RANDOM() LIMIT ?`;
-        params.push(limit);
-
-        const rows = db.prepare(sql).all(params);
-
-        const words = rows.map(word => {
-            try {
-                if (word.examples && typeof word.examples === 'string') {
-                    word.examples = JSON.parse(word.examples);
-                }
-            } catch (e) {
-                word.examples = [];
-            }
-            return word;
-        });
-        res.json(words);
-    } catch (err) {
-        console.error('[Vocabulary] Batch Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
+// Duplicate route removed
 
 app.delete('/api/files', authenticate, async (req, res) => {
     const requestedPath = req.query.path || '';
