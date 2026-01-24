@@ -186,7 +186,7 @@ struct ShareDialogView: View {
                 // 复制按钮
                 Button {
                     UIPasteboard.general.string = result.shareUrl
-                    ToastManager.shared.show("链接已复制", type: .success)
+                    ToastManager.shared.show("链接已复制", type: .success, style: .prominent)
                 } label: {
                     Label("action.copy_link", systemImage: "doc.on.doc")
                         .font(.system(size: 16, weight: .semibold))
@@ -208,7 +208,7 @@ struct ShareDialogView: View {
                         
                         Button {
                             UIPasteboard.general.string = password
-                            ToastManager.shared.show("密码已复制", type: .success)
+                            ToastManager.shared.show("密码已复制", type: .success, style: .prominent)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .font(.system(size: 12))

@@ -1184,7 +1184,7 @@ struct FileBrowserView: View {
             }
             renameFile = nil
             newFileName = ""
-            ToastManager.shared.show(String(localized: "toast.rename_success"), type: .success)
+            ToastManager.shared.show(String(localized: "toast.rename_success"), type: .success, style: .prominent)
         }
     }
     
@@ -1206,7 +1206,7 @@ struct FileBrowserView: View {
                     await PreviewCacheManager.shared.invalidate(path: file.path)
                 }
                 
-                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success)
+                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
             } catch {
                 print("Delete failed: \(error)")
                 ToastManager.shared.show(error.localizedDescription, type: .error)
@@ -1233,7 +1233,7 @@ struct FileBrowserView: View {
                 try await FileService.shared.deleteFiles(paths: pathsToDelete)
                 
                 await PreviewCacheManager.shared.invalidate(paths: pathsToDelete)
-                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success)
+                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
                 
                 // Also update cache for consistency
                 for path in pathsToDelete {
@@ -1271,7 +1271,7 @@ struct FileBrowserView: View {
                 try await FileService.shared.moveFiles(paths: pathsToMove, destination: destination)
                 
                 await PreviewCacheManager.shared.invalidate(paths: pathsToMove)
-                ToastManager.shared.show(String(localized: "toast.move_success"), type: .success)
+                ToastManager.shared.show(String(localized: "toast.move_success"), type: .success, style: .prominent)
                 
                 // Optimistic Cache Update (Destination Folder)
                 // 手动将文件添加到目标文件夹的缓存中，实现“进入即显示”
@@ -1306,7 +1306,7 @@ struct FileBrowserView: View {
                     }
                     isSelectionMode = false
                     await loadFiles()
-                    ToastManager.shared.show(String(localized: "toast.copy_success"), type: .success)
+                    ToastManager.shared.show(String(localized: "toast.copy_success"), type: .success, style: .prominent)
                 }
             } catch {
                 print("Copy failed: \(error)")
@@ -1415,7 +1415,7 @@ struct FileBrowserView: View {
                 showCreateFolder = false
                 newFolderName = ""
                 await loadFiles()
-                ToastManager.shared.show(String(localized: "toast.folder_created"), type: .success)
+                ToastManager.shared.show(String(localized: "toast.folder_created"), type: .success, style: .prominent)
             } catch {
                 print("Create folder failed: \(error)")
                 ToastManager.shared.show(error.localizedDescription, type: .error)
