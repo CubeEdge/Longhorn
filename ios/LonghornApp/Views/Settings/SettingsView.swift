@@ -10,23 +10,6 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section(header: Text("settings.language")) {
-    
-    // ... (existing code omitted for brevity in tool call, but context kept safe) ...
-
-    private func resetPreferences() {
-        // Reset AppStorage keys
-        UserDefaults.standard.removeObject(forKey: "fileSortOrder")
-        UserDefaults.standard.removeObject(forKey: "fileViewMode")
-        
-        // Synced reset with immediate feedback
-        ToastManager.shared.show(
-            String(localized: "toast.reset_success"),
-            type: .success,
-            style: .prominent
-        )
-    }
-
-    private func clearAllCache() {
                 Picker("settings.app_language", selection: Binding(
                     get: { languageManager.currentLanguage },
                     set: { languageManager.setLanguage($0) }
@@ -96,6 +79,19 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(Text("settings.title"))
+    }
+    
+    private func resetPreferences() {
+        // Reset AppStorage keys
+        UserDefaults.standard.removeObject(forKey: "fileSortOrder")
+        UserDefaults.standard.removeObject(forKey: "fileViewMode")
+        
+        // Synced reset with immediate feedback
+        ToastManager.shared.show(
+            String(localized: "toast.reset_success"),
+            type: .success,
+            style: .prominent
+        )
     }
     
     private func clearAllCache() {
