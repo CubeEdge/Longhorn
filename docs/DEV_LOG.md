@@ -42,6 +42,7 @@
     - **状态持久化**: 使用 `@AppStorage` 记住用户的排序方式和视图模式。
     - **Toast 系统升级**: 实现分级提示（Standard/Prominent），支持触感反馈。
     - **重置功能**: 设置页新增偏好重置，支持 Alert 二次确认和强反馈。
+    - **全面多语言**: 扫除代码中残留的硬编码 Toast 字符串，实现全覆盖。
 - **关键技术**:
     - SQLite `RANDOM()` 查询优化。
     - React Hooks (`fetchWord`) 异步状态管理。
