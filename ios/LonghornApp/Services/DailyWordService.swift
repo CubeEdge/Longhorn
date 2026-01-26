@@ -133,9 +133,6 @@ class DailyWordService: ObservableObject {
             
             do {
                 let decoder = JSONDecoder()
-                // Attempt to handle potential snake_case from DB if keys don't match
-                // decoder.keyDecodingStrategy = .convertFromSnakeCase 
-                // Let's decode safely to catch error
                 let newWords = try decoder.decode([WordEntry].self, from: data)
                 
                 DispatchQueue.main.async {
@@ -159,11 +156,24 @@ class DailyWordService: ObservableObject {
                     }
                 }
             } catch {
-                print("[DailyWord] Decoding Error: \(error)")
+                // improved error handling
+                if let apiError = try? JSONDecoder().decode(APIError.self, from: data) {
+                    print("[DailyWord] Server API Error: \(apiError.error)")
+                } else {
+                    print("[DailyWord] Decoding Error: \(error)")
+                    if let str = String(data: data, encoding: .utf8) {
+                        print("[DailyWord] Raw Response: \(str)")
+                    }
+                }
                 DispatchQueue.main.async { self.isUpdating = false }
             }
         }.resume()
     }
+    
+    struct APIError: Codable {
+        let error: String
+    }
+
     
     // Legacy single fetch removed / unused for library building
     private func fetchSingleWordForLibrary(completion: @escaping (Bool) -> Void) {

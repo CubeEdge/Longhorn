@@ -62,6 +62,19 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, file_path)
     );
+    CREATE TABLE IF NOT EXISTS vocabulary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        language TEXT NOT NULL,
+        level TEXT DEFAULT 'General',
+        word TEXT NOT NULL,
+        phonetic TEXT,
+        meaning TEXT,
+        meaning_zh TEXT,
+        part_of_speech TEXT,
+        examples TEXT, -- JSON string
+        image TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 `);
 
 // Department display mapping (code -> display name for UI)

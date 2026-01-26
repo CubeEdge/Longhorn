@@ -19,6 +19,12 @@
         - **建立框架**: 创建了 `.agent/workflows/pmlog.md` 工作流，标准化文档更新程序，确保每次会话后自动同步 `task.md` 至 `DevLog`。
     - **Bug修复**:
         - **数据健壮性**: 修复了 `WordEntry` JSON 解码逻辑，针对数据库中可能存在的 NULL 字段 (`meaning`, `meaning_zh`) 增加了安全处理，防止批量更新失败。
+    - **紧急修复 (Hotfix 2026-01-24 Night)**:
+        - **服务端 502/404 修复**:
+            - 修复了 `server/index.js` 合并代码时引入的 `SyntaxError` (缺少闭合括号)。
+            - 修正了 Batch API 的 SQL 查询 (`SELECT *` instead of `data`)。
+            - **解决了路由遮蔽 (Route Shadowing)**: 发现并清理了占用 4000 端口的**僵尸进程** (Zombie Process PID 57006)，并将 Batch API 路由移至代码顶层，确保优先级。
+            - 验证: 本地 Curl 测试通过，Git Push 触发远程自动部署成功。
 
 ## 会话: 2026-01-23
 
