@@ -77,6 +77,39 @@ db.exec(`
     );
 `);
 
+// Auto-Seeding: Check if vocabulary table is empty and populate it
+try {
+    const vocabCount = db.prepare('SELECT count(*) as count FROM vocabulary').get().count;
+    if (vocabCount === 0) {
+        console.log('[Init] Vocabulary table is empty. Starting auto-seed...');
+        const seedPath = path.join(__dirname, 'seeds/vocabulary_seed.json');
+
+        if (fs.existsSync(seedPath)) {
+            const seeds = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+            const insert = db.prepare(`
+                INSERT INTO vocabulary (language, level, word, phonetic, meaning, meaning_zh, part_of_speech, examples, image)
+                VALUES (@language, @level, @word, @phonetic, @meaning, @meaning_zh, @part_of_speech, @examples, @image)
+            `);
+
+            const insertMany = db.transaction((items) => {
+                for (const item of items) {
+                    insert.run({
+                        ...item,
+                        examples: typeof item.examples === 'string' ? item.examples : JSON.stringify(item.examples)
+                    });
+                }
+            });
+
+            insertMany(seeds);
+            console.log(`[Init] Successfully seeded ${seeds.length} vocabulary items.`);
+        } else {
+            console.warn('[Init] Seed file not found at:', seedPath);
+        }
+    }
+} catch (err) {
+    console.error('[Init] Failed to auto-seed vocabulary:', err);
+}
+
 // Department display mapping (code -> display name for UI)
 const DEPT_DISPLAY_MAP = {
     'OP': '运营部 (OP)',
