@@ -59,7 +59,23 @@ ssh admin@192.168.1.50
 ssh admin@ssh.kineraw.com --proxy-command="cloudflared access ssh --hostname %h"
 
 # 快捷连接 (如果配置了 ~/.ssh/config)
+# 快捷连接 (如果配置了 ~/.ssh/config)
 ssh mini
+```
+
+### 远程命令执行 (Remote Execution)
+
+⚠️ **关键注意**: 
+非交互式 SSH (如 `ssh mini "cmd"`) 默认 **不会加载用户环境变量 (PATH)**，导致 `pm2`, `node` 等命令找不到。
+必须使用 `/bin/zsh -l -c` 包装命令来强制加载 Profile。
+
+**正确示例**:
+```bash
+# 远程重启服务
+ssh -t mini "/bin/zsh -l -c 'pm2 restart longhorn'"
+
+# 远程清理数据库
+ssh -t mini "/bin/zsh -l -c \"sqlite3 ~/Documents/server/Longhorn/server/longhorn.db 'DELETE FROM ...'\""
 ```
 
 ---

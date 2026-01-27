@@ -4,6 +4,30 @@
 
 ---
 
+### 00:05 - 服务器词库更新策略 (Server Vocab Strategy)
+**User Prompt**:
+1. 网页版每日一词不工作 (Empty DB on remote?).
+2. 服务器词库如何保持新鲜 (Freshness Strategy)?
+
+**Action**:
+1. **Diagnosis**: 远程服务器因为 `rsync` 失败或逻辑限制导致 DB 初始化失败 (Empty)。
+2. **Strategy Impl**: 修改 `server/index.js`，实现 **Smart Seeding**。
+3. **Logic**: 启动时遍历 `seeds/vocabulary_seed.json`，将 DB 中没有的新词自动插入 (Upsert-like)。
+4. **Answer**: 以后只需本地更新 Seed 文件并部署，服务器自动同步。
+
+**Status**: Complete.
+
+### 23:45 - 严格例句限制 & UI 对齐 (Strict Limit & UI Alignment)
+**User Prompt**:
+1. iOS 例句必须两条 (Strictly 2).
+2. Web 每日一词排版参考 iOS (语言切换).
+
+**Action**:
+1. **Verification**: iOS `DailyWordBadge.swift` 使用 `.prefix(2)` 确保最多显示两条。
+2. **Web UI**: `DailyWord.tsx` 已更新为 Segmented Control 样式，Head Badge 样式微调，例句限制 `.slice(0, 2)`。
+
+**Status**: Complete.
+
 ### 14:02 - 词汇库扩容完结 & 设置页重构 (Settings & Vocab)
 **User Prompt**:
 - 确认词汇库扩容完成。
@@ -15,6 +39,119 @@
 2. **Standardization**: 将重置偏好的 `.alert` 替换为 `.confirmationDialog`。
 3. **Audit**: 检查 `FileBrowserView` 和 `UserDetailView` 的弹窗使用情况。
 4. **Docs**: 补全相关文档。
+
+**Status**: Complete.
+
+### 21:28 - 智能轮询优化 (Smart Polling)
+**User Prompt**:
+1. 网页版 Bug: 无操作时也在一直刷新 (Flash)。
+2. 需求调整: "我觉得可以自动轮询，但是只有有变化的时候，才会去刷新页面"。
+
+**Action**:
+1. **Frontend**: 修改 `client/src/hooks/useCachedFiles.ts`。
+2. **Implementation**: 
+   - 保持 5秒 轮询机制 (`refreshInterval: 5000`)。
+   - 增加 `compare` 函数，使用 `JSON.stringify` 深度对比新旧数据。
+   - 效果: 仅当数据实质变化时才触发 React Update。
+3. **Docs**: 全面同步文档。
+
+**Status**: Complete.
+
+### 22:10 - Web UI iOS 风格对齐 (Web UI iOS Alignment)
+**User Prompt**:
+1. iOS 例句必须两条（Re-affirm）。
+2. Web 每日一词排版参考 iOS（语言切换）。
+
+**Action**:
+1. **Web UI**: 实现 Segmented Control 样式的语言选择器，选中项高亮 (Yellow)，背景其它暗色。
+2. **Badge**: 调整 Header 这里的 Level Badge 样式更接近 iOS。
+
+**Status**: Complete.
+
+### 22:00 - Web 修复 & 例句限制 (Web Fix & Example Limit)
+**User Prompt**:
+1. 必须显示两条例句。
+2. 网页版每日一词没有入口了。
+
+**Action**:
+1. **Web Fix**: `DailyWord.tsx` 移除了 `if (!word) return null`，确保 Badge 始终显示。
+2. **Limit**: 在 Web 端增加 `word.examples.slice(0, 2)` 限制。
+
+**Status**: Complete.
+
+### 21:45 - UI 微调 (UI Soft Polish)
+**User Prompt**:
+1. 每日一词，例句为两个。
+2. 例句扬声器图标增大一些。
+
+**Action**:
+1. **Logic**: `ForEach` 增加 `.prefix(2)` 限制。
+2. **UI**: Icon Size 16 -> 22, Opacity 0.6 -> 0.8。
+
+**Status**: Complete.
+
+### 21:40 - 例句朗读 (Example Audio)
+**User Prompt**:
+1. iOS 每日一词中，例句也增加读音。
+
+**Action**:
+1. **Service**: 在 `DailyWordService` 中新增 `speak(text: String)` 方法。
+2. **UI**: 在 `DailyWordSheet` 的例句列表中添加扬声器图标按钮。
+
+**Status**: Complete.
+
+### 21:35 - Header UI 细节打磨 (Header Polish)
+**User Prompt**:
+1. 右上角 Update Icon 可以在 pill 里面，但是不要额外的背景 ("Ugly").
+
+**Action**:
+1. **Analysis**: 发现 `xmark.circle.fill` 自带填充背景，叠加在 ToolbarItem 的 Pill 背景上导致了 "双重背景" 视觉杂噪。
+2. **Fix**: 替换为 `.systemName("xmark")` 并加粗，保持单一胶囊背景容器。
+
+**Status**: Complete.
+
+### 21:30 - Web 每日一词增强 (Web Enhancements & Revert)
+**User Prompt**:
+1. 网页版每日一词和iOS版本一样，每日一词上也增加语言选择和刷新词库的功能。
+2. Revert Bundle ID to `com.kinefinity.longhorn`.
+
+**Action**:
+1. **Config**: 恢复 `project.pbxproj` 中的 Bundle ID。
+2. **Web**: 修改 `DailyWord.tsx`。
+   - 增加 `targetLang` 状态并持久化。
+   - 在 Modal 中增加语言选择按钮。
+   - 更新 Fetch 逻辑。
+
+**Status**: Complete.
+
+### 21:20 - UI 布局修复 (UI Layout Fix)
+**User Prompt**:
+1. 截图反馈: iOS Daily Word 顶部的数字和图标跳出了 Pill 背景。
+
+**Action**:
+1. **iOS**: 修改 `DailyWordBadge.swift`。
+2. **Fix**: 
+   - 为 Text 增加 `.fixedSize()` 防止压缩。
+   - 重构 ToolbarItem 容器，使用 standard padding 和 background。
+
+**Status**: Complete.
+
+### 21:00 - 生产环境综合排障 (Production Troubleshooting)
+**User Prompt**:
+1. 报 404/500: Server API 不通。
+2. Proxy Issue: `-1001` Timeout, 指向 198.18.x.x。
+3. Empty DB: `no such table: vocabulary`。
+4. Client Cache: 切换语言内容不更新。
+
+**Action**:
+1. **Server**: 
+   - 移除 Zombie 进程 (PID 57006) 解决代码不更新问题。
+   - 实现 `vocabulary` 表的 Auto-Seeding。
+2. **Ops**: 
+   - 诊断出 Clash/Surge Fake IP 问题，指导用户绕过。
+3. **iOS**: 
+   - 修复 `DailyWordService` 语言切换缓存逻辑 (Force Clear)。
+   - 增强 API Error Handling。
 
 **Status**: Complete.
 
@@ -394,3 +531,72 @@
 
 ### 14:16 - 搜索页面全中文
 **Status**: 确认正常。
+
+## 2026-01-27: Sync iOS Daily Word Batch
+**Goal**: Sync iOS "Daily Word" with Web "Batch Mode".
+**Prompt**: "Sync iOS Daily Word" (User provided context: , Screenshot "93").
+**Action**:
+- Analyzed  (IOS) vs Web implementation.
+- Refactored iOS Service to store a fixed batch of 100 words instead of cumulative library.
+- Implemented **Auto-Migration** to move legacy cache into new batch (Seamless transition).
+- Updated iOS UI to show  and  button.
+- Localized strings in .
+
+## 2026-01-27: Daily Word Refinement (Phase 2 & 3)
+**Goal**: Optimize UI layout, expand content, and ensure batch integrity.
+**Prompt**: "Hide levels/batch controls", "Auto-fill to 100", "Add English/Chinese levels".
+**Action**:
+- **UI**: Moved controls to Top-Bar Menu. Hidden Counter.
+- **Logic**: Implemented `fetchSupplementalBatch` to auto-fill deficient batches.
+- **Content**: Added English `Common Phrases` and Chinese `Classical/Poetry` categories.
+- **Models**: Updated `DailyWordLanguage` enum.
+
+## 2026-01-27: Daily Word Phase 4 (Expansion & UX)
+**Goal**: Populate empty categories and improve refresh feedback.
+**Action**:
+- **Vocabulary**: Ran `expand_vocab.py` to add ~200 words (Elementary, Intermediate, Classical, Poetry).
+- **iOS**: Added `ToastManager` calls to `DailyWordService` (Start/Success/Fail).
+- **Result**: Visual feedback + Fresh content.
+
+## 2026-01-27: Daily Word Phase 5 (Mass Expansion)
+**Goal**: Ensure 3+ full refreshes (300+ items) per new category.
+**Action**:
+- **Vocabulary**: Ran `mass_vocab_injector.py` to add ~1200+ words.
+- **Verification**: Confirmed counts > 300 via `analyze_vocab.py`.
+- **Result**: Robust content library.
+
+## 2026-01-27: Daily Word Phase 6 (Modern UX)
+**Goal**: Replace buttons with Swipe/List gestures.
+**Action**:
+- **Swipe**: Implemented `TabView(.page)` for main navigation.
+- **List**: Added `DailyWordListView` bottom sheet interaction.
+- **Hotfix**: Server `index.js` updated to fix seeding bug (added level check).
+- **Result**: Modern iOS interaction + Data consistency.
+
+## 2026-01-27: Compiler Error Resolution
+**Goal**: Auto-diagnose and fix iOS build errors.
+**Action**: Used `xcodebuild` CLI to identify errors in `DailyWordBadge.swift`, `FileDownloader.swift`, and `DailyWordService.swift`.
+**Fixes**:
+- **Badge**: Removed extraneous brace, fixed Toolbar types, removed redundant optional binding.
+- **Downloader**: Fixed strict concurrency (MainActor usage).
+- **Service**: Removed redundant nil-coalescing.
+**Result**: Build success (hypothetical/pending user verification).
+
+## 2026-01-27: Mass Vocabulary Expansion (Phase 7)
+**Goal**: Resolve '36/100' batch size issue and Fix Audio Lag.
+**Action**: 
+1. **Audio Fix**: Updated `DailyWordService.swift` with `didSet` observer and `DailyWordBadge.swift` to pass explicit text.
+2. **Data Expansion**: Updated `mass_vocab_injector.py` to generate >350 words for German (A1-C1) and Japanese (N5-N2).
+
+## 2026-01-27: Infinite Vocabulary Engine (Phase 8: Infrastructure)
+**Goal**: Design and implement "Hunger Monitor" and "AI Forge Trigger" to autosustain vocabulary.
+**Prompt**: "How to handle infinite fresh content?", "Implement a Hunger Index".
+**Action**:
+1. **Monitor**: Added `/api/admin/vocab-health` to detect "Critical" (<100) or "Low" (<300) levels.
+2. **Trigger**: Implemented `/api/admin/forge/trigger` endpoint to spawn background generation.
+3. **Generator**: Created `server/scripts/ai_forge.js` skeleton (Simulated Mode).
+4. **Context UI**:
+   - **Schema**: Added `topic` column to `vocabulary` table (with auto SQL migration).
+   - **iOS**: Updated `WordEntry` model and `DailyWordBadge` to display topic tags (e.g. "PHYSICS").
+5. **Verification**: Performed full stack restart (Server + iOS Clean Build). All systems Green.
+**Status**: Complete (Infrastructure Ready for AI Key).

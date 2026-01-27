@@ -35,6 +35,13 @@
 
 ## ✅ 已完成 (历史记录)
 
+### [Hotfix] V13.4.2 生产环境修复 (2026-01-26)
+- **状态**: ✅ 已完成
+- **内容**:
+  - **Server**: 修复 Zombie 进程并实现 Auto-Seeding (自动填充词库)。
+  - **Client**: iOS 增加 API 错误防护，修复语言切换缓存 Bug。
+  - **Ops**: 解决 404/500 及网络代理 (Fake IP) 问题。
+
 - [x] **每日一词内容扩容**: 已达成单库 100+ (德/英/日/中, 总计 423)。
 - [x] **每日一词 2.0**: Server API (`/api/vocabulary/random`) + Web/iOS 客户端迁移完成。
 - [x] **每日一词 UX 优化**: iOS Cache-First 加载，启动即显示。
@@ -51,6 +58,16 @@
 - [x] **本地化**: 增加了 德语/日语 的基础支持。
 - [x] **全局多语言完善**: Dashboard (Admin/Personal) 完成中文化，支持 key 缺失时的自动 fallback。
 - [x] **Toast 系统升级**: 实现分级 (Weak/Strong) 提示系统，关键操作增加触感反馈。
+- [x] **Phase 8: Infinite Engine (Infrastructure)**:
+  - **Monitor**: 实现了 Hunger Index (`/api/admin/vocab-health`)。
+  - **Trigger**: 实现了 Forge Trigger (`/api/admin/forge/trigger`)。
+  - **Schema**: 数据库自动迁移，支持 `topic` 字段。
+  - **Context UI**: iOS 端支持显示单词 Topic 标签 (e.g. "PHYSICS")。
+  - **Display Fix**: 修复了 "(3)" 等后缀显示问题。
+- [x] **Phase 9: AI Integration (Prep & Quality)**:
+  - **Data Quality**: 优化例句生成逻辑，使用多变模板。
+  - **Zero Latency**: 修复 App 初次启动无数据问题 (Default to Local API in Dev)。
+  - **Ops**: 建立了 `COLLABORATION.md` 协作规范。
 
 ---
 

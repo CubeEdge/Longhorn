@@ -28,7 +28,7 @@ enum DailyWordLanguage: String, Codable, CaseIterable {
         switch self {
         case .de: return "A1"
         case .ja: return "N5"
-        case .en: return "Advanced"
+        case .en: return "Elementary"
         case .zh: return "Idioms"
         }
     }
@@ -37,8 +37,8 @@ enum DailyWordLanguage: String, Codable, CaseIterable {
         switch self {
         case .de: return ["A1", "A2", "B1"]
         case .ja: return ["N5", "N4", "N3"]
-        case .en: return ["Advanced"]
-        case .zh: return ["Idioms"]
+        case .en: return ["Elementary", "Intermediate", "Advanced", "Common Phrases"]
+        case .zh: return ["Idioms", "Classical", "Poetry"]
         }
     }
 }
@@ -59,12 +59,14 @@ struct WordEntry: Codable, Identifiable {
     let examples: [WordExample]
     let image: String?
     let level: String?
+    let topic: String? // Phase 8
     
     // Fallback decoding for flexibility
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
-        self.word = try container.decode(String.self, forKey: .word)
+        let rawWord = try container.decode(String.self, forKey: .word)
+        self.word = rawWord.replacingOccurrences(of: "\\s*[\\(\\[].*?[\\)\\]]", with: "", options: .regularExpression)
         self.phonetic = try container.decodeIfPresent(String.self, forKey: .phonetic)
         // Handle optional/null meanings gracefully
         self.meaning = try container.decodeIfPresent(String.self, forKey: .meaning) ?? ""
@@ -73,11 +75,12 @@ struct WordEntry: Codable, Identifiable {
         self.examples = try container.decodeIfPresent([WordExample].self, forKey: .examples) ?? []
         self.image = try container.decodeIfPresent(String.self, forKey: .image)
         self.level = try container.decodeIfPresent(String.self, forKey: .level)
+        self.topic = try container.decodeIfPresent(String.self, forKey: .topic)
     }
     
-    init(id: Int = 0, word: String, phonetic: String?, meaning: String, meaningZh: String, partOfSpeech: String?, examples: [WordExample], image: String?, level: String?) {
+    init(id: Int = 0, word: String, phonetic: String?, meaning: String, meaningZh: String, partOfSpeech: String?, examples: [WordExample], image: String?, level: String?, topic: String? = nil) {
         self.id = id
-        self.word = word
+        self.word = word.replacingOccurrences(of: "\\s*[\\(\\[].*?[\\)\\]]", with: "", options: .regularExpression)
         self.phonetic = phonetic
         self.meaning = meaning
         self.meaningZh = meaningZh
@@ -85,6 +88,7 @@ struct WordEntry: Codable, Identifiable {
         self.examples = examples
         self.image = image
         self.level = level
+        self.topic = topic
     }
 
     // Server returns snake_case
@@ -98,6 +102,7 @@ struct WordEntry: Codable, Identifiable {
         case examples
         case image
         case level
+        case topic
     }
 }
 

@@ -73,42 +73,93 @@ db.exec(`
         part_of_speech TEXT,
         examples TEXT, -- JSON string
         image TEXT,
+        topic TEXT, -- Phase 8: Contextual Topic
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 `);
 
-// Auto-Seeding: Check if vocabulary table is empty and populate it
+// Migration to add topic column (Safe fail if exists)
+try { db.prepare("ALTER TABLE vocabulary ADD COLUMN topic TEXT").run(); } catch (e) { }
+
+// Auto-Seeding: Sync vocabulary from seed file on startup
 try {
-    const vocabCount = db.prepare('SELECT count(*) as count FROM vocabulary').get().count;
-    if (vocabCount === 0) {
-        console.log('[Init] Vocabulary table is empty. Starting auto-seed...');
+    const seedPath = path.join(__dirname, 'seeds/vocabulary_seed.json');
+
+    if (fs.existsSync(seedPath)) {
+        console.log('[Init] Checking for new vocabulary in seed file...');
+        const seeds = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+
+        const checkExists = db.prepare('SELECT 1 FROM vocabulary WHERE word = ? AND language = ? AND level = ?');
+        const insert = db.prepare(`
+            INSERT INTO vocabulary (language, level, word, phonetic, meaning, meaning_zh, part_of_speech, examples, image, topic)
+            VALUES (@language, @level, @word, @phonetic, @meaning, @meaning_zh, @part_of_speech, @examples, @image, @topic)
+        `);
+
+        let addedCount = 0;
+        const insertTransaction = db.transaction((items) => {
+            for (const item of items) {
+                // Check if exists (Strict Match: word + language + level)
+                const exists = checkExists.get(item.word, item.language, item.level);
+
+                if (!exists) {
+                    insert.run({
+                        ...item,
+                        examples: typeof item.examples === 'string' ? item.examples : JSON.stringify(item.examples),
+                        image: item.image || null,
+                        topic: item.topic || null
+                    });
+                    addedCount++;
+                }
+            }
+        });
+
+        insertTransaction(seeds);
+        console.log(`[Init] Vocabulary Sync: ${addedCount > 0 ? 'Added ' + addedCount + ' new words.' : 'Up to date.'}`);
+
+    } else {
+        console.warn('[Init] Seed file not found at:', seedPath);
+    }
+} catch (err) {
+    console.error('[Init] Failed to seed vocabulary:', err);
+}
+
+// Debug Endpoint to force re-seed
+app.post('/api/debug/seed', (req, res) => {
+    try {
+        console.log('[Debug] Manual Seeding Triggered');
         const seedPath = path.join(__dirname, 'seeds/vocabulary_seed.json');
+        if (!fs.existsSync(seedPath)) return res.status(404).json({ error: 'Seed file not found' });
 
-        if (fs.existsSync(seedPath)) {
-            const seeds = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
-            const insert = db.prepare(`
-                INSERT INTO vocabulary (language, level, word, phonetic, meaning, meaning_zh, part_of_speech, examples, image)
-                VALUES (@language, @level, @word, @phonetic, @meaning, @meaning_zh, @part_of_speech, @examples, @image)
-            `);
+        const seeds = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+        const checkExists = db.prepare('SELECT 1 FROM vocabulary WHERE word = ? AND language = ? AND level = ?');
+        const insert = db.prepare(`
+            INSERT INTO vocabulary (language, level, word, phonetic, meaning, meaning_zh, part_of_speech, examples, image)
+            VALUES (@language, @level, @word, @phonetic, @meaning, @meaning_zh, @part_of_speech, @examples, @image)
+        `);
 
-            const insertMany = db.transaction((items) => {
-                for (const item of items) {
+        let addedCount = 0;
+        const insertTransaction = db.transaction((items) => {
+            for (const item of items) {
+                const exists = checkExists.get(item.word, item.language, item.level);
+                if (!exists) {
                     insert.run({
                         ...item,
                         examples: typeof item.examples === 'string' ? item.examples : JSON.stringify(item.examples)
                     });
+                    addedCount++;
                 }
-            });
+            }
+        });
 
-            insertMany(seeds);
-            console.log(`[Init] Successfully seeded ${seeds.length} vocabulary items.`);
-        } else {
-            console.warn('[Init] Seed file not found at:', seedPath);
-        }
+        insertTransaction(seeds);
+        res.json({ success: true, added: addedCount });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
     }
-} catch (err) {
-    console.error('[Init] Failed to auto-seed vocabulary:', err);
-}
+});
+
+
 
 // Department display mapping (code -> display name for UI)
 const DEPT_DISPLAY_MAP = {
@@ -432,7 +483,7 @@ app.get('/api/vocabulary/batch', (req, res) => {
     try {
         const { language, level, count } = req.query;
         let limit = parseInt(count) || 20;
-        if (limit > 50) limit = 50; // Cap at 50
+        if (limit > 100) limit = 100; // Cap at 100
 
         let sql = 'SELECT * FROM vocabulary';
         const params = [];
@@ -473,6 +524,89 @@ app.get('/api/vocabulary/batch', (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// Phase 8: Hunger Index Endpoint (Monitoring)
+app.get('/api/admin/vocab-health', authenticate, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+
+    try {
+        // Aggregate counts by Language + Level
+        const stats = db.prepare(`
+            SELECT language, level, COUNT(*) as count 
+            FROM vocabulary 
+            GROUP BY language, level
+            ORDER BY language, level
+        `).all();
+
+        // Enrich with Health Status (Hunger Index)
+        const healthReport = stats.map(item => {
+            let status = 'Healthy';
+            // Simple threshold: < 300 words is "Critical" (Hungry)
+            if (item.count < 100) status = 'Critical';
+            else if (item.count < 300) status = 'Low';
+
+            return {
+                ...item,
+                status,
+                action_required: status !== 'Healthy'
+            };
+        });
+
+        res.json({
+            timestamp: new Date().toISOString(),
+            pools: healthReport,
+            total_words: healthReport.reduce((acc, cur) => acc + cur.count, 0)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// Phase 8: Forge Trigger (Action)
+app.post('/api/admin/forge/trigger', authenticate, (req, res) => {
+    if (req.user.role !== 'admin') return res.sendStatus(403);
+
+    const { language, level, topic, count } = req.body;
+
+    console.log(`[Forge] Triggered by user ${req.user.username} for ${language} ${level}`);
+
+    // Spawn separate process for generation to not block main thread
+    const { spawn } = require('child_process');
+    const scriptPath = path.join(__dirname, 'scripts/ai_forge.js');
+
+    const args = [
+        scriptPath,
+        `--language=${language || 'en'}`,
+        `--level=${level || 'Advanced'}`,
+        `--topic=${topic || 'General'}`,
+        `--count=${count || 20}`
+    ];
+
+    // Use 'node' executable
+    const forgeProcess = spawn('node', args);
+
+    let output = '';
+
+    forgeProcess.stdout.on('data', (data) => {
+        output += data.toString();
+        // Live logging could go here
+    });
+
+    forgeProcess.stderr.on('data', (data) => {
+        console.error(`[Forge] Error: ${data}`);
+    });
+
+    forgeProcess.on('close', (code) => {
+        console.log(`[Forge] Process exited with code ${code}`);
+        console.log(`[Forge] Output Preview: ${output.substring(0, 200)}...`);
+    });
+
+    // Immediate response (Async)
+    res.json({ success: true, message: "Forge job started", details: args });
+});
+
 
 app.get('/api/status', (req, res) => {
     res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });

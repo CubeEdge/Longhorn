@@ -40,10 +40,10 @@ const fetcher = async (url: string, token: string): Promise<FilesResponse> => {
 export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' | 'personal' = 'all', options: CacheOptions = {}) {
     const { token } = useAuthStore();
     const {
-        revalidateOnFocus = false,
-        revalidateOnReconnect = false,
-        dedupingInterval = 5000,   // 5 seconds deduping (low cost due to ETag)
-        refreshInterval = 5000    // Poll every 5 seconds (ETag makes this cheap)
+        revalidateOnFocus = true,
+        revalidateOnReconnect = true,
+        dedupingInterval = 2000,
+        refreshInterval = 5000     // 5s polling enabled, but filtered by `compare`
     } = options;
 
     // Build URL based on mode
@@ -63,7 +63,13 @@ export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' 
             revalidateOnReconnect,
             dedupingInterval,
             refreshInterval,
-            keepPreviousData: true, // Show stale data while revalidating
+            keepPreviousData: true,
+            // Smart Polling: Only trigger update if data actually changed
+            compare: (a, b) => {
+                // Return true if equal (no change) -> no re-render
+                // Return false if different -> trigger update
+                return JSON.stringify(a) === JSON.stringify(b);
+            }
         }
     );
 

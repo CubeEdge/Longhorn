@@ -11,6 +11,7 @@
 *   **网络架构 (Cloudflare Tunnel)**:
     *   **Web 访问**: `https://opware.kineraw.com` -> `localhost:4000`
     *   **SSH 访问**: `ssh.kineraw.com` -> `localhost:22` (用户: `admin`)
+    *   **连接详情**: 详见 `docs/OPS.md` 中的 "服务器访问" 章节。
 *   **进程管理 (PM2)**:
     *   `longhorn`: 主后端服务
     *   `longhorn-watcher`: 自动部署哨兵 (每 60s 检查 git pull)

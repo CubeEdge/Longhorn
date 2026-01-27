@@ -9,104 +9,171 @@ class DailyWordService: ObservableObject {
     @Published var currentLevel: String = "Advanced"
     @Published var isLoading = false
     
+    // Batch Management
+    @Published private(set) var batchWords: [WordEntry] = []
+    @Published var currentIndex: Int = 0 {
+        didSet {
+            updateCurrentWord()
+        }
+    }
+    
+    @Published var isUpdating = false // Loading state for batch
+    @Published var updateProgress: Double = 0.0
+    
     private let synthesizer = AVSpeechSynthesizer()
+    
+    // Computed property for UI binding
+    var batchSize: Int { batchWords.count }
+    var currentProgressDisplay: String {
+        guard !batchWords.isEmpty else { return "0/0" }
+        return "\(currentIndex + 1)/\(batchWords.count)"
+    }
+    
+    private var libraryKey: String { "longhorn_daily_word_batch_\(currentLanguage.rawValue)" }
     
     private init() {
         loadPreferences()
     }
     
+    // MARK: - Actions
+    
     func setLanguage(_ lang: String) {
         if let l = DailyWordLanguage(rawValue: lang) {
             self.currentLanguage = l
-            // Persist module specific language preference
             UserDefaults.standard.set(lang, forKey: "longhorn_daily_word_language")
             
             let savedLevel = UserDefaults.standard.string(forKey: "daily_word_level_\(l.rawValue)")
             self.currentLevel = savedLevel ?? l.defaultLevel
-            fetchNewWord()
+            
+            // Reload batch for the new language
+            loadBatch()
+            
+            // If empty, fetch new batch
+            if batchWords.isEmpty {
+                startBatchUpdate()
+            } else {
+                // Reset index to 0 or saved index? Let's reset to 0 for simplicity on lang switch
+                currentIndex = 0
+                updateCurrentWord()
+            }
         }
     }
     
     func setLevel(_ level: String) {
         self.currentLevel = level
         UserDefaults.standard.set(level, forKey: "daily_word_level_\(currentLanguage.rawValue)")
-        fetchNewWord()
+        // Level change requires new batch? Yes.
+        startBatchUpdate()
     }
     
     func nextWord() {
-        fetchNewWord()
+        guard !batchWords.isEmpty else { return }
+        currentIndex = (currentIndex + 1) % batchWords.count
+        updateCurrentWord()
     }
     
-    func speak() {
-        guard let word = currentWord else { return }
-        
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
-        }
-        
-        let utterance = AVSpeechUtterance(string: word.word)
-        utterance.voice = AVSpeechSynthesisVoice(language: currentLanguage.speechCode)
-        utterance.rate = 0.4
-        
-        synthesizer.speak(utterance)
-    }
-    
-    // MARK: - Vocabulary Library Logic
-    
-    private var libraryKey: String { "longhorn_daily_word_library_\(currentLanguage.rawValue)" }
-    @Published private(set) var downloadedWords: [WordEntry] = []
-    
-    @Published var isUpdating = false
-    @Published var updateProgress: Double = 0.0
-    
-    var vocabularyCount: Int { downloadedWords.count }
-    
-    // Check if we need to hydrate the library on startup
-    func checkForUpdates() {
-        loadLibrary()
-        
-        let targetCount = 100
-        if downloadedWords.count < targetCount {
-            print("[DailyWord] Library size \(downloadedWords.count)/\(targetCount). Starting silent update.")
-            startBatchUpdate(target: targetCount)
-        }
+    func prevWord() {
+        guard !batchWords.isEmpty else { return }
+        currentIndex = (currentIndex - 1 + batchWords.count) % batchWords.count
+        updateCurrentWord()
     }
     
     func forceRefresh() {
-        print("[DailyWord] Force refresh triggered.")
-        startBatchUpdate(target: downloadedWords.count + 20, force: true) // Fetch 20 new words
+        print("[DailyWord] Force new batch triggered.")
+        ToastManager.shared.show("Refreshing vocabulary...", type: .info)
+        startBatchUpdate()
     }
     
-    private func loadLibrary() {
+    private func updateCurrentWord() {
+        guard !batchWords.isEmpty, batchWords.indices.contains(currentIndex) else {
+            currentWord = nil
+            return
+        }
+        currentWord = batchWords[currentIndex]
+    }
+    
+    // MARK: - Batch Logic
+    
+    // Defines the key for the legacy accumulation-style library
+    private var legacyLibraryKey: String { "longhorn_daily_word_library_\(currentLanguage.rawValue)" }
+    
+    private func loadBatch() {
+        // 1. Try to load new Batch format
         if let data = UserDefaults.standard.data(forKey: libraryKey),
-           let words = try? JSONDecoder().decode([WordEntry].self, from: data) {
-            self.downloadedWords = words
+           let words = try? JSONDecoder().decode([WordEntry].self, from: data),
+           !words.isEmpty {
+            self.batchWords = words
+            
+            // Check if supplement needed
+            if batchWords.count < 100 {
+                let needed = 100 - batchWords.count
+                print("[DailyWord] Batch deficient (\(batchWords.count)/100). Auto-fetching \(needed) more...")
+                fetchSupplementalBatch(count: needed)
+            }
+            return
+        }
+        
+        // 2. If no batch found, try to migrate from Legacy Library
+        print("[DailyWord] No batch found. Checking legacy library...")
+        if let data = UserDefaults.standard.data(forKey: legacyLibraryKey),
+           let legacyWords = try? JSONDecoder().decode([WordEntry].self, from: data),
+           !legacyWords.isEmpty {
+            
+            // Migrate: Take up to 100 recent words
+            let migrationCount = min(legacyWords.count, 100)
+            let migratedBatch = Array(legacyWords.prefix(migrationCount))
+            
+            self.batchWords = migratedBatch
+            self.saveBatch() // Save to new key
+            
+            print("[DailyWord] Migrated \(migrationCount) words from legacy library.")
+            
+            // Auto-fill if migrated count < 100
+            if migratedBatch.count < 100 {
+                let needed = 100 - migratedBatch.count
+                print("[DailyWord] Legacy batch deficient (\(migratedBatch.count)/100). Auto-fetching \(needed) more...")
+                fetchSupplementalBatch(count: needed)
+            }
+            
+        } else {
+            // 3. Completely empty
+            self.batchWords = []
         }
     }
     
-    private func saveLibrary() {
-        if let data = try? JSONEncoder().encode(downloadedWords) {
+    private func saveBatch() {
+        if let data = try? JSONEncoder().encode(batchWords) {
             UserDefaults.standard.set(data, forKey: libraryKey)
         }
     }
     
-    private func startBatchUpdate(target: Int, force: Bool = false) {
+    private func startBatchUpdate() {
         guard !isUpdating else { return }
         isUpdating = true
-        updateProgress = 0.1 // Show starting state
+        updateProgress = 0.1
         
-        let needed = target - downloadedWords.count
-        let batchSize = force ? 20 : max(needed, 10) // Fetch at least 10 or needed amount
-        let countToFetch = min(batchSize, 50) // Cap at 50 per batch
+        let countToFetch = 100
+        print("[DailyWord] Fetching fresh batch of \(countToFetch) words...")
         
-        print("[DailyWord] Batch fetching \(countToFetch) words via API...")
+        fetchBatch(count: countToFetch, isAppend: false)
+    }
+    
+    // Fetches additional words to fill up to 100
+    private func fetchSupplementalBatch(count: Int) {
+        guard !isUpdating else { return }
+        isUpdating = true
+        updateProgress = 0.1
         
-        // Use proper Base URL from APIClient configuration
+        print("[DailyWord] Supplemental fetch for \(count) words...")
+        fetchBatch(count: count, isAppend: true)
+    }
+    
+    private func fetchBatch(count: Int, isAppend: Bool) {
         let baseURL = APIClient.shared.baseURL
         let lang = currentLanguage.rawValue
         let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst()
         
-        guard let url = URL(string: "\(baseURL)/api/vocabulary/batch?language=\(lang)&level=\(lvl)&count=\(countToFetch)") else {
+        guard let url = URL(string: "\(baseURL)/api/vocabulary/batch?language=\(lang)&level=\(lvl)&count=\(count)") else {
             self.isUpdating = false
             return
         }
@@ -116,19 +183,16 @@ class DailyWordService: ObservableObject {
             
             if let error = error {
                 print("[DailyWord] Network Error: \(error.localizedDescription)")
-                DispatchQueue.main.async { self.isUpdating = false }
+                DispatchQueue.main.async { 
+                    self.isUpdating = false 
+                    ToastManager.shared.show("Update failed: \(error.localizedDescription)", type: .error)
+                }
                 return
             }
             
             guard let data = data else {
-                print("[DailyWord] No data received")
                 DispatchQueue.main.async { self.isUpdating = false }
                 return
-            }
-            
-            // Debug: Print raw JSON
-            if let jsonStr = String(data: data, encoding: .utf8) {
-                print("[DailyWord] Received JSON: \(jsonStr)")
             }
             
             do {
@@ -137,89 +201,72 @@ class DailyWordService: ObservableObject {
                 
                 DispatchQueue.main.async {
                     self.isUpdating = false
-                    // Merge and Save
-                    var addedCount = 0
-                    for word in newWords {
-                        if !self.downloadedWords.contains(where: { $0.word == word.word }) {
-                            self.downloadedWords.append(word)
-                            addedCount += 1
-                        }
+                    
+                    if isAppend {
+                        // Append logic (Supplemental)
+                        // Filter duplicates just in case
+                        let existingIDs = Set(self.batchWords.map { $0.id })
+                        let uniqueNew = newWords.filter { !existingIDs.contains($0.id) }
+                        
+                        self.batchWords.append(contentsOf: uniqueNew)
+                        print("[DailyWord] Appended \(uniqueNew.count) supplemental words.")
+                    } else {
+                        // Replace logic (Refresh)
+                        self.batchWords = newWords
+                        self.currentIndex = 0
+                        print("[DailyWord] Replaced batch with \(newWords.count) words.")
+                        ToastManager.shared.show("Updated \(newWords.count) new words!", type: .success, style: .prominent)
                     }
                     
-                    self.saveLibrary()
-                    self.updateProgress = 1.0 // Complete
-                    print("[DailyWord] Batch update complete. Added \(addedCount) new words. Library size: \(self.downloadedWords.count)")
-                    
-                    // Refresh current word if needed
-                    if self.currentWord == nil || self.isFallbackWord(self.currentWord!) {
-                         self.nextWord() 
-                    }
+                    self.updateCurrentWord()
+                    self.saveBatch()
+                    self.updateProgress = 1.0
                 }
             } catch {
-                // improved error handling
-                if let apiError = try? JSONDecoder().decode(APIError.self, from: data) {
-                    print("[DailyWord] Server API Error: \(apiError.error)")
-                } else {
-                    print("[DailyWord] Decoding Error: \(error)")
-                    if let str = String(data: data, encoding: .utf8) {
-                        print("[DailyWord] Raw Response: \(str)")
-                    }
-                }
+                print("[DailyWord] Decoding Error: \(error)")
                 DispatchQueue.main.async { self.isUpdating = false }
             }
         }.resume()
     }
     
-    struct APIError: Codable {
-        let error: String
-    }
-
+    // MARK: - Speech
     
-    // Legacy single fetch removed / unused for library building
-    private func fetchSingleWordForLibrary(completion: @escaping (Bool) -> Void) {
-        // ... kept for fallback if needed, or remove? 
-        // Removing to keep code clean as we switched to batch.
+    func speak() {
+        guard let word = currentWord else { return }
+        speak(text: word.word)
     }
     
-    private func isFallbackWord(_ word: WordEntry) -> Bool {
-        // Simple check if it's in the static fallback list
-        let staticWords = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
-        // This is a weak check, but assuming fallback words are limited. 
-        // Better: Check if it exists in downloadedWords.
-        return !downloadedWords.contains(where: { $0.word == word.word })
-    }
-
-    // MARK: - Legacy / Hybrid Fetch
-    
-    private func fetchNewWord() {
-        // 1. Try to pick random from Local Library
-        if !downloadedWords.isEmpty {
-            self.currentWord = downloadedWords.randomElement()
-        } 
-        // 2. Fallback to Static Data
-        else {
-             self.currentWord = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
+    func speak(text: String) {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
         }
         
-        // 3. Trigger background update if library is small
-        if downloadedWords.count < 10 {
-            checkForUpdates()
-        }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: currentLanguage.speechCode)
+        utterance.rate = 0.4
+        
+        synthesizer.speak(utterance)
     }
+    
+    // MARK: - Init Logic
     
     private func loadPreferences() {
-        // ... (existing implementation) ...
-        // Normalize
-        // ...
+        if let savedLang = UserDefaults.standard.string(forKey: "longhorn_daily_word_language"),
+           let l = DailyWordLanguage(rawValue: savedLang) {
+            self.currentLanguage = l
+        }
         
-        // Load Level
         let savedLevel = UserDefaults.standard.string(forKey: "daily_word_level_\(currentLanguage.rawValue)")
         self.currentLevel = savedLevel ?? currentLanguage.defaultLevel
         
-        loadLibrary() // Load library before fetching
-        fetchNewWord()
+        loadBatch()
         
-        // Startup check
-        checkForUpdates()
+        if batchWords.isEmpty {
+            startBatchUpdate()
+        } else {
+            currentIndex = 0
+            updateCurrentWord()
+        }
     }
 }
+

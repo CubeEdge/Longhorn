@@ -54,27 +54,35 @@ Longhorn 是一款面向企业内部的**轻量级文件管理与协作系统**�
   - 触摸优化。
 - **多语言**：支持 中/英/德/日 切换。
 
-### 2.5 每日一词 (Daily Word)
-- **功能定位**: 碎片化语言学习组件，提升用户活跃度。
-- **技术架构**: **Server-Client 动态架构**。
-  - **API**: `/api/vocabulary` (支持分页、随机洗牌、ID排重)。
-  - **客户端**: 启动时异步拉取 Top 50 随机词，浏览过程中静默预加载 (Infinite Scroll)。
-- **数据源**: 服务端托管的高性能 JSON 词库 (`server/data/vocab/*.json`)，涵盖 De/Ja/En/Zh 四国语言。
-- **交互**:
-  - **Detail Sheet**: 毛玻璃详情页，集成 iOS 原生 TTS 发音。
-- **刷新机制 (Refresh Logic)**:
-  - **启动策略**: 每次冷启动检查本地词库是否满足 100 个，并尝试静默更新。
   - **手动刷新**: 在 UI (Settings 或 Daily Word Sheet) 上提供强制刷新入口，触发 API 立即拉取新词。
   - **进度反馈**: 加载过程中显示**圆环进度条或进度条** (Progress Bar/Ring)，提供直观反馈，而非纯文字。
   - **状态展示**: 在 Daily Word 详情页显示当前词库数量 (e.g., "Library: 153 words")。
 - **数据指标 (Data Metrics)**:
-  - **当前规模**: ~423 词 (De:105, En:108, Ja:102, Zh:108)。
-  - **目标规模**: 100 词/语种 (共 400 词)。
+  - **当前规模**: >1200 词 (De/En/Ja/Zh 全覆盖)。
+  - **目标规模**: 无限 (Infinite)。
+
+### 2.5 Infinite Vocabulary Engine (Phase 8)
+- **核心理念**: 词汇库应当是流动的，永不枯竭。
+- **Hunger Monitor (水位监测)**:
+  - 后台周期性监测各语种/等级的`unseen`单词数量。
+  - 当水位过低 (<100 Critical / <300 Low) 时触发警报。
+- **AI Forge (AI锻造厂)**:
+  - 通过 `/api/admin/forge/trigger` 接口触发。
+  - 调用 LLM (OpenAI/Gemini) 自动批量生产符合指定 Topic/Level 的新词。
+  - **Context UI**: 在客户端 Daily Word Badge 上展示单词的上下文标签 (如 "PHYSICS", "OLYMPICS")。
   - **覆盖语种**: 德语 (De), 英语 (En), 日语 (Ja), 中文 (Zh)。
 
 ---
 
-## 3. 最近更新 (V13.4.1)
+## 3. 最近更新 (V13.4.2 Hotfix)
+
+### 3.1 生产环境修复 (Ops & Stability)
+- **Auto-Seeding**: 服务端启动时自动检测并填充空的 `vocabulary` 表，实现零配置部署。
+- **Zombie Process Protection**: 优化路由注册顺序，防止僵尸进程导致的路由遮蔽 (404)。
+- **Client Resilience**: iOS 端增加对服务端 404/500 错误的防御性编程，并修复了多语言切换时的缓存残留 Bug。
+- **Web Smart Polling**: 网页端文件列表实现"智能轮询"，通过深度对比 (Deep Compare) 消除无意义的页面闪烁，同时保持数据实时性。
+
+### 3.2 之前的更新 (V13.4.1)
 
 ### 3.1 紧急修复与稳定性
 - **数据库兼容性修复**：
@@ -160,4 +168,5 @@ Longhorn 是一款面向企业内部的**轻量级文件管理与协作系统**�
 - `docs/3_PRD.md`: **产品需求文档** (当前文档，功能规格说明)。
 - `docs/4_DevLog.md`: **开发技术日志** (技术决策与架构记录)。
 - `docs/iOS_Dev_Guide.md`: iOS App 开发与技术架构指南。
+- `docs/COLLABORATION.md`: **团队协作指南** (分支管理与发版规范)。
 

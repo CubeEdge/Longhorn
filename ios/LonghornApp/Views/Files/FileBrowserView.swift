@@ -118,7 +118,7 @@ struct FileBrowserView: View {
         .onSubmit(of: .search) {
             performSearch()
         }
-        .onChange(of: searchText) { _, newValue in
+        .onChange(of: searchText) { oldValue, newValue in
             if newValue.isEmpty {
                 isSearching = false
                 searchResults = []
@@ -1224,7 +1224,7 @@ struct FileBrowserView: View {
             // Note: Store update for bulk delete might be complex, relying on refresh if user navigates back
             // But for current view, files array is key.
         }
-        let itemsToDelete = selectedPaths // Capture for removal
+        // let itemsToDelete = selectedPaths // Capture for removal
         isSelectionMode = false
         selectedPaths.removeAll()
 
@@ -1848,7 +1848,7 @@ struct DestinationFolderPicker: View {
         
         // Find matching node sequence
         // We look for nodes that are along the path
-        var pathComponents = [String]()
+        // var pathComponents = [String]()
         // Hacky: finding nodes by checking matches
         
         while !currentLevel.isEmpty {
@@ -2165,7 +2165,7 @@ struct FileDetailSheet: View {
                 }
             }
         }
-        .onChange(of: selectedTab) { newValue in
+        .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == 1 && accessLogs.isEmpty {
                 Task {
                     await loadLogs()

@@ -1,0 +1,457 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild build -scheme LonghornApp -destination "generic/platform=iOS Simulator"
+
+2026-01-27 14:00:45.499 xcodebuild[63050:11108545] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'LonghornApp' in project 'LonghornApp' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -o /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache
+
+SwiftDriver LonghornApp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LonghornApp -Onone -enforce-exclusivity\=checked @/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -F /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp_const_extract_protocols.json -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-generated-files.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-own-target-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-all-target-headers.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-project-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources-normal/arm64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/arm64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-Swift.h -working-directory /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver LonghornApp normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LonghornApp -Onone -enforce-exclusivity\=checked @/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -F /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp_const_extract_protocols.json -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-generated-files.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-own-target-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-all-target-headers.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-project-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources-normal/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-Swift.h -working-directory /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal x86_64 Compiling\ FileBrowserView.swift,\ AppNotifications.swift,\ SearchListView.swift,\ StarredView.swift,\ FilePreviewView.swift,\ RecycleBinListView.swift,\ DashboardView.swift,\ UserDetailView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileBrowserView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AppNotifications.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/SearchListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Starred/StarredView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FilePreviewView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/RecycleBin/RecycleBinListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DashboardView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/UserDetailView.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileBrowserView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AppNotifications.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/SearchListView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Starred/StarredView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FilePreviewView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/RecycleBin/RecycleBinListView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DashboardView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/UserDetailView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 Compiling\ ShareDialogView.swift,\ PersonalSpaceView.swift,\ Department+Extensions.swift,\ LoginView.swift,\ MainTabView.swift,\ SidebarView.swift,\ FileStore.swift,\ ShareStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/ShareDialogView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalSpaceView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Department+Extensions.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Auth/LoginView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MainTabView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/SidebarView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareStore.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/ShareDialogView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalSpaceView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Department+Extensions.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Auth/LoginView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MainTabView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/SidebarView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileStore.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareStore.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 Compiling\ FileDownloader.swift,\ RecentFilesManager.swift,\ SharePreviewSheet.swift,\ User.swift,\ DailyWordHeroCard.swift,\ SettingsView.swift,\ LanguageManager.swift,\ FileItem.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/RecentFilesManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharePreviewSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/User.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordHeroCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Settings/SettingsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/LanguageManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/FileItem.swift (in target 'LonghornApp' from project 'LonghornApp')
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/RecentFilesManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharePreviewSheet.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/User.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordHeroCard.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Settings/SettingsView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/LanguageManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/FileItem.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftEmitModule normal x86_64 Emitting\ module\ for\ LonghornApp (in target 'LonghornApp' from project 'LonghornApp')
+
+EmitSwiftModule normal x86_64 (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: warning: conformance of 'FileDownloader' to protocol 'URLSessionDownloadDelegate' crosses into main actor-isolated code and can cause data races; this is an error in the Swift 6 language mode
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: note: isolate this conformance to the main actor with '@MainActor'
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+                          @MainActor 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: mark all declarations used in the conformance 'nonisolated'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: note: turn data races into runtime errors with '@preconcurrency'
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+                          @preconcurrency 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:45:10: note: main actor-isolated instance method 'urlSession(_:downloadTask:didFinishDownloadingTo:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+         ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:78:10: note: main actor-isolated instance method 'urlSession(_:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+         ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: warning: conformance of 'FileDownloader' to protocol 'URLSessionTaskDelegate' crosses into main actor-isolated code and can cause data races; this is an error in the Swift 6 language mode
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: isolate this conformance to the main actor with '@MainActor'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+                          @MainActor 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: mark all declarations used in the conformance 'nonisolated'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: turn data races into runtime errors with '@preconcurrency'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+                          @preconcurrency 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:99:10: note: main actor-isolated instance method 'urlSession(_:task:didCompleteWithError:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+         ^
+
+SwiftCompile normal x86_64 Compiling\ PersonalTabRootView.swift,\ BrowseView.swift,\ FileCacheManager.swift,\ UploadService.swift,\ FilePreviewSheet.swift,\ DailyWord.swift,\ DailyWordsData.swift,\ ThumbnailView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalTabRootView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/BrowseView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileCacheManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/UploadService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/FilePreviewSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWord.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWordsData.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ThumbnailView.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalTabRootView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/BrowseView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileCacheManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/UploadService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/FilePreviewSheet.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWord.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWordsData.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ThumbnailView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 Compiling\ LonghornApp.swift,\ DailyWordCompactCard.swift,\ DashboardStore.swift,\ RecentFilesListView.swift,\ DetailStatsView.swift,\ DownloadProgressView.swift,\ ToastManager.swift,\ ContentView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/LonghornApp.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordCompactCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DashboardStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/RecentFilesListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DetailStatsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DownloadProgressView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ToastManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/ContentView.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/LonghornApp.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordCompactCard.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DashboardStore.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/RecentFilesListView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DetailStatsView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DownloadProgressView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ToastManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/ContentView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 Compiling\ PreviewCacheManager.swift,\ UploadProgressView.swift,\ FileStatsView.swift,\ AdminService.swift,\ GrantPermissionSheet.swift,\ ImageCacheService.swift,\ GeneratedAssetSymbols.swift,\ GeneratedStringSymbols_Localizable.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/PreviewCacheManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/UploadProgressView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileStatsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AdminService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/GrantPermissionSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ImageCacheService.swift /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedAssetSymbols.swift /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedStringSymbols_Localizable.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/PreviewCacheManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/UploadProgressView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileStatsView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AdminService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/GrantPermissionSheet.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ImageCacheService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedStringSymbols_Localizable.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 Compiling\ TeamManagementView.swift,\ Permission.swift,\ StatCard.swift,\ UserStats.swift,\ BatchShareDialogView.swift,\ SharesListView.swift,\ DailyWordBadge.swift,\ MoreTabRootView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Permission.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/StatCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/UserStats.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift (in target 'LonghornApp' from project 'LonghornApp')
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/LonghornApp.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordCompactCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DashboardStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/RecentFilesListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DetailStatsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DownloadProgressView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ToastManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/ContentView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/RecentFilesManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharePreviewSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/User.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordHeroCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Settings/SettingsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/LanguageManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/FileItem.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DailyWordService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/FolderPickerView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/ShareLink.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/APIClient.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ToastView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AuthManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/ShareDialogView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalSpaceView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Department+Extensions.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Auth/LoginView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MainTabView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/SidebarView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareStore.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileBrowserView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AppNotifications.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/SearchListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Starred/StarredView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FilePreviewView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/RecycleBin/RecycleBinListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DashboardView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/UserDetailView.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Permission.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/StatCard.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/UserStats.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift -primary-file /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalTabRootView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/BrowseView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileCacheManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/UploadService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/FilePreviewSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWord.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWordsData.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ThumbnailView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/PreviewCacheManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/UploadProgressView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileStatsView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AdminService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/GrantPermissionSheet.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ImageCacheService.swift /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedAssetSymbols.swift /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedStringSymbols_Localizable.swift -supplementary-output-file-map /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/supplementaryOutputs-6 -emit-localized-strings -emit-localized-strings-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64 -target x86_64-apple-ios17.0-simulator -module-can-import-version DeveloperToolsSupport 23.0.4 23.0.4 -module-can-import-version SwiftUI 7.1.13.1 7.1.13 -module-can-import-version UIKit 9126.1.12.1 9126.1.12 -disable-cross-import-overlay-search -swift-module-cross-import AVKit /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/AVKit.framework/Modules/AVKit.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import AVKit /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/System/Library/Frameworks/AVKit.framework/Modules/AVKit.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import PhotosUI /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/PhotosUI.framework/Modules/PhotosUI.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import PhotosUI /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/PhotosUI.framework/Modules/PhotosUI.swiftcrossimport/WidgetKit.swiftoverlay -swift-module-cross-import PhotosUI /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/System/Library/Frameworks/PhotosUI.framework/Modules/PhotosUI.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import PhotosUI /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/System/Library/Frameworks/PhotosUI.framework/Modules/PhotosUI.swiftcrossimport/WidgetKit.swiftoverlay -swift-module-cross-import QuickLook /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/QuickLook.framework/Modules/QuickLook.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import QuickLook /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/System/Library/Frameworks/QuickLook.framework/Modules/QuickLook.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import WebKit /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Modules/WebKit.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import WebKit /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk/System/Library/Frameworks/WebKit.framework/Modules/WebKit.swiftcrossimport/SwiftUI.swiftoverlay -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libTipKitMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#TipKitMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-dependencies-1.json -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -I /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -F /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=4 -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -enable-anonymous-context-mangled-names -file-compilation-dir /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-generated-files.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-own-target-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-all-target-headers.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-project-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources-normal/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name LonghornApp -frontend-parseable-output -disable-clang-spi -target-sdk-version 26.1 -target-sdk-name iphonesimulator26.1 -clang-target x86_64-apple-ios26.1-simulator -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/TeamManagementView.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/Permission.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/StatCard.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/UserStats.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/BatchShareDialogView.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/SharesListView.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/DailyWordBadge.o -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/MoreTabRootView.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/TeamManagementView.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/Permission.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/StatCard.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/UserStats.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/BatchShareDialogView.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/SharesListView.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/DailyWordBadge.o -index-unit-output-path /LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/MoreTabRootView.o -index-store-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Permission.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/StatCard.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/UserStats.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift:76:25: error: static method 'buildExpression' requires that 'some ToolbarContent' conform to 'View'
+                        leadingToolbar
+                        ^
+SwiftUI.ViewBuilder.buildExpression:2:20: note: where 'Content' = 'some ToolbarContent'
+public static func buildExpression<Content>(_ content: Content) -> Content where Content : View}
+                   ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift:405:36: error: initializer for conditional binding must have Optional type, not 'String'
+                                if let meaning = word.meaning {
+                                   ^             ~~~~~~~~~~~~
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ LonghornApp (in target 'LonghornApp' from project 'LonghornApp')
+
+EmitSwiftModule normal arm64 (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: warning: conformance of 'FileDownloader' to protocol 'URLSessionDownloadDelegate' crosses into main actor-isolated code and can cause data races; this is an error in the Swift 6 language mode
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: note: isolate this conformance to the main actor with '@MainActor'
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+                          @MainActor 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: mark all declarations used in the conformance 'nonisolated'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:27: note: turn data races into runtime errors with '@preconcurrency'
+extension FileDownloader: URLSessionDownloadDelegate {
+                          ^
+                          @preconcurrency 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:45:10: note: main actor-isolated instance method 'urlSession(_:downloadTask:didFinishDownloadingTo:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+         ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:78:10: note: main actor-isolated instance method 'urlSession(_:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+         ^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: warning: conformance of 'FileDownloader' to protocol 'URLSessionTaskDelegate' crosses into main actor-isolated code and can cause data races; this is an error in the Swift 6 language mode
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: isolate this conformance to the main actor with '@MainActor'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+                          @MainActor 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: mark all declarations used in the conformance 'nonisolated'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:44:1: note: turn data races into runtime errors with '@preconcurrency'
+extension FileDownloader: URLSessionDownloadDelegate {
+^
+                          @preconcurrency 
+/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift:99:10: note: main actor-isolated instance method 'urlSession(_:task:didCompleteWithError:)' cannot satisfy nonisolated requirement
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+         ^
+
+SwiftDriverJobDiscovery normal x86_64 Emitting module for LonghornApp (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftDriver\ Compilation\ Requirements LonghornApp normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LonghornApp -Onone -enforce-exclusivity\=checked @/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -F /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp_const_extract_protocols.json -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-generated-files.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-own-target-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-all-target-headers.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-project-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources-normal/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/x86_64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-Swift.h -working-directory /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for LonghornApp (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftDriver\ Compilation\ Requirements LonghornApp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LonghornApp -Onone -enforce-exclusivity\=checked @/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.1.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -F /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator -emit-localized-strings -emit-localized-strings-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.1-23B77-90cf18a4295e390e64c810bc6bd7acbc.sdkstatcache -output-file-map /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/Kine/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp_const_extract_protocols.json -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-generated-files.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-own-target-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-all-target-headers.hmap -Xcc -iquote -Xcc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/LonghornApp-project-headers.hmap -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources-normal/arm64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/arm64 -Xcc -I/Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-Swift.h -working-directory /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ DailyWordBadge.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal arm64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftMergeGeneratedHeaders /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/LonghornApp-Swift.h /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-Swift.h /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-Swift.h (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-swiftHeaderTool -arch arm64 /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-Swift.h -arch x86_64 /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-Swift.h -o /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/DerivedSources/LonghornApp-Swift.h
+
+Copy /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.swiftmodule /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftmodule (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftmodule /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.swiftmodule
+
+Copy /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.swiftdoc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftdoc (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftdoc /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.swiftdoc
+
+SwiftDriverJobDiscovery normal x86_64 Compiling ShareDialogView.swift, PersonalSpaceView.swift, Department+Extensions.swift, LoginView.swift, MainTabView.swift, SidebarView.swift, FileStore.swift, ShareStore.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+Copy /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.abi.json /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.abi.json (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.abi.json /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/x86_64-apple-ios-simulator.abi.json
+
+Copy /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.abi.json (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.abi.json /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftsourceinfo (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Intermediates.noindex/LonghornApp.build/Debug-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftsourceinfo /Users/Kine/Library/Developer/Xcode/DerivedData/LonghornApp-etatyxzoraocrsciebdrhwdropkf/Build/Products/Debug-iphonesimulator/LonghornApp.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo
+
+SwiftCompile normal x86_64 Compiling\ DailyWordService.swift,\ FolderPickerView.swift,\ ShareLink.swift,\ APIClient.swift,\ ToastView.swift,\ AuthManager.swift,\ FileService.swift,\ ShareService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DailyWordService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/FolderPickerView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/ShareLink.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/APIClient.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ToastView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AuthManager.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileService.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareService.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DailyWordService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/FolderPickerView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/ShareLink.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/APIClient.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ToastView.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AuthManager.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareService.swift (in target 'LonghornApp' from project 'LonghornApp')
+    cd /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling LonghornApp.swift, DailyWordCompactCard.swift, DashboardStore.swift, RecentFilesListView.swift, DetailStatsView.swift, DownloadProgressView.swift, ToastManager.swift, ContentView.swift (in target 'LonghornApp' from project 'LonghornApp')
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal x86_64 Compiling\ TeamManagementView.swift,\ Permission.swift,\ StatCard.swift,\ UserStats.swift,\ BatchShareDialogView.swift,\ SharesListView.swift,\ DailyWordBadge.swift,\ MoreTabRootView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Permission.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/StatCard.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/UserStats.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift (in target 'LonghornApp' from project 'LonghornApp')
+	SwiftCompile normal x86_64 /Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift (in target 'LonghornApp' from project 'LonghornApp')
+	Building project LonghornApp with scheme LonghornApp
+(3 failures)
