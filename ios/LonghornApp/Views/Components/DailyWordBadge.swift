@@ -338,52 +338,48 @@ struct DailyWordSheet: View {
     }
     
     private var trailingToolbar: some View {
-        HStack(spacing: 8) {
-            // Options Menu (Level & Refresh)
-            Menu {
-                    // Progress Section now in Bottom Handle
-                    
-                    Section {
-                        Button(action: {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
-                            service.forceRefresh()
-                        }) {
-                            Label("New Batch (Refresh)", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                    }
-                    
-                    if availableLevels.count > 1 {
-                        Section("Level") {
-                            ForEach(availableLevels, id: \.self) { level in
-                                        Button(action: {
-                                            service.setLevel(level)
-                                        }) {
-                                            if service.currentLevel == level {
-                                                Label(level, systemImage: "checkmark")
-                                            } else {
-                                                Text(level)
-                                            }
-                                        }
-                                    }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.body)
-                        .foregroundColor(.primary)
-                        .padding(8) // Increased touch area
-                        .background(Color(UIColor.tertiarySystemFill))
-                        .clipShape(Circle())
-                }
-                
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill") // More standard close icon
-                        .font(.system(size: 24))
-                        .foregroundColor(.gray.opacity(0.8))
+        // Options Menu (Level, Refresh & Close)
+        Menu {
+            Section {
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    service.forceRefresh()
+                }) {
+                    Label("New Batch (Refresh)", systemImage: "arrow.triangle.2.circlepath")
                 }
             }
+            
+            if availableLevels.count > 1 {
+                Section("Level") {
+                    ForEach(availableLevels, id: \.self) { level in
+                        Button(action: {
+                            service.setLevel(level)
+                        }) {
+                            if service.currentLevel == level {
+                                Label(level, systemImage: "checkmark")
+                            } else {
+                                Text(level)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Section {
+                Button(role: .destructive, action: { dismiss() }) {
+                    Label("Close", systemImage: "xmark")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.body)
+                .foregroundColor(.primary)
+                .padding(8)
+                .background(Color(UIColor.tertiarySystemFill))
+                .clipShape(Circle())
         }
+    }
     }
 
 struct DailyWordListView: View {

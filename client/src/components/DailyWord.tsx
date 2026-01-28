@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft, MoreVertical } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { getSpeechLang, getAvailableLevels } from '../data/dailyWords';
 import { useDailyWordStore } from '../store/useDailyWordStore';
@@ -106,10 +106,30 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
         words, currentIndex, loading, targetLang, level,
         fetchBatch, setTargetLang, setLevel, nextWord, prevWord
     } = useDailyWordStore();
+    
+    const [showMoreMenu, setShowMoreMenu] = React.useState(false);
+    const menuRef = React.useRef<HTMLDivElement>(null);
 
     const safeLang = targetLang as 'en' | 'de' | 'ja' | 'zh';
     const availableLevels = getAvailableLevels(safeLang);
     const word = words[currentIndex] || null;
+    
+    // Close menu when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowMoreMenu(false);
+            }
+        };
+        
+        if (showMoreMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showMoreMenu]);
 
     // Guard against empty state or loading error
     if (!word && !loading) {
@@ -171,9 +191,6 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-blue)', fontWeight: 600 }}>
                         <BookOpen size={18} />
                         {t('daily_word.title')}
-                        <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', color: 'rgba(255,255,255,0.6)', fontWeight: 500, marginLeft: '4px' }}>
-                            {level}
-                        </span>
                         {/* Counter in Modal Header */}
                         {words.length > 0 && (
                             <span style={{ fontSize: '0.75rem', background: 'rgba(255,210,0,0.2)', padding: '2px 6px', borderRadius: '4px', color: 'var(--accent-blue)', fontWeight: 500 }}>
@@ -181,9 +198,143 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                             </span>
                         )}
                     </div>
-                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}>
-                        <X size={20} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* More Menu */}
+                        <div style={{ position: 'relative' }} ref={menuRef}>
+                            <button 
+                                onClick={() => setShowMoreMenu(!showMoreMenu)} 
+                                style={{ 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: 'none', 
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--text-secondary)', 
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                            >
+                                <MoreVertical size={18} />
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            {showMoreMenu && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '40px',
+                                    right: 0,
+                                    background: '#2c2c2e',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '12px',
+                                    minWidth: '180px',
+                                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                                    zIndex: 1000,
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Level Selection */}
+                                    {availableLevels.length > 1 && (
+                                        <>
+                                            <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
+                                                <Layers size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                                                Level
+                                            </div>
+                                            {availableLevels.map(lvl => (
+                                                <button
+                                                    key={lvl}
+                                                    onClick={() => {
+                                                        setLevel(lvl);
+                                                        setShowMoreMenu(false);
+                                                    }}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px 16px',
+                                                        background: level === lvl ? 'rgba(255, 210, 0, 0.1)' : 'transparent',
+                                                        border: 'none',
+                                                        textAlign: 'left',
+                                                        color: level === lvl ? 'var(--accent-blue)' : 'var(--text-main)',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: level === lvl ? 600 : 400,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = level === lvl ? 'rgba(255, 210, 0, 0.1)' : 'transparent'}
+                                                >
+                                                    {lvl}
+                                                    {level === lvl && <span style={{ fontSize: '0.8rem' }}>✓</span>}
+                                                </button>
+                                            ))}
+                                            <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
+                                        </>
+                                    )}
+                                    
+                                    {/* New Batch */}
+                                    <button
+                                        onClick={() => {
+                                            fetchBatch();
+                                            setShowMoreMenu(false);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 16px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            textAlign: 'left',
+                                            color: 'var(--accent-blue)',
+                                            cursor: 'pointer',
+                                            fontSize: '0.9rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <RefreshCw size={14} />
+                                        New Batch
+                                    </button>
+                                    
+                                    <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
+                                    
+                                    {/* Close */}
+                                    <button
+                                        onClick={() => {
+                                            setShowMoreMenu(false);
+                                            onClose();
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 16px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            textAlign: 'left',
+                                            color: '#ff453a',
+                                            cursor: 'pointer',
+                                            fontSize: '0.9rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <X size={14} />
+                                        Close
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Content */}
@@ -259,67 +410,29 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 </div>
 
                 {/* Footer Controls */}
-                <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Level Selector */}
-                    {availableLevels.length > 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
-                            <Layers size={16} color="var(--text-secondary)" />
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                {availableLevels.map(lvl => (
-                                    <button
-                                        key={lvl}
-                                        onClick={() => setLevel(lvl)}
-                                        style={{
-                                            background: level === lvl ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
-                                            color: level === lvl ? '#000' : 'var(--text-secondary)',
-                                            border: '1px solid',
-                                            borderColor: level === lvl ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)',
-                                            borderRadius: '6px', padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {lvl}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
+                <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: '12px' }}>
                     {/* Navigation Actions */}
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                            onClick={prevWord}
-                            style={{
-                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                padding: '10px', background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '8px',
-                                color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer'
-                            }}
-                        >
-                            <ArrowLeft size={16} /> Prev
-                        </button>
+                    <button
+                        onClick={prevWord}
+                        style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: '10px', background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '8px',
+                            color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer'
+                        }}
+                    >
+                        <ArrowLeft size={16} /> Prev
+                    </button>
 
-                        <button
-                            onClick={fetchBatch}
-                            style={{
-                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                padding: '10px', background: 'rgba(255, 210, 0, 0.1)', border: '1px solid rgba(255, 210, 0, 0.2)', borderRadius: '8px',
-                                color: 'var(--accent-blue)', fontWeight: 600, cursor: 'pointer'
-                            }}
-                            title="Fetch 100 new words"
-                        >
-                            <RefreshCw size={16} /> New Batch
-                        </button>
-
-                        <button
-                            onClick={nextWord}
-                            style={{
-                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                padding: '10px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px',
-                                color: '#000', fontWeight: 600, cursor: 'pointer'
-                            }}
-                        >
-                            Next <ArrowRight size={16} />
-                        </button>
-                    </div>
+                    <button
+                        onClick={nextWord}
+                        style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: '10px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px',
+                            color: '#000', fontWeight: 600, cursor: 'pointer'
+                        }}
+                    >
+                        Next <ArrowRight size={16} />
+                    </button>
                 </div>
             </div>
         </div>
