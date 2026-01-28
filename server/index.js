@@ -81,7 +81,12 @@ db.exec(`
 // Migration to add topic column (Safe fail if exists)
 try { db.prepare("ALTER TABLE vocabulary ADD COLUMN topic TEXT").run(); } catch (e) { }
 
-// Auto-Seeding: Sync vocabulary from seed file on startup
+// Auto-Seeding: DISABLED to prevent loading incorrect vocabulary data
+// The seed file contains incorrect format data that needs to be cleaned
+console.log('[Init] Auto-seeding disabled to prevent data corruption');
+
+// Uncomment below to re-enable auto-seeding after seed file is cleaned:
+/*
 try {
     const seedPath = path.join(__dirname, 'seeds/vocabulary_seed.json');
 
@@ -122,6 +127,7 @@ try {
 } catch (err) {
     console.error('[Init] Failed to seed vocabulary:', err);
 }
+*/
 
 // Debug Endpoint to force re-seed
 app.post('/api/debug/seed', (req, res) => {

@@ -4,6 +4,74 @@
 
 ---
 
+### 2026-01-28 15:00 - 每日一词数据质量修复 (Daily Word Data Quality Fix)
+**User Prompt**:
+1. Web端每日一词无法访问，显示 "No words loaded. Try refreshing."
+2. iOS App每日一词显示错误的meaning格式："An intermediate concept: Labour" 和 "A common elementary word: Line"
+3. 要求彻底解决两端问题，且只运行一个iOS模拟器
+
+**Action**:
+1. **数据库诊断**:
+   - 发现数据库中存在大量错误格式的词汇数据
+   - 错误格式包括：
+     - "A common elementary word: X"
+     - "An intermediate concept: X"
+     - "A2 Vocabulary: X"
+   - 这些错误数据的meaning字段应该是简洁的释义，而非模板化的完整句子
+
+2. **数据清理**:
+   - 执行SQL删除所有错误格式数据：
+     ```sql
+     DELETE FROM vocabulary WHERE meaning LIKE 'An %concept:%' 
+     OR meaning LIKE 'A %concept:%' 
+     OR meaning LIKE 'A %word:%' 
+     OR meaning LIKE 'A common%';
+     ```
+   - 共删除113条错误数据（1条"A common" + 112条"concept"格式）
+   - 清理后数据库保留887条正确格式的词汇：
+     - 德语：215条
+     - 英语：232条
+     - 日语：204条
+     - 中文：236条
+
+3. **服务器重启**:
+   - 使用 `pm2 restart longhorn` 重启服务器
+   - 确保API使用最新的数据库内容
+   - 8个cluster worker全部成功重启
+
+4. **API验证**:
+   - 测试 `/api/vocabulary/batch` 接口
+   - 确认返回正确格式的数据：
+     - "Hollow" → meaning: "Empty inside"
+     - "Decision" → meaning: "A choice that you make about something"
+     - "Experience" → meaning: "Knowledge or skill from doing something"
+
+5. **iOS模拟器管理**:
+   - 识别可用的iPhone Air模拟器（76F0A6D9）
+   - 重新安装并启动Longhorn应用（PID: 85715）
+   - 打开模拟器窗口供用户测试
+
+6. **Web端部署**:
+   - 使用 `./scripts/deploy.sh` 重新部署前端和后端
+   - 前端重新构建（Build完成，版本11.3.0 (1e4bd5d)）
+   - PM2成功重载所有worker进程
+
+**Result**:
+- 数据库中所有错误格式的词汇数据已清除
+- API现在返回正确格式的meaning字段
+- iOS应用在模拟器上运行，可获取正确的词汇数据
+- Web端已重新部署，应该能正常加载每日一词
+- 用户需要在iOS端点击"New Batch"刷新，在Web端硬刷新（Cmd+Shift+R）清除缓存
+
+**Technical Notes**:
+- 错误数据的根源在于之前的种子数据生成脚本（`mass_vocab_injector.py`）使用了错误的模板
+- 服务器的自动播种功能已在之前的会话中禁用，防止错误数据重新导入
+- meaning字段应该是简洁的释义（如"Empty inside"），而非完整描述句（如"A common word: X"）
+
+**Status**: Complete.
+
+---
+
 ### 2026-01-28 13:30 - 每日一词 UI 改进：更多菜单整合 (Daily Word UI Refinement: More Menu Integration)
 **User Prompt**:
 1. iOS app：每日一词，把关闭按键取消，并在更多菜单里面增加一个关闭的功能。

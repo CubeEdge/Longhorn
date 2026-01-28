@@ -1,6 +1,165 @@
 # 开发会话日志 (Development Session Log)
 
-**概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
+**概述**: 本文档记录每次开发会话的内容、投入的"Prompt轮数/精力"以及具体的技术产出。
+
+## 会话: 2026-01-28 PM (Daily Word Data Quality Fix)
+
+### 任务: 每日一词数据质量修复与跨端功能恢复
+- **状态**: ✅ 已完成
+- **问题描述**:
+    - Web端每日一词功能失效，显示"No words loaded. Try refreshing."
+    - iOS端显示错误的meaning格式："An intermediate concept: Labour"、"A common elementary word: Line"
+    - 数据库中存在大量错误格式的词汇数据
+
+- **根本原因分析**:
+    - 早期的词汇生成脚本（`mass_vocab_injector.py`）使用了错误的模板
+    - meaning字段被填充为模板化的完整句子（如"A common elementary word: X"），而不是简洁的释义
+    - 这些错误数据污染了词汇库，导致用户体验异常
+
+- **解决方案**:
+    1. **数据库清理**:
+        - 编写SQL查询识别所有错误格式的数据：
+          ```sql
+          SELECT word, meaning FROM vocabulary 
+          WHERE meaning LIKE 'An %concept:%' 
+             OR meaning LIKE 'A %concept:%' 
+             OR meaning LIKE 'A common%';
+          ```
+        - 执行批量删除操作：
+          ```sql
+          DELETE FROM vocabulary 
+          WHERE meaning LIKE 'An %concept:%' 
+             OR meaning LIKE 'A %concept:%' 
+             OR meaning LIKE 'A %word:%' 
+             OR meaning LIKE 'A common%';
+          ```
+        - 删除统计：113条错误数据（1条"A common"格式 + 112条"concept"格式）
+        - 清理后数据统计：
+          - 德语（de）：215条
+          - 英语（en）：232条
+          - 日语（ja）：204条
+          - 中文（zh）：236条
+          - **总计：887条正确格式的词汇**
+
+    2. **服务器重启**:
+        - 使用SSH连接到生产服务器
+        - 执行 `pm2 restart longhorn` 重启所有worker进程
+        - 确认8个cluster worker全部成功重启（restart次数递增）
+
+    3. **API验证**:
+        - 测试批量词汇API：`/api/vocabulary/batch?language=en&level=Intermediate&count=3`
+        - 验证返回数据格式正确：
+          - "Hollow" → meaning: "Empty inside" ✅
+          - "Decision" → meaning: "A choice that you make about something" ✅
+          - "Experience" → meaning: "Knowledge or skill from doing something" ✅
+          - "Process" → meaning: "A series of actions that you take in order to achieve a result" ✅
+
+    4. **iOS模拟器管理**:
+        - 原有模拟器设备（31786A39）消失，重新查找可用设备
+        - 识别到运行中的iPhone Air模拟器（76F0A6D9-655C-445D-9472-3A752B03367B）
+        - 在该模拟器上重新安装Longhorn应用
+        - 启动应用（PID: 85715）
+        - 打开模拟器窗口供用户测试
+
+    5. **Web端部署**:
+        - 使用标准部署脚本：`./scripts/deploy.sh`
+        - 同步服务器和客户端代码到远程服务器
+        - 在远程服务器上执行前端构建：
+          - 构建版本：11.3.0 (commit: 1e4bd5d)
+          - 构建时间：约2.63秒
+          - 输出大小：主bundle 1469.66 kB (gzipped: 442.22 kB)
+        - PM2重载服务进程（零停机部署）
+
+- **技术细节**:
+    - **数据格式规范**：
+      - ❌ 错误："An intermediate concept: Labour"
+      - ✅ 正确："Work, especially physical work"
+      - meaning字段应该是简洁的释义或定义，不应包含元信息（如词汇级别、类别等）
+    
+    - **防止复发机制**：
+      - 服务器的自动播种功能已在之前的会话中禁用（注释掉`server/index.js`中的seeding逻辑）
+      - 防止错误的种子数据在服务器重启时被重新导入
+      - 未来需要更新词汇数据时，必须先验证种子文件的数据质量
+
+    - **模拟器设备管理问题**：
+      - Xcode模拟器设备可能因系统清理或其他操作而消失
+      - 应该使用 `xcrun simctl list devices available` 动态查找可用设备
+      - 不应硬编码特定的设备UUID
+
+- **验证与测试**:
+    - ✅ 数据库清理完成，错误数据全部删除
+    - ✅ API返回正确格式的词汇数据
+    - ✅ 服务器成功重启，8个worker进程正常运行
+    - ✅ iOS模拟器成功启动并运行应用
+    - ✅ Web端成功部署到生产环境
+    - ⏳ 待用户测试：iOS端点击"New Batch"刷新词汇，Web端硬刷新页面
+
+- **用户操作建议**:
+    1. **iOS端**：打开每日一词功能，点击更多菜单中的"New Batch"按钮，强制刷新词汇批次
+    2. **Web端**：在浏览器中访问 https://opware.kineraw.com，使用 Cmd+Shift+R 硬刷新页面清除缓存
+    3. 验证meaning字段显示正确的简洁释义，而非"An X concept: Y"格式
+
+- **文件修改清单**:
+    - `server/longhorn.db` (远程数据库，删除113条记录)
+    - `docs/2_PromptLog.md` (新增会话记录)
+    - `docs/4_DevLog.md` (新增技术产出记录)
+
+---
+
+## 会话: 2026-01-28 (Daily Word UX Refinement)
+
+### 任务: 每日一词 UI 改进 - 更多菜单整合
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **iOS 端** (`ios/LonghornApp/Views/Components/DailyWordBadge.swift`):
+        - 移除了 `trailingToolbar` 中的独立关闭按钮（`xmark.circle.fill`）。
+        - 重构更多菜单结构，将所有次要操作整合至 `Menu` 组件：
+          - **New Batch (Refresh)**: 刷新词库，带触感反馈。
+          - **Level 选择**: 如有多个等级时显示，checkmark 标记当前选中项。
+          - **Close**: 使用 `Button(role: .destructive)` 实现红色警告样式。
+        - 简化布局：仅保留一个 `ellipsis.circle` 更多菜单按钮。
+        
+    - **Web 端** (`client/src/components/DailyWord.tsx`):
+        - 新增 `MoreVertical` 图标按钮，创建下拉菜单组件。
+        - 菜单包含三个部分：
+          - **Level 选择**: 如有多个等级时显示，选中项显示黄色背景和 checkmark。
+          - **New Batch**: 蓝色主题色按钮，带 `RefreshCw` 图标。
+          - **Close**: 红色警告样式（`#ff453a`），带 `X` 图标。
+        - 移除底部控制栏中的 `Level Selector` 和 `New Batch` 按钮。
+        - 底部仅保留 **Prev** 和 **Next** 两个导航按钮。
+        - 实现菜单外部点击自动关闭：
+          - 使用 `useRef` + `useEffect` 监听 `mousedown` 事件。
+          - 点击菜单外部时 `setShowMoreMenu(false)`。
+        - 优化交互动画：
+          - 悬停时背景变深。
+          - Level 选中项高亮显示。
+          
+    - **部署**:
+        - Git commit: `5191625` - "feat(daily-word): 改进每日一词 UI 交互体验"。
+        - 生产服务器 `git fetch` + `merge` 成功。
+        - PM2 重启：8 个 cluster worker 全部 online。
+        
+    - **测试**:
+        - iOS 模拟器：iPhone 17 Pro (iOS 26.1) 编译并启动成功（PID: 99729）。
+        - Web 端：部署至生产环境 `https://opware.kineraw.com`。
+
+- **技术决策**:
+    - **iOS**: 使用 SwiftUI 原生 `Menu` 组件，避免自定义下拉菜单的复杂度。
+    - **Web**: 使用 `position: absolute` 实现下拉菜单，保持与 iOS 的视觉一致性。
+    - **状态管理**: Web 端使用 `useState` + `useRef` 管理菜单显示状态和关闭逻辑。
+    - **一致性**: 两端采用相同的交互模式，提升用户体验的连贯性。
+
+- **文件修改清单**:
+    - `ios/LonghornApp/Views/Components/DailyWordBadge.swift` (38行新增, 42行删除)
+    - `client/src/components/DailyWord.tsx` (213行新增, 104行删除)
+
+- **验证**:
+    - ✅ iOS 模拟器编译通过，无错误。
+    - ✅ 生产服务器部署成功，服务正常运行。
+    - ✅ Git 提交并推送至 GitHub。
+    - ✅ 文档已更新（Backlog, PromptLog, PRD, DevLog）。
+
+---
 
 ## 会话: 2026-01-28 (Daily Word UX Refinement)
 
