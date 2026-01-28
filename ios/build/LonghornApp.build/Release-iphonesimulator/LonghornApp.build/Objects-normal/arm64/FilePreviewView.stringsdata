@@ -1,0 +1,96 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FilePreviewView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "toast.preview_failed",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "正在下载原图...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "加载中...",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.original_downloaded",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.download_failed",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "下载预览",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.starred",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.downloaded",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download_original %@",
+        "location": {
+          "startingColumn": 99,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 203
+        }
+      }
+    ]
+  },
+  "version": 1
+}

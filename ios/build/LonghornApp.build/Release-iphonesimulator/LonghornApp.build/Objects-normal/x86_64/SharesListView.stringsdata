@@ -1,0 +1,448 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "share.tab.files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.tab.collections",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_shares",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.confirm_delete_count",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.error",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.list.type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.loading",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_files",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_files_desc",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_collections",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_collections_desc",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.confirm_delete_count %lld",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "link.copied",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.selected_count",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 307
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.cancel_selection",
+        "location": {
+          "startingColumn": 102,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_all",
+        "location": {
+          "startingColumn": 130,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 344
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 347
+        }
+      },
+      {
+        "comment": "",
+        "key": "file.type.generic",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 413
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.expired",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 420
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.protected",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 432
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 448
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.permanent",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.confirm_delete",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.copied",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.action.copy_link",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 518
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定删除分享「%@」？",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 520
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.expired",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 570
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection.file_count %lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 591
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 601
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.confirm_delete",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 657
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.copied",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 626
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.action.copy_link",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 626
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 661
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 664
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定删除合集「%@」？",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 666
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.title_collection",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 751
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.title_file",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 751
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.password_protect",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 728
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.validity",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.password_hint",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 733
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.set_password",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 729
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.enter_password",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 731
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.set_validity",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 739
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.expiry_date",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 741
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 755
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.save",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 759
+        }
+      }
+    ]
+  },
+  "version": 1
+}

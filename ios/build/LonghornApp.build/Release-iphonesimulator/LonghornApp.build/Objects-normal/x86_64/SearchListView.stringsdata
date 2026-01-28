@@ -1,0 +1,64 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/SearchListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "search.placeholder",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.title",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.instruction",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.no_results",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.no_results.description",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.file_detail %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.searching",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 128
+        }
+      }
+    ]
+  },
+  "version": 1
+}

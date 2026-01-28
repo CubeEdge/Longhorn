@@ -1,0 +1,331 @@
+{
+  "" : {
+    "const-values" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary.swiftconstvalues",
+    "dependencies" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary.d",
+    "diagnostics" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary.dia",
+    "emit-module-dependencies" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary-emit-module.dia",
+    "pch" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp-primary.swiftdeps"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/ContentView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/FolderPickerView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FolderPickerView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FolderPickerView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FolderPickerView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/GrantPermissionSheet.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GrantPermissionSheet.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GrantPermissionSheet.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GrantPermissionSheet.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/LonghornApp.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LonghornApp.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWord.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWord.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWord.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWord.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/DailyWordsData.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordsData.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordsData.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordsData.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Department+Extensions.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Department+Extensions.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Department+Extensions.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Department+Extensions.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/FileItem.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileItem.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileItem.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileItem.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/Permission.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Permission.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Permission.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/Permission.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/ShareLink.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareLink.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareLink.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareLink.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/User.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/User.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/User.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/User.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Models/UserStats.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserStats.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserStats.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserStats.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/APIClient.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/APIClient.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/APIClient.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/APIClient.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AdminService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AdminService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AdminService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AdminService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AppNotifications.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AppNotifications.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AppNotifications.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AppNotifications.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/AuthManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AuthManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AuthManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/AuthManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DailyWordService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/DashboardStore.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardStore.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardStore.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardStore.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileCacheManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileCacheManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileCacheManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileCacheManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileDownloader.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileDownloader.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileDownloader.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileDownloader.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/FileStore.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStore.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStore.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStore.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ImageCacheService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ImageCacheService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ImageCacheService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ImageCacheService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/LanguageManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LanguageManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LanguageManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LanguageManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/PreviewCacheManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PreviewCacheManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PreviewCacheManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PreviewCacheManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/RecentFilesManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ShareStore.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareStore.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareStore.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareStore.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/ToastManager.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastManager.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastManager.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastManager.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/UploadService.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadService.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadService.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadService.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/TeamManagementView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/TeamManagementView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/TeamManagementView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/UserDetailView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserDetailView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserDetailView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UserDetailView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Auth/LoginView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LoginView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LoginView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/LoginView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordBadge.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordBadge.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordBadge.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordBadge.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordCompactCard.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordCompactCard.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordCompactCard.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordCompactCard.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordHeroCard.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordHeroCard.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordHeroCard.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DailyWordHeroCard.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DownloadProgressView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DownloadProgressView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DownloadProgressView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DownloadProgressView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/FilePreviewSheet.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewSheet.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewSheet.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewSheet.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/StatCard.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StatCard.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StatCard.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StatCard.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ThumbnailView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ThumbnailView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ThumbnailView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ThumbnailView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/ToastView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ToastView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileBrowserView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileBrowserView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileBrowserView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileBrowserView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FilePreviewView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FilePreviewView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileStatsView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStatsView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStatsView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/FileStatsView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/SearchListView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SearchListView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SearchListView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SearchListView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/UploadProgressView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadProgressView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadProgressView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/UploadProgressView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/BrowseView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BrowseView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BrowseView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BrowseView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DashboardView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DashboardView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DetailStatsView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DetailStatsView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DetailStatsView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/DetailStatsView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MainTabView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MainTabView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MainTabView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MainTabView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MoreTabRootView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MoreTabRootView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MoreTabRootView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/MoreTabRootView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalSpaceView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalSpaceView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalSpaceView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalSpaceView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalTabRootView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalTabRootView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalTabRootView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/PersonalTabRootView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/RecentFilesListView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesListView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesListView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecentFilesListView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/SidebarView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SidebarView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SidebarView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SidebarView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/RecycleBin/RecycleBinListView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecycleBinListView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecycleBinListView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/RecycleBinListView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Settings/SettingsView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SettingsView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BatchShareDialogView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BatchShareDialogView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/BatchShareDialogView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/ShareDialogView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareDialogView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareDialogView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/ShareDialogView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharePreviewSheet.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharePreviewSheet.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharePreviewSheet.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharePreviewSheet.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharesListView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharesListView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharesListView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/SharesListView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Starred/StarredView.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StarredView.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StarredView.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/StarredView.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  },
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "index-unit-output-path" : "/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "llvm-bc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.bc",
+    "object" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o"
+  }
+}

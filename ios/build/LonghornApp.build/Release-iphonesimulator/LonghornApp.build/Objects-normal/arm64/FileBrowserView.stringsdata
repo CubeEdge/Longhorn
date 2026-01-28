@@ -1,0 +1,1041 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/FileBrowserView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "browser.delete_confirm_message",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 156
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_single",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.confirm_delete",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.preview_failed",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.personal_space",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 778
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.files",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 791
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder.all",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "在%@中搜索",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 316
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder.personal",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_to",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 719
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move_to",
+        "location": {
+          "startingColumn": 89,
+          "startingLine": 719
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.delete_bin_message",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.unstarred_success",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1114
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_message",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.delete_single_message",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ \"%@\"",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.opening",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.ok",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.new_name_placeholder",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 292
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.ok",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename_message %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 383
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.star",
+        "location": {
+          "startingColumn": 80,
+          "startingLine": 383
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.selected_count",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 449
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_none",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 443
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_all",
+        "location": {
+          "startingColumn": 91,
+          "startingLine": 443
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.batch_star_toggle",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1362
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.starred_success",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1364
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.unstarred_success",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1366
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 516
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "view.title",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "sort.title",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 542
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.tools",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 553
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.create_folder",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 565
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_file",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 573
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_photo",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 579
+        }
+      },
+      {
+        "comment": "",
+        "key": "上传进度 (%lld)",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 588
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.preview",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 607
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 616
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.star",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 616
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 628
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 634
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move_to",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 643
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 659
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_to",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 668
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.details",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 676
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 684
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.create_folder",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 695
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.folder_name_placeholder",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 693
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 699
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.create",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 705
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.loading",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 741
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.error",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 745
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.no_results",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 759
+        }
+      },
+      {
+        "comment": "",
+        "key": "No results for \"%@\"",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 761
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.empty",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 765
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.empty",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 767
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.retry",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 750
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.starred_success",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1051
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.star_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1082
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.star_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1139
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.rename_success",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1187
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.delete_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1209
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.delete_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1236
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.move_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1274
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.move_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1289
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.copy_success",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 1309
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.folder_created",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 1418
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.preview",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1573
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unfavorite",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1577
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 1577
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1582
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1586
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1590
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_to",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1594
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1598
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.details",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1602
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1608
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.preview",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1684
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unfavorite",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 1688
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 1688
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1693
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1697
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1701
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_to",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1705
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1709
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.details",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1713
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1719
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.no_folders",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1805
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move",
+        "location": {
+          "startingColumn": 85,
+          "startingLine": 1810
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move",
+        "location": {
+          "startingColumn": 89,
+          "startingLine": 1817
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1828
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tabs",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 2006
+        }
+      },
+      {
+        "comment": "",
+        "key": "title.file_info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2007
+        }
+      },
+      {
+        "comment": "",
+        "key": "title.access_logs",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2008
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.close",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 2030
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.upload_info",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 2062
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.statistics",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 2078
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.path",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 2101
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.name",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 2050
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.size",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 2053
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.type",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2058
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.uploader",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2067
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.uploader",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2065
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.upload_date",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2074
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.upload_date",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2072
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.access_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2083
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.access_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2081
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.share_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2090
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.share_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2088
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.star_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2097
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.star_count",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 2095
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 2109
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.no_logs_desc",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 2132
+        },
+        "value": "该文件暂无访问记录"
+      },
+      {
+        "comment": "",
+        "key": "stats.load_error",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 2124
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.no_logs",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 2130
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.unknown_user",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 2138
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.access_count",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2142
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2143
+        }
+      }
+    ]
+  },
+  "version": 1
+}

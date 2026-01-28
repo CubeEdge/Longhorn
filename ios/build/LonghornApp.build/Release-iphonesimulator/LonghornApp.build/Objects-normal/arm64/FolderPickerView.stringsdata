@@ -1,0 +1,48 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/FolderPickerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "folder_picker.root",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.empty",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.go_up",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.enter",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 50
+        }
+      }
+    ]
+  },
+  "version": 1
+}

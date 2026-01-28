@@ -17,6 +17,9 @@ interface WordEntry {
 interface DailyWordState {
     words: WordEntry[];
     currentIndex: number;
+    // Cache: key = "lang:level", value = WordEntry[]
+    cache: Record<string, WordEntry[]>;
+
     loading: boolean;
     targetLang: string;
     level: string;
@@ -24,7 +27,7 @@ interface DailyWordState {
     // Actions
     setTargetLang: (lang: string) => void;
     setLevel: (level: string) => void;
-    fetchBatch: () => Promise<void>;
+    fetchBatch: (isSilent?: boolean) => Promise<void>;
     nextWord: () => void;
     prevWord: () => void;
 }
@@ -44,31 +47,57 @@ export const useDailyWordStore = create<DailyWordState>()(
             words: [],
             currentIndex: 0,
             loading: false,
-            targetLang: localStorage.getItem('daily_word_target_lang') || 'en',
-            level: 'Advanced', // Initial placeholder, will be synced with lang
+            targetLang: 'en',
+            level: 'Advanced',
+            cache: {},
 
             setTargetLang: (lang) => {
-                const newLevel = getInitialLevel(lang);
-                set({ targetLang: lang, level: newLevel });
-                // Trigger fetch immediately after language switch
-                get().fetchBatch();
+                const { cache } = get();
+                const newLevel = getInitialLevel(lang); // Reset level on lang switch
+                const cacheKey = `${lang}:${newLevel}`;
+                const cachedWords = cache[cacheKey];
+
+                if (cachedWords && cachedWords.length > 0) {
+                    // Cache Hit: Immediate update without loading state
+                    set({ targetLang: lang, level: newLevel, words: cachedWords, currentIndex: 0, loading: false });
+                } else {
+                    // Cache Miss: Show loading
+                    set({ targetLang: lang, level: newLevel, loading: true });
+                    get().fetchBatch(false);
+                }
             },
 
             setLevel: (level) => {
-                set({ level });
-                get().fetchBatch();
+                const { cache, targetLang } = get();
+                const cacheKey = `${targetLang}:${level}`;
+                const cachedWords = cache[cacheKey];
+
+                if (cachedWords && cachedWords.length > 0) {
+                    set({ level, words: cachedWords, currentIndex: 0, loading: false });
+                } else {
+                    set({ level, loading: true });
+                    get().fetchBatch(false);
+                }
             },
 
-            fetchBatch: async () => {
+            fetchBatch: async (isSilent = false) => {
                 const { targetLang, level } = get();
-                set({ loading: true });
+                if (!isSilent) set({ loading: true });
+
                 try {
                     // Fetch 100 words
                     const safeLevel = level.charAt(0).toUpperCase() + level.slice(1);
-                    const res = await fetch(`/api/vocabulary/batch?language=${targetLang}&level=${safeLevel}&count=100`);
+                    const res = await fetch(`/api/vocabulary/batch?language=${encodeURIComponent(targetLang)}&level=${encodeURIComponent(safeLevel)}&count=100`);
                     if (res.ok) {
                         const data = await res.json();
-                        set({ words: data, currentIndex: 0, loading: false });
+                        // Update words and Cache
+                        const cacheKey = `${targetLang}:${level}`;
+                        set((state) => ({
+                            words: data,
+                            currentIndex: 0,
+                            loading: false,
+                            cache: { ...state.cache, [cacheKey]: data }
+                        }));
                     } else {
                         console.warn('Failed to fetch batch');
                         set({ loading: false });
@@ -94,8 +123,13 @@ export const useDailyWordStore = create<DailyWordState>()(
             }
         }),
         {
-            name: 'daily-word-storage',
-            partialize: (state) => ({ targetLang: state.targetLang, level: state.level }), // Only persist config, not the words (freshness)
+            name: 'daily-word-storage-v2', // Version bump to invalidate old garbage cache (Fix V5)
+            partialize: (state) => ({
+                targetLang: state.targetLang,
+                level: state.level,
+                // Persist cache so it survives reloads? users usually like that.
+                cache: state.cache
+            }),
         }
     )
 );

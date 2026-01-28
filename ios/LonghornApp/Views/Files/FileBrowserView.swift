@@ -60,7 +60,8 @@ struct FileBrowserView: View {
     
     // 上传
     @State private var showFilePicker = false
-    @State private var showPhotoPicker = false
+    @State private var showPhotoPicker = false // Keep for backward compat or remove? Better remove
+    @State private var selectedPhotos: [PhotosPickerItem] = [] // For direct picker
     @State private var showUploadProgress = false
     @State private var activeUploadCount: Int = 0
     
@@ -302,6 +303,49 @@ struct FileBrowserView: View {
                 Text("action.rename_message \(file.name)")
             }
         }
+    .onChange(of: selectedPhotos) { _, items in
+        guard !items.isEmpty else { return }
+        
+        let targetPath = self.path // Capture current path
+        
+        Task {
+            // Show upload progress view immediately
+            await MainActor.run {
+                showUploadProgress = true
+            }
+            
+            for item in items {
+                do {
+                    // Start background processing
+                    // Note: We use the same TaskFile logic as in UploadProgressView
+                    // But since TaskFile is internal to UploadProgressView, we should probably move it to a shared place
+                    // For now, to keep it simple and avoid large refactors, we will attempt to load as Data if simple,
+                    // or better: duplicate the Transferable logic here or move TaskFile to a shared file.
+                    // Given the constraints, let's assume we use shared UploadService which accepts URL.
+                    // We need a way to get URL from PhotosPickerItem.
+                    
+                    if let taskFile = try await item.loadTransferable(type: TaskFile.self) {
+                         try await UploadService.shared.uploadFile(
+                             fileURL: taskFile.url,
+                             destinationPath: targetPath
+                         )
+                         // Clean up temp file done inside UploadService? No, UploadService reads it.
+                         // But we should clean up after upload.
+                         // Actually UploadService is async. Ideally we don't delete until done.
+                         // However, UploadProgressView logic cleaned it up.
+                         // Optimization: Let UploadService handle temp file lifecycle if possible, or just leave it in tmp (OS cleans it).
+                    }
+                } catch {
+                    print("Failed to process item: \(error)")
+                }
+            }
+            
+            // Clear selection so we can select again
+            await MainActor.run {
+                selectedPhotos = []
+            }
+        }
+    }
     }
     
     // MARK: - 搜索相关
@@ -573,9 +617,12 @@ struct FileBrowserView: View {
                         Label("browser.upload_file", systemImage: "doc.badge.plus")
                     }
                     
-                    Button {
-                        showPhotoPicker = true
-                    } label: {
+                    // Direct Photo Picker
+                    PhotosPicker(
+                        selection: $selectedPhotos,
+                        maxSelectionCount: 20,
+                        matching: .any(of: [.images, .videos])
+                    ) {
                         Label("browser.upload_photo", systemImage: "photo.badge.plus")
                     }
                     

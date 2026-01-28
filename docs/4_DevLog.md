@@ -216,6 +216,42 @@
 
 ---
 
+## 会话: 2026-01-28 (Data Quality Restoration)
+
+### 任务: Data Quality & Silent Refresh (Final Fix)
+- **状态**: ✅ 已完成
+- **问题诊断**:
+    - 用户反馈 "Basic German word: Wasser" 等占位符定义，且缺少图片。
+    - 数据库分析发现约 3800 条残留的垃圾数据 (Garbage Data) 及 2000+ 条带后缀的重复数据 (e.g. `Wasser (1)`).
+    - 前端 Web 每日一词在切换语言时出现不必要的 Loading 闪烁。
+- **变更内容**:
+    - **Data Cleanup (Fix V5)**:
+        - 编写 `fix_vocab_v5.py`，采用激进的 Regex 策略 (`r'Vocabulary:|Word:|德语基础'`)。
+        - **清理结果**: 删除了 3800+ 条无效数据，保留 4346 条高质量数据 (含 Emoji)。
+        - **Reseed**: 执行服务器端 `reseed_vocab.js`，彻底重置数据库。
+    - **Web Ops**:
+        - **Silent Refresh**: 重构 `useDailyWordStore.ts`，引入 `cache` 机制。切换语言时优先展示缓存内容，静默更新，消除 Loading 态。
+        - **Bug Fix**: 修复 `DailyWord.tsx` 中 "Retry" 按钮的 TypeScript 类型错误。
+        - **Safety**: 前端增加 Regex Mask `word.replace(/\s*\(\d+\)$/, '')` 作为最后一道防线。
+- **验证**:
+    - "Tasche" (包) 从 20+ 条垃圾重复项缩减为 1 条正确项。
+    - 界面切换流畅，无闪烁。
+
+    - **UI Polish**:
+        - **Web**: 重构 Daily Word 弹窗布局为 **Flex Column + Sticky Footer**。
+        - **Detail**: 将内容区域设为 `flex: 1, overflow-y: auto`，底部操作栏设为 `flex-shrink: 0`。彻底解决了小屏设备上底部按钮被内容挤出屏幕或被遮挡的问题。
+        - **Web**: 在更多菜单中增加 "Reset Cache" 按钮。
+    - **iOS Enhancements**:
+        - **Settings**: 增加 "Clear Vocabulary Cache" 功能，调用 `DailyWordService.clearCache`。
+        - **Service**: 实现了 `clearCache` 方法，清除所有 `UserDefaults` key 并重置状态为 English/Advanced。
+        - **Refactor**: 重构 `DailyWordService` 网络层，使用统一的 `APIClient` 替代原生 `URLSession`。此举解决了 `nw_connection` 日志噪音问题，并统一了超时配置和错误处理。
+
+    - **Bug Fixes (Upload/List)**:
+        - **FileItem Model**: 修复了 `uploader` 字段解析错误的问题 (Key `uploader` mismatch with `uploader_name`)，现在能正确解析上传者信息。
+        - **UploadService**: 将分片上传逻辑迁移至 `APIClient`，解决了因混合使用 `URLSession.shared` 导致的网络不稳定和连接警告问题。
+
+---
+
 ## 会话: 2026-01-27 (Data Quality Issue)
 
 ### 任务: Data Quality & First Run Optimization

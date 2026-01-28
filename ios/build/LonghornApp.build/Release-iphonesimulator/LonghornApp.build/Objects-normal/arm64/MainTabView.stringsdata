@@ -1,0 +1,112 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/MainTabView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "tab.browse",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.personal",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.more",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "nav.departments",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.more",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.admin",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.lead",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.member",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_shares",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 222
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.recycle_bin",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.global_search",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.title",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.logout",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 252
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -74,8 +74,16 @@ export default defineConfig({
     host: '0.0.0.0',
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:4000',
-      '/preview': 'http://localhost:4000'
+      '/api': {
+        target: 'https://opware.kineraw.com',
+        changeOrigin: true,
+        secure: false
+      },
+      '/preview': {
+        target: 'https://opware.kineraw.com',
+        changeOrigin: true,
+        secure: false
+      }
     }
   }
 })

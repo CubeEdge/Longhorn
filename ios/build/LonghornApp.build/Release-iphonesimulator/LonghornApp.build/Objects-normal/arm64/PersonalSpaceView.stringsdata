@@ -1,0 +1,16 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalSpaceView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "个人空间",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 11
+        }
+      }
+    ]
+  },
+  "version": 1
+}

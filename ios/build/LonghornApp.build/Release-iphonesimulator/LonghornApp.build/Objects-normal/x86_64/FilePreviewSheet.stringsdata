@@ -1,0 +1,184 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/FilePreviewSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "关闭",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "下载",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 306
+        }
+      },
+      {
+        "comment": "",
+        "key": "分享链接",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "文件信息",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "查看原图",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 368
+        }
+      },
+      {
+        "comment": "",
+        "key": "(%@)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 370
+        }
+      },
+      {
+        "comment": "",
+        "key": "(原图)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 372
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.location",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 402
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.starred",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 417
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 417
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 429
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 441
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 455
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 458
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "",
+        "key": "加载失败",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 556
+        }
+      },
+      {
+        "comment": "",
+        "key": "TYPE_FOLDER_DESC",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 614
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.files",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 594
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 594
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld 个项",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 601
+        }
+      },
+      {
+        "comment": "",
+        "key": "无法预览此文件类型",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 683
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 688
+        }
+      }
+    ]
+  },
+  "version": 1
+}

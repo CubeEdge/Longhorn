@@ -1,0 +1,12 @@
+{
+  "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/LonghornApp.swift" : {
+    "abi-baseline-json" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.abi.json",
+    "const-values" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-primary.swiftconstvalues",
+    "dependencies" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-primary.d",
+    "diagnostics" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-primary.dia",
+    "objc-header" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp-Swift.h",
+    "swiftdoc" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftdoc",
+    "swiftmodule" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftmodule",
+    "swiftsourceinfo" : "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/Objects-normal/x86_64/LonghornApp.swiftsourceinfo"
+  }
+}

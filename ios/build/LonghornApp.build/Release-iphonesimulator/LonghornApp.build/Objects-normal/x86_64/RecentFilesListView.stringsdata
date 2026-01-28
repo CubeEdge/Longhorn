@@ -1,0 +1,40 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/RecentFilesListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "recent.title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 30
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.no_files",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.hint",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 17
+        }
+      },
+      {
+        "comment": "",
+        "key": "·",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 87
+        }
+      }
+    ]
+  },
+  "version": 1
+}

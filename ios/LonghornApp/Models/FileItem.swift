@@ -44,7 +44,7 @@ struct FileItem: Codable, Identifiable, Hashable {
         case isDirectory = "isDirectory"
         case modifiedAt = "mtime"
         case uploaderId = "uploader_id"
-        case uploaderName = "uploader_name"
+        case uploaderName = "uploader"
         case isStarred = "starred"
         case accessCount = "access_count"
         case shareCount = "share_count"
