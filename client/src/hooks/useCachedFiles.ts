@@ -40,10 +40,10 @@ const fetcher = async (url: string, token: string): Promise<FilesResponse> => {
 export function useCachedFiles(path: string, mode: 'all' | 'recent' | 'starred' | 'personal' = 'all', options: CacheOptions = {}) {
     const { token } = useAuthStore();
     const {
-        revalidateOnFocus = true,
+        revalidateOnFocus = false,
         revalidateOnReconnect = true,
         dedupingInterval = 2000,
-        refreshInterval = 5000     // 5s polling enabled, but filtered by `compare`
+        refreshInterval = 0     // Disabled auto-refresh (was 5000ms)
     } = options;
 
     // Build URL based on mode
