@@ -7,6 +7,36 @@ cd "$(dirname "$0")/.."
 SERVER_HOST="mini"
 REMOTE_PATH="/Users/admin/Documents/server/Longhorn"
 
+# Flags
+SYNC_GIT=false
+
+# Check for arguments
+for arg in "$@"
+do
+    case $arg in
+        --git)
+        SYNC_GIT=true
+        shift
+        ;;
+    esac
+done
+
+if [ "$SYNC_GIT" = true ]; then
+    echo "🐙 GIT MODE: Committing and Pushing changes first..."
+    
+    if [[ -n $(git status -s) ]]; then
+        echo "📝 Uncommitted changes found. Committing..."
+        git add .
+        git commit -m "WIP: Deployment auto-commit"
+    fi
+    
+    echo "⬆️  Pushing to remote..."
+    git push
+    echo "✅ Git push complete."
+else
+    echo "⚠️  FAST MODE: Direct rsync only. (Use --git to push changes)"
+fi
+
 echo "🚀 Deploying Longhorn to $SERVER_HOST..."
 
 # 1. Sync Server Code (excluding data/config)
@@ -49,18 +79,14 @@ ssh -t $SERVER_HOST "/bin/zsh -l -c \"
 
     echo '🔄 Restarting server...'
     cd ../server
-    npm install  # Ensure server deps (ffmpeg logic might need generic generic, but sharp handles it)
-    # Force sharp rebuild if needed (optional but safe)
-    # npm rebuild sharp 
+    npm install  # Ensure server deps
     
     # Enforce Cluster Mode & Zero Downtime Reload
-    # 'reload' allows 0-second downtime updates if running in cluster mode
     pm2 reload longhorn --update-env || pm2 start index.js --name longhorn -i max
     
     # Start or reload watcher
     pm2 describe longhorn-watcher > /dev/null 2>&1 && pm2 reload longhorn-watcher || pm2 start $REMOTE_PATH/scripts/deploy-watch.sh --name longhorn-watcher
     
-    # Ensure PM2 restarts on system reboot
     pm2 save
 
     echo '✅ Deployment Complete!'
