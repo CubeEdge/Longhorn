@@ -224,7 +224,7 @@ struct FileBrowserView: View {
             .presentationDetents([.fraction(0.8)])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showFilePicker) {
+        .fullScreenCover(isPresented: $showFilePicker) {
             FilePickerView(
                 destinationPath: path,
                 onDismiss: {
@@ -233,7 +233,7 @@ struct FileBrowserView: View {
                 }
             )
         }
-        .sheet(isPresented: $showPhotoPicker) {
+        .fullScreenCover(isPresented: $showPhotoPicker) {
             PhotoPickerView(
                 destinationPath: path,
                 onDismiss: {

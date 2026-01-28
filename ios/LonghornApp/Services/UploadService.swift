@@ -52,7 +52,7 @@ class UploadService: ObservableObject {
     
     @Published var activeTasks: [UploadTask] = []
     
-    private let chunkSize: Int = 5 * 1024 * 1024 // 5MB
+    private let chunkSize: Int = 512 * 1024 // 512KB - 更丝滑的进度更新
     
     private init() {}
     

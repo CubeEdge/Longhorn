@@ -57,6 +57,10 @@ class APIClient {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 120
+        
+        // 禁用代理,直接连接(修复模拟器代理问题)
+        config.connectionProxyDictionary = [:]
+        
         session = URLSession(configuration: config)
         
         decoder = JSONDecoder()
