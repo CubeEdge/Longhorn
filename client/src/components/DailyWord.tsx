@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft, MoreVertical } from 'lucide-react';
+import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { getSpeechLang, getAvailableLevels } from '../data/dailyWords';
 import { useDailyWordStore } from '../store/useDailyWordStore';
@@ -106,14 +106,14 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
         words, currentIndex, loading, targetLang, level,
         fetchBatch, setTargetLang, setLevel, nextWord, prevWord
     } = useDailyWordStore();
-    
+
     const [showMoreMenu, setShowMoreMenu] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
 
     const safeLang = targetLang as 'en' | 'de' | 'ja' | 'zh';
     const availableLevels = getAvailableLevels(safeLang);
     const word = words[currentIndex] || null;
-    
+
     // Close menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -121,11 +121,11 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 setShowMoreMenu(false);
             }
         };
-        
+
         if (showMoreMenu) {
             document.addEventListener('mousedown', handleClickOutside);
         }
-        
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
@@ -139,7 +139,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
             }}>
                 <div onClick={e => e.stopPropagation()} style={{ background: '#1c1c1e', padding: '24px', borderRadius: '16px', textAlign: 'center' }}>
                     <p style={{ marginBottom: 16 }}>No words loaded. Try refreshing.</p>
-                    <button onClick={fetchBatch} style={{ padding: '8px 16px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Retry</button>
+                    <button onClick={() => fetchBatch()} style={{ padding: '8px 16px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Retry</button>
                     <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>Close</button>
                 </div>
             </div>
@@ -179,7 +179,8 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 onClick={(e) => e.stopPropagation()}
                 style={{
                     background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px',
-                    width: '90%', maxWidth: '420px', maxHeight: '85vh', overflow: 'auto',
+                    width: '90%', maxWidth: '420px', maxHeight: '85vh',
+                    display: 'flex', flexDirection: 'column', // Flex layout for sticky footer
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
                 }}
             >
@@ -201,18 +202,18 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {/* More Menu */}
                         <div style={{ position: 'relative' }} ref={menuRef}>
-                            <button 
-                                onClick={() => setShowMoreMenu(!showMoreMenu)} 
-                                style={{ 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: 'none', 
+                            <button
+                                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: 'none',
                                     borderRadius: '50%',
                                     width: '32px',
                                     height: '32px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    color: 'var(--text-secondary)', 
+                                    color: 'var(--text-secondary)',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
@@ -221,7 +222,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                             >
                                 <MoreVertical size={18} />
                             </button>
-                            
+
                             {/* Dropdown Menu */}
                             {showMoreMenu && (
                                 <div style={{
@@ -275,7 +276,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                             <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
                                         </>
                                     )}
-                                    
+
                                     {/* New Batch */}
                                     <button
                                         onClick={() => {
@@ -302,9 +303,37 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                         <RefreshCw size={14} />
                                         New Batch
                                     </button>
-                                    
+
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Clear all vocabulary cache?')) {
+                                                useDailyWordStore.persist.clearStorage();
+                                                window.location.reload();
+                                            }
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 16px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            textAlign: 'left',
+                                            color: '#ff9f0a',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <Trash2 size={14} />
+                                        Reset Cache
+                                    </button>
+
                                     <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
-                                    
+
                                     {/* Close */}
                                     <button
                                         onClick={() => {
@@ -338,7 +367,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 </div>
 
                 {/* Content */}
-                <div style={{ padding: '24px' }}>
+                <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
                     {/* Language Selector */}
                     <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '4px', borderRadius: '8px', display: 'flex', position: 'relative', marginBottom: '24px' }}>
                         {SUPPORTED_LANGS.map(lang => {
@@ -377,7 +406,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                     </div>
                                 )}
                                 <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                                    {word.word}
+                                    {word.word.replace(/\s*\(\d+\)$/, '').replace(/\s*\[.*?\]$/, '')}
                                     <button onClick={speak} style={{ background: 'rgba(255, 210, 0, 0.15)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }} title={t('daily_word.listen')}>
                                         <Volume2 size={18} color="var(--accent-blue)" />
                                     </button>
@@ -410,7 +439,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 </div>
 
                 {/* Footer Controls */}
-                <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: '12px' }}>
+                <div style={{ padding: '16px 24px 32px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: '12px', flexShrink: 0 }}>
                     {/* Navigation Actions */}
                     <button
                         onClick={prevWord}

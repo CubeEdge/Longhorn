@@ -1,0 +1,200 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/ShareDialogView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "share.success",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.create_link",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.access_control",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.need_password",
+        "location": {
+          "startingColumn": 86,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_validity",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_expiry_desc",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "语言设置",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.file_info",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.set_password",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 86
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.password",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.validity",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "界面语言",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "中文",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "English",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "Deutsch",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "日本語",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.success",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "link.copied",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_link",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.password_copied",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 247
+        }
+      }
+    ]
+  },
+  "version": 1
+}

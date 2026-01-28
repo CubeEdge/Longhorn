@@ -52,7 +52,7 @@ class UploadService: ObservableObject {
     
     @Published var activeTasks: [UploadTask] = []
     
-    private let chunkSize: Int = 5 * 1024 * 1024 // 5MB
+    private let chunkSize: Int = 512 * 1024 // 512KB (Smaller chunks = smoother progress)
     
     private init() {}
     
@@ -167,19 +167,6 @@ class UploadService: ObservableObject {
         totalChunks: Int,
         path: String
     ) async throws {
-        guard let token = await AuthManager.shared.token else {
-            throw APIError.unauthorized
-        }
-        
-        let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "\(APIClient.shared.baseURL)/api/upload/chunk")!)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
-        var body = Data()
-        
-        // 添加字段
         let fields: [String: String] = [
             "uploadId": uploadId,
             "fileName": fileName,
@@ -188,26 +175,10 @@ class UploadService: ObservableObject {
             "path": path
         ]
         
-        for (key, value) in fields {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
-            body.append("\(value)\r\n".data(using: .utf8)!)
-        }
-        
-        // 添加文件数据
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"chunk\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
-        body.append(data)
-        body.append("\r\n".data(using: .utf8)!)
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        
-        request.httpBody = body
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
+        do {
+            try await APIClient.shared.uploadChunk(data: data, fields: fields)
+        } catch {
+            print("[Upload] Chunk \(chunkIndex) failed: \(error.localizedDescription)")
             throw UploadError.uploadFailed
         }
     }
@@ -270,5 +241,47 @@ enum UploadError: LocalizedError {
         case .uploadFailed: return "上传失败"
         case .mergeFailed: return "合并分片失败"
         }
+    }
+}
+// MARK: - 辅助结构
+
+struct TaskFile: Transferable {
+    let url: URL
+    
+    static var transferRepresentation: some TransferRepresentation {
+        // 1. Try HEIC first to preserve quality and size (Key for iPhone Photos)
+        FileRepresentation(importedContentType: .heic) { received in
+            return try copyToTmp(received)
+        }
+        // 2. Fallback to generic image (iOS may convert to JPEG)
+        FileRepresentation(importedContentType: .image) { received in
+            return try copyToTmp(received)
+        }
+        FileRepresentation(importedContentType: .movie) { received in
+            return try copyToTmp(received)
+        }
+        // 3. Last resort
+        FileRepresentation(importedContentType: .item) { received in
+            return try copyToTmp(received)
+        }
+    }
+    
+    private static func copyToTmp(_ received: ReceivedTransferredFile) throws -> TaskFile {
+        let originalName = received.file.lastPathComponent
+        
+        // Create a unique directory for this file to avoid name collisions
+        // while preserving the original filename.
+        // Structure: tmp/<UUID>/IMG_1234.HEIC
+        let uniqueSubDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: uniqueSubDir, withIntermediateDirectories: true)
+        
+        let dst = uniqueSubDir.appendingPathComponent(originalName)
+        
+        // Remove if exists (unlikely given UUID dir, but safe)
+        try? FileManager.default.removeItem(at: dst)
+        
+        // Copy
+        try FileManager.default.copyItem(at: received.file, to: dst)
+        return TaskFile(url: dst)
     }
 }

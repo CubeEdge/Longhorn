@@ -1,0 +1,40 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Services/RecentFilesManager.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "recent.period.today",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.week",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 16
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.two_weeks",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 17
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.month",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 18
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,240 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/BatchShareDialogView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "share.success",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.batch_create",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection_name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection_desc",
+        "location": {
+          "startingColumn": 73,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.language_settings",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.content",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.access_control",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_validity",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.selected_count",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection_name_placeholder",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.set_password",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.validity",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.ui_language",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.zh",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.en",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.de",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.ja",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.success",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_copied",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_link",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.zh",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.en",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.de",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.ja",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 180
+        }
+      }
+    ]
+  },
+  "version": 1
+}

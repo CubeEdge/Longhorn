@@ -1,0 +1,2490 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/build/LonghornApp.build/Release-iphonesimulator/LonghornApp.build/DerivedSources/GeneratedStringSymbols_Localizable.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.close",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.confirm",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_link",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_to",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.create",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.edit",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.location",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.move_to",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.ok",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.preview",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.rename_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 144
+        },
+        "value": "%@"
+      },
+      {
+        "comment": "",
+        "key": "action.retry",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.retry_load",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.save",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_all",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_none",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_up_to_20",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.share",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.star",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 207
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unfavorite",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.confirm_delete",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.error",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 235
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.preview_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "browse.library",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "browse.locations",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "browse.search",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.create_folder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.delete_bin_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.delete_confirm_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.delete_single_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.departments",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.empty",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.folder_name_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.loading",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.new_name_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.personal_space",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 340
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload.exporting",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 347
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_file",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 354
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_photo",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_progress",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 368
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.view_mode.grid",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.view_mode.list",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.cancel_selection",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.loading",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 396
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.selected_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 403
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "daily_word.examples",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 410
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.listen",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 417
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.meaning",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 424
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.next",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 431
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 438
+        }
+      },
+      {
+        "comment": "",
+        "key": "dept.GE",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 445
+        }
+      },
+      {
+        "comment": "",
+        "key": "dept.MS",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 452
+        }
+      },
+      {
+        "comment": "",
+        "key": "dept.OP",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 459
+        }
+      },
+      {
+        "comment": "",
+        "key": "dept.RD",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 466
+        }
+      },
+      {
+        "comment": "",
+        "key": "dept.RE",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 473
+        }
+      },
+      {
+        "comment": "",
+        "key": "error.dept_load_fail",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "error.load_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 487
+        }
+      },
+      {
+        "comment": "",
+        "key": "file.count_suffix",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 494
+        }
+      },
+      {
+        "comment": "",
+        "key": "file.download_preview",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 501
+        }
+      },
+      {
+        "comment": "",
+        "key": "filter.all",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 508
+        }
+      },
+      {
+        "comment": "",
+        "key": "filter.audio",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "",
+        "key": "filter.document",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "filter.image",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 529
+        }
+      },
+      {
+        "comment": "",
+        "key": "filter.video",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 536
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.empty",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 543
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.enter",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 550
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.go_up",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 557
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.no_folders",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 564
+        }
+      },
+      {
+        "comment": "",
+        "key": "folder_picker.root",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 571
+        }
+      },
+      {
+        "comment": "",
+        "key": "hint.pull_refresh",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 578
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.quick_access",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 585
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.recent",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 592
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.search_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 599
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 606
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.access_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 613
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.share_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 620
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.star_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 627
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.statistics",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 634
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.type",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 641
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.upload_date",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 648
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.upload_info",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 655
+        }
+      },
+      {
+        "comment": "",
+        "key": "label.uploader",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 662
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.de",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 669
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.en",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 676
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.ja",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 683
+        }
+      },
+      {
+        "comment": "",
+        "key": "language.zh",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 690
+        }
+      },
+      {
+        "comment": "",
+        "key": "link.copied",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 697
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.check_storage_trend",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 704
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.dashboard",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 711
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.data_overview",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 718
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.dept_overview",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 725
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.global_search",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 732
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.logout",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 739
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.management",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 746
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.my_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 753
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.personal_space",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 760
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.system_overview",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 767
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.team_management",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 774
+        }
+      },
+      {
+        "comment": "",
+        "key": "more.tools",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 781
+        }
+      },
+      {
+        "comment": "",
+        "key": "nav.home",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 788
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.authorized_directory",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 795
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.contribute",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 802
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.desc.contribute",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 809
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.desc.full",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 816
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.desc.read",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 823
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.expiry.1month",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 830
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.expiry.7days",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 837
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.expiry.custom",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 844
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.expiry.forever",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 851
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.expiry_date",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 858
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.full",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 865
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.read",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 872
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.select_folder_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 879
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 886
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.type",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 893
+        }
+      },
+      {
+        "comment": "",
+        "key": "permission.validity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 900
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.core_stats",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 907
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.my_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 914
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.share_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 921
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.space",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 928
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 935
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_department",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 942
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_shares",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 949
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.recycle_bin",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 956
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.starred",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 963
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.hint",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 970
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.no_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 977
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.month",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 984
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.today",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 991
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.two_weeks",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 998
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.period.week",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1005
+        }
+      },
+      {
+        "comment": "",
+        "key": "recent.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1012
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.clear",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1019
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.clear_all",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1026
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.clear_warning",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1033
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.confirm_clear",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1040
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.confirm_delete_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1047
+        },
+        "value": "%d"
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.delete_permanently",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1054
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.deleted_at",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1061
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.empty",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1068
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.empty_description",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1075
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.original_location",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1082
+        },
+        "value": "%@"
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.restore",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1089
+        }
+      },
+      {
+        "comment": "",
+        "key": "recycle_bin.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1096
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.admin",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1103
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.lead",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1110
+        }
+      },
+      {
+        "comment": "",
+        "key": "role.member",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1117
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.instruction",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1124
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.no_results.description",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1131
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1138
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder.all",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1145
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder.dept",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1152
+        },
+        "value": "%@"
+      },
+      {
+        "comment": "",
+        "key": "search.placeholder.personal",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1159
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.searching",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1166
+        }
+      },
+      {
+        "comment": "",
+        "key": "search.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1173
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.about",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1180
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.advanced",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1187
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.app_language",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1194
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.cache",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1201
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.cache_cleared",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1208
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.clear_cache",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1215
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.connection",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1222
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.content",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1229
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.general",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1236
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.language",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1243
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.maintenance",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1250
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.recent",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1257
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.recent_period",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1264
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.reset_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1271
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.reset_preferences",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1278
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.server",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1285
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.server_url",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1292
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1299
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.version",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1306
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.access_control",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1313
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.action.copy_link",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1320
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.action.edit",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1327
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.batch_create",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1334
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection.file_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1341
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "share.collection_desc",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1348
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection_name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1355
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.collection_name_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1362
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.confirm_delete_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1369
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "share.content",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1376
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.create_link",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1383
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1390
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.delete_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1397
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.enter_password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1404
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.expiry_date",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1411
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.password_hint",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1418
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.password_protect",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1425
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.set_validity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1432
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.title_collection",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1439
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.title_file",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1446
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.edit.validity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1453
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.expiry.1day",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1460
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.expiry.3days",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1467
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.file_info",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1474
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.language_settings",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1481
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_copied",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1488
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_expiry_desc",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1495
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.link_validity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1502
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.list.type",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1509
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.need_password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1516
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_collections",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1523
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_collections_desc",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1530
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1537
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.no_files_desc",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1544
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1551
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.selected_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1558
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.set_password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1565
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.copied",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1572
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.expired",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1579
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.permanent",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1586
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.protected",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1593
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1600
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.tab.collections",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1607
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.tab.files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1614
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.ui_language",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1621
+        }
+      },
+      {
+        "comment": "",
+        "key": "sort.date",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1628
+        }
+      },
+      {
+        "comment": "",
+        "key": "sort.name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1635
+        }
+      },
+      {
+        "comment": "",
+        "key": "sort.size",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1642
+        }
+      },
+      {
+        "comment": "",
+        "key": "sort.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1649
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_count",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1656
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_message",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1663
+        },
+        "value": "%@"
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_single",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1670
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.folder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1677
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.hint",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1684
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.no_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1691
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.open_folder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1698
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1705
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_partial",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1712
+        },
+        "value": "%d%d"
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_partial %lld %lld",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1719
+        },
+        "value": "%lld%lld"
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1726
+        },
+        "value": "%d"
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_success %lld",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1733
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1740
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1747
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.access_count %lld",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1754
+        },
+        "value": "%lld"
+      },
+      {
+        "comment": "",
+        "key": "stats.activity_analysis",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1761
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.activity_trend",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1768
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.contribution",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1775
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.core_metrics",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1782
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.details",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1789
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1796
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.members",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1803
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.no_logs",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1810
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.no_logs.description",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1817
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.starred",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1824
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.storage",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1831
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.storage_percent",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1838
+        },
+        "value": "%@"
+      },
+      {
+        "comment": "",
+        "key": "stats.storage_share",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1845
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1852
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.today_files",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1859
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.unknown_user",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1866
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.upload",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1873
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.downloaded",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1880
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.loading",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1887
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.opening",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1894
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.starred",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1901
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.browse",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1908
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.more",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1915
+        }
+      },
+      {
+        "comment": "",
+        "key": "tab.personal",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1922
+        }
+      },
+      {
+        "comment": "",
+        "key": "title.file_info",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1929
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.batch_star_toggle",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1936
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.copy_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1943
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.delete_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1950
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.download_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1957
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.folder_created",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1964
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.move_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1971
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.original_downloaded",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1978
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.password_copied",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1985
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.preview_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1992
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.rename_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1999
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.reset_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2006
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.star_failed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2013
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.starred",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2020
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.starred_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2027
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.unstarred_success",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2034
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.clear_completed",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2041
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.no_tasks",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2048
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.no_tasks_description",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2055
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_hours",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2062
+        },
+        "value": "%d"
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_minutes",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2069
+        },
+        "value": "%d"
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_seconds",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2076
+        },
+        "value": "%d"
+      },
+      {
+        "comment": "",
+        "key": "upload.tasks_title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2083
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.add_permission",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2090
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.basic_info",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2097
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.created_at",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2104
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.department",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2111
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.dept_unassigned",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2118
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.no_permissions",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2125
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.permissions",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2132
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.reset_password_placeholder",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2139
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.role",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2146
+        }
+      },
+      {
+        "comment": "",
+        "key": "user.username",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2153
+        }
+      },
+      {
+        "comment": "",
+        "key": "view.grid",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2160
+        }
+      },
+      {
+        "comment": "",
+        "key": "view.list",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2167
+        }
+      },
+      {
+        "comment": "",
+        "key": "view.title",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2174
+        }
+      }
+    ]
+  },
+  "version": 1
+}

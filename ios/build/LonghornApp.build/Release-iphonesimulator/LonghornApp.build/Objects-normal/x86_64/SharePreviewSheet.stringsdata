@@ -1,0 +1,176 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Shares/SharePreviewSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "alert.confirm_delete",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 86
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "确定删除分享「%@」？删除后分享链接将失效。",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.close",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "link.copied",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_link",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.action.edit",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.location",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.delete",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "status.starred",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.favorite",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.copied",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.copy_link",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.permanent",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "share.status.protected",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 246
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 229
+        }
+      },
+      {
+        "comment": "",
+        "key": "无法预览此文件类型",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.download",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "",
+        "key": "download.success",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 421
+        }
+      }
+    ]
+  },
+  "version": 1
+}

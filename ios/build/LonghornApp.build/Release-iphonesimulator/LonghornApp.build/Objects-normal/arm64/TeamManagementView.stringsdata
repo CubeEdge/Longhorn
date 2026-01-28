@@ -1,0 +1,32 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/TeamManagementView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "搜索用户",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "团队列表",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "·",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 63
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -106,6 +106,9 @@ struct SettingsView: View {
         // Clear in-memory thumbnail cache
         ImageCacheService.shared.clearCache()
         
+        // Clear Daily Word cache
+        DailyWordService.shared.clearCache()
+        
         // Clear disk preview cache
         Task {
             await PreviewCacheManager.shared.clearAll()

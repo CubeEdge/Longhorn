@@ -1,0 +1,248 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Starred/StarredView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "browser.view_mode.list",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.view_mode.grid",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_count",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_single",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "",
+        "key": "alert.error",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.no_files",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.hint",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.loading",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_count",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.confirm_unstar_message",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.selected_count",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "common.cancel_selection",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_all",
+        "location": {
+          "startingColumn": 92,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.done",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.preview",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.open_folder",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.unstar",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_success",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 413
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_failed",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 416
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_success %lld",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 442
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.unstar_batch_partial %lld %lld",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 444
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "starred.folder",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 616
+        }
+      }
+    ]
+  },
+  "version": 1
+}

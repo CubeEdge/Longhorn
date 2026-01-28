@@ -165,6 +165,43 @@
 
 **Status**: Complete.
 
+## 2026-01-28
+
+### 23:00 - Data Quality & UX Polish (Fix V5)
+**User Prompt**:
+1. "Why is there (5) behind the word?" (Remove debug suffix).
+2. "Why no graphic / wrong definition?" (Fix garbage data).
+3. "Switching difficulty shows fetching..." (Silent refresh).
+4. "Why no documentation update?" (Sync docs).
+
+**Action**:
+1. **Analysis**: Identified dirty seed data ("Wasser (1)", "Vocabulary: X") and missing frontend cache.
+2. **Data**:
+   - Created `fix_vocab_v5.py` to aggressively regex-delete 3800+ garbage entries.
+   - Reseeded production DB (reset to 4346 clean entries).
+3. **Frontend**:
+   - Implemented `cache-first` strategy in `useDailyWordStore`.
+   - Added safety mask for `(5)` suffixes.
+   - Fixed `fetchBatch` type error.
+4. **Docs**: Updated `DevLog` and `Backlog`.
+
+**Status**: Complete.
+
+### 23:25 - UI Polish & Cache Features (UI Optimization)
+**User Prompt**:
+1. "Button obscured at bottom." (UI Layout).
+2. "Why no doc update?" (Process).
+3. "Defaults should be English Advanced."
+
+**Action**:
+1. **Web UI**: Increased footer padding to 32px to fix obstruction.
+2. **Features**:
+   - Web: Added "Reset Cache" in More Menu.
+   - iOS: Added "Clear Cache" in Settings -> DailyWordService.
+3. **Docs**: Updated devlog and promptlog.
+
+**Status**: Complete.
+
 ### 22:10 - Web UI iOS 风格对齐 (Web UI iOS Alignment)
 **User Prompt**:
 1. iOS 例句必须两条（Re-affirm）。

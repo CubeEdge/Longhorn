@@ -1,0 +1,32 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordHeroCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "daily_word.title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "“%@”",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.listen",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 137
+        }
+      }
+    ]
+  },
+  "version": 1
+}

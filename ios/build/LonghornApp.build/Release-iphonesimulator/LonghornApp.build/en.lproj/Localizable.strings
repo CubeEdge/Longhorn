@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>action.cancel</key>
+	<string>Cancel</string>
+	<key>action.close</key>
+	<string>Close</string>
+	<key>action.confirm</key>
+	<string>Confirm</string>
+	<key>action.copy_link</key>
+	<string>Copy Link</string>
+	<key>action.copy_to</key>
+	<string>Copy to</string>
+	<key>action.create</key>
+	<string>Create</string>
+	<key>action.delete</key>
+	<string>Delete</string>
+	<key>action.done</key>
+	<string>Done</string>
+	<key>action.download</key>
+	<string>Download</string>
+	<key>action.edit</key>
+	<string>Edit</string>
+	<key>action.favorite</key>
+	<string>Favorite</string>
+	<key>action.location</key>
+	<string>Open Location</string>
+	<key>action.move</key>
+	<string>Move</string>
+	<key>action.move_to</key>
+	<string>Move to</string>
+	<key>action.ok</key>
+	<string>OK</string>
+	<key>action.preview</key>
+	<string>Preview</string>
+	<key>action.rename</key>
+	<string>Rename</string>
+	<key>action.rename_message</key>
+	<string>Rename "%@"</string>
+	<key>action.retry</key>
+	<string>Retry</string>
+	<key>action.retry_load</key>
+	<string>Load Failed (Tap to retry)</string>
+	<key>action.save</key>
+	<string>Save</string>
+	<key>action.select</key>
+	<string>Select</string>
+	<key>action.select_all</key>
+	<string>Select All</string>
+	<key>action.select_none</key>
+	<string>Deselect All</string>
+	<key>action.select_up_to_20</key>
+	<string>Select up to 20 photos/videos</string>
+	<key>action.share</key>
+	<string>Share</string>
+	<key>action.star</key>
+	<string>Star</string>
+	<key>action.unfavorite</key>
+	<string>Unfavorite</string>
+	<key>action.unstar</key>
+	<string>Unstar</string>
+	<key>alert.confirm_delete</key>
+	<string>Confirm Delete</string>
+	<key>alert.error</key>
+	<string>Error</string>
+	<key>alert.preview_failed</key>
+	<string>Preview Failed</string>
+	<key>browse.library</key>
+	<string>Library</string>
+	<key>browse.locations</key>
+	<string>Locations</string>
+	<key>browse.search</key>
+	<string>Search</string>
+	<key>browser.create_folder</key>
+	<string>New Folder</string>
+	<key>browser.delete_bin_message</key>
+	<string>Files will be moved to Recycle Bin</string>
+	<key>browser.delete_confirm_message</key>
+	<string>Are you sure you want to delete the selected items?</string>
+	<key>browser.delete_single_message</key>
+	<string>File can be recovered from Recycle Bin</string>
+	<key>browser.departments</key>
+	<string>Departments</string>
+	<key>browser.empty</key>
+	<string>Folder is empty</string>
+	<key>browser.files</key>
+	<string>Files</string>
+	<key>browser.folder_name_placeholder</key>
+	<string>Folder Name</string>
+	<key>browser.loading</key>
+	<string>Updating list...</string>
+	<key>browser.new_name_placeholder</key>
+	<string>New Name</string>
+	<key>browser.personal_space</key>
+	<string>Personal Space</string>
+	<key>browser.upload.exporting</key>
+	<string>Exporting resources...</string>
+	<key>browser.upload_file</key>
+	<string>Upload File</string>
+	<key>browser.upload_photo</key>
+	<string>Upload Photo/Video</string>
+	<key>browser.upload_progress</key>
+	<string>Progress</string>
+	<key>browser.view_mode.grid</key>
+	<string>Grid</string>
+	<key>browser.view_mode.list</key>
+	<string>List</string>
+	<key>common.cancel_selection</key>
+	<string>Deselect All</string>
+	<key>common.loading</key>
+	<string>Loading...</string>
+	<key>common.selected_count</key>
+	<string>%lld Selected</string>
+	<key>daily_word.examples</key>
+	<string>Examples</string>
+	<key>daily_word.listen</key>
+	<string>Listen</string>
+	<key>daily_word.meaning</key>
+	<string>Meaning</string>
+	<key>daily_word.next</key>
+	<string>Next Word</string>
+	<key>daily_word.title</key>
+	<string>Daily Word</string>
+	<key>dept.GE</key>
+	<string>General Management</string>
+	<key>dept.MS</key>
+	<string>Marketing</string>
+	<key>dept.OP</key>
+	<string>Operations</string>
+	<key>dept.RD</key>
+	<string>R&amp;D</string>
+	<key>dept.RE</key>
+	<string>General Resource</string>
+	<key>error.dept_load_fail</key>
+	<string>Failed to load department data</string>
+	<key>error.load_failed</key>
+	<string>Load Failed</string>
+	<key>file.count_suffix</key>
+	<string>Files</string>
+	<key>file.download_preview</key>
+	<string>Download Preview</string>
+	<key>filter.all</key>
+	<string>All</string>
+	<key>filter.audio</key>
+	<string>Audio</string>
+	<key>filter.document</key>
+	<string>Docs</string>
+	<key>filter.image</key>
+	<string>Images</string>
+	<key>filter.video</key>
+	<string>Videos</string>
+	<key>folder_picker.empty</key>
+	<string>This folder is empty or has no subfolders</string>
+	<key>folder_picker.enter</key>
+	<string>Enter</string>
+	<key>folder_picker.go_up</key>
+	<string>Go Up</string>
+	<key>folder_picker.move_here</key>
+	<string>Move here</string>
+	<key>folder_picker.no_folders</key>
+	<string>No folders</string>
+	<key>folder_picker.root</key>
+	<string>Root Directory</string>
+	<key>hint.pull_refresh</key>
+	<string>Pull to refresh</string>
+	<key>home.quick_access</key>
+	<string>Quick Access</string>
+	<key>home.recent</key>
+	<string>Recent Files</string>
+	<key>home.search_placeholder</key>
+	<string>Search files...</string>
+	<key>home.title</key>
+	<string>Home</string>
+	<key>label.access_count</key>
+	<string>Access Count</string>
+	<key>label.name</key>
+	<string>Name</string>
+	<key>label.path</key>
+	<string>Path</string>
+	<key>label.share_count</key>
+	<string>Share Count</string>
+	<key>label.size</key>
+	<string>Size</string>
+	<key>label.star_count</key>
+	<string>Star Count</string>
+	<key>label.statistics</key>
+	<string>Statistics</string>
+	<key>label.type</key>
+	<string>Type</string>
+	<key>label.upload_date</key>
+	<string>Upload Date</string>
+	<key>label.upload_info</key>
+	<string>Upload Info</string>
+	<key>label.uploader</key>
+	<string>Uploaded by</string>
+	<key>language.de</key>
+	<string>German</string>
+	<key>language.en</key>
+	<string>English</string>
+	<key>language.ja</key>
+	<string>Japanese</string>
+	<key>language.zh</key>
+	<string>Chinese</string>
+	<key>link.copied</key>
+	<string>Link copied</string>
+	<key>more.check_storage_trend</key>
+	<string>Check Storage Trend</string>
+	<key>more.dashboard</key>
+	<string>Overview</string>
+	<key>more.data_overview</key>
+	<string>Data Overview</string>
+	<key>more.dept_overview</key>
+	<string>Department Overview</string>
+	<key>more.global_search</key>
+	<string>Global Search</string>
+	<key>more.logout</key>
+	<string>Logout</string>
+	<key>more.management</key>
+	<string>Management</string>
+	<key>more.my_files</key>
+	<string>View my files</string>
+	<key>more.personal_space</key>
+	<string>Personal Space</string>
+	<key>more.system_overview</key>
+	<string>System Overview</string>
+	<key>more.team_management</key>
+	<string>Team Management</string>
+	<key>more.tools</key>
+	<string>Tools</string>
+	<key>nav.home</key>
+	<string>Home</string>
+	<key>permission.authorized_directory</key>
+	<string>Authorized Directory</string>
+	<key>permission.contribute</key>
+	<string>Contribute</string>
+	<key>permission.desc.contribute</key>
+	<string>User can upload and edit, but cannot delete others' files.</string>
+	<key>permission.desc.full</key>
+	<string>User has full control, including deleting files.</string>
+	<key>permission.desc.read</key>
+	<string>User can only view and download files.</string>
+	<key>permission.expiry.1month</key>
+	<string>1 Month</string>
+	<key>permission.expiry.7days</key>
+	<string>7 Days</string>
+	<key>permission.expiry.custom</key>
+	<string>Custom</string>
+	<key>permission.expiry.forever</key>
+	<string>Permanent</string>
+	<key>permission.expiry_date</key>
+	<string>Expiration Date</string>
+	<key>permission.full</key>
+	<string>Full Control</string>
+	<key>permission.read</key>
+	<string>Read</string>
+	<key>permission.select_folder_placeholder</key>
+	<string>Click to select folder</string>
+	<key>permission.title</key>
+	<string>Add Authorization</string>
+	<key>permission.type</key>
+	<string>Permission Type</string>
+	<key>permission.validity</key>
+	<string>Validity</string>
+	<key>personal.core_stats</key>
+	<string>Performance</string>
+	<key>personal.my_files</key>
+	<string>View My Files</string>
+	<key>personal.share_count</key>
+	<string>Links Shared</string>
+	<key>personal.space</key>
+	<string>Personal Space</string>
+	<key>personal.title</key>
+	<string>Personal Center</string>
+	<key>quick.my_department</key>
+	<string>My Department</string>
+	<key>quick.my_shares</key>
+	<string>My Shares</string>
+	<key>quick.recycle_bin</key>
+	<string>Recycle Bin</string>
+	<key>quick.starred</key>
+	<string>Starred</string>
+	<key>recent.hint</key>
+	<string>Files you viewed recently will appear here</string>
+	<key>recent.no_files</key>
+	<string>No Recent Files</string>
+	<key>recent.period.month</key>
+	<string>30 Days</string>
+	<key>recent.period.today</key>
+	<string>Today</string>
+	<key>recent.period.two_weeks</key>
+	<string>2 Weeks</string>
+	<key>recent.period.week</key>
+	<string>7 Days</string>
+	<key>recent.title</key>
+	<string>Recently Opened</string>
+	<key>recycle_bin.clear</key>
+	<string>Clear</string>
+	<key>recycle_bin.clear_all</key>
+	<string>Clear Recycle Bin</string>
+	<key>recycle_bin.clear_warning</key>
+	<string>This action cannot be undone. All files will be permanently deleted.</string>
+	<key>recycle_bin.confirm_clear</key>
+	<string>Clear recycle bin?</string>
+	<key>recycle_bin.confirm_delete_count</key>
+	<string>Permanently delete %d items?</string>
+	<key>recycle_bin.delete_permanently</key>
+	<string>Delete Permanently</string>
+	<key>recycle_bin.deleted_at</key>
+	<string>Deleted</string>
+	<key>recycle_bin.empty</key>
+	<string>Recycle Bin is Empty</string>
+	<key>recycle_bin.empty_description</key>
+	<string>Deleted files will be kept here for 30 days</string>
+	<key>recycle_bin.original_location</key>
+	<string>Original location: %@</string>
+	<key>recycle_bin.restore</key>
+	<string>Restore</string>
+	<key>recycle_bin.title</key>
+	<string>Recycle Bin</string>
+	<key>role.admin</key>
+	<string>Admin</string>
+	<key>role.lead</key>
+	<string>Team Lead</string>
+	<key>role.member</key>
+	<string>Member</string>
+	<key>search.instruction</key>
+	<string>Search files and folders</string>
+	<key>search.no_results.description</key>
+	<string>Try different keywords or filters</string>
+	<key>search.placeholder</key>
+	<string>Search fileName...</string>
+	<key>search.placeholder.all</key>
+	<string>Search all files</string>
+	<key>search.placeholder.dept</key>
+	<string>Search in %@</string>
+	<key>search.placeholder.personal</key>
+	<string>Search Personal Space</string>
+	<key>search.searching</key>
+	<string>Searching...</string>
+	<key>search.title</key>
+	<string>Search</string>
+	<key>settings.about</key>
+	<string>About</string>
+	<key>settings.advanced</key>
+	<string>Advanced</string>
+	<key>settings.app_language</key>
+	<string>App Language</string>
+	<key>settings.cache</key>
+	<string>Cache</string>
+	<key>settings.cache_cleared</key>
+	<string>Cache Cleared</string>
+	<key>settings.clear_cache</key>
+	<string>Clear All Image Cache</string>
+	<key>settings.connection</key>
+	<string>Connection</string>
+	<key>settings.content</key>
+	<string>Content</string>
+	<key>settings.general</key>
+	<string>General</string>
+	<key>settings.language</key>
+	<string>Language</string>
+	<key>settings.maintenance</key>
+	<string>Maintenance</string>
+	<key>settings.recent</key>
+	<string>Recent Files</string>
+	<key>settings.recent_period</key>
+	<string>Time Period</string>
+	<key>settings.reset_message</key>
+	<string>This will restore default sort order and view modes. Your files will not be deleted.</string>
+	<key>settings.reset_preferences</key>
+	<string>Reset All Preferences</string>
+	<key>settings.server</key>
+	<string>Server</string>
+	<key>settings.server_url</key>
+	<string>Server URL</string>
+	<key>settings.title</key>
+	<string>Settings</string>
+	<key>settings.version</key>
+	<string>Version</string>
+	<key>share.access_control</key>
+	<string>Access Control</string>
+	<key>share.action.copy_link</key>
+	<string>Copy Link</string>
+	<key>share.action.edit</key>
+	<string>Edit Share</string>
+	<key>share.batch_create</key>
+	<string>Create Share Link</string>
+	<key>share.collection.file_count</key>
+	<string>%lld files</string>
+	<key>share.collection_desc</key>
+	<string>Give this batch share a name</string>
+	<key>share.collection_name</key>
+	<string>Collection Name</string>
+	<key>share.collection_name_placeholder</key>
+	<string>Enter name</string>
+	<key>share.confirm_delete_count</key>
+	<string>Are you sure you want to delete %lld shares?</string>
+	<key>share.content</key>
+	<string>Share Content</string>
+	<key>share.create_link</key>
+	<string>Create Share Link</string>
+	<key>share.delete_failed</key>
+	<string>Delete failed</string>
+	<key>share.delete_success</key>
+	<string>Deleted successfully</string>
+	<key>share.edit.enter_password</key>
+	<string>Enter Password</string>
+	<key>share.edit.expiry_date</key>
+	<string>Expiry Date</string>
+	<key>share.edit.password_hint</key>
+	<string>Leave blank if unchanged</string>
+	<key>share.edit.password_protect</key>
+	<string>Password Protection</string>
+	<key>share.edit.set_validity</key>
+	<string>Set Expiry</string>
+	<key>share.edit.title_collection</key>
+	<string>Edit Collection</string>
+	<key>share.edit.title_file</key>
+	<string>Edit Share</string>
+	<key>share.edit.validity</key>
+	<string>Validity</string>
+	<key>share.expiry.1day</key>
+	<string>1 Day</string>
+	<key>share.expiry.3days</key>
+	<string>3 Days</string>
+	<key>share.file_info</key>
+	<string>Share File</string>
+	<key>share.language_settings</key>
+	<string>Language</string>
+	<key>share.link_copied</key>
+	<string>Link copied</string>
+	<key>share.link_expiry_desc</key>
+	<string>Link expires after this period</string>
+	<key>share.link_validity</key>
+	<string>Link Validity</string>
+	<key>share.list.type</key>
+	<string>Type</string>
+	<key>share.need_password</key>
+	<string>Require password to download</string>
+	<key>share.no_collections</key>
+	<string>No Collections</string>
+	<key>share.no_collections_desc</key>
+	<string>Collections are created when sharing multiple files</string>
+	<key>share.no_files</key>
+	<string>No Shares</string>
+	<key>share.no_files_desc</key>
+	<string>Shares you create will appear here</string>
+	<key>share.password</key>
+	<string>Password</string>
+	<key>share.selected_count</key>
+	<string>Selected Items:</string>
+	<key>share.set_password</key>
+	<string>Set Password</string>
+	<key>share.status.copied</key>
+	<string>Copied</string>
+	<key>share.status.expired</key>
+	<string>Expired</string>
+	<key>share.status.permanent</key>
+	<string>Permanent</string>
+	<key>share.status.protected</key>
+	<string>Protected</string>
+	<key>share.success</key>
+	<string>Share Link Created</string>
+	<key>share.tab.collections</key>
+	<string>Collections</string>
+	<key>share.tab.files</key>
+	<string>Files</string>
+	<key>share.ui_language</key>
+	<string>Interface Language</string>
+	<key>sort.date</key>
+	<string>Date</string>
+	<key>sort.name</key>
+	<string>Name</string>
+	<key>sort.size</key>
+	<string>Size</string>
+	<key>sort.title</key>
+	<string>Sort</string>
+	<key>starred.confirm_unstar_count</key>
+	<string>Are you sure you want to unstar %lld items?</string>
+	<key>starred.confirm_unstar_message</key>
+	<string>Are you sure you want to unstar "%@"?</string>
+	<key>starred.confirm_unstar_single</key>
+	<string>Unstar Item</string>
+	<key>starred.folder</key>
+	<string>Folder</string>
+	<key>starred.hint</key>
+	<string>Starred files and folders will appear here</string>
+	<key>starred.no_files</key>
+	<string>No Starred Items</string>
+	<key>starred.open_folder</key>
+	<string>Open Folder</string>
+	<key>starred.title</key>
+	<string>Starred</string>
+	<key>starred.unstar_batch_partial</key>
+	<string>Unstarred %d items, %d failed</string>
+	<key>starred.unstar_batch_partial %lld %lld</key>
+	<string>%1$lld of %2$lld items unstarred</string>
+	<key>starred.unstar_batch_success</key>
+	<string>Successfully unstarred %d items</string>
+	<key>starred.unstar_batch_success %lld</key>
+	<string>%lld items unstarred</string>
+	<key>starred.unstar_failed</key>
+	<string>Failed to unstar item</string>
+	<key>starred.unstar_success</key>
+	<string>Item unstarred successfully</string>
+	<key>stats.access_count %lld</key>
+	<string>%lld hits</string>
+	<key>stats.activity_analysis</key>
+	<string>Activity Analysis</string>
+	<key>stats.activity_trend</key>
+	<string>View Trend</string>
+	<key>stats.contribution</key>
+	<string>Contribution Analysis</string>
+	<key>stats.core_metrics</key>
+	<string>Core Metrics</string>
+	<key>stats.details</key>
+	<string>Details</string>
+	<key>stats.files</key>
+	<string>Files</string>
+	<key>stats.members</key>
+	<string>Members</string>
+	<key>stats.no_logs</key>
+	<string>No Records</string>
+	<key>stats.no_logs.description</key>
+	<string>This file has not been accessed yet</string>
+	<key>stats.starred</key>
+	<string>Starred</string>
+	<key>stats.storage</key>
+	<string>Storage</string>
+	<key>stats.storage_percent</key>
+	<string>Percentage of Total: %@</string>
+	<key>stats.storage_share</key>
+	<string>Storage Share</string>
+	<key>stats.title</key>
+	<string>Stats</string>
+	<key>stats.today_files</key>
+	<string>Today</string>
+	<key>stats.unknown_user</key>
+	<string>Unknown</string>
+	<key>stats.upload</key>
+	<string>Upload</string>
+	<key>status.downloaded</key>
+	<string>Downloaded</string>
+	<key>status.loading</key>
+	<string>Loading...</string>
+	<key>status.opening</key>
+	<string>Opening...</string>
+	<key>status.starred</key>
+	<string>Starred</string>
+	<key>tab.browse</key>
+	<string>Browse</string>
+	<key>tab.more</key>
+	<string>More</string>
+	<key>tab.personal</key>
+	<string>Personal</string>
+	<key>title.access_logs</key>
+	<string>Access Logs</string>
+	<key>title.file_info</key>
+	<string>File Info</string>
+	<key>toast.batch_star_toggle</key>
+	<string>Starred status updated</string>
+	<key>toast.copy_success</key>
+	<string>Copied successfully</string>
+	<key>toast.delete_success</key>
+	<string>Deleted successfully</string>
+	<key>toast.download_failed</key>
+	<string>Download Failed</string>
+	<key>toast.folder_created</key>
+	<string>Folder created</string>
+	<key>toast.move_success</key>
+	<string>Moved successfully</string>
+	<key>toast.original_downloaded</key>
+	<string>Original Downloaded</string>
+	<key>toast.password_copied</key>
+	<string>Password Copied</string>
+	<key>toast.preview_failed</key>
+	<string>Preview failed, please download original</string>
+	<key>toast.rename_success</key>
+	<string>Renamed successfully</string>
+	<key>toast.reset_success</key>
+	<string>Preferences Restored</string>
+	<key>toast.star_failed</key>
+	<string>Failed to update star</string>
+	<key>toast.starred</key>
+	<string>Starred</string>
+	<key>toast.starred_success</key>
+	<string>Added to starred</string>
+	<key>toast.unstarred_success</key>
+	<string>Unstarred successfully</string>
+	<key>upload.clear_completed</key>
+	<string>Clear Completed</string>
+	<key>upload.no_tasks</key>
+	<string>No upload tasks</string>
+	<key>upload.no_tasks_description</key>
+	<string>Uploaded files will appear here</string>
+	<key>upload.remaining_hours</key>
+	<string>%d hr left</string>
+	<key>upload.remaining_minutes</key>
+	<string>%d min left</string>
+	<key>upload.remaining_seconds</key>
+	<string>%d sec left</string>
+	<key>upload.tasks_title</key>
+	<string>Upload Tasks</string>
+	<key>user.add_permission</key>
+	<string>Add Permission</string>
+	<key>user.basic_info</key>
+	<string>Basic Info</string>
+	<key>user.created_at</key>
+	<string>Joined At</string>
+	<key>user.department</key>
+	<string>Department</string>
+	<key>user.dept_unassigned</key>
+	<string>Unassigned</string>
+	<key>user.no_permissions</key>
+	<string>No additional permissions</string>
+	<key>user.permissions</key>
+	<string>Permissions</string>
+	<key>user.reset_password_placeholder</key>
+	<string>Reset Password (leave empty)</string>
+	<key>user.role</key>
+	<string>Role</string>
+	<key>user.username</key>
+	<string>Username</string>
+	<key>view.grid</key>
+	<string>Grid</string>
+	<key>view.list</key>
+	<string>List</string>
+	<key>view.title</key>
+	<string>View</string>
+</dict>
+</plist>

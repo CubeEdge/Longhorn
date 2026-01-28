@@ -1,0 +1,168 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Settings/SettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "settings.title",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.general",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 13
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.content",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.connection",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.maintenance",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.about",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.app_language",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 14
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.recent_period",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.server_url",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.reset_preferences",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.cache_cleared",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 121
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.cache_cleared",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.clear_cache",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.reset_preferences",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.confirm",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "toast.reset_success",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.reset_message",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "settings.version",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "1.0.0",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 84
+        }
+      }
+    ]
+  },
+  "version": 1
+}

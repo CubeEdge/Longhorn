@@ -1,0 +1,152 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Files/UploadProgressView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "upload.tasks_title",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.no_tasks",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.no_tasks_description",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.close",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.clear_completed",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_photo",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload_photo",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.select_up_to_20",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "action.cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "",
+        "key": "browser.upload.exporting",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld / %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 313
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_seconds",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 472
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_minutes",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 474
+        }
+      },
+      {
+        "comment": "",
+        "key": "upload.remaining_hours",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 476
+        }
+      }
+    ]
+  },
+  "version": 1
+}

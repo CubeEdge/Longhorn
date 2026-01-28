@@ -83,9 +83,9 @@ Longhorn 是一款面向企业内部的**轻量级文件管理与协作系统**�
   - **统一体验**: iOS 和 Web 版本采用一致的更多菜单模式，主界面更简洁，次要操作统一收纳。
 - **交互细节**：
   - 更多菜单支持点击外部自动关闭。
-  - Level 选项显示 checkmark 选中状态。
-  - Close 按钮使用 destructive 样式（红色）突出显示。
-  - 优化了悬停交互动画。
+  - **Level 选项**: 显示 checkmark 选中状态。
+  - **Close 按钮**: 使用 destructive 样式（红色）突出显示。
+  - **缓存管理**: 新增 "Reset Cache" 功能 (Web/iOS)，允许用户强制清理本地词库缓存并重置为默认设置 (English Advanced)。
 
 ### 3.2 之前的更新 (V13.4.2 Hotfix)
 

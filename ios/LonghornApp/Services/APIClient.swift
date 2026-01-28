@@ -241,6 +241,62 @@ class APIClient {
             throw APIError.serverError(httpResponse.statusCode, nil)
         }
     }
+
+    /// 上传文件分片
+    func uploadChunk(data: Data, fields: [String: String]) async throws {
+        let endpoint = "/api/upload/chunk"
+        guard let url = URL(string: baseURL + endpoint) else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // 认证
+        if let token = await AuthManager.shared.token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // 字段
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        
+        // 文件数据
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"chunk\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let (_, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.noData
+        }
+        
+        if httpResponse.statusCode == 401 {
+             await MainActor.run {
+                 AuthManager.shared.logout()
+             }
+             throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode < 200 || httpResponse.statusCode >= 300 {
+            throw APIError.serverError(httpResponse.statusCode, "Upload Failed")
+        }
+    }
+
     
     // MARK: - 私有方法
     

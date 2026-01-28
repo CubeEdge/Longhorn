@@ -1,0 +1,96 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/SidebarView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Longhorn",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "快速访问",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "空间",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "部门",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "",
+        "key": "收藏",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "我的分享",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "个人空间",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "回收站",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "设置",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "退出登录",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Detail",
+        "location": {
+          "startingColumn": 1,
+          "startingLine": 131
+        }
+      }
+    ]
+  },
+  "version": 1
+}

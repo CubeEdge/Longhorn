@@ -1,0 +1,72 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DashboardView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "home.title",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.search_placeholder",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.recent",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "home.quick_access",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_department",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_shares",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.starred",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.recycle_bin",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 180
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -83,6 +83,40 @@ class DailyWordService: ObservableObject {
         ToastManager.shared.show("Refreshing vocabulary...", type: .info)
         startBatchUpdate()
     }
+
+    func clearCache() {
+        print("[DailyWord] Clearing all cache...")
+        let keys = [
+            "longhorn_daily_word_language",
+            "longhorn_daily_word_batch_en",
+            "longhorn_daily_word_batch_de",
+            "longhorn_daily_word_batch_ja",
+            "longhorn_daily_word_batch_zh",
+            "daily_word_level_en",
+            "daily_word_level_de",
+            "daily_word_level_ja",
+            "daily_word_level_zh",
+            "longhorn_daily_word_library_en", // Legacy keys
+            "longhorn_daily_word_library_de",
+            "longhorn_daily_word_library_ja",
+            "longhorn_daily_word_library_zh"
+        ]
+        
+        for key in keys {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        
+        // Reset state to defaults
+        self.currentLanguage = .en
+        self.currentLevel = "Advanced"
+        self.batchWords = []
+        self.currentIndex = 0
+        self.currentWord = nil
+        
+        // Reload (will likely trigger empty fetch or waiting state)
+        loadBatch()
+        ToastManager.shared.show("Vocabulary cache cleared", type: .success)
+    }
     
     private func updateCurrentWord() {
         guard !batchWords.isEmpty, batchWords.indices.contains(currentIndex) else {
@@ -169,37 +203,20 @@ class DailyWordService: ObservableObject {
     }
     
     private func fetchBatch(count: Int, isAppend: Bool) {
-        let baseURL = APIClient.shared.baseURL
         let lang = currentLanguage.rawValue
         let lvl = currentLevel.prefix(1).uppercased() + currentLevel.dropFirst()
         
-        guard let url = URL(string: "\(baseURL)/api/vocabulary/batch?language=\(lang)&level=\(lvl)&count=\(count)") else {
-            self.isUpdating = false
-            return
-        }
+        let queryItems = [
+            URLQueryItem(name: "language", value: lang),
+            URLQueryItem(name: "level", value: lvl),
+            URLQueryItem(name: "count", value: String(count))
+        ]
         
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self else { return }
-            
-            if let error = error {
-                print("[DailyWord] Network Error: \(error.localizedDescription)")
-                DispatchQueue.main.async { 
-                    self.isUpdating = false 
-                    ToastManager.shared.show("Update failed: \(error.localizedDescription)", type: .error)
-                }
-                return
-            }
-            
-            guard let data = data else {
-                DispatchQueue.main.async { self.isUpdating = false }
-                return
-            }
-            
+        Task {
             do {
-                let decoder = JSONDecoder()
-                let newWords = try decoder.decode([WordEntry].self, from: data)
+                let newWords: [WordEntry] = try await APIClient.shared.get("/api/vocabulary/batch", queryItems: queryItems)
                 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.isUpdating = false
                     
                     if isAppend {
@@ -223,10 +240,13 @@ class DailyWordService: ObservableObject {
                     self.updateProgress = 1.0
                 }
             } catch {
-                print("[DailyWord] Decoding Error: \(error)")
-                DispatchQueue.main.async { self.isUpdating = false }
+                print("[DailyWord] Fetch Error: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.isUpdating = false
+                    ToastManager.shared.show("Update failed: \(error.localizedDescription)", type: .error)
+                }
             }
-        }.resume()
+        }
     }
     
     // MARK: - Speech

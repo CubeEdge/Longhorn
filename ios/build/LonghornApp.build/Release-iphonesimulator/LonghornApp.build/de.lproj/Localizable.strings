@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>action.cancel</key>
+	<string>Abbrechen</string>
+	<key>action.close</key>
+	<string>Schließen</string>
+	<key>action.confirm</key>
+	<string>Bestätigen</string>
+	<key>action.copy_link</key>
+	<string>Link kopieren</string>
+	<key>action.copy_to</key>
+	<string>Kopieren nach</string>
+	<key>action.create</key>
+	<string>Erstellen</string>
+	<key>action.delete</key>
+	<string>Löschen</string>
+	<key>action.done</key>
+	<string>Fertig</string>
+	<key>action.download</key>
+	<string>Herunterladen</string>
+	<key>action.edit</key>
+	<string>Bearbeiten</string>
+	<key>action.favorite</key>
+	<string>Favorit</string>
+	<key>action.move</key>
+	<string>Verschieben</string>
+	<key>action.move_to</key>
+	<string>Verschieben nach</string>
+	<key>action.ok</key>
+	<string>OK</string>
+	<key>action.preview</key>
+	<string>Vorschau</string>
+	<key>action.rename</key>
+	<string>Umbenennen</string>
+	<key>action.rename_message</key>
+	<string>Umbenennen "%@"</string>
+	<key>action.retry</key>
+	<string>Wiederholen</string>
+	<key>action.retry_load</key>
+	<string>Laden fehlgeschlagen (Tippen zum Wiederholen)</string>
+	<key>action.save</key>
+	<string>Speichern</string>
+	<key>action.select</key>
+	<string>Auswählen</string>
+	<key>action.select_all</key>
+	<string>Alles auswählen</string>
+	<key>action.select_none</key>
+	<string>Auswahl aufheben</string>
+	<key>action.select_up_to_20</key>
+	<string>Wählen Sie bis zu 20 Fotos/Videos</string>
+	<key>action.share</key>
+	<string>Teilen</string>
+	<key>action.star</key>
+	<string>Als Favorit markieren</string>
+	<key>action.unfavorite</key>
+	<string>Nicht mehr Favorit</string>
+	<key>action.unstar</key>
+	<string>Favorit entfernen</string>
+	<key>alert.confirm_delete</key>
+	<string>Löschen bestätigen</string>
+	<key>alert.error</key>
+	<string>Fehler</string>
+	<key>alert.preview_failed</key>
+	<string>Vorschau fehlgeschlagen</string>
+	<key>browse.library</key>
+	<string>Bibliothek</string>
+	<key>browse.locations</key>
+	<string>Orte</string>
+	<key>browse.search</key>
+	<string>Suchen</string>
+	<key>browser.create_folder</key>
+	<string>Ordner erstellen</string>
+	<key>browser.delete_bin_message</key>
+	<string>Dateien werden in den Papierkorb verschoben</string>
+	<key>browser.delete_confirm_message</key>
+	<string>Möchten Sie die ausgewählten Elemente wirklich löschen?</string>
+	<key>browser.delete_single_message</key>
+	<string>Datei kann aus dem Papierkorb wiederhergestellt werden</string>
+	<key>browser.departments</key>
+	<string>Abteilungen</string>
+	<key>browser.empty</key>
+	<string>Ordner ist leer</string>
+	<key>browser.files</key>
+	<string>Dateien</string>
+	<key>browser.folder_name_placeholder</key>
+	<string>Ordnername</string>
+	<key>browser.loading</key>
+	<string>Liste wird aktualisiert...</string>
+	<key>browser.new_name_placeholder</key>
+	<string>Neuer Name</string>
+	<key>browser.personal_space</key>
+	<string>Persönlicher Bereich</string>
+	<key>browser.upload.exporting</key>
+	<string>Ressourcen werden exportiert...</string>
+	<key>browser.upload_file</key>
+	<string>Datei hochladen</string>
+	<key>browser.upload_photo</key>
+	<string>Foto/Video hochladen</string>
+	<key>browser.upload_progress</key>
+	<string>Fortschritt</string>
+	<key>browser.view_mode.grid</key>
+	<string>Raster</string>
+	<key>browser.view_mode.list</key>
+	<string>Liste</string>
+	<key>common.cancel_selection</key>
+	<string>Auswahl aufheben</string>
+	<key>common.loading</key>
+	<string>Laden...</string>
+	<key>common.selected_count</key>
+	<string>%lld ausgewählt</string>
+	<key>daily_word.examples</key>
+	<string>Beispiele</string>
+	<key>daily_word.listen</key>
+	<string>Anhören</string>
+	<key>daily_word.meaning</key>
+	<string>Bedeutung</string>
+	<key>daily_word.next</key>
+	<string>Nächstes Wort</string>
+	<key>daily_word.title</key>
+	<string>Wort des Tages</string>
+	<key>dept.GE</key>
+	<string>Allgemeines Management</string>
+	<key>dept.MS</key>
+	<string>Marketing</string>
+	<key>dept.OP</key>
+	<string>Betrieb</string>
+	<key>dept.RD</key>
+	<string>F&amp;E</string>
+	<key>dept.RE</key>
+	<string>Allgemeine Ressourcen</string>
+	<key>error.dept_load_fail</key>
+	<string>Abteilungsdaten konnten nicht geladen werden</string>
+	<key>error.load_failed</key>
+	<string>Laden fehlgeschlagen</string>
+	<key>file.count_suffix</key>
+	<string>Dateien</string>
+	<key>file.download_preview</key>
+	<string>Vorschau herunterladen</string>
+	<key>filter.all</key>
+	<string>Alle</string>
+	<key>filter.audio</key>
+	<string>Audio</string>
+	<key>filter.document</key>
+	<string>Dokumente</string>
+	<key>filter.image</key>
+	<string>Bilder</string>
+	<key>filter.video</key>
+	<string>Videos</string>
+	<key>folder_picker.empty</key>
+	<string>Dieser Ordner ist leer oder enthält keine Unterordner</string>
+	<key>folder_picker.enter</key>
+	<string>Öffnen</string>
+	<key>folder_picker.go_up</key>
+	<string>Zurück</string>
+	<key>folder_picker.no_folders</key>
+	<string>Keine Ordner</string>
+	<key>folder_picker.root</key>
+	<string>Hauptverzeichnis</string>
+	<key>hint.pull_refresh</key>
+	<string>Zum Aktualisieren ziehen</string>
+	<key>home.quick_access</key>
+	<string>Schnellzugriff</string>
+	<key>home.recent</key>
+	<string>Zuletzt geöffnet</string>
+	<key>home.search_placeholder</key>
+	<string>Dateien suchen...</string>
+	<key>home.title</key>
+	<string>Startseite</string>
+	<key>label.access_count</key>
+	<string>Zugriffe</string>
+	<key>label.name</key>
+	<string>Name</string>
+	<key>label.statistics</key>
+	<string>Statistiken</string>
+	<key>label.type</key>
+	<string>Typ</string>
+	<key>label.upload_date</key>
+	<string>Hochgeladen am</string>
+	<key>label.upload_info</key>
+	<string>Upload-Informationen</string>
+	<key>label.uploader</key>
+	<string>Hochgeladen von</string>
+	<key>language.de</key>
+	<string>Deutsch</string>
+	<key>language.en</key>
+	<string>Englisch</string>
+	<key>language.ja</key>
+	<string>Japanisch</string>
+	<key>language.zh</key>
+	<string>Chinesisch</string>
+	<key>more.dashboard</key>
+	<string>Übersicht</string>
+	<key>more.dept_overview</key>
+	<string>Abteilungsübersicht</string>
+	<key>more.global_search</key>
+	<string>Globale Suche</string>
+	<key>more.logout</key>
+	<string>Abmelden</string>
+	<key>more.management</key>
+	<string>Verwaltung</string>
+	<key>more.team_management</key>
+	<string>Teamverwaltung</string>
+	<key>more.tools</key>
+	<string>Werkzeuge</string>
+	<key>nav.home</key>
+	<string>Startseite</string>
+	<key>permission.authorized_directory</key>
+	<string>Autorisiertes Verzeichnis</string>
+	<key>permission.contribute</key>
+	<string>Beitragen</string>
+	<key>permission.desc.contribute</key>
+	<string>Benutzer können hochladen und bearbeiten, aber keine Dateien anderer löschen.</string>
+	<key>permission.desc.full</key>
+	<string>Benutzer haben volle Kontrolle, einschließlich Löschen von Dateien.</string>
+	<key>permission.desc.read</key>
+	<string>Benutzer können Dateien nur anzeigen und herunterladen.</string>
+	<key>permission.expiry.1month</key>
+	<string>1 Monat</string>
+	<key>permission.expiry.7days</key>
+	<string>7 Tage</string>
+	<key>permission.expiry.custom</key>
+	<string>Benutzerdefiniert</string>
+	<key>permission.expiry.forever</key>
+	<string>Dauerhaft</string>
+	<key>permission.expiry_date</key>
+	<string>Ablaufdatum</string>
+	<key>permission.full</key>
+	<string>Vollzugriff</string>
+	<key>permission.read</key>
+	<string>Lesen</string>
+	<key>permission.select_folder_placeholder</key>
+	<string>Klicken Sie hier, um einen Ordner auszuwählen</string>
+	<key>permission.title</key>
+	<string>Berechtigung hinzufügen</string>
+	<key>permission.type</key>
+	<string>Berechtigungstyp</string>
+	<key>permission.validity</key>
+	<string>Gültigkeit</string>
+	<key>personal.core_stats</key>
+	<string>Datenübersicht</string>
+	<key>personal.my_files</key>
+	<string>Meine Dateien anzeigen</string>
+	<key>personal.share_count</key>
+	<string>Links geteilt</string>
+	<key>personal.space</key>
+	<string>Persönlicher Bereich</string>
+	<key>personal.title</key>
+	<string>Persönliches Zentrum</string>
+	<key>quick.my_department</key>
+	<string>Meine Abteilung</string>
+	<key>quick.my_shares</key>
+	<string>Meine Freigaben</string>
+	<key>quick.recycle_bin</key>
+	<string>Papierkorb</string>
+	<key>quick.starred</key>
+	<string>Favoriten</string>
+	<key>recent.hint</key>
+	<string>Dateien, die Sie kürzlich angesehen haben, erscheinen hier</string>
+	<key>recent.no_files</key>
+	<string>Keine kürzlichen Dateien</string>
+	<key>recent.period.month</key>
+	<string>30 Tage</string>
+	<key>recent.period.today</key>
+	<string>Heute</string>
+	<key>recent.period.two_weeks</key>
+	<string>2 Wochen</string>
+	<key>recent.period.week</key>
+	<string>7 Tage</string>
+	<key>recent.title</key>
+	<string>Zuletzt geöffnet</string>
+	<key>recycle_bin.clear</key>
+	<string>Leeren</string>
+	<key>recycle_bin.clear_all</key>
+	<string>Papierkorb leeren</string>
+	<key>recycle_bin.clear_warning</key>
+	<string>Diese Aktion kann nicht rückgängig gemacht werden.</string>
+	<key>recycle_bin.confirm_clear</key>
+	<string>Papierkorb wirklich leeren?</string>
+	<key>recycle_bin.confirm_delete_count</key>
+	<string>%d Elemente dauerhaft löschen?</string>
+	<key>recycle_bin.delete_permanently</key>
+	<string>Endgültig löschen</string>
+	<key>recycle_bin.deleted_at</key>
+	<string>Gelöscht am</string>
+	<key>recycle_bin.empty</key>
+	<string>Papierkorb ist leer</string>
+	<key>recycle_bin.empty_description</key>
+	<string>Gelöschte Dateien werden hier 30 Tage aufbewahrt</string>
+	<key>recycle_bin.original_location</key>
+	<string>Ursprünglicher Ort: %@</string>
+	<key>recycle_bin.restore</key>
+	<string>Wiederherstellen</string>
+	<key>recycle_bin.title</key>
+	<string>Papierkorb</string>
+	<key>role.admin</key>
+	<string>Administrator</string>
+	<key>role.lead</key>
+	<string>Abteilungsleiter</string>
+	<key>role.member</key>
+	<string>Mitglied</string>
+	<key>search.instruction</key>
+	<string>Suchen Sie nach Dateien und Ordnern</string>
+	<key>search.no_results.description</key>
+	<string>Geben Sie ein anderes Schlagwort ein</string>
+	<key>search.placeholder</key>
+	<string>Datei suchen...</string>
+	<key>search.placeholder.all</key>
+	<string>Alle Dateien durchsuchen</string>
+	<key>search.placeholder.dept</key>
+	<string>In %@ suchen</string>
+	<key>search.placeholder.personal</key>
+	<string>Persönlichen Bereich durchsuchen</string>
+	<key>search.searching</key>
+	<string>Suchen...</string>
+	<key>search.title</key>
+	<string>Suche</string>
+	<key>settings.about</key>
+	<string>Über</string>
+	<key>settings.app_language</key>
+	<string>App-Sprache</string>
+	<key>settings.cache</key>
+	<string>Cache</string>
+	<key>settings.cache_cleared</key>
+	<string>Cache gelöscht</string>
+	<key>settings.clear_cache</key>
+	<string>Alle Bildcaches löschen</string>
+	<key>settings.connection</key>
+	<string>Verbindung</string>
+	<key>settings.content</key>
+	<string>Inhalt</string>
+	<key>settings.general</key>
+	<string>Allgemein</string>
+	<key>settings.language</key>
+	<string>Sprache</string>
+	<key>settings.maintenance</key>
+	<string>Wartung</string>
+	<key>settings.recent</key>
+	<string>Zuletzt geöffnet</string>
+	<key>settings.recent_period</key>
+	<string>Zeitraum</string>
+	<key>settings.server</key>
+	<string>Server</string>
+	<key>settings.server_url</key>
+	<string>Server-URL</string>
+	<key>settings.title</key>
+	<string>Einstellungen</string>
+	<key>settings.version</key>
+	<string>Version</string>
+	<key>share.access_control</key>
+	<string>Zugriffskontrolle</string>
+	<key>share.action.copy_link</key>
+	<string>Link kopieren</string>
+	<key>share.batch_create</key>
+	<string>Freigabe erstellen</string>
+	<key>share.collection.file_count</key>
+	<string>%lld Dateien</string>
+	<key>share.collection_desc</key>
+	<string>Geben Sie dieser Stapelfreigabe einen Namen</string>
+	<key>share.collection_name</key>
+	<string>Sammlungsname</string>
+	<key>share.collection_name_placeholder</key>
+	<string>Namen eingeben</string>
+	<key>share.confirm_delete_count</key>
+	<string>Möchten Sie %lld Freigaben wirklich löschen?</string>
+	<key>share.content</key>
+	<string>Inhalt teilen</string>
+	<key>share.create_link</key>
+	<string>Freigabelink erstellen</string>
+	<key>share.delete_failed</key>
+	<string>Löschen fehlgeschlagen</string>
+	<key>share.delete_success</key>
+	<string>Erfolgreich gelöscht</string>
+	<key>share.edit.enter_password</key>
+	<string>Passwort eingeben</string>
+	<key>share.edit.expiry_date</key>
+	<string>Ablaufdatum</string>
+	<key>share.edit.password_hint</key>
+	<string>Leer lassen, wenn nicht geändert</string>
+	<key>share.edit.password_protect</key>
+	<string>Passwortschutz</string>
+	<key>share.edit.set_validity</key>
+	<string>Gültigkeit festlegen</string>
+	<key>share.edit.title_collection</key>
+	<string>Sammlung bearbeiten</string>
+	<key>share.edit.title_file</key>
+	<string>Freigabe bearbeiten</string>
+	<key>share.edit.validity</key>
+	<string>Gültigkeit</string>
+	<key>share.expiry.1day</key>
+	<string>1 Tag</string>
+	<key>share.expiry.3days</key>
+	<string>3 Tage</string>
+	<key>share.file_info</key>
+	<string>Datei teilen</string>
+	<key>share.language_settings</key>
+	<string>Sprache</string>
+	<key>share.link_copied</key>
+	<string>Link kopiert</string>
+	<key>share.link_expiry_desc</key>
+	<string>Link verfällt nach diesem Zeitraum</string>
+	<key>share.link_validity</key>
+	<string>Link-Gültigkeit</string>
+	<key>share.list.type</key>
+	<string>Typ</string>
+	<key>share.need_password</key>
+	<string>Passwort zum Herunterladen erforderlich</string>
+	<key>share.no_collections</key>
+	<string>Keine Sammlungen</string>
+	<key>share.no_collections_desc</key>
+	<string>Sammlungen werden erstellt, wenn Sie mehrere Dateien freigeben</string>
+	<key>share.no_files</key>
+	<string>Keine Freigaben</string>
+	<key>share.no_files_desc</key>
+	<string>Hier werden Ihre freigegebenen Links angezeigt</string>
+	<key>share.password</key>
+	<string>Passwort</string>
+	<key>share.selected_count</key>
+	<string>Ausgewählt:</string>
+	<key>share.set_password</key>
+	<string>Passwort festlegen</string>
+	<key>share.status.copied</key>
+	<string>Kopiert</string>
+	<key>share.status.expired</key>
+	<string>Abgelaufen</string>
+	<key>share.status.permanent</key>
+	<string>Unbefristet</string>
+	<key>share.success</key>
+	<string>Freigabelink erstellt</string>
+	<key>share.tab.collections</key>
+	<string>Sammlungen</string>
+	<key>share.tab.files</key>
+	<string>Dateien</string>
+	<key>share.ui_language</key>
+	<string>UI Sprache</string>
+	<key>sort.date</key>
+	<string>Datum</string>
+	<key>sort.name</key>
+	<string>Name</string>
+	<key>sort.size</key>
+	<string>Größe</string>
+	<key>sort.title</key>
+	<string>Sortieren</string>
+	<key>starred.confirm_unstar_count</key>
+	<string>Möchten Sie %lld Elemente wirklich aus den Favoriten entfernen?</string>
+	<key>starred.confirm_unstar_message</key>
+	<string>Möchten Sie "%@" wirklich aus den Favoriten entfernen?</string>
+	<key>starred.confirm_unstar_single</key>
+	<string>Favorit entfernen</string>
+	<key>starred.folder</key>
+	<string>Ordner</string>
+	<key>starred.hint</key>
+	<string>Markierte Dateien und Ordner werden hier angezeigt</string>
+	<key>starred.no_files</key>
+	<string>Keine Favoriten</string>
+	<key>starred.open_folder</key>
+	<string>Ordner öffnen</string>
+	<key>starred.title</key>
+	<string>Favoriten</string>
+	<key>starred.unstar_batch_partial</key>
+	<string>%d entfernt, %d fehlgeschlagen</string>
+	<key>starred.unstar_batch_partial %lld %lld</key>
+	<string>%1$lld von %2$lld Favoriten entfernt</string>
+	<key>starred.unstar_batch_success</key>
+	<string>%d Elemente aus Favoriten entfernt</string>
+	<key>starred.unstar_batch_success %lld</key>
+	<string>%lld Favoriten entfernt</string>
+	<key>starred.unstar_failed</key>
+	<string>Fehler beim Entfernen aus Favoriten</string>
+	<key>starred.unstar_success</key>
+	<string>Aus Favoriten entfernt</string>
+	<key>stats.access_count %lld</key>
+	<string>%lld Aufrufe</string>
+	<key>stats.activity_analysis</key>
+	<string>Aktivitätsanalyse</string>
+	<key>stats.activity_trend</key>
+	<string>Trend anzeigen</string>
+	<key>stats.contribution</key>
+	<string>Beitragsanalyse</string>
+	<key>stats.core_metrics</key>
+	<string>Kernmetriken</string>
+	<key>stats.members</key>
+	<string>Mitglieder</string>
+	<key>stats.no_logs</key>
+	<string>Keine Besuchsaufzeichnungen</string>
+	<key>stats.no_logs.description</key>
+	<string>Diese Datei wurde noch nicht besucht</string>
+	<key>stats.title</key>
+	<string>Besuchsstatistik</string>
+	<key>stats.unknown_user</key>
+	<string>Unbekannt</string>
+	<key>status.downloaded</key>
+	<string>Heruntergeladen</string>
+	<key>status.loading</key>
+	<string>Laden...</string>
+	<key>status.opening</key>
+	<string>Wird geöffnet...</string>
+	<key>status.starred</key>
+	<string>Favorisiert</string>
+	<key>tab.browse</key>
+	<string>Durchsuchen</string>
+	<key>tab.more</key>
+	<string>Mehr</string>
+	<key>tab.personal</key>
+	<string>Persönlich</string>
+	<key>title.access_logs</key>
+	<string>Zugriffsprotokolle</string>
+	<key>title.file_info</key>
+	<string>Dateiinfo</string>
+	<key>toast.batch_star_toggle</key>
+	<string>Favoriten aktualisiert</string>
+	<key>toast.copy_success</key>
+	<string>Kopiert</string>
+	<key>toast.delete_success</key>
+	<string>Gelöscht</string>
+	<key>toast.folder_created</key>
+	<string>Ordner erstellt</string>
+	<key>toast.move_success</key>
+	<string>Verschoben</string>
+	<key>toast.rename_success</key>
+	<string>Umbenannt</string>
+	<key>toast.star_failed</key>
+	<string>Favorit fehlgeschlagen</string>
+	<key>toast.starred</key>
+	<string>Favorisiert</string>
+	<key>toast.starred_success</key>
+	<string>Zu Favoriten hinzugefügt</string>
+	<key>toast.unstarred_success</key>
+	<string>Favorit entfernt</string>
+	<key>upload.clear_completed</key>
+	<string>Abgeschlossene löschen</string>
+	<key>upload.no_tasks</key>
+	<string>Keine Upload-Aufgaben</string>
+	<key>upload.no_tasks_description</key>
+	<string>Hochgeladene Dateien werden hier angezeigt</string>
+	<key>upload.remaining_hours</key>
+	<string>Noch %d Std.</string>
+	<key>upload.remaining_minutes</key>
+	<string>Noch %d Min.</string>
+	<key>upload.remaining_seconds</key>
+	<string>Noch %d Sek.</string>
+	<key>upload.tasks_title</key>
+	<string>Upload-Aufgaben</string>
+	<key>user.add_permission</key>
+	<string>Berechtigung hinzufügen</string>
+	<key>user.basic_info</key>
+	<string>Basisinformationen</string>
+	<key>user.created_at</key>
+	<string>Beigetreten am</string>
+	<key>user.department</key>
+	<string>Abteilung</string>
+	<key>user.dept_unassigned</key>
+	<string>Nicht zugewiesen</string>
+	<key>user.no_permissions</key>
+	<string>Keine zusätzlichen Berechtigungen</string>
+	<key>user.permissions</key>
+	<string>Berechtigungen</string>
+	<key>user.reset_password_placeholder</key>
+	<string>Passwort zurücksetzen (leer lassen)</string>
+	<key>user.role</key>
+	<string>Rolle</string>
+	<key>user.username</key>
+	<string>Benutzername</string>
+	<key>view.grid</key>
+	<string>Raster</string>
+	<key>view.list</key>
+	<string>Liste</string>
+	<key>view.title</key>
+	<string>Ansicht</string>
+</dict>
+</plist>

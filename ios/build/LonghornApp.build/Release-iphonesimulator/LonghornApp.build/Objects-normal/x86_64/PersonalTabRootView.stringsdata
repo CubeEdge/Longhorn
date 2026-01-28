@@ -1,0 +1,88 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/PersonalTabRootView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "personal.title",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.core_stats",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.space",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.my_files",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.core_stats",
+        "location": {
+          "startingColumn": 90,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.upload",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.storage",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.starred",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.starred",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "quick.my_shares",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 78
+        }
+      }
+    ]
+  },
+  "version": 1
+}

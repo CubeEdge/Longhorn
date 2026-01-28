@@ -480,23 +480,7 @@ struct PhotoPickerView: View {
 
 // MARK: - 辅助结构
 
-struct TaskFile: Transferable {
-    let url: URL
-    
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(contentType: .item) { taskFile in
-            SentTransferredFile(taskFile.url)
-        } importing: { received in
-            // Must copy to temporary location as received file might be deleted
-            let fileName = received.file.lastPathComponent
-            let dst = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-\(fileName)")
-            // Remove if exists
-            try? FileManager.default.removeItem(at: dst)
-            try FileManager.default.copyItem(at: received.file, to: dst)
-            return TaskFile(url: dst)
-        }
-    }
-}
+
 
 #Preview {
     UploadProgressView()

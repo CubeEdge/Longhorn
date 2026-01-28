@@ -1085,10 +1085,10 @@ export const chineseIdioms: { [key: string]: WordEntry[] } = {
 // 获取可用等级
 export const getAvailableLevels = (language: 'zh' | 'en' | 'de' | 'ja'): string[] => {
     switch (language) {
-        case 'de': return ['A1', 'A2', 'B1'];
-        case 'ja': return ['N5', 'N4', 'N3'];
-        case 'en': return ['advanced'];
-        case 'zh': return ['idioms'];
+        case 'de': return ['A1', 'A2', 'B1', 'B2', 'C1'];
+        case 'ja': return ['N5', 'N4', 'N3', 'N2'];
+        case 'en': return ['Elementary', 'Intermediate', 'Advanced', 'Common Phrases'];
+        case 'zh': return ['Idioms', 'Poetry', 'Classical'];
         default: return [];
     }
 };

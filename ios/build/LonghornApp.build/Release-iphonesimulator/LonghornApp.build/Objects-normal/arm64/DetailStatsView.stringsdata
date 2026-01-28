@@ -1,0 +1,88 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Main/DetailStatsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "stats.core_metrics",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 12
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.activity_analysis",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 20
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.upload",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 13
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.storage",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 14
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.starred",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "personal.share_count",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 16
+        }
+      },
+      {
+        "comment": "",
+        "key": "Coming Soon: Activity Chart",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "",
+        "key": "Coming Soon: Contribution",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 24
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.activity_trend",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "",
+        "key": "stats.contribution",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 25
+        }
+      }
+    ]
+  },
+  "version": 1
+}

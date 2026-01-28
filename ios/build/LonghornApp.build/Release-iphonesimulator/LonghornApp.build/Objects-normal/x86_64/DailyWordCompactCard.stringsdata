@@ -1,0 +1,32 @@
+{
+  "source": "/Users/Kine/Documents/Kinefinity/KineCore/Pool/Mega/Longhorn/ios/LonghornApp/Views/Components/DailyWordCompactCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "daily_word.title",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "daily_word.title",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 36
+        }
+      }
+    ]
+  },
+  "version": 1
+}
