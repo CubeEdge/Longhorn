@@ -2,6 +2,61 @@
 
 **概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
 
+## 会话: 2026-01-28 (Daily Word UX Refinement)
+
+### 任务: 每日一词 UI 改进 - 更多菜单整合
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **iOS 端** (`ios/LonghornApp/Views/Components/DailyWordBadge.swift`):
+        - 移除了 `trailingToolbar` 中的独立关闭按钮（`xmark.circle.fill`）。
+        - 重构更多菜单结构，将所有次要操作整合至 `Menu` 组件：
+          - **New Batch (Refresh)**: 刷新词库，带触感反馈。
+          - **Level 选择**: 如有多个等级时显示，checkmark 标记当前选中项。
+          - **Close**: 使用 `Button(role: .destructive)` 实现红色警告样式。
+        - 简化布局：仅保留一个 `ellipsis.circle` 更多菜单按钮。
+        
+    - **Web 端** (`client/src/components/DailyWord.tsx`):
+        - 新增 `MoreVertical` 图标按钮，创建下拉菜单组件。
+        - 菜单包含三个部分：
+          - **Level 选择**: 如有多个等级时显示，选中项显示黄色背景和 checkmark。
+          - **New Batch**: 蓝色主题色按钮，带 `RefreshCw` 图标。
+          - **Close**: 红色警告样式（`#ff453a`），带 `X` 图标。
+        - 移除底部控制栏中的 `Level Selector` 和 `New Batch` 按钮。
+        - 底部仅保留 **Prev** 和 **Next** 两个导航按钮。
+        - 实现菜单外部点击自动关闭：
+          - 使用 `useRef` + `useEffect` 监听 `mousedown` 事件。
+          - 点击菜单外部时 `setShowMoreMenu(false)`。
+        - 优化交互动画：
+          - 悬停时背景变深。
+          - Level 选中项高亮显示。
+          
+    - **部署**:
+        - Git commit: `5191625` - "feat(daily-word): 改进每日一词 UI 交互体验"。
+        - 生产服务器 `git fetch` + `merge` 成功。
+        - PM2 重启：8 个 cluster worker 全部 online。
+        
+    - **测试**:
+        - iOS 模拟器：iPhone 17 Pro (iOS 26.1) 编译并启动成功（PID: 99729）。
+        - Web 端：部署至生产环境 `https://opware.kineraw.com`。
+
+- **技术决策**:
+    - **iOS**: 使用 SwiftUI 原生 `Menu` 组件，避免自定义下拉菜单的复杂度。
+    - **Web**: 使用 `position: absolute` 实现下拉菜单，保持与 iOS 的视觉一致性。
+    - **状态管理**: Web 端使用 `useState` + `useRef` 管理菜单显示状态和关闭逻辑。
+    - **一致性**: 两端采用相同的交互模式，提升用户体验的连贯性。
+
+- **文件修改清单**:
+    - `ios/LonghornApp/Views/Components/DailyWordBadge.swift` (38行新增, 42行删除)
+    - `client/src/components/DailyWord.tsx` (213行新增, 104行删除)
+
+- **验证**:
+    - ✅ iOS 模拟器编译通过，无错误。
+    - ✅ 生产服务器部署成功，服务正常运行。
+    - ✅ Git 提交并推送至 GitHub。
+    - ✅ 文档已更新（Backlog, PromptLog, PRD, DevLog）。
+
+---
+
 ## 会话: 2026-01-27 (Data Quality Issue)
 
 ### 任务: Data Quality & First Run Optimization

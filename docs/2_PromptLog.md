@@ -4,6 +4,46 @@
 
 ---
 
+### 2026-01-28 13:30 - 每日一词 UI 改进：更多菜单整合 (Daily Word UI Refinement: More Menu Integration)
+**User Prompt**:
+1. iOS app：每日一词，把关闭按键取消，并在更多菜单里面增加一个关闭的功能。
+2. Web版本，参考iOS，增加一个更多菜单，把new batch和难度等级选择放到里面，而不是出现在UI上。
+3. iOS 修改之后，请直接运行模拟器，我来测试。
+4. Web 修改完成了，请直接发布到服务器端。
+
+**Action**:
+1. **iOS 改进**:
+   - 移除了 `DailyWordBadge.swift` 中顶部右侧的独立关闭按钮（`xmark.circle.fill`）。
+   - 在更多菜单（`ellipsis.circle`）中整合了所有次要操作：
+     - Level 选择器（如有多个等级）
+     - New Batch (Refresh) 刷新按钮
+     - **Close** 关闭选项（使用 `role: .destructive` 红色样式）
+   - 简化了 UI 布局，只保留一个更多菜单按钮。
+
+2. **Web 改进** (`DailyWord.tsx`):
+   - 新增三点更多菜单按钮（`MoreVertical` 图标）。
+   - 创建下拉菜单组件，整合：
+     - Level 难度选择器（显示 checkmark 选中状态）
+     - New Batch 刷新按钮（蓝色主题色）
+     - **Close** 关闭按钮（红色 `#ff453a` 警告样式）
+   - 简化底部控制栏：移除了 Level Selector 和 New Batch 按钮，仅保留 **Prev** 和 **Next** 两个导航按钮。
+   - 实现了点击菜单外部自动关闭的功能（`useEffect` + `mousedown` 事件监听）。
+   - 优化了悬停交互动画和选中状态样式。
+
+3. **部署与测试**:
+   - 代码提交到 GitHub（commit: `5191625`）。
+   - 生产服务器自动拉取更新并重启 PM2（8个 worker 全部 online）。
+   - iOS 模拟器编译并启动（iPhone 17 Pro, iOS 26.1, PID: 99729）。
+
+**Result**:
+- iOS 和 Web 版本现在采用一致的交互模式。
+- 主界面更简洁，次要操作统一收纳到更多菜单。
+- 核心导航（上一个/下一个）保持在主界面，便于快速切换。
+
+**Status**: Complete.
+
+---
+
 ### 00:05 - 服务器词库更新策略 (Server Vocab Strategy)
 **User Prompt**:
 1. 网页版每日一词不工作 (Empty DB on remote?).
