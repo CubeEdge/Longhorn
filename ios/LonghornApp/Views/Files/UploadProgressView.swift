@@ -13,9 +13,45 @@ struct UploadProgressView: View {
     @ObservedObject var uploadService = UploadService.shared
     var onDismiss: () -> Void = {}
     
+    private var totalStats: (uploaded: Int64, total: Int64, speed: Double) {
+        var uploaded: Int64 = 0
+        var total: Int64 = 0
+        var speeds: [Double] = []
+        
+        for task in uploadService.activeTasks {
+            total += task.fileSize
+            
+            if task.status == .uploading || task.status == .merging {
+                uploaded += task.uploadedBytes
+                if let speedStr = task.speed.split(separator: " ").first,
+                   let speedVal = Double(speedStr) {
+                    if task.speed.contains("MB/s") {
+                        speeds.append(speedVal * 1024 * 1024)
+                    } else if task.speed.contains("KB/s") {
+                        speeds.append(speedVal * 1024)
+                    } else {
+                        speeds.append(speedVal)
+                    }
+                }
+            } else if task.status == .completed {
+                uploaded += task.fileSize
+            }
+        }
+        
+        let avgSpeed = speeds.isEmpty ? 0 : speeds.reduce(0, +) / Double(speeds.count)
+        return (uploaded, total, avgSpeed)
+    }
+    
+    private var hasActiveUploads: Bool {
+        uploadService.activeTasks.contains { task in
+            task.status == .uploading || task.status == .merging || task.status == .pending
+        }
+    }
+    
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                // 任务列表
                 if uploadService.activeTasks.isEmpty {
                     ContentUnavailableView(
                         String(localized: "upload.no_tasks"),
@@ -35,17 +71,66 @@ struct UploadProgressView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "action.close")) { onDismiss() }
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 
-                if !uploadService.activeTasks.isEmpty {
-                    ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .primaryAction) {
+                    if hasActiveUploads {
+                        // 显示总体进度
+                        overallProgressView
+                    } else if !uploadService.activeTasks.isEmpty {
+                        // 上传完成后显示清理按钮
                         Button(String(localized: "upload.clear_completed")) {
                             uploadService.removeCompletedTasks()
                         }
                     }
                 }
             }
+        }
+    }
+    
+    private var overallProgressView: some View {
+        let stats = totalStats
+        let progress = stats.total > 0 ? Double(stats.uploaded) / Double(stats.total) : 0
+        
+        return VStack(alignment: .trailing, spacing: 2) {
+            Text("\(Int(progress * 100))%")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(red: 1.0, green: 0.82, blue: 0.0))
+            
+            HStack(spacing: 4) {
+                if stats.speed > 0 {
+                    Text(formatSpeed(stats.speed))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                
+                Text("\(formatSize(stats.uploaded))/\(formatSize(stats.total))")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func formatSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+    
+    private func formatSpeed(_ bytesPerSecond: Double) -> String {
+        if bytesPerSecond >= 1024 * 1024 {
+            return String(format: "%.1f MB/s", bytesPerSecond / (1024 * 1024))
+        } else if bytesPerSecond >= 1024 {
+            return String(format: "%.0f KB/s", bytesPerSecond / 1024)
+        } else {
+            return String(format: "%.0f B/s", bytesPerSecond)
         }
     }
 }
@@ -68,9 +153,18 @@ struct UploadTaskRow: View {
                 
                 Spacer()
                 
-                Text(task.status.rawValue)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(statusColor)
+                HStack(spacing: 4) {
+                    Text(task.status.rawValue)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(statusColor)
+                    
+                    // 上传中时显示百分比
+                    if task.status == .uploading || task.status == .merging {
+                        Text("\(Int(task.progress * 100))%")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             // 进度条
@@ -80,12 +174,17 @@ struct UploadTaskRow: View {
                     .tint(accentColor)
                 
                 HStack {
-                    Text("\(Int(task.progress * 100))%")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                    // Cancel按钮在左侧
+                    Button(role: .destructive) {
+                        task.cancel()
+                    } label: {
+                        Text(String(localized: "action.cancel"))
+                            .font(.system(size: 13))
+                    }
                     
                     Spacer()
                     
+                    // 速率和容量在右侧
                     if !task.speed.isEmpty {
                         Text(task.speed)
                             .font(.system(size: 12))
@@ -98,20 +197,37 @@ struct UploadTaskRow: View {
                 }
             }
             
-            // 失败信息
-            if task.status == .failed, let error = task.errorMessage {
-                Text(error)
-                    .font(.system(size: 12))
-                    .foregroundColor(.red)
-            }
-            
-            // 取消按钮
-            if task.status == .uploading || task.status == .pending {
+            // 等待中的取消按钮
+            if task.status == .pending {
                 Button(role: .destructive) {
                     task.cancel()
                 } label: {
                     Text(String(localized: "action.cancel"))
                         .font(.system(size: 13))
+                }
+            }
+            
+            // 失败信息和重试按钮
+            if task.status == .failed {
+                HStack(alignment: .top) {
+                    if let error = task.errorMessage {
+                        Text(error)
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                    }
+                    
+                    Spacer()
+                    
+                    // 重新上传按钮在最右侧
+                    Button {
+                        Task {
+                            await UploadService.shared.retryTask(task)
+                        }
+                    } label: {
+                        Label("重新上传", systemImage: "arrow.up.circle")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(accentColor)
+                    }
                 }
             }
         }
@@ -161,7 +277,6 @@ struct FilePickerView: View {
     let destinationPath: String
     var onDismiss: () -> Void = {}
     
-    @State private var showPicker = true
     @State private var isUploading = false
     @State private var totalFiles = 0
     @State private var currentFileIndex = 0
@@ -175,40 +290,20 @@ struct FilePickerView: View {
     @State private var uploadStartTime: Date?
     
     var body: some View {
-        NavigationStack {
-            Group {
-                if isUploading {
-                    uploadProgressView
-                } else {
-                    Color.clear
-                }
-            }
-            .navigationTitle("browser.upload_file")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("action.cancel") {
+        ZStack {
+            if isUploading {
+                uploadProgressView
+            } else {
+                DocumentPickerWrapper(
+                    onPick: { urls in
+                        pendingUrls = urls
+                        startUpload()
+                    },
+                    onCancel: {
                         onDismiss()
                     }
-                }
+                )
             }
-        }
-        .sheet(isPresented: $showPicker, onDismiss: {
-            if pendingUrls.isEmpty && !isUploading {
-                onDismiss()
-            }
-        }) {
-            DocumentPickerWrapper(
-                onPick: { urls in
-                    pendingUrls = urls
-                    showPicker = false
-                    startUpload()
-                },
-                onCancel: {
-                    showPicker = false
-                    onDismiss()
-                }
-            )
         }
     }
     
@@ -283,75 +378,15 @@ struct FilePickerView: View {
             return
         }
         
-        isUploading = true
-        uploadStartTime = Date()
-        totalFiles = pendingUrls.count
-        currentFileIndex = 0
-        totalBytes = 0
-        uploadedBytes = 0
-        uploadSpeed = 0
-        
-        // 计算总大小
-        for url in pendingUrls {
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-               let size = attrs[.size] as? Int64 {
-                totalBytes += size
+        Task {
+            do {
+                try await UploadService.shared.uploadFiles(
+                    fileURLs: pendingUrls,
+                    destinationPath: destinationPath
+                )
+            } catch {
+                print("Batch upload failed: \(error)")
             }
-        }
-        
-        if totalBytes == 0 {
-            totalBytes = 1 // 避免除零
-        }
-        
-        Task { @MainActor in
-            var completedBytes: Int64 = 0
-            
-            // 启动进度监听
-            let progressTask = Task { @MainActor in
-                let uploadService = UploadService.shared
-                while isUploading {
-                    if let currentTask = uploadService.activeTasks.last,
-                       (currentTask.status == .uploading || currentTask.status == .merging) {
-                        let currentJobBytes = currentTask.uploadedBytes
-                        uploadedBytes = completedBytes + currentJobBytes
-                        
-                        if let startTime = uploadStartTime {
-                            let elapsed = Date().timeIntervalSince(startTime)
-                            if elapsed > 0 && uploadedBytes > 0 {
-                                uploadSpeed = Double(uploadedBytes) / elapsed
-                            }
-                        }
-                    }
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                }
-            }
-            
-            for (index, url) in pendingUrls.enumerated() {
-                currentFileIndex = index + 1
-                currentFileName = url.lastPathComponent
-                
-                let fileSize: Int64
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-                   let size = attrs[.size] as? Int64 {
-                    fileSize = size
-                } else {
-                    fileSize = 0
-                }
-                
-                do {
-                    try await UploadService.shared.uploadFile(
-                        fileURL: url,
-                        destinationPath: destinationPath
-                    )
-                    completedBytes += fileSize
-                    uploadedBytes = completedBytes
-                } catch {
-                    print("Upload failed: \(error)")
-                }
-            }
-            
-            progressTask.cancel()
-            isUploading = false
             onDismiss()
         }
     }
@@ -431,7 +466,6 @@ struct PhotoPickerView: View {
     let destinationPath: String
     var onDismiss: () -> Void = {}
     
-    @State private var showPicker = true
     @State private var isUploading = false
     @State private var totalFiles = 0
     @State private var currentFileIndex = 0
@@ -445,40 +479,20 @@ struct PhotoPickerView: View {
     @State private var uploadStartTime: Date?
     
     var body: some View {
-        NavigationStack {
-            Group {
-                if isUploading {
-                    uploadProgressView
-                } else {
-                    Color.clear
-                }
-            }
-            .navigationTitle("browser.upload_photo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("action.cancel") {
+        ZStack {
+            if isUploading {
+                uploadProgressView
+            } else {
+                PHPickerWrapper(
+                    onPick: { results in
+                        pendingResults = results
+                        startUpload()
+                    },
+                    onCancel: {
                         onDismiss()
                     }
-                }
+                )
             }
-        }
-        .sheet(isPresented: $showPicker, onDismiss: {
-            if pendingResults.isEmpty && !isUploading {
-                onDismiss()
-            }
-        }) {
-            PHPickerWrapper(
-                onPick: { results in
-                    pendingResults = results
-                    showPicker = false
-                    startUpload()
-                },
-                onCancel: {
-                    showPicker = false
-                    onDismiss()
-                }
-            )
         }
     }
     
@@ -553,78 +567,30 @@ struct PhotoPickerView: View {
             return
         }
         
-        isUploading = true
-        uploadStartTime = Date()
-        totalFiles = pendingResults.count
-        currentFileIndex = 0
-        totalBytes = 1 // 避免除零,后面会更新
-        uploadedBytes = 0
-        uploadSpeed = 0
-        currentFileName = String(localized: "browser.upload.exporting")
-        
-        Task { @MainActor in
-            var completedBytes: Int64 = 0
-            var totalExportedSize: Int64 = 0
-            
-            // 启动进度监听
-            let progressTask = Task { @MainActor in
-                let uploadService = UploadService.shared
-                while isUploading {
-                    if let currentTask = uploadService.activeTasks.last,
-                       (currentTask.status == .uploading || currentTask.status == .merging) {
-                        let currentJobBytes = currentTask.uploadedBytes
-                        uploadedBytes = completedBytes + currentJobBytes
-                        
-                        if let startTime = uploadStartTime {
-                            let elapsed = Date().timeIntervalSince(startTime)
-                            if elapsed > 0 && uploadedBytes > 0 {
-                                uploadSpeed = Double(uploadedBytes) / elapsed
-                            }
-                        }
-                    }
-                    try? await Task.sleep(nanoseconds: 100_000_000)
+        Task {
+            // 先导出所有照片
+            var exportedURLs: [URL] = []
+            for result in pendingResults {
+                if let fileURL = await exportFile(from: result) {
+                    exportedURLs.append(fileURL)
                 }
             }
             
-            // 边导出边上传
-            for (index, result) in pendingResults.enumerated() {
-                currentFileIndex = index + 1
-                currentFileName = String(localized: "browser.upload.exporting") + " \(index + 1)/\(pendingResults.count)..."
-                
-                // 导出文件
-                guard let fileURL = await exportFile(from: result) else {
-                    continue
-                }
-                
-                // 获取文件大小
-                var fileSize: Int64 = 0
-                if let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
-                   let size = attrs[.size] as? Int64 {
-                    fileSize = size
-                    totalExportedSize += size
-                    totalBytes = totalExportedSize
-                }
-                
-                currentFileName = fileURL.lastPathComponent
-                
-                // 上传文件
-                do {
-                    try await UploadService.shared.uploadFile(
-                        fileURL: fileURL,
-                        destinationPath: destinationPath
-                    )
-                    completedBytes += fileSize
-                    uploadedBytes = completedBytes
-                } catch {
-                    print("Upload failed: \(error)")
-                }
-                
-                // 清理临时文件
-                try? FileManager.default.removeItem(at: fileURL)
+            // 批量上传
+            do {
+                try await UploadService.shared.uploadFiles(
+                    fileURLs: exportedURLs,
+                    destinationPath: destinationPath
+                )
+            } catch {
+                print("Batch photo upload failed: \(error)")
             }
             
-            progressTask.cancel()
-            isUploading = false
+            // 清理临时文件
+            for url in exportedURLs {
+                try? FileManager.default.removeItem(at: url)
+            }
+            
             onDismiss()
         }
     }

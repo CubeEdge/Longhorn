@@ -76,6 +76,121 @@ db.exec(`
         topic TEXT, -- Phase 8: Contextual Topic
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- ==================== Product Issue Tracking System ====================
+    
+    -- Products Master Data
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_line TEXT NOT NULL CHECK(product_line IN ('Camera', 'EVF', 'Accessory')),
+        model_name TEXT NOT NULL,
+        serial_number TEXT,
+        firmware_version TEXT,
+        production_batch TEXT,
+        production_date DATE,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_products_model ON products(model_name);
+    CREATE INDEX IF NOT EXISTS idx_products_serial ON products(serial_number);
+    CREATE INDEX IF NOT EXISTS idx_products_batch ON products(production_batch);
+
+    -- Customer Records
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_type TEXT NOT NULL CHECK(customer_type IN ('EndUser', 'Dealer', 'Distributor', 'Internal')),
+        customer_name TEXT NOT NULL,
+        contact_person TEXT,
+        phone TEXT,
+        email TEXT,
+        country TEXT,
+        province TEXT,
+        city TEXT,
+        company_name TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_customers_type ON customers(customer_type);
+    CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(country, province, city);
+
+    -- Issue Tickets
+    CREATE TABLE IF NOT EXISTS issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_number TEXT UNIQUE NOT NULL,
+        product_id INTEGER,
+        customer_id INTEGER,
+        issue_category TEXT NOT NULL CHECK(issue_category IN ('Hardware', 'Software', 'Consultation', 'Return', 'Complaint')),
+        issue_source TEXT NOT NULL CHECK(issue_source IN ('OnlineFeedback', 'OfflineReturn', 'DealerFeedback', 'InternalTest')),
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        severity TEXT CHECK(severity IN ('Low', 'Medium', 'High', 'Critical')) DEFAULT 'Medium',
+        status TEXT NOT NULL CHECK(status IN ('Pending', 'Assigned', 'InProgress', 'AwaitingVerification', 'Closed', 'Rejected')) DEFAULT 'Pending',
+        assigned_to INTEGER,
+        assigned_at DATETIME,
+        resolution TEXT,
+        resolved_at DATETIME,
+        closed_at DATETIME,
+        closed_by INTEGER,
+        created_by INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(product_id) REFERENCES products(id),
+        FOREIGN KEY(customer_id) REFERENCES customers(id),
+        FOREIGN KEY(assigned_to) REFERENCES users(id),
+        FOREIGN KEY(created_by) REFERENCES users(id),
+        FOREIGN KEY(closed_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
+    CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(issue_category);
+    CREATE INDEX IF NOT EXISTS idx_issues_assigned ON issues(assigned_to);
+    CREATE INDEX IF NOT EXISTS idx_issues_product ON issues(product_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_customer ON issues(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_created ON issues(created_at);
+
+    -- Issue Comments / Activity Log
+    CREATE TABLE IF NOT EXISTS issue_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        comment_type TEXT CHECK(comment_type IN ('Comment', 'StatusChange', 'Assignment')) DEFAULT 'Comment',
+        content TEXT NOT NULL,
+        is_internal BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_comments_issue ON issue_comments(issue_id);
+
+    -- Issue Attachments
+    CREATE TABLE IF NOT EXISTS issue_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id INTEGER NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER,
+        file_type TEXT,
+        uploaded_by INTEGER NOT NULL,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+        FOREIGN KEY(uploaded_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_attachments_issue ON issue_attachments(issue_id);
+
+    -- Import History
+    CREATE TABLE IF NOT EXISTS import_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        import_type TEXT NOT NULL CHECK(import_type IN ('Excel', 'CSV', 'API')),
+        file_name TEXT,
+        total_records INTEGER,
+        success_records INTEGER,
+        failed_records INTEGER,
+        error_log TEXT,
+        imported_by INTEGER NOT NULL,
+        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(imported_by) REFERENCES users(id)
+    );
 `);
 
 // Migration to add topic column (Safe fail if exists)
@@ -3580,6 +3695,731 @@ app.delete('/api/share-collection/:id', authenticate, (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ==================== Product Issue Tracking API ====================
+
+const ISSUE_ATTACHMENTS_DIR = path.join(__dirname, 'data/issue_attachments');
+fs.ensureDirSync(ISSUE_ATTACHMENTS_DIR);
+const issueUpload = multer({ dest: ISSUE_ATTACHMENTS_DIR });
+
+// Generate Issue Number: ISS-YYYY-NNNN
+function generateIssueNumber() {
+    const year = new Date().getFullYear();
+    const result = db.prepare(`
+        SELECT COUNT(*) as count FROM issues 
+        WHERE issue_number LIKE 'ISS-${year}-%'
+    `).get();
+    const seq = (result.count || 0) + 1;
+    return `ISS-${year}-${String(seq).padStart(4, '0')}`;
+}
+
+// Permission check for issues
+function canAccessIssue(user, issue) {
+    if (user.role === 'Admin') return { read: true, write: true };
+    
+    // Lead can access all issues, write own department's
+    if (user.role === 'Lead') {
+        const creator = db.prepare('SELECT department_id FROM users WHERE id = ?').get(issue.created_by);
+        const isOwnDept = creator && creator.department_id === user.department_id;
+        return { read: true, write: isOwnDept || issue.assigned_to === user.id };
+    }
+    
+    // Member can only access assigned or created issues
+    const canAccess = issue.assigned_to === user.id || issue.created_by === user.id;
+    return { read: canAccess, write: canAccess };
+}
+
+// --- Issues CRUD ---
+
+// Get Issues List (with filtering & pagination)
+app.get('/api/issues', authenticate, (req, res) => {
+    try {
+        const { status, category, source, severity, assigned_to, search, page = 1, limit = 20 } = req.query;
+        const user = req.user;
+        
+        let whereConditions = [];
+        let params = [];
+        
+        // Role-based filtering
+        if (user.role === 'Member') {
+            whereConditions.push('(i.assigned_to = ? OR i.created_by = ?)');
+            params.push(user.id, user.id);
+        }
+        
+        // Filter conditions
+        if (status && status !== 'all') {
+            whereConditions.push('i.status = ?');
+            params.push(status);
+        }
+        if (category && category !== 'all') {
+            whereConditions.push('i.issue_category = ?');
+            params.push(category);
+        }
+        if (source && source !== 'all') {
+            whereConditions.push('i.issue_source = ?');
+            params.push(source);
+        }
+        if (severity && severity !== 'all') {
+            whereConditions.push('i.severity = ?');
+            params.push(severity);
+        }
+        if (assigned_to === 'me') {
+            whereConditions.push('i.assigned_to = ?');
+            params.push(user.id);
+        } else if (assigned_to && assigned_to !== 'all') {
+            whereConditions.push('i.assigned_to = ?');
+            params.push(parseInt(assigned_to));
+        }
+        if (search) {
+            whereConditions.push('(i.issue_number LIKE ? OR i.title LIKE ? OR c.customer_name LIKE ?)');
+            const searchTerm = `%${search}%`;
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+        
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Count total
+        const countSql = `
+            SELECT COUNT(*) as total FROM issues i
+            LEFT JOIN customers c ON i.customer_id = c.id
+            ${whereClause}
+        `;
+        const total = db.prepare(countSql).get(...params).total;
+        
+        // Get issues
+        const sql = `
+            SELECT 
+                i.*,
+                p.model_name as product_model,
+                p.serial_number as product_serial,
+                c.customer_name,
+                c.customer_type,
+                creator.username as created_by_name,
+                assignee.username as assigned_to_name
+            FROM issues i
+            LEFT JOIN products p ON i.product_id = p.id
+            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN users creator ON i.created_by = creator.id
+            LEFT JOIN users assignee ON i.assigned_to = assignee.id
+            ${whereClause}
+            ORDER BY i.created_at DESC
+            LIMIT ? OFFSET ?
+        `;
+        
+        const issues = db.prepare(sql).all(...params, parseInt(limit), offset);
+        
+        res.json({
+            issues,
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(total / parseInt(limit))
+        });
+    } catch (err) {
+        console.error('[Issues] List error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Issue
+app.post('/api/issues', authenticate, (req, res) => {
+    try {
+        const { product_id, customer_id, issue_category, issue_source, title, description, severity } = req.body;
+        
+        if (!issue_category || !issue_source || !title || !description) {
+            return res.status(400).json({ error: 'Missing required fields: issue_category, issue_source, title, description' });
+        }
+        
+        const issue_number = generateIssueNumber();
+        
+        const result = db.prepare(`
+            INSERT INTO issues (issue_number, product_id, customer_id, issue_category, issue_source, title, description, severity, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            issue_number,
+            product_id || null,
+            customer_id || null,
+            issue_category,
+            issue_source,
+            title,
+            description,
+            severity || 'Medium',
+            req.user.id
+        );
+        
+        res.json({ success: true, issue_id: result.lastInsertRowid, issue_number });
+    } catch (err) {
+        console.error('[Issues] Create error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Issue Detail
+app.get('/api/issues/:id', authenticate, (req, res) => {
+    try {
+        const issue = db.prepare(`
+            SELECT 
+                i.*,
+                p.product_line, p.model_name, p.serial_number, p.firmware_version, p.production_batch,
+                c.customer_type, c.customer_name, c.contact_person, c.phone, c.email, c.country, c.province, c.city, c.company_name,
+                creator.username as created_by_name,
+                assignee.username as assigned_to_name,
+                closer.username as closed_by_name
+            FROM issues i
+            LEFT JOIN products p ON i.product_id = p.id
+            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN users creator ON i.created_by = creator.id
+            LEFT JOIN users assignee ON i.assigned_to = assignee.id
+            LEFT JOIN users closer ON i.closed_by = closer.id
+            WHERE i.id = ?
+        `).get(req.params.id);
+        
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        const access = canAccessIssue(req.user, issue);
+        if (!access.read) {
+            return res.status(403).json({ error: 'No permission to view this issue' });
+        }
+        
+        // Get comments
+        const comments = db.prepare(`
+            SELECT ic.*, u.username as user_name
+            FROM issue_comments ic
+            LEFT JOIN users u ON ic.user_id = u.id
+            WHERE ic.issue_id = ?
+            ORDER BY ic.created_at ASC
+        `).all(req.params.id);
+        
+        // Get attachments
+        const attachments = db.prepare(`
+            SELECT ia.*, u.username as uploaded_by_name
+            FROM issue_attachments ia
+            LEFT JOIN users u ON ia.uploaded_by = u.id
+            WHERE ia.issue_id = ?
+            ORDER BY ia.uploaded_at DESC
+        `).all(req.params.id);
+        
+        res.json({
+            issue,
+            comments,
+            attachments,
+            canWrite: access.write
+        });
+    } catch (err) {
+        console.error('[Issues] Detail error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Issue
+app.put('/api/issues/:id', authenticate, (req, res) => {
+    try {
+        const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        const access = canAccessIssue(req.user, issue);
+        if (!access.write) {
+            return res.status(403).json({ error: 'No permission to edit this issue' });
+        }
+        
+        const { title, description, severity, status, resolution } = req.body;
+        const updates = [];
+        const params = [];
+        
+        if (title !== undefined) { updates.push('title = ?'); params.push(title); }
+        if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+        if (severity !== undefined) { updates.push('severity = ?'); params.push(severity); }
+        if (resolution !== undefined) { updates.push('resolution = ?'); params.push(resolution); }
+        
+        // Status change with timestamp updates
+        if (status !== undefined && status !== issue.status) {
+            updates.push('status = ?');
+            params.push(status);
+            
+            if (status === 'Closed') {
+                updates.push('closed_at = CURRENT_TIMESTAMP', 'closed_by = ?');
+                params.push(req.user.id);
+            }
+            if (status === 'AwaitingVerification' && !issue.resolved_at) {
+                updates.push('resolved_at = CURRENT_TIMESTAMP');
+            }
+            
+            // Log status change
+            db.prepare(`
+                INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
+                VALUES (?, ?, 'StatusChange', ?)
+            `).run(req.params.id, req.user.id, `Status changed from ${issue.status} to ${status}`);
+        }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(req.params.id);
+        
+        db.prepare(`UPDATE issues SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Issues] Update error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Assign Issue
+app.post('/api/issues/:id/assign', authenticate, (req, res) => {
+    try {
+        if (req.user.role === 'Member') {
+            return res.status(403).json({ error: 'Only Admin or Lead can assign issues' });
+        }
+        
+        const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        const { assigned_to } = req.body;
+        const assignee = db.prepare('SELECT id, username FROM users WHERE id = ?').get(assigned_to);
+        if (!assignee) {
+            return res.status(400).json({ error: 'Invalid assignee' });
+        }
+        
+        const newStatus = issue.status === 'Pending' ? 'Assigned' : issue.status;
+        
+        db.prepare(`
+            UPDATE issues SET assigned_to = ?, assigned_at = CURRENT_TIMESTAMP, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `).run(assigned_to, newStatus, req.params.id);
+        
+        // Log assignment
+        db.prepare(`
+            INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
+            VALUES (?, ?, 'Assignment', ?)
+        `).run(req.params.id, req.user.id, `Assigned to ${assignee.username}`);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Issues] Assign error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add Comment
+app.post('/api/issues/:id/comments', authenticate, (req, res) => {
+    try {
+        const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        const access = canAccessIssue(req.user, issue);
+        if (!access.read) {
+            return res.status(403).json({ error: 'No permission to comment on this issue' });
+        }
+        
+        const { content, is_internal } = req.body;
+        if (!content) {
+            return res.status(400).json({ error: 'Comment content is required' });
+        }
+        
+        const result = db.prepare(`
+            INSERT INTO issue_comments (issue_id, user_id, content, is_internal)
+            VALUES (?, ?, ?, ?)
+        `).run(req.params.id, req.user.id, content, is_internal ? 1 : 0);
+        
+        // Update issue timestamp
+        db.prepare('UPDATE issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
+        
+        res.json({ success: true, comment_id: result.lastInsertRowid });
+    } catch (err) {
+        console.error('[Issues] Comment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Upload Attachment
+app.post('/api/issues/:id/attachments', authenticate, issueUpload.array('files', 10), async (req, res) => {
+    try {
+        const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+        if (!issue) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        const access = canAccessIssue(req.user, issue);
+        if (!access.write) {
+            return res.status(403).json({ error: 'No permission to upload attachments' });
+        }
+        
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: 'No files uploaded' });
+        }
+        
+        const insertedIds = [];
+        for (const file of req.files) {
+            const result = db.prepare(`
+                INSERT INTO issue_attachments (issue_id, file_name, file_path, file_size, file_type, uploaded_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(req.params.id, file.originalname, file.filename, file.size, file.mimetype, req.user.id);
+            insertedIds.push(result.lastInsertRowid);
+        }
+        
+        res.json({ success: true, attachment_ids: insertedIds });
+    } catch (err) {
+        console.error('[Issues] Upload error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Download Attachment
+app.get('/api/issues/attachments/:attachmentId', authenticate, (req, res) => {
+    try {
+        const attachment = db.prepare(`
+            SELECT ia.*, i.created_by, i.assigned_to 
+            FROM issue_attachments ia
+            JOIN issues i ON ia.issue_id = i.id
+            WHERE ia.id = ?
+        `).get(req.params.attachmentId);
+        
+        if (!attachment) {
+            return res.status(404).json({ error: 'Attachment not found' });
+        }
+        
+        const issue = { created_by: attachment.created_by, assigned_to: attachment.assigned_to };
+        const access = canAccessIssue(req.user, issue);
+        if (!access.read) {
+            return res.status(403).json({ error: 'No permission to download this attachment' });
+        }
+        
+        const filePath = path.join(ISSUE_ATTACHMENTS_DIR, attachment.file_path);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'File not found on disk' });
+        }
+        
+        res.download(filePath, attachment.file_name);
+    } catch (err) {
+        console.error('[Issues] Download attachment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete Issue (Admin only)
+app.delete('/api/issues/:id', authenticate, (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ error: 'Only Admin can delete issues' });
+        }
+        
+        const result = db.prepare('DELETE FROM issues WHERE id = ?').run(req.params.id);
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Issue not found' });
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Issues] Delete error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Products CRUD ---
+
+// Get Products List
+app.get('/api/products', authenticate, (req, res) => {
+    try {
+        const { product_line, search, page = 1, limit = 50 } = req.query;
+        
+        let whereConditions = [];
+        let params = [];
+        
+        if (product_line && product_line !== 'all') {
+            whereConditions.push('product_line = ?');
+            params.push(product_line);
+        }
+        if (search) {
+            whereConditions.push('(model_name LIKE ? OR serial_number LIKE ? OR production_batch LIKE ?)');
+            const searchTerm = `%${search}%`;
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+        
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
+        const total = db.prepare(`SELECT COUNT(*) as total FROM products ${whereClause}`).get(...params).total;
+        const products = db.prepare(`
+            SELECT * FROM products ${whereClause}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(...params, parseInt(limit), offset);
+        
+        res.json({ products, total, page: parseInt(page), limit: parseInt(limit) });
+    } catch (err) {
+        console.error('[Products] List error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Product
+app.post('/api/products', authenticate, (req, res) => {
+    try {
+        const { product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes } = req.body;
+        
+        if (!product_line || !model_name) {
+            return res.status(400).json({ error: 'product_line and model_name are required' });
+        }
+        
+        const result = db.prepare(`
+            INSERT INTO products (product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(product_line, model_name, serial_number || null, firmware_version || null, production_batch || null, production_date || null, notes || null);
+        
+        res.json({ success: true, product_id: result.lastInsertRowid });
+    } catch (err) {
+        console.error('[Products] Create error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Product Detail (with related issues)
+app.get('/api/products/:id', authenticate, (req, res) => {
+    try {
+        const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        const relatedIssues = db.prepare(`
+            SELECT id, issue_number, title, status, severity, created_at
+            FROM issues WHERE product_id = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        `).all(req.params.id);
+        
+        res.json({ product, related_issues: relatedIssues });
+    } catch (err) {
+        console.error('[Products] Detail error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Product
+app.put('/api/products/:id', authenticate, (req, res) => {
+    try {
+        const { product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes } = req.body;
+        
+        const updates = [];
+        const params = [];
+        
+        if (product_line !== undefined) { updates.push('product_line = ?'); params.push(product_line); }
+        if (model_name !== undefined) { updates.push('model_name = ?'); params.push(model_name); }
+        if (serial_number !== undefined) { updates.push('serial_number = ?'); params.push(serial_number); }
+        if (firmware_version !== undefined) { updates.push('firmware_version = ?'); params.push(firmware_version); }
+        if (production_batch !== undefined) { updates.push('production_batch = ?'); params.push(production_batch); }
+        if (production_date !== undefined) { updates.push('production_date = ?'); params.push(production_date); }
+        if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(req.params.id);
+        
+        const result = db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Products] Update error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Customers CRUD ---
+
+// Get Customers List
+app.get('/api/customers', authenticate, (req, res) => {
+    try {
+        const { customer_type, country, search, page = 1, limit = 50 } = req.query;
+        
+        let whereConditions = [];
+        let params = [];
+        
+        if (customer_type && customer_type !== 'all') {
+            whereConditions.push('customer_type = ?');
+            params.push(customer_type);
+        }
+        if (country) {
+            whereConditions.push('country = ?');
+            params.push(country);
+        }
+        if (search) {
+            whereConditions.push('(customer_name LIKE ? OR contact_person LIKE ? OR company_name LIKE ? OR phone LIKE ? OR email LIKE ?)');
+            const searchTerm = `%${search}%`;
+            params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+        }
+        
+        const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
+        const total = db.prepare(`SELECT COUNT(*) as total FROM customers ${whereClause}`).get(...params).total;
+        const customers = db.prepare(`
+            SELECT * FROM customers ${whereClause}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(...params, parseInt(limit), offset);
+        
+        res.json({ customers, total, page: parseInt(page), limit: parseInt(limit) });
+    } catch (err) {
+        console.error('[Customers] List error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create Customer
+app.post('/api/customers', authenticate, (req, res) => {
+    try {
+        const { customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes } = req.body;
+        
+        if (!customer_type || !customer_name) {
+            return res.status(400).json({ error: 'customer_type and customer_name are required' });
+        }
+        
+        const result = db.prepare(`
+            INSERT INTO customers (customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(customer_type, customer_name, contact_person || null, phone || null, email || null, country || null, province || null, city || null, company_name || null, notes || null);
+        
+        res.json({ success: true, customer_id: result.lastInsertRowid });
+    } catch (err) {
+        console.error('[Customers] Create error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Customer Detail (with related issues)
+app.get('/api/customers/:id', authenticate, (req, res) => {
+    try {
+        const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+        if (!customer) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+        
+        const relatedIssues = db.prepare(`
+            SELECT id, issue_number, title, status, severity, created_at
+            FROM issues WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        `).all(req.params.id);
+        
+        const stats = db.prepare(`
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as resolved
+            FROM issues WHERE customer_id = ?
+        `).get(req.params.id);
+        
+        res.json({ customer, related_issues: relatedIssues, issue_statistics: stats });
+    } catch (err) {
+        console.error('[Customers] Detail error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update Customer
+app.put('/api/customers/:id', authenticate, (req, res) => {
+    try {
+        const { customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes } = req.body;
+        
+        const updates = [];
+        const params = [];
+        
+        if (customer_type !== undefined) { updates.push('customer_type = ?'); params.push(customer_type); }
+        if (customer_name !== undefined) { updates.push('customer_name = ?'); params.push(customer_name); }
+        if (contact_person !== undefined) { updates.push('contact_person = ?'); params.push(contact_person); }
+        if (phone !== undefined) { updates.push('phone = ?'); params.push(phone); }
+        if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+        if (country !== undefined) { updates.push('country = ?'); params.push(country); }
+        if (province !== undefined) { updates.push('province = ?'); params.push(province); }
+        if (city !== undefined) { updates.push('city = ?'); params.push(city); }
+        if (company_name !== undefined) { updates.push('company_name = ?'); params.push(company_name); }
+        if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(req.params.id);
+        
+        const result = db.prepare(`UPDATE customers SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Customers] Update error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Statistics API ---
+
+// Overview Statistics
+app.get('/api/issues/statistics/overview', authenticate, (req, res) => {
+    try {
+        const byStatus = db.prepare(`
+            SELECT status, COUNT(*) as count FROM issues GROUP BY status
+        `).all();
+        
+        const byCategory = db.prepare(`
+            SELECT issue_category, COUNT(*) as count FROM issues GROUP BY issue_category
+        `).all();
+        
+        const total = db.prepare('SELECT COUNT(*) as count FROM issues').get().count;
+        const closed = db.prepare("SELECT COUNT(*) as count FROM issues WHERE status = 'Closed'").get().count;
+        
+        // Average resolution time (in hours)
+        const avgTime = db.prepare(`
+            SELECT AVG((julianday(closed_at) - julianday(created_at)) * 24) as avg_hours
+            FROM issues WHERE closed_at IS NOT NULL
+        `).get();
+        
+        res.json({
+            total_issues: total,
+            by_status: Object.fromEntries(byStatus.map(s => [s.status, s.count])),
+            by_category: Object.fromEntries(byCategory.map(c => [c.issue_category, c.count])),
+            resolution_rate: total > 0 ? Math.round((closed / total) * 100) : 0,
+            avg_resolution_time: avgTime.avg_hours ? Math.round(avgTime.avg_hours) : null
+        });
+    } catch (err) {
+        console.error('[Statistics] Overview error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== Service Module ====================
+// Initialize the Service module for product service closure management
+try {
+    const { initService } = require('./service');
+    initService(app, db, {
+        attachmentsDir: ISSUE_ATTACHMENTS_DIR,
+        authenticate,
+        multer
+    });
+    console.log('[Init] Service module loaded successfully');
+} catch (err) {
+    console.error('[Init] Failed to load Service module:', err.message);
+}
+
 // Fallback to SPA for any non-API routes
 app.use((req, res) => {
     // If it's an API route that reached here, it's a 404

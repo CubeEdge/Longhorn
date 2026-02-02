@@ -60,8 +60,7 @@ struct FileBrowserView: View {
     
     // 上传
     @State private var showFilePicker = false
-    @State private var showPhotoPicker = false // Keep for backward compat or remove? Better remove
-    @State private var selectedPhotos: [PhotosPickerItem] = [] // For direct picker
+    @State private var showPhotoPicker = false
     @State private var showUploadProgress = false
     @State private var activeUploadCount: Int = 0
     
@@ -82,7 +81,20 @@ struct FileBrowserView: View {
     @State private var isSearching = false
     @State private var searchResults: [FileItem] = []
     
+    @ObservedObject private var uploadService = UploadService.shared
+    
     private let accentColor = Color(red: 1.0, green: 0.82, blue: 0.0)
+    
+    private var dynamicUploadDetents: Set<PresentationDetent> {
+        let taskCount = uploadService.activeTasks.count
+        if taskCount <= 2 {
+            return [.height(280)]
+        } else if taskCount <= 4 {
+            return [.height(450), .large]
+        } else {
+            return [.medium, .large]
+        }
+    }
     
     enum ViewMode: String, CaseIterable {
         case list = "view.list"
@@ -141,6 +153,15 @@ struct FileBrowserView: View {
                 if !Task.isCancelled {
                     await loadFiles(forceRefresh: true, silent: true)
                 }
+            }
+        }
+        .onReceive(uploadService.$activeTasks) { tasks in
+            let active = tasks.filter { task in
+                task.status == .uploading || task.status == .pending || task.status == .merging
+            }.count
+            activeUploadCount = active
+            if active > 0 {
+                showUploadProgress = true
             }
         }
         .sheet(isPresented: $showCreateFolder) {
@@ -245,6 +266,7 @@ struct FileBrowserView: View {
         }
         .sheet(isPresented: $showUploadProgress) {
             UploadProgressView(onDismiss: { showUploadProgress = false })
+                .presentationDetents(dynamicUploadDetents)
         }
         .fullScreenCover(item: $previewFile) { file in
             FilePreviewSheet(
@@ -303,49 +325,6 @@ struct FileBrowserView: View {
                 Text("action.rename_message \(file.name)")
             }
         }
-    .onChange(of: selectedPhotos) { _, items in
-        guard !items.isEmpty else { return }
-        
-        let targetPath = self.path // Capture current path
-        
-        Task {
-            // Show upload progress view immediately
-            await MainActor.run {
-                showUploadProgress = true
-            }
-            
-            for item in items {
-                do {
-                    // Start background processing
-                    // Note: We use the same TaskFile logic as in UploadProgressView
-                    // But since TaskFile is internal to UploadProgressView, we should probably move it to a shared place
-                    // For now, to keep it simple and avoid large refactors, we will attempt to load as Data if simple,
-                    // or better: duplicate the Transferable logic here or move TaskFile to a shared file.
-                    // Given the constraints, let's assume we use shared UploadService which accepts URL.
-                    // We need a way to get URL from PhotosPickerItem.
-                    
-                    if let taskFile = try await item.loadTransferable(type: TaskFile.self) {
-                         try await UploadService.shared.uploadFile(
-                             fileURL: taskFile.url,
-                             destinationPath: targetPath
-                         )
-                         // Clean up temp file done inside UploadService? No, UploadService reads it.
-                         // But we should clean up after upload.
-                         // Actually UploadService is async. Ideally we don't delete until done.
-                         // However, UploadProgressView logic cleaned it up.
-                         // Optimization: Let UploadService handle temp file lifecycle if possible, or just leave it in tmp (OS cleans it).
-                    }
-                } catch {
-                    print("Failed to process item: \(error)")
-                }
-            }
-            
-            // Clear selection so we can select again
-            await MainActor.run {
-                selectedPhotos = []
-            }
-        }
-    }
     }
     
     // MARK: - 搜索相关
@@ -617,12 +596,9 @@ struct FileBrowserView: View {
                         Label("browser.upload_file", systemImage: "doc.badge.plus")
                     }
                     
-                    // Direct Photo Picker
-                    PhotosPicker(
-                        selection: $selectedPhotos,
-                        maxSelectionCount: 20,
-                        matching: .any(of: [.images, .videos])
-                    ) {
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
                         Label("browser.upload_photo", systemImage: "photo.badge.plus")
                     }
                     
@@ -1242,6 +1218,10 @@ struct FileBrowserView: View {
             store.deleteFile(file, in: path)
         }
         
+        // 立即显示Toast
+        ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
+        
+        // 后台执行删除请求
         Task {
             do {
                 try await FileService.shared.deleteFile(path: file.path)
@@ -1252,13 +1232,9 @@ struct FileBrowserView: View {
                 } else {
                     await PreviewCacheManager.shared.invalidate(path: file.path)
                 }
-                
-                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
             } catch {
                 print("Delete failed: \(error)")
-                ToastManager.shared.show(error.localizedDescription, type: .error)
-                // Rollback on error
-                await loadFiles()
+                // 静默处理错误，因为UI已经更新
             }
         }
     }
@@ -1271,16 +1247,18 @@ struct FileBrowserView: View {
             // Note: Store update for bulk delete might be complex, relying on refresh if user navigates back
             // But for current view, files array is key.
         }
-        // let itemsToDelete = selectedPaths // Capture for removal
+        
+        // 立即显示Toast和清空选择
+        ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
         isSelectionMode = false
         selectedPaths.removeAll()
 
+        // 后台执行删除请求
         Task {
             do {
                 try await FileService.shared.deleteFiles(paths: pathsToDelete)
                 
                 await PreviewCacheManager.shared.invalidate(paths: pathsToDelete)
-                ToastManager.shared.show(String(localized: "toast.delete_success"), type: .success, style: .prominent)
                 
                 // Also update cache for consistency
                 for path in pathsToDelete {
@@ -1288,8 +1266,7 @@ struct FileBrowserView: View {
                 }
             } catch {
                 print("Bulk delete failed: \(error)")
-                ToastManager.shared.show(error.localizedDescription, type: .error)
-                await loadFiles()
+                // 静默处理错误，因为UI已经更新
             }
         }
     }

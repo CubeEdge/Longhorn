@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ISS_BF_CS1 /* Customer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_CS1 /* Customer.swift */; };
+		ISS_BF_IS1 /* Issue.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_IS1 /* Issue.swift */; };
+		ISS_BF_ISV1 /* IssueService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_ISV1 /* IssueService.swift */; };
+		ISS_BF_ILV1 /* IssueListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_ILV1 /* IssueListView.swift */; };
+		ISS_BF_IDV1 /* IssueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_IDV1 /* IssueDetailView.swift */; };
+		ISS_BF_ICV1 /* IssueCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_ICV1 /* IssueCreateView.swift */; };
+		ISS_BF_PS1 /* Product.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISS_FR_PS1 /* Product.swift */; };
 		3D0BE4AF2F16357B00183E47 /* DailyWordBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4AE2F16357B00183E47 /* DailyWordBadge.swift */; };
 		3D0BE4B52F1635F400183E47 /* DailyWord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4B42F1635F400183E47 /* DailyWord.swift */; };
 		3D0BE4B72F16360000183E47 /* DailyWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0BE4B62F16360000183E47 /* DailyWordService.swift */; };
@@ -74,6 +81,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ISS_FR_CS1 /* Customer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Customer.swift; sourceTree = "<group>"; };
+		ISS_FR_IS1 /* Issue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Issue.swift; sourceTree = "<group>"; };
+		ISS_FR_ISV1 /* IssueService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueService.swift; sourceTree = "<group>"; };
+		ISS_FR_ILV1 /* IssueListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueListView.swift; sourceTree = "<group>"; };
+		ISS_FR_IDV1 /* IssueDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueDetailView.swift; sourceTree = "<group>"; };
+		ISS_FR_ICV1 /* IssueCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueCreateView.swift; sourceTree = "<group>"; };
+		ISS_FR_PS1 /* Product.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Product.swift; sourceTree = "<group>"; };
 		3D0BE4AE2F16357B00183E47 /* DailyWordBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordBadge.swift; sourceTree = "<group>"; };
 		3D0BE4B42F1635F400183E47 /* DailyWord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWord.swift; sourceTree = "<group>"; };
 		3D0BE4B62F16360000183E47 /* DailyWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordService.swift; sourceTree = "<group>"; };
@@ -213,6 +227,9 @@
 		LH_G_MODELS /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				ISS_FR_PS1 /* Product.swift */,
+				ISS_FR_CS1 /* Customer.swift */,
+				ISS_FR_IS1 /* Issue.swift */,
 				3D0BE4F62F189A6E00183E47 /* Permission.swift */,
 				3D0BE4F42F18846B00183E47 /* Department+Extensions.swift */,
 				3D0BE4E32F17DA2E00183E47 /* DailyWordsData.swift */,
@@ -236,6 +253,7 @@
 		LH_G_SERVICES /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				ISS_FR_ISV1 /* IssueService.swift */,
 				3DF4D7112F233DFB002FC453 /* FileDownloader.swift */,
 				3D58FFAF2F1A4394009D2ECA /* AppNotifications.swift */,
 				3D58FFAD2F1A2D88009D2ECA /* DashboardStore.swift */,
@@ -277,9 +295,20 @@
 			path = Starred;
 			sourceTree = "<group>";
 		};
+		ISS_G_ISSUES /* Issues */ = {
+			isa = PBXGroup;
+			children = (
+				ISS_FR_ILV1 /* IssueListView.swift */,
+				ISS_FR_IDV1 /* IssueDetailView.swift */,
+				ISS_FR_ICV1 /* IssueCreateView.swift */,
+			);
+			path = Issues;
+			sourceTree = "<group>";
+		};
 		LH_G_VIEWS /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				ISS_G_ISSUES /* Issues */,
 				3D0BE4EC2F17DC7300183E47 /* Settings */,
 				LH_G_AUTH /* Auth */,
 				LH_G_MAIN /* Main */,
@@ -398,6 +427,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ISS_BF_PS1 /* Product.swift in Sources */,
+				ISS_BF_CS1 /* Customer.swift in Sources */,
+				ISS_BF_IS1 /* Issue.swift in Sources */,
+				ISS_BF_ISV1 /* IssueService.swift in Sources */,
+				ISS_BF_ILV1 /* IssueListView.swift in Sources */,
+				ISS_BF_IDV1 /* IssueDetailView.swift in Sources */,
+				ISS_BF_ICV1 /* IssueCreateView.swift in Sources */,
 				LONGHORN001 /* LonghornApp.swift in Sources */,
 				3D0BE4C42F16893000183E47 /* DailyWordCompactCard.swift in Sources */,
 				3D58FFAE2F1A2D88009D2ECA /* DashboardStore.swift in Sources */,

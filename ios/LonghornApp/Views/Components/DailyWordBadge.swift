@@ -348,6 +348,13 @@ struct DailyWordSheet: View {
                 }) {
                     Label("New Batch (Refresh)", systemImage: "arrow.triangle.2.circlepath")
                 }
+                
+                Button(action: {
+                    service.clearCache()
+                    dismiss()
+                }) {
+                    Label("Clear Cache", systemImage: "trash")
+                }
             }
             
             if availableLevels.count > 1 {

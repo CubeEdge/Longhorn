@@ -217,6 +217,12 @@ struct MoreMenuView: View {
             // 功能入口
             Section {
                 NavigationLink {
+                    IssueListView()
+                } label: {
+                    Label("issues.title", systemImage: "ticket")
+                }
+                
+                NavigationLink {
                     SharesView()
                 } label: {
                     Label("quick.my_shares", systemImage: "square.and.arrow.up")

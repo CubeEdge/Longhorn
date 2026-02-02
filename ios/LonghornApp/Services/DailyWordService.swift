@@ -232,7 +232,7 @@ class DailyWordService: ObservableObject {
                         self.batchWords = newWords
                         self.currentIndex = 0
                         print("[DailyWord] Replaced batch with \(newWords.count) words.")
-                        ToastManager.shared.show("Updated \(newWords.count) new words!", type: .success, style: .prominent)
+                        ToastManager.shared.show("Updated \(newWords.count) new words!", type: .success)
                     }
                     
                     self.updateCurrentWord()
@@ -240,10 +240,33 @@ class DailyWordService: ObservableObject {
                     self.updateProgress = 1.0
                 }
             } catch {
-                print("[DailyWord] Fetch Error: \(error.localizedDescription)")
+                print("[DailyWord] Fetch Error: \(error.localizedDescription). Using local fallback.")
                 await MainActor.run {
                     self.isUpdating = false
-                    ToastManager.shared.show("Update failed: \(error.localizedDescription)", type: .error)
+                    
+                    // Fallback to local data
+                    let localWords = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
+                    var fallbackBatch: [WordEntry] = []
+                    
+                    // Generate a small batch from local data
+                    for _ in 0..<min(count, 10) {
+                        let word = DailyWordsData.getRandomWord(language: currentLanguage, level: currentLevel)
+                        fallbackBatch.append(word)
+                    }
+                    
+                    if !fallbackBatch.isEmpty {
+                        if isAppend {
+                            self.batchWords.append(contentsOf: fallbackBatch)
+                        } else {
+                            self.batchWords = fallbackBatch
+                            self.currentIndex = 0
+                        }
+                        self.updateCurrentWord()
+                        self.saveBatch()
+                        ToastManager.shared.show("Using offline vocabulary", type: .info)
+                    } else {
+                        ToastManager.shared.show("Update failed: \(error.localizedDescription)", type: .error)
+                    }
                 }
             }
         }

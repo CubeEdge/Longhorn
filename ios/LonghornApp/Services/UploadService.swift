@@ -14,6 +14,7 @@ class UploadTask: ObservableObject, Identifiable {
     let fileName: String
     let fileSize: Int64
     let destinationPath: String
+    var sourceURL: URL? // 保存源文件URL用于重试
     
     @Published var progress: Double = 0
     @Published var uploadedBytes: Int64 = 0
@@ -24,16 +25,26 @@ class UploadTask: ObservableObject, Identifiable {
     var isCancelled = false
     var abortController: Task<Void, Never>?
     
-    init(fileName: String, fileSize: Int64, destinationPath: String) {
+    init(fileName: String, fileSize: Int64, destinationPath: String, sourceURL: URL? = nil) {
         self.fileName = fileName
         self.fileSize = fileSize
         self.destinationPath = destinationPath
+        self.sourceURL = sourceURL
     }
     
     func cancel() {
         isCancelled = true
         abortController?.cancel()
         status = .cancelled
+    }
+    
+    func retry() {
+        progress = 0
+        uploadedBytes = 0
+        speed = ""
+        status = .pending
+        errorMessage = nil
+        isCancelled = false
     }
 }
 
@@ -56,7 +67,75 @@ class UploadService: ObservableObject {
     
     private init() {}
     
-    /// 上传文件
+    /// 批量上传文件 - 先创建所有任务,再逐个上传
+    func uploadFiles(fileURLs: [URL], destinationPath: String) async throws {
+        // 1. 批量创建任务
+        var tasks: [UploadTask] = []
+        for fileURL in fileURLs {
+            let fileName = fileURL.lastPathComponent
+            let fileSize = (try? getFileSize(url: fileURL)) ?? 0
+            
+            let task = UploadTask(
+                fileName: fileName,
+                fileSize: fileSize,
+                destinationPath: destinationPath,
+                sourceURL: fileURL
+            )
+            tasks.append(task)
+        }
+        
+        // 2. 一次性添加到列表顶部
+        await MainActor.run {
+            activeTasks.insert(contentsOf: tasks, at: 0)
+        }
+        
+        // 3. 逐个上传
+        for (index, fileURL) in fileURLs.enumerated() {
+            let task = tasks[index]
+            
+            do {
+                try await performChunkedUpload(task: task, fileURL: fileURL)
+                await MainActor.run {
+                    task.status = .completed
+                    task.progress = 1.0
+                }
+            } catch {
+                await MainActor.run {
+                    if !task.isCancelled {
+                        task.status = .failed
+                        task.errorMessage = error.localizedDescription
+                    }
+                }
+                // 继续上传下一个文件,不中断
+            }
+        }
+    }
+    
+    /// 重试失败的任务
+    func retryTask(_ task: UploadTask) async {
+        guard task.status == .failed, let fileURL = task.sourceURL else { return }
+        
+        await MainActor.run {
+            task.retry()
+        }
+        
+        do {
+            try await performChunkedUpload(task: task, fileURL: fileURL)
+            await MainActor.run {
+                task.status = .completed
+                task.progress = 1.0
+            }
+        } catch {
+            await MainActor.run {
+                if !task.isCancelled {
+                    task.status = .failed
+                    task.errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    /// 上传文件 (单个)
     func uploadFile(fileURL: URL, destinationPath: String) async throws {
         let fileName = fileURL.lastPathComponent
         let fileSize = try getFileSize(url: fileURL)
@@ -64,11 +143,12 @@ class UploadService: ObservableObject {
         let task = UploadTask(
             fileName: fileName,
             fileSize: fileSize,
-            destinationPath: destinationPath
+            destinationPath: destinationPath,
+            sourceURL: fileURL
         )
         
         await MainActor.run {
-            activeTasks.append(task)
+            activeTasks.insert(task, at: 0)
         }
         
         do {

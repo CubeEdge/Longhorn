@@ -12,7 +12,12 @@ import {
   Trash2,
   User,
   Network,
-  LayoutDashboard
+  LayoutDashboard,
+  ClipboardList,
+  Headphones,
+  Search as SearchIcon,
+  BookOpen,
+  Package
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -30,6 +35,11 @@ import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
+import { IssueListPage, IssueCreatePage, IssueDetailPage } from './components/Issues';
+import { ServiceRecordListPage, ServiceRecordCreatePage, ServiceRecordDetailPage, ContextPanel } from './components/ServiceRecords';
+import TopModuleNav from './components/TopModuleNav';
+import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
+import type { ModuleType } from './hooks/useNavigationState';
 
 import ShareCollectionPage from './components/ShareCollectionPage';
 import Toast from './components/Toast';
@@ -38,6 +48,8 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 // Main Layout Component for authenticated users
 const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const { currentModule, switchModule } = useNavigationState();
+  const canAccessFiles = canAccessFilesModule(user.role);
 
   return (
     <div className="app-container fade-in">
@@ -51,9 +63,15 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
         role={user.role}
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        currentModule={currentModule}
       />
 
       <main className="main-content">
+        <TopModuleNav
+          currentModule={currentModule}
+          onModuleChange={switchModule}
+          canAccessFiles={canAccessFiles}
+        />
         <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
         <div className="content-area">
           <Outlet />
@@ -85,36 +103,74 @@ const App: React.FC = () => {
         }>
           <Route path="/" element={<HomeRedirect user={user} />} />
 
-          {/* Root Directory (Admin) */}
-          <Route path="/root" element={user?.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
-
-          {/* Quick Access */}
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/starred" element={<StarredPage />} />
-          <Route path="/recent" element={<RecentPage />} />
-          <Route path="/shares" element={<SharesPage />} />
+          {/* ==================== SERVICE MODULE ==================== */}
+          {/* Service Records */}
+          <Route path="/service/records" element={<ServiceRecordListPage />} />
+          <Route path="/service/records/new" element={<ServiceRecordCreatePage />} />
+          <Route path="/service/records/:id" element={<ServiceRecordDetailPage />} />
+          
+          {/* Issues / Work Orders */}
+          <Route path="/service/issues" element={<IssueListPage />} />
+          <Route path="/service/issues/new" element={<IssueCreatePage />} />
+          <Route path="/service/issues/:id" element={<IssueDetailPage />} />
+          
+          {/* Context Query */}
+          <Route path="/service/context" element={<ContextPanel />} />
+          
+          {/* Knowledge Base (placeholder - to be implemented) */}
+          <Route path="/service/knowledge" element={<ServiceRecordListPage />} />
+          
+          {/* Parts Management (placeholder - to be implemented) */}
+          <Route path="/service/parts" element={<ServiceRecordListPage />} />
+          
+          {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Personal & Department Spaces */}
-          <Route path="/personal/*" element={<FileBrowser key="personal" mode="personal" />} />
-          <Route path="/personal" element={<FileBrowser key="personal-root" mode="personal" />} />
-          <Route path="/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
-          <Route path="/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
+          {/* ==================== FILES MODULE ==================== */}
+          {/* Personal Space */}
+          <Route path="/files/personal/*" element={<FileBrowser key="personal" mode="personal" />} />
+          <Route path="/files/personal" element={<FileBrowser key="personal-root" mode="personal" />} />
+          
+          {/* Department Files */}
+          <Route path="/files/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
+          <Route path="/files/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
+          
+          {/* Quick Access */}
+          <Route path="/files/starred" element={<StarredPage />} />
+          <Route path="/files/shares" element={<SharesPage />} />
+          <Route path="/files/recycle" element={<RecycleBin />} />
+          <Route path="/files/search" element={<SearchPage />} />
+          <Route path="/files/recent" element={<RecentPage />} />
 
-          {/* Admin */}
+          {/* ==================== ADMIN ROUTES ==================== */}
+          <Route path="/root" element={user?.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
           <Route path="/members" element={user?.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
           <Route path="/admin/*" element={user?.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
-
-          {/* Department Management - Lead only */}
           <Route path="/department-dashboard" element={user?.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
-          {/* Recycle Bin */}
-          <Route path="/recycle-bin" element={<RecycleBin />} />
-
-          {/* Legacy routes - redirect */}
-          <Route path="/files" element={<Navigate to="/" />} />
-          <Route path="/recycle" element={<Navigate to="/recycle-bin" />} />
-          <Route path="/shared" element={<Navigate to="/shares" />} />
+          {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
+          {/* Old service routes → new service routes */}
+          <Route path="/issues" element={<Navigate to="/service/issues" replace />} />
+          <Route path="/issues/*" element={<Navigate to="/service/issues" replace />} />
+          <Route path="/service-records" element={<Navigate to="/service/records" replace />} />
+          <Route path="/service-records/*" element={<Navigate to="/service/records" replace />} />
+          <Route path="/context" element={<Navigate to="/service/context" replace />} />
+          
+          {/* Old files routes → new files routes */}
+          <Route path="/personal" element={<Navigate to="/files/personal" replace />} />
+          <Route path="/personal/*" element={<Navigate to="/files/personal" replace />} />
+          <Route path="/dept/:deptCode" element={<DeptRedirect />} />
+          <Route path="/dept/:deptCode/*" element={<DeptRedirect />} />
+          <Route path="/starred" element={<Navigate to="/files/starred" replace />} />
+          <Route path="/shares" element={<Navigate to="/files/shares" replace />} />
+          <Route path="/recycle-bin" element={<Navigate to="/files/recycle" replace />} />
+          <Route path="/search" element={<Navigate to="/files/search" replace />} />
+          <Route path="/recent" element={<Navigate to="/files/recent" replace />} />
+          
+          {/* Legacy routes */}
+          <Route path="/files" element={<Navigate to="/" replace />} />
+          <Route path="/recycle" element={<Navigate to="/files/recycle" replace />} />
+          <Route path="/shared" element={<Navigate to="/files/shares" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
@@ -125,7 +181,14 @@ const App: React.FC = () => {
   );
 };
 
-const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> = ({ role, isOpen, onClose }) => {
+// Helper component for dept redirects
+const DeptRedirect: React.FC = () => {
+  const location = useLocation();
+  const newPath = location.pathname.replace(/^\/dept\//, '/files/dept/');
+  return <Navigate to={newPath} replace />;
+};
+
+const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, currentModule: ModuleType }> = ({ role, isOpen, onClose, currentModule }) => {
   const location = useLocation();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
@@ -187,54 +250,93 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Quick Access */}
-        <Link to="/starred" className={`sidebar-item ${location.pathname === '/starred' ? 'active' : ''}`} onClick={onClose}>
-          <Star size={18} />
-          <span>{t('sidebar.favorites')}</span>
-        </Link>
-        <Link to="/shares" className={`sidebar-item ${location.pathname === '/shares' ? 'active' : ''}`} onClick={onClose}>
-          <Share2 size={18} />
-          <span>{t('share.my_shares')}</span>
-        </Link>
-
-        {/* Divider */}
-        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
-
-        {/* Personal Space */}
-        <Link to="/personal" className={`sidebar-item ${location.pathname === '/personal' ? 'active' : ''}`} onClick={onClose}>
-          <User size={18} />
-          <span>{t('sidebar.personal')}</span>
-        </Link>
-
-        {/* Divider */}
-        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
-
-        {/* Departments */}
-        {Array.from(new Map(accessibleDepts.map(d => [getDeptCode(d.name), d])).values()).map((dept: any) => {
-          const code = getDeptCode(dept.name);
-          const Icon = deptIcons[code] || Box;
-
-          // Translation Logic:
-          // 1. Try to get translation for "dept.CODE"
-          const transKey = `dept.${code}`;
-          const translated = t(transKey as any);
-          // 2. If translation exists (and isn't just the key), format as "Name (CODE)"
-          // 3. Otherwise fall back to original database name (e.g. "Custom Dept (CD)")
-          const displayName = translated !== transKey ? `${translated} (${code})` : dept.name;
-
-          const isActive = location.pathname.startsWith(`/dept/${code}`) || location.pathname.includes(encodeURIComponent(code));
-          return (
-            <Link key={dept.name} to={`/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''}`} onClick={onClose}>
-              <Icon size={20} />
-              <span>{displayName}</span>
+        {/* ==================== SERVICE MODULE ITEMS ==================== */}
+        {currentModule === 'service' && (
+          <>
+            <Link to="/service/records" className={`sidebar-item ${location.pathname.startsWith('/service/records') ? 'active' : ''}`} onClick={onClose}>
+              <Headphones size={18} />
+              <span>{t('sidebar.service_records')}</span>
             </Link>
-          );
-        })}
+            <Link to="/service/issues" className={`sidebar-item ${location.pathname.startsWith('/service/issues') ? 'active' : ''}`} onClick={onClose}>
+              <ClipboardList size={18} />
+              <span>{t('sidebar.issues')}</span>
+            </Link>
+            <Link to="/service/context" className={`sidebar-item ${location.pathname === '/service/context' ? 'active' : ''}`} onClick={onClose}>
+              <SearchIcon size={18} />
+              <span>{t('sidebar.context')}</span>
+            </Link>
+            <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''}`} onClick={onClose}>
+              <BookOpen size={18} />
+              <span>{t('sidebar.knowledge')}</span>
+            </Link>
+            <Link to="/service/parts" className={`sidebar-item ${location.pathname === '/service/parts' ? 'active' : ''}`} onClick={onClose}>
+              <Package size={18} />
+              <span>{t('sidebar.parts')}</span>
+            </Link>
+          </>
+        )}
 
-        {/*Admin */}
+        {/* ==================== FILES MODULE ITEMS ==================== */}
+        {currentModule === 'files' && (
+          <>
+            {/* Quick Access */}
+            <Link to="/files/starred" className={`sidebar-item ${location.pathname === '/files/starred' ? 'active' : ''}`} onClick={onClose}>
+              <Star size={18} />
+              <span>{t('sidebar.favorites')}</span>
+            </Link>
+            <Link to="/files/shares" className={`sidebar-item ${location.pathname === '/files/shares' ? 'active' : ''}`} onClick={onClose}>
+              <Share2 size={18} />
+              <span>{t('share.my_shares')}</span>
+            </Link>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+
+            {/* Personal Space */}
+            <Link to="/files/personal" className={`sidebar-item ${location.pathname.startsWith('/files/personal') ? 'active' : ''}`} onClick={onClose}>
+              <User size={18} />
+              <span>{t('sidebar.personal')}</span>
+            </Link>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+
+            {/* Departments */}
+            {Array.from(new Map(accessibleDepts.map(d => [getDeptCode(d.name), d])).values()).map((dept: any) => {
+              const code = getDeptCode(dept.name);
+              const Icon = deptIcons[code] || Box;
+
+              // Translation Logic:
+              const transKey = `dept.${code}`;
+              const translated = t(transKey as any);
+              const displayName = translated !== transKey ? `${translated} (${code})` : dept.name;
+
+              const isActive = location.pathname.startsWith(`/files/dept/${code}`) || location.pathname.includes(encodeURIComponent(code));
+              return (
+                <Link key={dept.name} to={`/files/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+                  <Icon size={20} />
+                  <span>{displayName}</span>
+                </Link>
+              );
+            })}
+
+            {/* Divider before recycle */}
+            <div style={{ marginTop: 'auto' }} />
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            
+            {/* Recycle Bin */}
+            <Link to="/files/recycle" className={`sidebar-item ${location.pathname === '/files/recycle' ? 'active' : ''}`} onClick={onClose}>
+              <Trash2 size={20} />
+              <span>{t('browser.recycle')}</span>
+            </Link>
+          </>
+        )}
+
+        {/* ==================== ADMIN SECTION (shown in both modules) ==================== */}
         {role === 'Admin' && (
           <>
-            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+            <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
             <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
               <Network size={18} />
               <span>{t('sidebar.system_admin')}</span>
@@ -245,23 +347,14 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void }> 
         {/* Department Management - For Lead Users */}
         {role === 'Lead' && (
           <>
-            <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
+            <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
             <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''}`} onClick={onClose}>
               <Network size={20} />
               <span>{t('admin.dept_manage')}</span>
             </Link>
           </>
         )}
-
-        {/* Recycle Bin - Bottom */}
-        <div style={{ marginTop: 'auto' }} />
-
-
-        <div style={{ height: '1px', background: 'rgba(0,0,0,0.1)', margin: '12px 16px' }} />
-        <Link to="/recycle-bin" className={`sidebar-item ${location.pathname === '/recycle-bin' ? 'active' : ''}`} onClick={onClose}>
-          <Trash2 size={20} />
-          <span>{t('browser.recycle')}</span>
-        </Link>
       </nav>
     </aside>
   );
@@ -616,19 +709,20 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
 };
 
 const HomeRedirect: React.FC<{ user: any }> = ({ user }) => {
-  if (user.role === 'Admin') {
+  const canAccessFiles = canAccessFilesModule(user?.role || '');
+  
+  // Admin goes to admin panel
+  if (user?.role === 'Admin') {
     return <Navigate to="/admin" replace />;
   }
 
-  // Extract department code from name like '市场部 (MS)'
-  const deptMatch = user.department_name?.match(/\(([^)]+)\)/);
-  const deptCode = deptMatch ? deptMatch[1] : null;
-
-  if (deptCode) {
-    return <Navigate to={`/dept/${deptCode}`} replace />;
+  // Dealers (cannot access files) go directly to service
+  if (!canAccessFiles) {
+    return <Navigate to="/service/records" replace />;
   }
 
-  return <Navigate to="/files" replace />;
+  // Internal staff: default to service records
+  return <Navigate to="/service/records" replace />;
 };
 
 export default App;

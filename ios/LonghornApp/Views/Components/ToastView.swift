@@ -8,12 +8,12 @@ struct ToastView: View {
         HStack(spacing: 12) {
             Image(systemName: toast.type.icon)
                 .font(.title3)
-                .foregroundColor(toast.style == .prominent ? .white : toast.type.color)
+                .foregroundColor(toast.type.color)
             
             Text(toast.message)
-                .font(toast.style == .prominent ? .headline : .subheadline)
-                .fontWeight(toast.style == .prominent ? .bold : .medium)
-                .foregroundColor(toast.style == .prominent ? .white : .primary)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
                 .lineLimit(2)
             
             Spacer()
@@ -24,28 +24,24 @@ struct ToastView: View {
         .cornerRadius(25)
         .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
         .padding(.horizontal, 24)
-        .padding(.bottom, 8) // Lift up slightly
+        .padding(.bottom, 8)
     }
     
     @ViewBuilder
     private var backgroundView: some View {
-        if toast.style == .prominent {
-            toast.type.color
-        } else {
-            ZStack {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                Rectangle()
-                    .fill(Color(UIColor.systemBackground).opacity(0.5))
-            }
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+            Rectangle()
+                .fill(Color(UIColor.systemBackground).opacity(0.5))
         }
     }
 }
 
 #Preview {
     VStack {
-        ToastView(toast: Toast(message: "文件上传成功", type: .success, style: .prominent, duration: 2))
-        ToastView(toast: Toast(message: "网络连接失败", type: .error, style: .standard, duration: 2))
+        ToastView(toast: Toast(message: "文件上传成功", type: .success, duration: 2))
+        ToastView(toast: Toast(message: "网络连接失败", type: .error, duration: 2))
     }
     .padding()
     .background(Color.gray)
