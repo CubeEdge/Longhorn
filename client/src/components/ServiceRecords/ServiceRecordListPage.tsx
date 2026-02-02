@@ -44,20 +44,29 @@ const ServiceRecordListPage: React.FC = () => {
   const { token } = useAuthStore();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  
+
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-  
+
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const fetchRecords = async () => {
+    // Search-First: Don't load anything if no search term and default filters
+    const isDefaultState = !searchTerm && statusFilter === 'all' && serviceTypeFilter === 'all';
+    if (isDefaultState) {
+      setRecords([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -66,11 +75,11 @@ const ServiceRecordListPage: React.FC = () => {
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (serviceTypeFilter !== 'all') params.append('service_type', serviceTypeFilter);
       if (searchTerm) params.append('keyword', searchTerm);
-      
+
       const res = await axios.get(`/api/v1/service-records?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         setRecords(res.data.data);
         setTotal(res.data.meta.total);
@@ -81,19 +90,19 @@ const ServiceRecordListPage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchRecords();
   }, [page, statusFilter, serviceTypeFilter]);
-  
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     fetchRecords();
   };
-  
+
   const totalPages = Math.ceil(total / pageSize);
-  
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Created': return <Clock size={14} />;
@@ -105,7 +114,7 @@ const ServiceRecordListPage: React.FC = () => {
       default: return <Clock size={14} />;
     }
   };
-  
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -154,11 +163,11 @@ const ServiceRecordListPage: React.FC = () => {
           {t('service_record.create')}
         </button>
       </div>
-      
+
       {/* Search & Filters */}
-      <div style={{ 
-        background: 'var(--bg-card)', 
-        borderRadius: '12px', 
+      <div style={{
+        background: 'var(--bg-card)',
+        borderRadius: '12px',
         padding: '16px',
         marginBottom: '16px',
         border: '1px solid var(--border-color)'
@@ -178,7 +187,7 @@ const ServiceRecordListPage: React.FC = () => {
             </div>
             <button type="submit" className="btn btn-secondary">{t('action.search')}</button>
           </form>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="btn btn-secondary"
@@ -188,15 +197,15 @@ const ServiceRecordListPage: React.FC = () => {
             {t('action.filter')}
           </button>
         </div>
-        
+
         {showFilters && (
           <div style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                 {t('issue.status')}
               </label>
-              <select 
-                value={statusFilter} 
+              <select
+                value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                 className="form-control"
                 style={{ minWidth: '140px' }}
@@ -210,13 +219,13 @@ const ServiceRecordListPage: React.FC = () => {
                 <option value="UpgradedToTicket">{t('service_record.status.upgraded')}</option>
               </select>
             </div>
-            
+
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                 {t('service_record.service_type')}
               </label>
-              <select 
-                value={serviceTypeFilter} 
+              <select
+                value={serviceTypeFilter}
                 onChange={(e) => { setServiceTypeFilter(e.target.value); setPage(1); }}
                 className="form-control"
                 style={{ minWidth: '140px' }}
@@ -232,10 +241,10 @@ const ServiceRecordListPage: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       {/* Service Record List */}
-      <div style={{ 
-        background: 'var(--bg-card)', 
+      <div style={{
+        background: 'var(--bg-card)',
         borderRadius: '12px',
         border: '1px solid var(--border-color)',
         overflow: 'hidden'
@@ -263,10 +272,10 @@ const ServiceRecordListPage: React.FC = () => {
             </thead>
             <tbody>
               {records.map((record) => (
-                <tr 
+                <tr
                   key={record.id}
                   onClick={() => navigate(`/service-records/${record.id}`)}
-                  style={{ 
+                  style={{
                     borderBottom: '1px solid var(--border-color)',
                     cursor: 'pointer',
                     transition: 'background 0.15s'
@@ -325,12 +334,12 @@ const ServiceRecordListPage: React.FC = () => {
             </tbody>
           </table>
         )}
-        
+
         {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             padding: '12px 16px',
             borderTop: '1px solid var(--border-color)'

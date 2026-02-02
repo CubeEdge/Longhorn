@@ -73,6 +73,16 @@ const IssueCreatePage: React.FC = () => {
     }
 
     setLoading(true);
+    console.log('payload:', {
+      title,
+      problem_description: description,
+      issue_category: category,
+      issue_source: source,
+      severity,
+      product_id: selectedProductId,
+      customer_id: selectedCustomerId
+    });
+
     try {
       const res = await axios.post('/api/v1/issues', {
         title,
@@ -90,7 +100,10 @@ const IssueCreatePage: React.FC = () => {
       navigate(`/issues/${res.data.issue_id}`);
     } catch (err: any) {
       console.error('Failed to create issue:', err);
-      showToast(err.response?.data?.error || t('issue.error.create_failed'), 'error');
+      // DEBUG: Alert the user to the specific error
+      const errorMsg = err.response?.data?.error?.message || err.message || 'Unknown error';
+      alert(`Debug Error: ${JSON.stringify(err.response?.data || err.message)}`);
+      showToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
