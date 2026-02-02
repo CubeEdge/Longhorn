@@ -1,9 +1,9 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.2.0 (Draft)
+**版本**: 0.3.0 (Draft)
 **状态**: 草稿
 **最后更新**: 2026-02-02
-**关联PRD**: Service_PRD.md v0.6.0
+**关联PRD**: Service_PRD.md v0.7.0
 **关联场景**: Service_UserScenarios.md v0.3.0
 
 ---
@@ -185,7 +185,7 @@
   "success": true,
   "data": {
     "id": "sr_20260202_001",
-    "record_number": "SR-2026-0001",
+    "record_number": "SRD-2602-001",
     "status": "处理中",
     "created_at": "2026-02-02T10:30:00Z"
   }
@@ -252,7 +252,7 @@
     "service_record_status": "转工单",
     "issue": {
       "id": "issue_001",
-      "issue_number": "IS-2026-0157",  // 返修工单
+      "rma_number": "RA09D-2602-001",  // 返修工单
       // 或 "LR-2026-0001" (本地工单)
       "ticket_type": "返修工单"
     }
@@ -327,7 +327,7 @@
       {
         "type": "service_record",
         "id": "sr_089",
-        "number": "SR-2026-0089",
+        "number": "SRD-2602-089",
         "summary": "高帧率设置咨询",
         "status": "已解决",
         "date": "2026-01-15"
@@ -413,7 +413,7 @@
       {
         "type": "service_record",
         "id": "sr_201",
-        "number": "SR-2026-0201",
+        "number": "SRC-2602-201",
         "summary": "高帧率设置",
         "customer_name": "Max Mueller",  // 转让后的新客户
         "status": "已解决",
@@ -478,7 +478,7 @@
   "success": true,
   "data": {
     "id": "issue_20260130_001",
-    "issue_number": "IS-2026-0156",  // 或 "LR-2026-0001" (本地工单)
+    "rma_number": "RA09C-2602-156",  // 返修工单使用RMA号
     "ticket_type": "返修工单",
     "status": "待处理",
     "created_at": "2026-01-30T10:30:00Z"
@@ -522,9 +522,8 @@
   "data": [
     {
       "id": "issue_001",
-      "issue_number": "IS-2026-0156",
+      "rma_number": "RA09C-2602-156",
       "ticket_type": "返修工单",
-      "rma_number": "RA090111",
       "issue_type": "客户返修",
       "issue_category": "稳定性",
       "severity": 2,
@@ -562,9 +561,8 @@
   "success": true,
   "data": {
     "id": "issue_001",
-    "issue_number": "IS-2026-0156",
+    "rma_number": "RA09C-2602-156",
     "ticket_type": "返修工单",
-    "rma_number": "RA090111",
     
     // 完整信息
     "issue_type": "客户返修",
@@ -600,7 +598,7 @@
     // 关联服务记录
     "service_record": {
       "id": "sr_001",
-      "record_number": "SR-2026-0089"
+      "record_number": "SRD-2602-089"
     },
     
     "payment_channel": "微信",
@@ -685,7 +683,7 @@
 {
   "success": true,
   "data": {
-    "rma_number": "RA090126001"  // RA + 产品(2) + 渠道(2) + 年(2) + 序号(3)
+    "rma_number": "RA09C-2602-001"  // RA + 产品(2) + 渠道(1) + YYMM + 序号(3)
   }
 }
 ```
@@ -1480,7 +1478,7 @@
       {
         "type": "issue",
         "id": "issue_847",
-        "issue_number": "IS-2025-0847",
+        "rma_number": "RA09C-2512-047",
         "snippet": "客户反馈录制中断，更换SSD后解决"
       }
     ],
