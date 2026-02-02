@@ -24,3 +24,4 @@ ios/DerivedData/
 ios/*.persistent_state
 *.xcuserstate
 server/data/DiskA
+ios/build/
