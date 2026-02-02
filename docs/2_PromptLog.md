@@ -4,6 +4,42 @@
 
 ---
 
+### 2026-02-02 22:00 - Service Data & Creation Fixes
+**User Prompt**:
+1. 修复 Git Pull 失败（`UserInterfaceState.xcuserstate` 冲突）。
+2. App Rail 导航重构 (Service vs Files)。
+3. Service 模块：种子数据填充 (Seeding) 与 创建页面修复 (Creation Fixes)。
+4. 文档更新 (Docs Sync)。
+
+**Action**:
+1. **Git Fix**:
+   - 修复了被错误追踪的 `UserInterfaceState.xcuserstate` 文件导致的 git pull 冲突。
+   - 更新 `.gitignore` 并清理了缓存。
+2. **Navigation Redesign**:
+   - 实现了 **App Rail** 侧边导航栏，分离 "Service" 和 "Files" 模块。
+   - 重构 `App.tsx` 和 `Sidebar`，移除了顶部的 `TopModuleNav`。
+   - 实现了 TopBar 的上下文感知（Files 模式显示统计/每日一词，Service 模式显示简洁标题）。
+3. **Service Seeding**:
+   - 创建 `server/seeds/02_service_data.js`，包含 5 条服务记录和 5 条工单数据。
+   - 修复了 Seed 脚本中的 Migration 重置逻辑 (`DROP TABLE _migrations`)，确保 Schema 最新。
+   - 成功填充了数据库。
+4. **Creation Fixes**:
+   - **IssueCreatePage**: 修正 API 端点为 `/api/v1/issues`。
+   - **ServiceRecordCreatePage**: 
+     - 增加缺失的 `problem_category` 下拉选择框 (Hardware/Software/etc.)。
+     - 修复 TypeScript 类型错误，更新 `translations.ts` 补充缺失的中英文案。
+5. **Docs**:
+   - 更新 `walkthrough.md`, `task.md`, `implementation_plan.md`。
+
+**Result**:
+- App 导航结构清晰，模块分离。
+- 数据库已填充测试数据。
+- 服务记录和工单创建流程修复并验证通过。
+
+**Status**: Complete.
+
+---
+
 ### 2026-01-28 15:00 - 每日一词数据质量修复 (Daily Word Data Quality Fix)
 **User Prompt**:
 1. Web端每日一词无法访问，显示 "No words loaded. Try refreshing."

@@ -2,6 +2,33 @@
 
 **概述**: 本文档记录每次开发会话的内容、投入的"Prompt轮数/精力"以及具体的技术产出。
 
+## 会话: 2026-02-02 (Service Module Foundation)
+
+### 任务: Service Data / Creation Fix / App Rail Navigation
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **Git Fix**:
+        - 解决 `UserInterfaceState.xcuserstate` 导致的 git pull 冲突。
+        - 策略: `git restore --staged` -> `git rm --cached` -> 更新 `.gitignore`。
+    - **App Rail Navigation**:
+        - **Refactor**: 实现了垂直侧边导航栏 (`AppRail.tsx`)，取代原有的顶部 Tab 导航 (`TopModuleNav.tsx`)。
+        - **Architecture**: 分离 "Service" 和 "Files" 为两个独立的业务域上下文。
+        - **Context Aware**: TopBar 现在根据当前模块动态渲染内容 (Files 模式显示统计/每日一词，Service 模式隐藏)。
+    - **Service Data Seeding**:
+        - **Script**: 创建 `server/seeds/02_service_data.js`。
+        - **Logic**: 强制重置 `_migrations` 表 (`DROP TABLE`) 以确保 Schema 完整性，随后插入 5 条 Service Record 和 5 条 Issue 测试数据。
+    - **Creation Fixes**:
+        - **IssueCreatePage**: 修复 API 端点 (`/api/issues` -> `/api/v1/issues`)。
+        - **ServiceRecordCreatePage**: 新增 `problem_category` 字段，确保数据完整性。
+        - **Localization**: 更新 `translations.ts`，补充了大量 Service 相关的缺失翻译 Key。
+
+- **验证**:
+    - ✅ 导航切换流畅且上下文正确。
+    - ✅ 数据库成功填充 10 条测试数据。
+    - ✅ 手动创建工单和服务记录流程验证通过。
+
+---
+
 ## 会话: 2026-01-28 PM (Daily Word Data Quality Fix)
 
 ### 任务: 每日一词数据质量修复与跨端功能恢复
