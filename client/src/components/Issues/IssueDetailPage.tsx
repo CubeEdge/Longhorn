@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Package, Clock, AlertCircle, MessageSquare, Paperclip, Send, Upload, Download, Loader2, Edit2, UserPlus } from 'lucide-react';
+import { ArrowLeft, User, Package, MessageSquare, Paperclip, Send, Upload, Download, Loader2, Edit2, UserPlus } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -247,7 +247,7 @@ const IssueDetailPage: React.FC = () => {
               background: `${statusColors[issue.status]}20`,
               color: statusColors[issue.status]
             }}>
-              {t(`issue.status.${issue.status.toLowerCase()}`)}
+              {(t as Function)(`issue.status.${issue.status.toLowerCase()}`)}
             </span>
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{issue.title}</h1>
@@ -308,7 +308,7 @@ const IssueDetailPage: React.FC = () => {
                         color: statusColors[s]
                       }}
                     >
-                      {t(`issue.status.${s.toLowerCase()}`)}
+                      {(t as Function)(`issue.status.${s.toLowerCase()}`)}
                     </button>
                   ))}
                 </div>
@@ -462,15 +462,15 @@ const IssueDetailPage: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.875rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{t('issue.category')}</span>
-                <span>{t(`issue.category.${issue.issue_category.toLowerCase()}`)}</span>
+                <span>{(t as Function)(`issue.category.${issue.issue_category.toLowerCase()}`)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{t('issue.source')}</span>
-                <span>{t(`issue.source.${issue.issue_source.toLowerCase().replace('feedback', '').replace('return', 'offline').replace('test', 'internal')}`)}</span>
+                <span>{(t as Function)(`issue.source.${issue.issue_source.toLowerCase().replace('feedback', '').replace('return', 'offline').replace('test', 'internal')}`)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{t('issue.severity')}</span>
-                <span>{t(`issue.severity.${issue.severity.toLowerCase()}`)}</span>
+                <span>{(t as Function)(`issue.severity.${issue.severity.toLowerCase()}`)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{t('issue.created_by')}</span>
@@ -530,7 +530,7 @@ const IssueDetailPage: React.FC = () => {
               <div style={{ fontSize: '0.875rem' }}>
                 <div style={{ fontWeight: 500, marginBottom: '4px' }}>{issue.customer_name}</div>
                 <div style={{ color: 'var(--text-secondary)' }}>
-                  {t(`customer.type.${issue.customer_type?.toLowerCase()}`)}
+                  {(t as Function)(`customer.type.${issue.customer_type?.toLowerCase()}`)}
                   {issue.company_name && ` · ${issue.company_name}`}
                 </div>
                 {(issue.country || issue.city) && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight, AlertCircle, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -37,7 +37,7 @@ const severityColors: Record<string, string> = {
 };
 
 const IssueListPage: React.FC = () => {
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const { t } = useLanguage();
   const navigate = useNavigate();
   
@@ -172,7 +172,7 @@ const IssueListPage: React.FC = () => {
                 <option value="Pending">{t('issue.status.pending')}</option>
                 <option value="Assigned">{t('issue.status.assigned')}</option>
                 <option value="InProgress">{t('issue.status.inprogress')}</option>
-                <option value="AwaitingVerification">{t('issue.status.awaiting')}</option>
+                <option value="AwaitingVerification">{t('issue.status.awaitingverification')}</option>
                 <option value="Closed">{t('issue.status.closed')}</option>
                 <option value="Rejected">{t('issue.status.rejected')}</option>
               </select>
@@ -247,7 +247,7 @@ const IssueListPage: React.FC = () => {
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ fontWeight: 500, marginBottom: '2px' }}>{issue.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {t(`issue.category.${issue.issue_category.toLowerCase()}`)} · {issue.product_model || '-'}
+                      {(t as Function)(`issue.category.${issue.issue_category.toLowerCase()}`)} · {issue.product_model || '-'}
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -263,7 +263,7 @@ const IssueListPage: React.FC = () => {
                       color: statusColors[issue.status]
                     }}>
                       {getStatusIcon(issue.status)}
-                      {t(`issue.status.${issue.status.toLowerCase()}`)}
+                      {(t as Function)(`issue.status.${issue.status.toLowerCase()}`)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -275,7 +275,7 @@ const IssueListPage: React.FC = () => {
                       background: `${severityColors[issue.severity]}20`,
                       color: severityColors[issue.severity]
                     }}>
-                      {t(`issue.severity.${issue.severity.toLowerCase()}`)}
+                      {(t as Function)(`issue.severity.${issue.severity.toLowerCase()}`)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '0.875rem' }}>

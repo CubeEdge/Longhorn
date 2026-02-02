@@ -205,7 +205,7 @@ const IssueCreatePage: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  {t(`issue.severity.${s.toLowerCase()}`)}
+                  {(t as Function)(`issue.severity.${s.toLowerCase()}`)}
                 </button>
               ))}
             </div>
@@ -322,7 +322,7 @@ const IssueCreatePage: React.FC = () => {
                 <div>
                   <div style={{ fontWeight: 500 }}>{selectedCustomer.customer_name}</div>
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    {t(`customer.type.${selectedCustomer.customer_type.toLowerCase()}`)} {selectedCustomer.company_name && `· ${selectedCustomer.company_name}`}
+                    {(t as Function)(`customer.type.${selectedCustomer.customer_type.toLowerCase()}`)} {selectedCustomer.company_name && `· ${selectedCustomer.company_name}`}
                   </div>
                 </div>
                 <button type="button" onClick={() => setSelectedCustomerId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
@@ -386,7 +386,7 @@ const IssueCreatePage: React.FC = () => {
                         >
                           <div style={{ fontWeight: 500 }}>{c.customer_name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {t(`customer.type.${c.customer_type.toLowerCase()}`)} {c.company_name && `· ${c.company_name}`}
+                            {(t as Function)(`customer.type.${c.customer_type.toLowerCase()}`)} {c.company_name && `· ${c.company_name}`}
                           </div>
                         </div>
                       ))

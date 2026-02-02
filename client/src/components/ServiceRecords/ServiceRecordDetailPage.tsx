@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ArrowUpCircle, Clock, CheckCircle, Loader2, User, Phone, Mail, Package, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, ArrowUpCircle, Loader2, User, Phone, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -70,7 +70,7 @@ const statusColors: Record<string, string> = {
 const ServiceRecordDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const { t } = useLanguage();
 
   const [record, setRecord] = useState<ServiceRecordDetail | null>(null);
