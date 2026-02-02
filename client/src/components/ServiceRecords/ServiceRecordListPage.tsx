@@ -210,7 +210,7 @@ const ServiceRecordListPage: React.FC = () => {
             onClick={() => { setStatusFilter('Created'); setServiceTypeFilter('all'); setSearchTerm(''); setPage(1); }}
             className={`btn btn-sm ${statusFilter === 'Created' ? 'btn-primary' : 'btn-ghost'}`}
           >
-            {t('service_record.status.new')}
+            {t('service_record.status.created')}
           </button>
         </div>
 
