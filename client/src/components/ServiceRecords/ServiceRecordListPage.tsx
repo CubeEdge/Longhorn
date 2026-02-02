@@ -198,6 +198,22 @@ const ServiceRecordListPage: React.FC = () => {
           </button>
         </div>
 
+        {/* Quick Filters */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
+          <button
+            onClick={() => { setStatusFilter('InProgress'); setServiceTypeFilter('all'); setSearchTerm(''); setPage(1); }}
+            className={`btn btn-sm ${statusFilter === 'InProgress' ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {t('service_record.status.inprogress')}
+          </button>
+          <button
+            onClick={() => { setStatusFilter('Created'); setServiceTypeFilter('all'); setSearchTerm(''); setPage(1); }}
+            className={`btn btn-sm ${statusFilter === 'Created' ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {t('service_record.status.new')}
+          </button>
+        </div>
+
         {showFilters && (
           <div style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
             <div>

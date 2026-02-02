@@ -68,6 +68,8 @@ const IssueCreatePage: React.FC = () => {
     e.preventDefault();
 
     if (!title.trim() || !description.trim()) {
+      // DEBUG: Alert on validation failure
+      alert(`Validation Failed: Title or Description is empty.\nTitle: "${title}"\nDescription: "${description}"`);
       showToast(t('issue.error.required_fields'), 'error');
       return;
     }

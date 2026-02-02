@@ -5,7 +5,7 @@
 
 const express = require('express');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
@@ -100,7 +100,7 @@ module.exports = function(db, authenticate) {
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-            
+
             // Validate sort field
             const validSortFields = ['created_at', 'updated_at', 'status', 'record_number'];
             const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
@@ -177,9 +177,9 @@ module.exports = function(db, authenticate) {
             if (!problem_summary) {
                 return res.status(400).json({
                     success: false,
-                    error: { 
-                        code: 'VALIDATION_ERROR', 
-                        message: '缺少必填字段: problem_summary' 
+                    error: {
+                        code: 'VALIDATION_ERROR',
+                        message: '缺少必填字段: problem_summary'
                     }
                 });
             }
@@ -451,10 +451,10 @@ module.exports = function(db, authenticate) {
                 (service_record_id, comment_type, content, is_internal, attachments, created_by)
                 VALUES (?, ?, ?, ?, ?, ?)
             `).run(
-                req.params.id, 
-                comment_type, 
-                content, 
-                is_internal ? 1 : 0, 
+                req.params.id,
+                comment_type,
+                content,
+                is_internal ? 1 : 0,
                 JSON.stringify(attachments),
                 req.user.id
             );
@@ -606,7 +606,7 @@ module.exports = function(db, authenticate) {
             }
 
             // Only Admin can delete, or creator can delete if still Created
-            const canDelete = req.user.role === 'Admin' || 
+            const canDelete = req.user.role === 'Admin' ||
                 (record.created_by === req.user.id && record.status === 'Created');
 
             if (!canDelete) {
@@ -631,8 +631,10 @@ module.exports = function(db, authenticate) {
     // Helper functions
     function generateServiceRecordNumber(db) {
         const today = new Date();
-        const dateKey = today.toISOString().slice(0, 10).replace(/-/g, '');
-        
+        const year = today.getFullYear().toString();
+        // Use 'YEAR' as date_key for annual sequence
+        const dateKey = year;
+
         const existing = db.prepare(`
             SELECT last_sequence FROM service_record_sequences WHERE date_key = ?
         `).get(dateKey);
@@ -648,13 +650,13 @@ module.exports = function(db, authenticate) {
                 .run(dateKey, seq);
         }
 
-        return `SR-${dateKey}-${String(seq).padStart(3, '0')}`;
+        return `SR-${year}-${String(seq).padStart(4, '0')}`;
     }
 
     function generateIssueNumber(db, ticketType = 'IS') {
         const today = new Date();
         const dateKey = today.toISOString().slice(0, 10).replace(/-/g, '');
-        
+
         const existing = db.prepare(`
             SELECT last_sequence FROM issue_sequences WHERE ticket_type = ? AND date_key = ?
         `).get(ticketType, dateKey);
@@ -726,46 +728,46 @@ module.exports = function(db, authenticate) {
             id: record.id,
             record_number: record.record_number,
             service_mode: record.service_mode,
-            
+
             customer_name: record.customer_name,
             customer_contact: record.customer_contact,
             customer_id: record.customer_id,
-            
+
             product_id: record.product_id,
             product_name: record.product_name,
             serial_number: record.serial_number,
             firmware_version: record.firmware_version,
             hardware_version: record.hardware_version,
-            
+
             service_type: record.service_type,
             channel: record.channel,
             problem_summary: record.problem_summary,
             problem_category: record.problem_category,
             communication_log: communicationLog,
-            
+
             status: record.status,
             resolution: record.resolution,
             resolution_type: record.resolution_type,
-            
+
             dealer: record.dealer_id ? {
                 id: record.dealer_id,
                 name: record.dealer_name,
                 code: record.dealer_code
             } : null,
-            
+
             handler: record.handler_id ? {
                 id: record.handler_id,
                 name: record.handler_name
             } : null,
             department: record.department,
-            
+
             upgraded_to_issue_id: record.upgraded_to_issue_id,
             upgrade_reason: record.upgrade_reason,
-            
+
             first_response_at: record.first_response_at,
             resolved_at: record.resolved_at,
             waiting_customer_since: record.waiting_customer_since,
-            
+
             created_by: { id: record.created_by, name: record.created_by_name },
             created_at: record.created_at,
             updated_at: record.updated_at

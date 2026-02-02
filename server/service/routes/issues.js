@@ -743,7 +743,9 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
      */
     function generateIssueNumber(db, ticketType = 'IS') {
         const today = new Date();
-        const dateKey = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const year = today.getFullYear().toString();
+        // Use 'YEAR' as date_key for annual sequence
+        const dateKey = year;
 
         // Try to use issue_sequences table first (Phase 1)
         try {
@@ -762,13 +764,12 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
                 db.prepare('INSERT INTO issue_sequences (ticket_type, date_key, last_sequence) VALUES (?, ?, ?)')
                     .run(ticketType, dateKey, seq);
             }
-            return `${ticketType}-${dateKey}-${String(seq).padStart(3, '0')}`;
+            return `${ticketType}-${year}-${String(seq).padStart(4, '0')}`;
         } catch (err) {
-            // Fallback to old format if issue_sequences table doesn't exist yet
-            const year = new Date().getFullYear();
+            // Fallback
             const result = db.prepare(`
                 SELECT COUNT(*) as count FROM issues 
-                WHERE issue_number LIKE '${ticketType}-${year}-%' OR issue_number LIKE 'IS-${year}-%'
+                WHERE issue_number LIKE '${ticketType}-${year}-%'
             `).get();
             const seq = (result.count || 0) + 1;
             return `${ticketType}-${year}-${String(seq).padStart(4, '0')}`;

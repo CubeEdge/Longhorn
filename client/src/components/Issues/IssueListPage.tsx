@@ -165,6 +165,22 @@ const IssueListPage: React.FC = () => {
           </button>
         </div>
 
+        {/* Quick Filters */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
+          <button
+            onClick={() => { setStatusFilter('Pending'); setCategoryFilter('all'); setSearchTerm(''); setPage(1); }}
+            className={`btn btn-sm ${statusFilter === 'Pending' ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {t('issue.status.pending')}
+          </button>
+          <button
+            onClick={() => { setStatusFilter('Assigned'); setCategoryFilter('all'); setSearchTerm(''); setPage(1); }}
+            className={`btn btn-sm ${statusFilter === 'Assigned' ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {t('issue.status.assigned')}
+          </button>
+        </div>
+
         {showFilters && (
           <div style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
             <div>
