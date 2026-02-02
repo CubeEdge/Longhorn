@@ -1,10 +1,10 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.3.0 (Draft)
+**版本**: 0.4.0 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-02
-**关联PRD**: Service_PRD.md v0.7.0
-**关联场景**: Service_UserScenarios.md v0.3.0
+**最后更新**: 2026-02-03
+**关联PRD**: Service_PRD.md v0.8.0
+**关联场景**: Service_UserScenarios.md v0.5.0
 
 ---
 
@@ -147,22 +147,20 @@
 
 ---
 
-## 3. 服务记录 API
+## 3. 咨询工单 API (Inquiry Ticket)
 
-> 服务记录用于记录咨询、问题排查等轻量级服务，可升级为工单。
+> 咨询工单用于记录咨询、问题排查等服务，可升级为RMA返厂单或经销商维修单。
+> 工单ID格式：KYYMM-XXXX（如K2602-0001）
 
-### 3.1 创建服务记录
+### 3.1 创建咨询工单
 
-**POST** `/api/v1/service-records`
+**POST** `/api/v1/inquiry-tickets`
 
-**权限**: 市场部、经销商
+**权限**: 市场部、经销商(2.0)
 
 ```json
 // Request
 {
-  // 服务模式 (经销商使用)
-  "service_mode": "代客户服务",  // 快速查询(不创建记录) / 代客户服务
-  
   // 客户信息 (可选)
   "customer_name": "Max Mueller",  // 不填显示"匿名客户"
   "customer_contact": "max@example.uk",
@@ -184,17 +182,17 @@
 {
   "success": true,
   "data": {
-    "id": "sr_20260202_001",
-    "record_number": "SRD-2602-001",
+    "id": "inq_20260202_001",
+    "ticket_number": "K2602-0001",
     "status": "处理中",
     "created_at": "2026-02-02T10:30:00Z"
   }
 }
 ```
 
-### 3.2 获取服务记录列表
+### 3.2 获取咨询工单列表
 
-**GET** `/api/v1/service-records`
+**GET** `/api/v1/inquiry-tickets`
 
 **权限**: 市场部可看全部，经销商仅看自己的记录
 
@@ -204,7 +202,7 @@
 |-----|------|------|
 | page | int | 页码，默认1 |
 | page_size | int | 每页数量，默认20 |
-| status | string | 状态筛选: 处理中/待客户反馈/已解决/自动关闭/转工单 |
+| status | string | 状态筛选: 处理中/待客户反馈/已解决/自动关闭/已升级 |
 | service_type | string | 服务类型筛选 |
 | customer_id | string | 客户筛选 |
 | dealer_id | string | 经销商筛选 |
@@ -214,31 +212,32 @@
 | created_to | date | 创建时间止 |
 | keyword | string | 关键词搜索 |
 
-### 3.3 获取服务记录详情
+### 3.3 获取咨询工单详情
 
-**GET** `/api/v1/service-records/{id}`
+**GET** `/api/v1/inquiry-tickets/{id}`
 
-### 3.4 更新服务记录
+### 3.4 更新咨询工单
 
-**PATCH** `/api/v1/service-records/{id}`
+**PATCH** `/api/v1/inquiry-tickets/{id}`
 
 ```json
 // Request (更新状态和处理结果)
 {
-  "status": "待客户反馈",  // 处理中/待客户反馈/已解决/自动关闭/转工单
+  "status": "待客户反馈",  // 处理中/待客户反馈/已解决/自动关闭/已升级
   "resolution": "建议升级固件至8025版本",
   "communication_log": "追加沟通内容..."
 }
 ```
 
-### 3.5 升级为工单
+### 3.5 升级为RMA返厂单或经销商维修单
 
-**POST** `/api/v1/service-records/{id}/upgrade-to-issue`
+**POST** `/api/v1/inquiry-tickets/{id}/upgrade`
 
 ```json
-// Request
+// Request - 升级为RMA返厂单
 {
-  "ticket_type": "返修工单",  // 本地工单 / 返修工单
+  "upgrade_type": "rma",  // rma / svc
+  "channel_code": "D",  // D=Dealer, C=Customer, I=Internal
   "issue_category": "稳定性",
   "issue_subcategory": "死机",
   "severity": 2
@@ -248,33 +247,55 @@
 {
   "success": true,
   "data": {
-    "service_record_id": "sr_001",
-    "service_record_status": "转工单",
-    "issue": {
-      "id": "issue_001",
-      "rma_number": "RA09D-2602-001",  // 返修工单
-      // 或 "LR-2026-0001" (本地工单)
-      "ticket_type": "返修工单"
+    "inquiry_ticket_id": "inq_001",
+    "inquiry_ticket_number": "K2602-0001",
+    "inquiry_ticket_status": "已升级",
+    "upgraded_to": {
+      "type": "rma",
+      "id": "rma_001",
+      "ticket_number": "RMA-D-2602-0001"
+    }
+  }
+}
+
+// Request - 升级为经销商维修单
+{
+  "upgrade_type": "svc",
+  "issue_category": "硬件结构",
+  "issue_subcategory": "SDI模块"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "inquiry_ticket_id": "inq_001",
+    "inquiry_ticket_number": "K2602-0001",
+    "inquiry_ticket_status": "已升级",
+    "upgraded_to": {
+      "type": "svc",
+      "id": "svc_001",
+      "ticket_number": "SVC-D-2602-0001"
     }
   }
 }
 ```
 
-### 3.6 重新打开服务记录
+### 3.6 重新打开咨询工单
 
-**POST** `/api/v1/service-records/{id}/reopen`
+**POST** `/api/v1/inquiry-tickets/{id}/reopen`
 
-> 30天内同一客户同一产品的同问题可重新打开原记录
+> 30天内同一客户同一产品的同问题可重新打开原工单
 
 ```json
 // Response
 {
   "success": true,
   "data": {
-    "id": "sr_001",
+    "id": "inq_001",
+    "ticket_number": "K2602-0001",
     "status": "处理中",
-    "reopened_at": "2026-02-02T14:00:00Z",
-    "reopened_from_id": null  // 如是从另一记录重开则有值
+    "reopened_at": "2026-02-02T14:00:00Z"
   }
 }
 ```
@@ -325,17 +346,17 @@
     ],
     "service_history": [
       {
-        "type": "service_record",
-        "id": "sr_089",
-        "number": "SRD-2602-089",
+        "type": "inquiry_ticket",
+        "id": "inq_089",
+        "number": "K2602-0089",
         "summary": "高帧率设置咨询",
         "status": "已解决",
         "date": "2026-01-15"
       },
       {
-        "type": "issue",
-        "id": "issue_012",
-        "number": "IS-2026-0012",
+        "type": "rma",
+        "id": "rma_012",
+        "number": "RMA-D-2602-0012",
         "summary": "SDI模块更换",
         "status": "已完成",
         "date": "2026-01-08"
@@ -393,27 +414,27 @@
     ],
     "service_history": [
       {
-        "type": "service_record",
-        "id": "sr_089",
-        "number": "SR-2025-0089",
+        "type": "inquiry_ticket",
+        "id": "inq_089",
+        "number": "K2502-0089",
         "summary": "参数设置咨询",
         "customer_name": "John Smith",  // 显示当时的客户
         "status": "已解决",
         "date": "2025-06-15"
       },
       {
-        "type": "issue",
-        "id": "issue_156",
-        "number": "IS-2025-0156",
+        "type": "rma",
+        "id": "rma_156",
+        "number": "RMA-C-2509-0156",
         "summary": "SDI模块更换",
         "customer_name": "John Smith",
         "status": "已完成",
         "date": "2025-09-20"
       },
       {
-        "type": "service_record",
-        "id": "sr_201",
-        "number": "SRC-2602-201",
+        "type": "inquiry_ticket",
+        "id": "inq_201",
+        "number": "K2601-0201",
         "summary": "高帧率设置",
         "customer_name": "Max Mueller",  // 转让后的新客户
         "status": "已解决",
@@ -426,21 +447,23 @@
 
 ---
 
-## 5. 工单管理 API
+## 5. RMA返厂单 API
 
-### 5.1 创建工单
+> RMA返厂单用于设备寄回Kinefinity总部维修。
+> 工单ID格式：RMA-{C}-YYMM-XXXX（如RMA-D-2602-0001）
+> 每台设备必须有独立的RMA号。
 
-**POST** `/api/v1/issues`
+### 5.1 创建RMA返厂单（单设备）
 
-**权限**: 市场部、经销商
+**POST** `/api/v1/rma-tickets`
+
+**权限**: 市场部(1.0)、经销商需审批(2.0)
 
 ```json
 // Request
 {
-  // 工单类型 (新增)
-  "ticket_type": "返修工单",  // 本地工单 / 返修工单
-  // 本地工单: 经销商自行维修，编号格式 LR-2026-0001
-  // 返修工单: 寄回总部维修，编号格式 IS-2026-0001
+  // 渠道信息
+  "channel_code": "D",  // D=Dealer, C=Customer, I=Internal
   
   // 基础信息
   "issue_type": "客户返修",  // 生产问题/发货问题/客户返修/内部样机
@@ -448,47 +471,109 @@
   "issue_subcategory": "死机",
   "severity": 3,  // 1/2/3级
   
-  // 产品信息
+  // 产品信息（每台设备一个RMA）
   "product_id": "prod_edge8k",
   "serial_number": "ME_207624",
   "firmware_version": "8023",
   
   // 问题描述
   "problem_description": "拍摄时随机死机，约每小时一次",
-  "solution_for_customer": "",  // 初始可为空
   "is_warranty": true,
   
   // 关联人员
   "reporter_name": "张先生",
-  "reporter_type": "客户",  // 客户/经销商/内部
-  "customer_id": "cust_001",  // 可选
-  "dealer_id": "dealer_proav",  // 可选
-  "region": "国内",
+  "customer_id": "cust_001",
+  "dealer_id": "dealer_proav",
   
-  // 关联服务记录 (如从服务记录升级)
-  "service_record_id": "sr_001",  // 可选
-  
-  // 可选
-  "rma_number": "",  // 返修工单后续分配，本地工单不需要
-  "external_link": "https://..."
+  // 关联咨询工单 (如从咨询工单升级)
+  "inquiry_ticket_id": "inq_001"
 }
 
 // Response
 {
   "success": true,
   "data": {
-    "id": "issue_20260130_001",
-    "rma_number": "RA09C-2602-156",  // 返修工单使用RMA号
-    "ticket_type": "返修工单",
+    "id": "rma_20260130_001",
+    "ticket_number": "RMA-D-2602-0001",
     "status": "待处理",
     "created_at": "2026-01-30T10:30:00Z"
   }
 }
 ```
 
-### 5.2 获取工单列表
+### 5.2 批量创建RMA返厂单（购物车模式）
 
-**GET** `/api/v1/issues`
+**POST** `/api/v1/rma-tickets/batch`
+
+**权限**: 市场部(1.0)、经销商需审批(2.0)
+
+> 经销商可一次添加多台设备申请返厂，提交时系统为每台设备生成独立RMA号
+
+```json
+// Request
+{
+  "channel_code": "D",
+  "dealer_id": "dealer_proav",
+  "devices": [
+    {
+      "product_id": "prod_edge8k",
+      "serial_number": "ME8K_SN001",
+      "problem_description": "死机重启"
+    },
+    {
+      "product_id": "prod_edge6k",
+      "serial_number": "ME6K_SN002",
+      "problem_description": "SDI无输出"
+    },
+    {
+      "product_id": "prod_terra4k",
+      "serial_number": "TER_SN003",
+      "problem_description": "开机无反应"
+    }
+  ]
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "batch_id": "batch_20260202_001",
+    "rma_tickets": [
+      {
+        "id": "rma_001",
+        "ticket_number": "RMA-D-2602-0001",
+        "serial_number": "ME8K_SN001",
+        "product_name": "MAVO Edge 8K"
+      },
+      {
+        "id": "rma_002",
+        "ticket_number": "RMA-D-2602-0002",
+        "serial_number": "ME6K_SN002",
+        "product_name": "MAVO Edge 6K"
+      },
+      {
+        "id": "rma_003",
+        "ticket_number": "RMA-D-2602-0003",
+        "serial_number": "TER_SN003",
+        "product_name": "Terra 4K"
+      }
+    ],
+    "packing_list": {
+      "message": "提交成功！请打印以下清单放入箱内",
+      "items": [
+        { "rma_number": "RMA-D-2602-0001", "barcode": "..." },
+        { "rma_number": "RMA-D-2602-0002", "barcode": "..." },
+        { "rma_number": "RMA-D-2602-0003", "barcode": "..." }
+      ],
+      "download_pdf_url": "/api/v1/rma-tickets/batch/batch_20260202_001/packing-list.pdf"
+    }
+  }
+}
+```
+
+### 5.3 获取RMA返厂单列表
+
+**GET** `/api/v1/rma-tickets`
 
 **权限**: 按角色过滤可见范围
 
@@ -501,19 +586,18 @@
 | sort_by | string | 排序字段: created_at, updated_at, severity |
 | sort_order | string | asc/desc |
 | **筛选条件** | | |
-| ticket_type | string | 工单类型: 本地工单/返修工单 |
+| channel_code | string | 渠道: D/C/I |
 | status | string | 状态筛选，多选用逗号分隔 |
 | issue_type | string | 类型筛选 |
 | issue_category | string | 大类筛选 |
 | severity | int | 等级筛选 |
 | product_id | string | 产品筛选 |
 | dealer_id | string | 经销商筛选 |
-| region | string | 地区筛选 |
 | assigned_to | string | 处理人筛选 |
 | is_warranty | bool | 是否在保 |
 | created_from | date | 创建时间起 |
 | created_to | date | 创建时间止 |
-| keyword | string | 关键词搜索(标题+描述) |
+| keyword | string | 关键词搜索 |
 
 ```json
 // Response
@@ -521,9 +605,8 @@
   "success": true,
   "data": [
     {
-      "id": "issue_001",
-      "rma_number": "RA09C-2602-156",
-      "ticket_type": "返修工单",
+      "id": "rma_001",
+      "ticket_number": "RMA-D-2602-0001",
       "issue_type": "客户返修",
       "issue_category": "稳定性",
       "severity": 2,
@@ -551,20 +634,20 @@
 }
 ```
 
-### 5.3 获取工单详情
+### 5.4 获取RMA返厂单详情
 
-**GET** `/api/v1/issues/{id}`
+**GET** `/api/v1/rma-tickets/{id}`
 
 ```json
 // Response
 {
   "success": true,
   "data": {
-    "id": "issue_001",
-    "rma_number": "RA09C-2602-156",
-    "ticket_type": "返修工单",
+    "id": "rma_001",
+    "ticket_number": "RMA-D-2602-0001",
     
     // 完整信息
+    "channel_code": "D",
     "issue_type": "客户返修",
     "issue_category": "稳定性",
     "issue_subcategory": "死机",
@@ -587,18 +670,16 @@
     "problem_analysis": "主板供电芯片虚焊",  // 生产部填写
     
     "reporter_name": "张先生",
-    "reporter_type": "客户",
     "customer": { "id": "cust_001", "name": "张先生", "company": "XX影视" },
-    "dealer": null,
-    "region": "国内",
+    "dealer": { "id": "dealer_proav", "name": "ProAV UK" },
     
-    "submitted_by": { "id": "usr_001", "name": "刘玖龙" },
+    "submitted_by": { "id": "usr_001", "name": "Effy" },
     "assigned_to": { "id": "usr_002", "name": "陈高松" },
     
-    // 关联服务记录
-    "service_record": {
-      "id": "sr_001",
-      "record_number": "SRD-2602-089"
+    // 关联咨询工单
+    "inquiry_ticket": {
+      "id": "inq_001",
+      "ticket_number": "K2602-0089"
     },
     
     "payment_channel": "微信",
@@ -610,10 +691,8 @@
     "received_date": "2026-01-30",
     "completed_date": null,
     
-    "external_link": "https://...",
-    
-    "attachments": [...],  // 附件列表
-    "comments": [...],  // 评论列表
+    "attachments": [...],
+    "comments": [...],
     
     "created_at": "2026-01-30T10:30:00Z",
     "updated_at": "2026-01-30T14:20:00Z"
@@ -621,9 +700,9 @@
 }
 ```
 
-### 5.4 更新工单
+### 5.5 更新RMA返厂单
 
-**PATCH** `/api/v1/issues/{id}`
+**PATCH** `/api/v1/rma-tickets/{id}`
 
 **权限**: 按字段分权限控制
 
@@ -649,9 +728,9 @@
 }
 ```
 
-### 5.5 分配工单
+### 5.6 分配RMA返厂单
 
-**POST** `/api/v1/issues/{id}/assign`
+**POST** `/api/v1/rma-tickets/{id}/assign`
 
 **权限**: 市场部
 
@@ -660,47 +739,143 @@
 {
   "assigned_to": "usr_002",
   "repair_priority": "R2",  // R1加急/R2优先/R3标准
-  "comment": "请检查主板供电部分"  // 可选
+  "comment": "请检查主板供电部分"
 }
 ```
 
-### 5.6 创建RMA号 (仅返修工单)
+### 5.7 审批RMA返厂单（2.0版本）
 
-**POST** `/api/v1/issues/{id}/rma`
+**POST** `/api/v1/rma-tickets/{id}/approve`
 
 **权限**: 市场部
 
-> 注意: 仅返修工单需要RMA号，本地工单不需要
+> 2.0版本：经销商提交的RMA需要Kinefinity审批
 
 ```json
 // Request
 {
-  "product_type": "09",  // 产品类型代码
-  "channel": "01"  // 渠道代码: 01国内/02海外
+  "action": "approve",  // approve / reject
+  "comment": "已审核，可以寄回"
 }
 
 // Response
 {
   "success": true,
   "data": {
-    "rma_number": "RA09C-2602-001"  // RA + 产品(2) + 渠道(1) + YYMM + 序号(3)
+    "id": "rma_001",
+    "ticket_number": "RMA-D-2602-0001",
+    "approval_status": "approved",
+    "approved_by": "usr_001",
+    "approved_at": "2026-02-02T10:30:00Z"
   }
 }
 ```
 
-### 5.7 删除工单
+### 5.8 删除RMA返厂单
 
-**DELETE** `/api/v1/issues/{id}`
+**DELETE** `/api/v1/rma-tickets/{id}`
 
 **权限**: admin
 
 ---
 
+## 5B. 经销商维修单 API (Dealer Repair)
+
+> 经销商维修单用于记录经销商本地维修，用于配件消耗和库存管理。
+> 工单ID格式：SVC-D-YYMM-XXXX（如SVC-D-2602-0001）
+
+### 5B.1 创建经销商维修单
+
+**POST** `/api/v1/dealer-repairs`
+
+**权限**: 市场部(1.0)、经销商(2.0)
+
+```json
+// Request
+{
+  "dealer_id": "dealer_proav",
+  
+  // 产品信息
+  "product_id": "prod_edge8k",
+  "serial_number": "ME_207890",
+  
+  // 客户信息
+  "customer_name": "Max Mueller",
+  "customer_contact": "max@example.uk",
+  
+  // 维修信息
+  "issue_category": "硬件结构",
+  "issue_subcategory": "SDI模块",
+  "problem_description": "SDI输出无信号",
+  "repair_content": "更换SDI模块",
+  
+  // 使用配件
+  "parts_used": [
+    { "part_id": "part_001", "quantity": 1 }
+  ]
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "svc_001",
+    "ticket_number": "SVC-D-2602-0001",
+    "dealer_id": "dealer_proav",
+    "status": "已完成",
+    "parts_consumed": [
+      { "part_name": "SDI模块", "quantity": 1, "price_usd": 69 }
+    ],
+    "created_at": "2026-02-02T10:30:00Z"
+  }
+}
+```
+
+### 5B.2 获取经销商维修单列表
+
+**GET** `/api/v1/dealer-repairs`
+
+**权限**: 市场部可看全部，经销商仅看自己的
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| dealer_id | string | 经销商筛选 |
+| product_id | string | 产品筛选 |
+| created_from | date | 创建时间起 |
+| created_to | date | 创建时间止 |
+
+### 5B.3 获取经销商维修单详情
+
+**GET** `/api/v1/dealer-repairs/{id}`
+
+### 5B.4 更新经销商维修单
+
+**PATCH** `/api/v1/dealer-repairs/{id}`
+
+```json
+// Request
+{
+  "repair_content": "更换SDI模块和风扇",
+  "parts_used": [
+    { "part_id": "part_001", "quantity": 1 },
+    { "part_id": "part_025", "quantity": 1 }
+  ]
+}
+```
+
+---
+
 ## 6. 工单评论 API
+
+> 三种工单类型都支持评论功能
 
 ### 6.1 添加评论
 
-**POST** `/api/v1/issues/{issue_id}/comments`
+**POST** `/api/v1/inquiry-tickets/{ticket_id}/comments`
+**POST** `/api/v1/rma-tickets/{ticket_id}/comments`
+**POST** `/api/v1/dealer-repairs/{ticket_id}/comments`
 
 ```json
 // Request
@@ -713,7 +888,9 @@
 
 ### 6.2 获取评论列表
 
-**GET** `/api/v1/issues/{issue_id}/comments`
+**GET** `/api/v1/inquiry-tickets/{ticket_id}/comments`
+**GET** `/api/v1/rma-tickets/{ticket_id}/comments`
+**GET** `/api/v1/dealer-repairs/{ticket_id}/comments`
 
 ---
 
@@ -982,19 +1159,19 @@
   "data": [
     {
       "id": "dealer_proav",
-      "name": "ProAV Berlin",
+      "name": "ProAV London",
       "code": "PROAV",
       "dealer_type": "一级代理",
       "region": "海外",
-      "country": "德国",
+      "country": "英国",
       "contact_info": {
-        "contact_person": "Max",
-        "email": "max@proav.de",
+        "contact_person": "Nick",
+        "email": "nick@proav.uk",
         "phone": "+49..."
       },
       "service_capabilities": {
         "can_repair": true,
-        "repair_level": "简单维修"  // 简单维修/中级维修/全面维修
+        "repair_level": "全面维修"  // 简单维修/中级维修/全面维修
       }
     }
   ]

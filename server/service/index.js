@@ -36,67 +36,80 @@ function initService(app, db, options = {}) {
     const dealerRoutes = require('./routes/dealers')(db, authenticate);
     const statsRoutes = require('./routes/statistics')(db, authenticate);
     const systemRoutes = require('./routes/system')(db, authenticate);
-    
-    // Phase 1: Service Records and Context Query
+
+    // Phase 1: Service Records and Context Query (legacy, kept for backward compatibility)
     const serviceRecordsRoutes = require('./routes/service-records')(db, authenticate);
     const contextRoutes = require('./routes/context')(db, authenticate);
-    
+
+    // Phase 1.5: Three-Layer Ticket Model (新三层工单模型)
+    const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate);
+    const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer);
+    const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate);
+
     // Phase 2: Export functionality
     const exportRoutes = require('./routes/export')(db, authenticate);
-    
+
     // Phase 3: Knowledge base
     const knowledgeRoutes = require('./routes/knowledge')(db, authenticate);
     const compatibilityRoutes = require('./routes/compatibility')(db, authenticate);
-    
+
     // Phase 4: Repair management
     const partsRoutes = require('./routes/parts')(db, authenticate);
     const logisticsRoutes = require('./routes/logistics')(db, authenticate);
-    
+
     // Phase 5: Dealer inventory and PI
     const dealerInventoryRoutes = require('./routes/dealer-inventory')(db, authenticate);
     const proformaInvoiceRoutes = require('./routes/proforma-invoice')(db, authenticate);
 
     // Mount routes under /api/v1 prefix (new API version)
     app.use('/api/v1/auth', authRoutes);
-    app.use('/api/v1/issues', issueRoutes);
+    app.use('/api/v1/issues', issueRoutes);  // Legacy, kept for backward compatibility
     app.use('/api/v1/dealers', dealerRoutes);
     app.use('/api/v1/stats', statsRoutes);
     app.use('/api/v1/system', systemRoutes);
-    
-    // Phase 1 routes
-    app.use('/api/v1/service-records', serviceRecordsRoutes);
+
+    // Phase 1 routes (legacy)
+    app.use('/api/v1/service-records', serviceRecordsRoutes);  // Legacy, kept for backward compatibility
     app.use('/api/v1/context', contextRoutes);
-    
+
+    // Phase 1.5: Three-Layer Ticket Model routes (新三层工单模型)
+    app.use('/api/v1/inquiry-tickets', inquiryTicketsRoutes);
+    app.use('/api/v1/rma-tickets', rmaTicketsRoutes);
+    app.use('/api/v1/dealer-repairs', dealerRepairsRoutes);
+
     // Phase 2 routes
     app.use('/api/v1/export', exportRoutes);
-    
+
     // Phase 3 routes
     app.use('/api/v1/knowledge', knowledgeRoutes);
     app.use('/api/v1/compatibility', compatibilityRoutes);
-    
+
     // Phase 4 routes
     app.use('/api/v1/parts', partsRoutes);
     app.use('/api/v1/logistics', logisticsRoutes);
-    
+
     // Phase 5 routes
     app.use('/api/v1/dealer-inventory', dealerInventoryRoutes);
     app.use('/api/v1/proforma-invoices', proformaInvoiceRoutes);
 
     console.log('[Service] Module initialized with routes:');
     console.log('  - /api/v1/auth');
-    console.log('  - /api/v1/issues');
+    console.log('  - /api/v1/issues (legacy)');
     console.log('  - /api/v1/dealers');
     console.log('  - /api/v1/stats');
     console.log('  - /api/v1/system');
-    console.log('  - /api/v1/service-records (Phase 1)');
-    console.log('  - /api/v1/context (Phase 1)');
-    console.log('  - /api/v1/export (Phase 2)');
-    console.log('  - /api/v1/knowledge (Phase 3)');
-    console.log('  - /api/v1/compatibility (Phase 3)');
-    console.log('  - /api/v1/parts (Phase 4)');
-    console.log('  - /api/v1/logistics (Phase 4)');
-    console.log('  - /api/v1/dealer-inventory (Phase 5)');
-    console.log('  - /api/v1/proforma-invoices (Phase 5)');
+    console.log('  - /api/v1/service-records (legacy)');
+    console.log('  - /api/v1/context');
+    console.log('  - /api/v1/inquiry-tickets (新: 咨询工单)');
+    console.log('  - /api/v1/rma-tickets (新: RMA返厂单)');
+    console.log('  - /api/v1/dealer-repairs (新: 经销商维修单)');
+    console.log('  - /api/v1/export');
+    console.log('  - /api/v1/knowledge');
+    console.log('  - /api/v1/compatibility');
+    console.log('  - /api/v1/parts');
+    console.log('  - /api/v1/logistics');
+    console.log('  - /api/v1/dealer-inventory');
+    console.log('  - /api/v1/proforma-invoices');
 
     return {
         generateRmaNumber: (productCode, channelCode) => generateRmaNumber(db, productCode, channelCode),
@@ -109,7 +122,7 @@ function initService(app, db, options = {}) {
  */
 function runMigrations(db) {
     const migrationsDir = path.join(__dirname, 'migrations');
-    
+
     if (!fs.existsSync(migrationsDir)) {
         console.log('[Service] No migrations directory found');
         return;
@@ -130,14 +143,14 @@ function runMigrations(db) {
 
     for (const file of files) {
         const applied = db.prepare('SELECT 1 FROM _migrations WHERE name = ?').get(file);
-        
+
         if (!applied) {
             console.log(`[Service] Running migration: ${file}`);
             const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-            
+
             // Split by semicolons and run each statement
             const statements = sql.split(';').filter(s => s.trim());
-            
+
             for (const stmt of statements) {
                 try {
                     db.exec(stmt);
@@ -148,7 +161,7 @@ function runMigrations(db) {
                     }
                 }
             }
-            
+
             db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
             console.log(`[Service] Migration applied: ${file}`);
         }
@@ -168,10 +181,10 @@ function runMigrations(db) {
 function generateRmaNumber(db, productCode = '09', channelCode = 'C') {
     const now = new Date();
     const yearMonth = `${String(now.getFullYear() % 100).padStart(2, '0')}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+
     // Get or create sequence for this product+channel+yearMonth combination
     const seqKey = `RMA-${productCode}${channelCode}-${yearMonth}`;
-    
+
     const existing = db.prepare(`
         SELECT last_sequence FROM service_sequences 
         WHERE sequence_key = ?
@@ -193,7 +206,7 @@ function generateRmaNumber(db, productCode = '09', channelCode = 'C') {
     }
 
     // Convert to hex if > 999, otherwise use decimal
-    const seqStr = seq > 999 
+    const seqStr = seq > 999
         ? seq.toString(16).toUpperCase().padStart(3, '0')
         : String(seq).padStart(3, '0');
 
@@ -212,10 +225,10 @@ function generateRmaNumber(db, productCode = '09', channelCode = 'C') {
 function generateServiceRecordNumber(db, customerType = 'C') {
     const now = new Date();
     const yearMonth = `${String(now.getFullYear() % 100).padStart(2, '0')}${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+
     // Get or create sequence for this type+yearMonth combination
     const seqKey = `SR${customerType}-${yearMonth}`;
-    
+
     const existing = db.prepare(`
         SELECT last_sequence FROM service_sequences 
         WHERE sequence_key = ?
@@ -237,7 +250,7 @@ function generateServiceRecordNumber(db, customerType = 'C') {
     }
 
     // Convert to hex if > 999, otherwise use decimal
-    const seqStr = seq > 999 
+    const seqStr = seq > 999
         ? seq.toString(16).toUpperCase().padStart(3, '0')
         : String(seq).padStart(3, '0');
 
