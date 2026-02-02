@@ -27,7 +27,30 @@
     - ✅ 数据库成功填充 10 条测试数据。
     - ✅ 手动创建工单和服务记录流程验证通过。
 
+### 技术架构总结 (Foundation Architecture)
+> **决策**: 采用 **Context-Driven Navigation**。
+> - **原因**: "Service" 和 "Files" 是两个完全不同的业务域，共享同一个 Sidebar 会导致混乱。
+> - **实现**: `AppRail` 作为顶级导航，切换 `activeModule` ('files' | 'service')。
+> - **影响**: 下游组件 (Sidebar, TopBar) 均只需监听 `activeModule` 即可自动适配，无需复杂的条件判断。
+
+### 会话: 2026-02-02 (Service Schema Fix)
+
+### 任务: Fix Creation Logic & Schema Alignment
+- **状态**: ✅ 已完成
+- **问题**:
+    - "Internal Server Error" when creating issues.
+    - `issues` table has `description` column, but frontend/backend code was using `problem_description`.
+    - Seed data missing `issue_source` (NOT NULL constraint).
+- **变更内容**:
+    - **BackEnd**: Patched `server/service/routes/issues.js` to map `problem_description` payload to `description` column.
+    - **FrontEnd**: Updated `IssueCreatePage.tsx` payload.
+    - **Seeding**: Rewrote `02_service_data.js` with realistic PRD cases and correct schema fields.
+- **验证**:
+    - `node server/seeds/02_service_data.js` -> Success.
+    - Manual creation flow verified.
+
 ---
+
 
 ## 会话: 2026-01-28 PM (Daily Word Data Quality Fix)
 

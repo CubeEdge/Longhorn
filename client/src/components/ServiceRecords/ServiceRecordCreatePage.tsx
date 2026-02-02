@@ -9,10 +9,17 @@ const ServiceRecordCreatePage: React.FC = () => {
   const { token } = useAuthStore();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  
+
+  // Ensure we are in the correct module
+  React.useEffect(() => {
+    // Assuming there's a global state or we just let AppRail handle it via URL
+    // But if we want to be safe, we might trigger a module switch if we had access to it.
+    // For now, simpler is better.
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     service_mode: 'CustomerService',
     customer_name: '',
@@ -23,7 +30,7 @@ const ServiceRecordCreatePage: React.FC = () => {
     service_type: 'Consultation',
     channel: 'Phone',
     problem_summary: '',
-    problem_category: ''
+    problem_category: 'Hardware'
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -34,18 +41,18 @@ const ServiceRecordCreatePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!formData.problem_summary.trim()) {
       setError(t('service_record.fill_problem_desc'));
       return;
     }
-    
+
     setLoading(true);
     try {
       const res = await axios.post('/api/v1/service-records', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         navigate(`/service-records/${res.data.data.id}`);
       } else {
@@ -92,9 +99,9 @@ const ServiceRecordCreatePage: React.FC = () => {
 
       <form onSubmit={handleSubmit}>
         {/* Service Mode */}
-        <div style={{ 
-          background: 'var(--bg-card)', 
-          borderRadius: '12px', 
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
           padding: '20px',
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
@@ -153,9 +160,9 @@ const ServiceRecordCreatePage: React.FC = () => {
         </div>
 
         {/* Customer Info */}
-        <div style={{ 
-          background: 'var(--bg-card)', 
-          borderRadius: '12px', 
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
           padding: '20px',
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
@@ -192,9 +199,9 @@ const ServiceRecordCreatePage: React.FC = () => {
         </div>
 
         {/* Product Info */}
-        <div style={{ 
-          background: 'var(--bg-card)', 
-          borderRadius: '12px', 
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
           padding: '20px',
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
@@ -244,15 +251,33 @@ const ServiceRecordCreatePage: React.FC = () => {
         </div>
 
         {/* Service Details */}
-        <div style={{ 
-          background: 'var(--bg-card)', 
-          borderRadius: '12px', 
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
           padding: '20px',
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
         }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.service_details')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                {t('service_record.problem_category')}
+              </label>
+              <select
+                name="problem_category"
+                value={formData.problem_category}
+                onChange={handleChange}
+                className="form-control"
+              >
+                <option value="">{t('common.select')}</option>
+                <option value="Hardware">{t('issue.category.hardware')}</option>
+                <option value="Software">{t('issue.category.software')}</option>
+                <option value="Usage">{t('issue.category.usage')}</option>
+                <option value="Firmware">{t('issue.category.firmware')}</option>
+                <option value="Other">{t('issue.category.other')}</option>
+              </select>
+            </div>
             <div>
               <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                 {t('service_record.service_type')} *

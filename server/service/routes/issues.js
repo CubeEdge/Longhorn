@@ -7,9 +7,9 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
 
-module.exports = function(db, authenticate, attachmentsDir, multerModule) {
+module.exports = function (db, authenticate, attachmentsDir, multerModule) {
     const router = express.Router();
-    
+
     // Setup multer for file uploads
     const multer = multerModule || require('multer');
     const upload = multer({
@@ -142,7 +142,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-            
+
             // Validate sort field
             const validSortFields = ['created_at', 'updated_at', 'severity', 'status', 'issue_number'];
             const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
@@ -220,25 +220,25 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
                 severity = 3,
                 service_priority = 'Normal',
                 repair_priority = 'Normal',
-                
+
                 // Product info
                 product_id,
                 serial_number,
                 firmware_version,
-                
+
                 // Problem description
                 title,
                 problem_description,
                 solution_for_customer,
                 is_warranty = true,
-                
+
                 // Reporter info
                 reporter_name,
                 reporter_type = 'Customer',
                 customer_id,
                 dealer_id,
                 region = '国内',
-                
+
                 // Optional
                 rma_number,
                 external_link,
@@ -251,9 +251,9 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             if (!issue_category || !problem_description) {
                 return res.status(400).json({
                     success: false,
-                    error: { 
-                        code: 'VALIDATION_ERROR', 
-                        message: '缺少必填字段: issue_category, problem_description' 
+                    error: {
+                        code: 'VALIDATION_ERROR',
+                        message: '缺少必填字段: issue_category, problem_description'
                     }
                 });
             }
@@ -262,33 +262,33 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             const issue_number = generateIssueNumber(db, ticket_type);
 
             const result = db.prepare(`
-                INSERT INTO issues (
-                    issue_number, rma_number, ticket_type,
-                    issue_type, issue_category, issue_subcategory, severity,
-                    service_priority, repair_priority,
-                    product_id, serial_number, firmware_version,
-                    title, description, problem_description, solution_for_customer, is_warranty,
-                    reporter_name, reporter_type, customer_id, dealer_id, region,
-                    external_link, feedback_date, source_service_record_id,
-                    preferred_contact_method,
-                    status, created_by
-                ) VALUES (
+                INSERT INTO issues(
+                issue_number, rma_number, ticket_type,
+                issue_type, issue_category, issue_subcategory, severity,
+                service_priority, repair_priority,
+                product_id, serial_number, firmware_version,
+                title, description, solution_for_customer, is_warranty,
+                reporter_name, reporter_type, customer_id, dealer_id, region,
+                external_link, feedback_date, source_service_record_id,
+                preferred_contact_method,
+                status, created_by
+            ) VALUES(
                     ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?,
                     ?, ?, ?,
-                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
                     ?, ?, ?,
                     ?,
-                    'Pending', ?
-                )
-            `).run(
+                'Pending', ?
+            )
+                `).run(
                 issue_number, rma_number || null, ticket_type,
                 issue_type, issue_category, issue_subcategory || null, severity,
                 service_priority, repair_priority,
                 product_id || null, serial_number || null, firmware_version || null,
-                title || problem_description.substring(0, 100), problem_description, problem_description, solution_for_customer || null, is_warranty ? 1 : 0,
+                title || problem_description.substring(0, 100), problem_description, solution_for_customer || null, is_warranty ? 1 : 0,
                 reporter_name || null, reporter_type, customer_id || null, dealer_id || null, region,
                 external_link || null, feedback_date || null, source_service_record_id || null,
                 preferred_contact_method,
@@ -321,15 +321,15 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
     router.get('/:id', authenticate, (req, res) => {
         try {
             const issue = db.prepare(`
-                SELECT 
-                    i.*,
-                    p.product_line, p.model_name as product_name, 
-                    c.customer_type, c.customer_name, c.contact_person, c.phone, c.email,
-                    c.country, c.province, c.city, c.company_name,
-                    d.name as dealer_name, d.code as dealer_code,
-                    creator.username as created_by_name,
-                    assignee.username as assigned_to_name,
-                    closer.username as closed_by_name
+            SELECT
+            i.*,
+                p.product_line, p.model_name as product_name,
+                c.customer_type, c.customer_name, c.contact_person, c.phone, c.email,
+                c.country, c.province, c.city, c.company_name,
+                d.name as dealer_name, d.code as dealer_code,
+                creator.username as created_by_name,
+                assignee.username as assigned_to_name,
+                closer.username as closed_by_name
                 FROM issues i
                 LEFT JOIN products p ON i.product_id = p.id
                 LEFT JOIN customers c ON i.customer_id = c.id
@@ -338,7 +338,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
                 LEFT JOIN users assignee ON i.assigned_to = assignee.id
                 LEFT JOIN users closer ON i.closed_by = closer.id
                 WHERE i.id = ?
-            `).get(req.params.id);
+                `).get(req.params.id);
 
             if (!issue) {
                 return res.status(404).json({
@@ -363,7 +363,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
                 LEFT JOIN users u ON ic.user_id = u.id
                 WHERE ic.issue_id = ?
                 ORDER BY ic.created_at ASC
-            `).all(req.params.id);
+                    `).all(req.params.id);
 
             // Get attachments
             const attachments = db.prepare(`
@@ -441,7 +441,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             // Handle status changes
             if (req.body.status && req.body.status !== issue.status) {
                 const newStatus = req.body.status;
-                
+
                 if (newStatus === 'Closed') {
                     updates.push('closed_at = CURRENT_TIMESTAMP', 'closed_by = ?');
                     params.push(req.user.id);
@@ -455,9 +455,9 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
 
                 // Log status change
                 db.prepare(`
-                    INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
-                    VALUES (?, ?, 'StatusChange', ?)
-                `).run(req.params.id, req.user.id, `状态变更: ${issue.status} → ${newStatus}`);
+                    INSERT INTO issue_comments(issue_id, user_id, comment_type, content)
+            VALUES(?, ?, 'StatusChange', ?)
+                `).run(req.params.id, req.user.id, `状态变更: ${issue.status} → ${newStatus} `);
             }
 
             if (updates.length === 0) {
@@ -470,7 +470,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             updates.push('updated_at = CURRENT_TIMESTAMP');
             params.push(req.params.id);
 
-            db.prepare(`UPDATE issues SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+            db.prepare(`UPDATE issues SET ${updates.join(', ')} WHERE id = ? `).run(...params);
 
             res.json({
                 success: true,
@@ -521,18 +521,18 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
                 UPDATE issues 
                 SET assigned_to = ?, assigned_at = CURRENT_TIMESTAMP, status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `).run(assigned_to, newStatus, req.params.id);
+                `).run(assigned_to, newStatus, req.params.id);
 
             // Log assignment
             db.prepare(`
-                INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
-                VALUES (?, ?, 'Assignment', ?)
-            `).run(req.params.id, req.user.id, `分配给 ${assignee.username}${comment ? ': ' + comment : ''}`);
+                INSERT INTO issue_comments(issue_id, user_id, comment_type, content)
+            VALUES(?, ?, 'Assignment', ?)
+            `).run(req.params.id, req.user.id, `分配给 ${assignee.username}${comment ? ': ' + comment : ''} `);
 
             res.json({
                 success: true,
-                data: { 
-                    assigned_to: assignee.id, 
+                data: {
+                    assigned_to: assignee.id,
                     assigned_to_name: assignee.username,
                     status: newStatus
                 }
@@ -617,9 +617,9 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             }
 
             const result = db.prepare(`
-                INSERT INTO issue_comments (issue_id, user_id, comment_type, content, is_internal)
-                VALUES (?, ?, ?, ?, ?)
-            `).run(req.params.id, req.user.id, comment_type, content, is_internal ? 1 : 0);
+                INSERT INTO issue_comments(issue_id, user_id, comment_type, content, is_internal)
+            VALUES(?, ?, ?, ?, ?)
+                `).run(req.params.id, req.user.id, comment_type, content, is_internal ? 1 : 0);
 
             db.prepare('UPDATE issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
 
@@ -675,10 +675,10 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             const attachments = [];
             for (const file of req.files) {
                 const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
-                
+
                 const result = db.prepare(`
-                    INSERT INTO issue_attachments (issue_id, file_name, file_path, file_size, file_type, uploaded_by)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO issue_attachments(issue_id, file_name, file_path, file_size, file_type, uploaded_by)
+            VALUES(?, ?, ?, ?, ?, ?)
                 `).run(req.params.id, file.originalname, file.filename, file.size, fileType, req.user.id);
 
                 attachments.push({
@@ -686,7 +686,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
                     file_name: file.originalname,
                     file_size: file.size,
                     file_type: fileType,
-                    file_url: `/api/v1/attachments/${result.lastInsertRowid}/download`
+                    file_url: `/ api / v1 / attachments / ${result.lastInsertRowid}/download`
                 });
             }
 
@@ -744,7 +744,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
     function generateIssueNumber(db, ticketType = 'IS') {
         const today = new Date();
         const dateKey = today.toISOString().slice(0, 10).replace(/-/g, '');
-        
+
         // Try to use issue_sequences table first (Phase 1)
         try {
             const existing = db.prepare(`
@@ -777,7 +777,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
 
     function generateRmaNumber(db, productCode, channelCode) {
         const year = new Date().getFullYear() % 100;
-        
+
         const existing = db.prepare(`
             SELECT last_sequence FROM rma_sequences 
             WHERE product_code = ? AND channel_code = ? AND year = ?
@@ -858,7 +858,7 @@ module.exports = function(db, authenticate, attachmentsDir, multerModule) {
             issue_number: issue.issue_number,
             rma_number: issue.rma_number,
             ticket_type: issue.ticket_type || 'IS',
-            
+
             issue_type: issue.issue_type,
             issue_category: issue.issue_category,
             issue_subcategory: issue.issue_subcategory,

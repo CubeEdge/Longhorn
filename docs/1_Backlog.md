@@ -2,49 +2,48 @@
 
 **概述**: 本文档跟踪 Kinefinity Longhorn 项目的高级功能、已知 Bug 和产品路线图。这是"计划"与"构建"的单一事实来源。
 
-## 🚀 当前冲刺
+## 🚀 当前冲刺 (Service Module Phase 1)
 
-### [Feature] 每日一词 UI 改进 - 更多菜单整合
-- **优先级**: 高
+> **目标**: 完成服务模块的核心闭环 (Service Record -> Issue -> Resolution) 及基础架构。
+
+### [Feature] Service Module: 列表与详情 (List & Detail)
+- **优先级**: 🔴 紧急 (P0)
 - **描述**: 
-  - **iOS**: 移除独立关闭按钮，在三点更多菜单中整合 Level、New Batch 和 Close。
-  - **Web**: 新增三点更多菜单，简化底部控制栏，仅保留 Prev/Next 导航。
-  - **统一体验**: iOS 和 Web 版本采用一致的交互模式，主界面更简洁。
-- **状态**: ✅ 已完成 (2026-01-28)
+  - **Service Record List**: 支持分页、筛选（状态、优先级）、搜索（客户名/SN）。
+  - **Service Record Detail**: 实现类似聊天流的交互界面，显示完整的时间轴（创建、回复、状态变更）。
+  - **Issue List**: 独立的工单列表（区分本地/返修），支持看板视图或列表视图。
+- **状态**: 📋 待定 (Todo)
 
-### [Feature] Daily Word 刷新机制
-- **优先级**: 高
+### [Feature] Service Module: 客户上下文 (Customer Context)
+- **优先级**: 🟠 高 (P1)
 - **描述**: 
-  - **启动策略**: 每次冷启动检查本地词库是否满足 100 个，并尝试静默更新。
-  - **手动刷新**: 在 UI 上提供强制刷新入口（如下拉刷新或设置按钮），触发 API 立即拉取新词。
-  - **进度反馈**: 显示 "Updating vocabulary..." 等非阻塞 Toast。
-  - **静默体验**: Web端切换语言优先展示缓存 (Cache-First)。
-- **状态**: ✅ 已完成 (v1.1)
+  - **Context Sidebar**: 实现 PRD 1.6.4 描述的上下文面板。
+  - **双维度查询**: 支持按 "客户" (显示所有设备) 和 "SN" (显示设备历史) 切换。
+  - **关联数据**: 在处理工单时自动显示该客户的历史服务记录。
+- **状态**: 📋 待定 (Todo)
 
-### [Fix] 数据质量清洗 (Data Quality)
-- **优先级**: 紧急
+### [Feature] Service Module: 状态流转与权限 (Workflow & Roles)
+- **优先级**: 🟠 高 (P1)
 - **描述**: 
-  - 清理数据库中的垃圾定义 ("Basic German word...") 和后缀 ("(5)", "[A2-1]")。
-  - 确保所有单词均有正确释义和 Emoji。
-- **状态**: ✅ 已完成 (Fix V5)
-
-### [Fix] UI 适配与缓存管理
-- **优先级**: 高
-- **描述**:
-  - Web 端 Daily Word 底部按钮在小屏下被遮挡 (Padding fix)。
-  - 需要提供手动清理缓存的入口 (Settings/Menu)。
-- **状态**: ✅ 已完成
+  - **状态机**: 实现 Service Record (处理中 -> 待反馈 -> 解决/关闭) 的状态流转控制。
+  - **角色权限**: 区分 Dealer (仅见自己客户), Market (全局), Production (维修视角)。
+- **状态**: 📋 待定 (Todo)
 
 ---
 
-## 📋 待办事项
+## 📋 待办事项 (Backlog)
 
-### [Feature] 全局多语言完善
+### [Feature] Knowledge Base (Phase 2)
+- **优先级**: 中
+- **描述**: 
+  - 从 Service Record 沉淀知识点。
+  - 实现知识库的搜索与关联推荐。
+
+### [Feature] 全局多语言完善 (Cleanup)
 - **优先级**: 低
 - **描述**: 
   - 个人中心 Dashboard 仍有英文（"Upload", "Storage", "Starred"）
   - 部分 Toast 消息可能仍是硬编码
-  - 统一处理所有 UI 文本的本地化
 - **状态**: ✅ 已完成 (v1.1)
 
 ---

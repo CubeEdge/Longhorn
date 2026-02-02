@@ -37,7 +37,7 @@ import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
 import { IssueListPage, IssueCreatePage, IssueDetailPage } from './components/Issues';
 import { ServiceRecordListPage, ServiceRecordCreatePage, ServiceRecordDetailPage, ContextPanel } from './components/ServiceRecords';
-import TopModuleNav from './components/TopModuleNav';
+import AppRail from './components/AppRail';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
 
@@ -46,13 +46,23 @@ import Toast from './components/Toast';
 import { ConfirmDialog } from './components/ConfirmDialog';
 
 // Main Layout Component for authenticated users
+// Main Layout Component for authenticated users
 const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { currentModule, switchModule } = useNavigationState();
   const canAccessFiles = canAccessFilesModule(user.role);
 
   return (
-    <div className="app-container fade-in">
+    <div className="app-container fade-in" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+
+      {/* App Rail - Always visible on Desktop */}
+      <AppRail
+        currentModule={currentModule}
+        onModuleChange={switchModule}
+        canAccessFiles={canAccessFiles}
+        userRole={user.role}
+      />
+
       {/* Mobile Overlay */}
       <div
         className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
@@ -66,14 +76,9 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
         currentModule={currentModule}
       />
 
-      <main className="main-content">
-        <TopModuleNav
-          currentModule={currentModule}
-          onModuleChange={switchModule}
-          canAccessFiles={canAccessFiles}
-        />
-        <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
-        <div className="content-area">
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} currentModule={currentModule} />
+        <div className="content-area" style={{ flex: 1, overflow: 'auto' }}>
           <Outlet />
         </div>
       </main>
@@ -108,21 +113,21 @@ const App: React.FC = () => {
           <Route path="/service/records" element={<ServiceRecordListPage />} />
           <Route path="/service/records/new" element={<ServiceRecordCreatePage />} />
           <Route path="/service/records/:id" element={<ServiceRecordDetailPage />} />
-          
+
           {/* Issues / Work Orders */}
           <Route path="/service/issues" element={<IssueListPage />} />
           <Route path="/service/issues/new" element={<IssueCreatePage />} />
           <Route path="/service/issues/:id" element={<IssueDetailPage />} />
-          
+
           {/* Context Query */}
           <Route path="/service/context" element={<ContextPanel />} />
-          
+
           {/* Knowledge Base (placeholder - to be implemented) */}
           <Route path="/service/knowledge" element={<ServiceRecordListPage />} />
-          
+
           {/* Parts Management (placeholder - to be implemented) */}
           <Route path="/service/parts" element={<ServiceRecordListPage />} />
-          
+
           {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
 
@@ -130,11 +135,11 @@ const App: React.FC = () => {
           {/* Personal Space */}
           <Route path="/files/personal/*" element={<FileBrowser key="personal" mode="personal" />} />
           <Route path="/files/personal" element={<FileBrowser key="personal-root" mode="personal" />} />
-          
+
           {/* Department Files */}
           <Route path="/files/dept/:deptCode/*" element={<FileBrowser key="dept" />} />
           <Route path="/files/dept/:deptCode" element={<FileBrowser key="dept-root" />} />
-          
+
           {/* Quick Access */}
           <Route path="/files/starred" element={<StarredPage />} />
           <Route path="/files/shares" element={<SharesPage />} />
@@ -155,7 +160,7 @@ const App: React.FC = () => {
           <Route path="/service-records" element={<Navigate to="/service/records" replace />} />
           <Route path="/service-records/*" element={<Navigate to="/service/records" replace />} />
           <Route path="/context" element={<Navigate to="/service/context" replace />} />
-          
+
           {/* Old files routes → new files routes */}
           <Route path="/personal" element={<Navigate to="/files/personal" replace />} />
           <Route path="/personal/*" element={<Navigate to="/files/personal" replace />} />
@@ -166,7 +171,7 @@ const App: React.FC = () => {
           <Route path="/recycle-bin" element={<Navigate to="/files/recycle" replace />} />
           <Route path="/search" element={<Navigate to="/files/search" replace />} />
           <Route path="/recent" element={<Navigate to="/files/recent" replace />} />
-          
+
           {/* Legacy routes */}
           <Route path="/files" element={<Navigate to="/" replace />} />
           <Route path="/recycle" element={<Navigate to="/files/recycle" replace />} />
@@ -323,7 +328,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             {/* Divider before recycle */}
             <div style={{ marginTop: 'auto' }} />
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-            
+
             {/* Recycle Bin */}
             <Link to="/files/recycle" className={`sidebar-item ${location.pathname === '/files/recycle' ? 'active' : ''}`} onClick={onClose}>
               <Trash2 size={20} />
@@ -439,7 +444,7 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 };
 
 
-const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenuClick }) => {
+const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: ModuleType }> = ({ user, onMenuClick, currentModule }) => {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -470,44 +475,49 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
           <Menu size={24} />
         </button>
 
-        {/* Stats card hidden on mobile to save space */}
-        <div className="hidden-mobile">
-          <UserStatsCard onClick={() => navigate('/dashboard')} />
-        </div>
+        {/* Stats card only visible in FILES module */}
+        {currentModule === 'files' && (
+          <div className="hidden-mobile">
+            <UserStatsCard onClick={() => navigate('/dashboard')} />
+          </div>
+        )}
 
       </div>
 
-      {/* Center: Daily Word - always centered, visible on all screens */}
+      {/* Center: Daily Word - only visible in FILES module */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <DailyWordBadge />
+        {currentModule === 'files' && <DailyWordBadge />}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-        <button
-          onClick={() => navigate('/search')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            padding: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '8px',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            e.currentTarget.style.color = 'var(--accent-blue)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'none';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-          }}
-        >
-          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-        </button>
+        {/* Search - only visible in FILES module (for now) */}
+        {currentModule === 'files' && (
+          <button
+            onClick={() => navigate('/search')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+              e.currentTarget.style.color = 'var(--accent-blue)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.7 }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+          </button>
+        )}
 
         {/* User Profile - visible on all screen sizes */}
         <div
@@ -710,7 +720,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void }> = ({ user, onMenu
 
 const HomeRedirect: React.FC<{ user: any }> = ({ user }) => {
   const canAccessFiles = canAccessFilesModule(user?.role || '');
-  
+
   // Admin goes to admin panel
   if (user?.role === 'Admin') {
     return <Navigate to="/admin" replace />;

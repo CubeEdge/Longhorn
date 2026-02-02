@@ -10,6 +10,7 @@ export const translations = {
 
         // Actions
         'common.select_all': '全选',
+        'common.select': '请选择',
         'browser.batch_delete': '批量删除',
         'status.processing': '处理中',
         'action.download': '下载',
@@ -672,7 +673,7 @@ export const translations = {
 
 
         'sidebar.system_admin': '系统管理',
-        
+
         // Module Navigation
         'nav.service': '服务',
         'nav.files': '文件',
@@ -681,7 +682,7 @@ export const translations = {
         'sidebar.context': '上下文查询',
         'sidebar.knowledge': '知识库',
         'sidebar.parts': '配件管理',
-        
+
         'admin.dept_management_full': '部门管理',
         'admin.permission_management': '权限管理',
         'admin.system_settings': '系统设置',
@@ -780,6 +781,9 @@ export const translations = {
         'issue.category.consultation': '使用咨询',
         'issue.category.return': '售后返修',
         'issue.category.complaint': '投诉建议',
+        'issue.category.usage': '使用咨询',
+        'issue.category.firmware': '固件问题',
+        'issue.category.other': '其他',
         'issue.source': '问题来源',
         'issue.source.online': '线上反馈',
         'issue.source.offline': '线下返修',
@@ -857,6 +861,7 @@ export const translations = {
         'service_record.firmware_version': '固件版本',
         'service_record.service_details': '服务详情',
         'service_record.problem_description': '问题描述',
+        'service_record.problem_category': '问题分类',
         'service_record.record_customer_issue': '记录客户咨询和服务请求',
         'service_record.fill_problem_desc': '请填写问题描述',
         'service_record.status.created': '已创建',
@@ -1496,7 +1501,7 @@ export const translations = {
         'sidebar.favorites': 'Favorites',
         'sidebar.personal': 'My Space',
         'sidebar.dashboard': 'Overview',
-        
+
         // Module Navigation
         'nav.service': 'Service',
         'nav.files': 'Files',
@@ -1506,7 +1511,7 @@ export const translations = {
         'sidebar.knowledge': 'Knowledge Base',
         'sidebar.parts': 'Parts Management',
         'sidebar.system_admin': 'System Admin',
-        
+
         'my_shares.delete_link_success': 'Share link deleted',
         'my_shares.delete_failed': 'Delete failed',
         'my_shares.confirm_delete_collection': 'Delete this share collection?',
@@ -2407,7 +2412,7 @@ export const translations = {
         'common.actions': 'Aktionen',
 
         'sidebar.system_admin': 'Systemverwaltung',
-        
+
         // Module Navigation
         'nav.service': 'Service',
         'nav.files': 'Dateien',
@@ -2416,7 +2421,7 @@ export const translations = {
         'sidebar.context': 'Kontextabfrage',
         'sidebar.knowledge': 'Wissensbasis',
         'sidebar.parts': 'Teileverwaltung',
-        
+
         'admin.dept_management_full': 'Abteilungsverwaltung',
         'admin.permission_management': 'Berechtigungsverwaltung',
         'admin.system_settings': 'Systemeinstellungen',
@@ -3218,7 +3223,7 @@ export const translations = {
         'sidebar.personal': '個人エリア',
         'sidebar.dashboard': '概要',
         'sidebar.system_admin': 'システム管理',
-        
+
         // Module Navigation
         'nav.service': 'サービス',
         'nav.files': 'ファイル',
@@ -3227,7 +3232,7 @@ export const translations = {
         'sidebar.context': 'コンテキスト検索',
         'sidebar.knowledge': 'ナレッジベース',
         'sidebar.parts': '部品管理',
-        
+
         'admin.dept_management_full': '部門管理',
         'admin.permission_management': '権限管理',
         'admin.system_settings': 'システム設定',

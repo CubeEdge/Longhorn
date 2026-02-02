@@ -25,28 +25,28 @@ const IssueCreatePage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
-  
+
   // Form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Hardware');
   const [source, setSource] = useState('OnlineFeedback');
   const [severity, setSeverity] = useState('Medium');
-  
+
   // Product selection
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productSearch, setProductSearch] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
-  
+
   // Customer selection
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
-  
+
   // Fetch products and customers for selection
   useEffect(() => {
     const fetchData = async () => {
@@ -63,20 +63,20 @@ const IssueCreatePage: React.FC = () => {
     };
     fetchData();
   }, [token]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim() || !description.trim()) {
       showToast(t('issue.error.required_fields'), 'error');
       return;
     }
-    
+
     setLoading(true);
     try {
-      const res = await axios.post('/api/issues', {
+      const res = await axios.post('/api/v1/issues', {
         title,
-        description,
+        problem_description: description,
         issue_category: category,
         issue_source: source,
         severity,
@@ -85,7 +85,7 @@ const IssueCreatePage: React.FC = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       showToast(t('issue.created_success'), 'success');
       navigate(`/issues/${res.data.issue_id}`);
     } catch (err: any) {
@@ -95,15 +95,15 @@ const IssueCreatePage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   const selectedProduct = products.find(p => p.id === selectedProductId);
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
-  
-  const filteredProducts = products.filter(p => 
+
+  const filteredProducts = products.filter(p =>
     p.model_name.toLowerCase().includes(productSearch.toLowerCase()) ||
     (p.serial_number && p.serial_number.toLowerCase().includes(productSearch.toLowerCase()))
   );
-  
+
   const filteredCustomers = customers.filter(c =>
     c.customer_name.toLowerCase().includes(customerSearch.toLowerCase()) ||
     (c.company_name && c.company_name.toLowerCase().includes(customerSearch.toLowerCase()))
@@ -113,8 +113,8 @@ const IssueCreatePage: React.FC = () => {
     <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-        <button 
-          onClick={() => navigate('/issues')} 
+        <button
+          onClick={() => navigate('/issues')}
           className="btn btn-secondary"
           style={{ padding: '8px' }}
         >
@@ -122,11 +122,11 @@ const IssueCreatePage: React.FC = () => {
         </button>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{t('issue.create')}</h1>
       </div>
-      
+
       <form onSubmit={handleSubmit}>
-        <div style={{ 
-          background: 'var(--bg-card)', 
-          borderRadius: '12px', 
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
           padding: '24px',
           border: '1px solid var(--border-color)'
         }}>
@@ -145,7 +145,7 @@ const IssueCreatePage: React.FC = () => {
               required
             />
           </div>
-          
+
           {/* Category & Source */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
             <div>
@@ -165,7 +165,7 @@ const IssueCreatePage: React.FC = () => {
                 <option value="Complaint">{t('issue.category.complaint')}</option>
               </select>
             </div>
-            
+
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
                 {t('issue.source')} <span style={{ color: '#ef4444' }}>*</span>
@@ -183,7 +183,7 @@ const IssueCreatePage: React.FC = () => {
               </select>
             </div>
           </div>
-          
+
           {/* Severity */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
@@ -210,7 +210,7 @@ const IssueCreatePage: React.FC = () => {
               ))}
             </div>
           </div>
-          
+
           {/* Product Selection */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
@@ -247,7 +247,7 @@ const IssueCreatePage: React.FC = () => {
                   <span style={{ color: 'var(--text-secondary)' }}>{t('issue.select_product')}</span>
                   <Search size={16} />
                 </button>
-                
+
                 {showProductPicker && (
                   <div style={{
                     position: 'absolute',
@@ -303,7 +303,7 @@ const IssueCreatePage: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           {/* Customer Selection */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
@@ -340,7 +340,7 @@ const IssueCreatePage: React.FC = () => {
                   <span style={{ color: 'var(--text-secondary)' }}>{t('issue.select_customer')}</span>
                   <Search size={16} />
                 </button>
-                
+
                 {showCustomerPicker && (
                   <div style={{
                     position: 'absolute',
@@ -396,7 +396,7 @@ const IssueCreatePage: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           {/* Description */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
@@ -411,7 +411,7 @@ const IssueCreatePage: React.FC = () => {
               required
             />
           </div>
-          
+
           {/* Submit Button */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button

@@ -4,7 +4,21 @@
 
 ---
 
-### 2026-02-02 22:00 - Service Data & Creation Fixes
+### 2026-02-02 22:15 - Service Seeding & Creation Fixes
+**User Prompt**:
+1. "创新服务，创建工单，现在无法使用..." (Creation broken).
+2. "创建5条典型的服务记录案例..." (Refine seeding with PRD cases).
+
+**Action**:
+1. **Seeding**:
+   - Rewrote `server/seeds/02_service_data.js` to include 5 realistic PRD scenarios (Edge 8K freezing, Feature Request, etc.).
+   - Fixed Schema errors: Added `issue_source` (NOT NULL) and renamed `problem_description` -> `description`.
+   - Executed seed successfully (`node server/seeds/02_service_data.js`).
+2. **Creation Logic Verification**:
+   - Backend (`issues.js`): Fixed SQL `INSERT` to map `problem_description` -> `description`. Restored `db.prepare()` syntax.
+   - Frontend (`IssueCreatePage.tsx`): Updated payload key to `problem_description`.
+
+**Status**: Completed
 **User Prompt**:
 1. 修复 Git Pull 失败（`UserInterfaceState.xcuserstate` 冲突）。
 2. App Rail 导航重构 (Service vs Files)。
