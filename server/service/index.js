@@ -21,7 +21,8 @@ function initService(app, db, options = {}) {
     const {
         attachmentsDir = path.join(__dirname, '../data/issue_attachments'),
         authenticate,
-        multer
+        multer,
+        serviceUpload
     } = options;
 
     // Ensure attachments directory exists
@@ -42,9 +43,9 @@ function initService(app, db, options = {}) {
     const contextRoutes = require('./routes/context')(db, authenticate);
 
     // Phase 1.5: Three-Layer Ticket Model (新三层工单模型)
-    const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate);
-    const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer);
-    const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate);
+    const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate, serviceUpload);
+    const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer, serviceUpload);
+    const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate, serviceUpload);
 
     // Phase 2: Export functionality
     const exportRoutes = require('./routes/export')(db, authenticate);

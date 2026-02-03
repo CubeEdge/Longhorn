@@ -6,7 +6,7 @@
 
 const express = require('express');
 
-module.exports = function (db, authenticate) {
+module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
 
     // ==============================
@@ -46,21 +46,42 @@ module.exports = function (db, authenticate) {
         return `K${yearMonth}-${seqStr}`;
     }
 
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        try {
+            // SQLite format: "2026-02-01 12:00:00"
+            // ISO format: "2026-02-01T12:00:00"
+            const normalized = typeof dateStr === 'string' && dateStr.includes(' ')
+                ? dateStr.replace(' ', 'T')
+                : dateStr;
+            const d = new Date(normalized);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toISOString();
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
     function formatListItem(ticket) {
-        return {
-            id: ticket.id,
-            ticket_number: ticket.ticket_number,
-            service_type: ticket.service_type,
-            channel: ticket.channel,
-            customer_name: ticket.customer_name || '匿名客户',
-            problem_summary: ticket.problem_summary,
-            status: ticket.status,
-            handler: ticket.handler_name ? { id: ticket.handler_id, name: ticket.handler_name } : null,
-            product: ticket.product_name ? { id: ticket.product_id, name: ticket.product_name } : null,
-            serial_number: ticket.serial_number,
-            created_at: ticket.created_at,
-            updated_at: ticket.updated_at
-        };
+        try {
+            return {
+                id: ticket.id,
+                ticket_number: ticket.ticket_number,
+                service_type: ticket.service_type,
+                channel: ticket.channel,
+                customer_name: ticket.customer_name || '匿名客户',
+                problem_summary: ticket.problem_summary,
+                status: ticket.status,
+                handler: ticket.handler_name ? { id: ticket.handler_id, name: ticket.handler_name } : null,
+                product: ticket.product_name ? { id: ticket.product_id, name: ticket.product_name } : null,
+                serial_number: ticket.serial_number,
+                created_at: parseDate(ticket.created_at),
+                updated_at: parseDate(ticket.updated_at)
+            };
+        } catch (error) {
+            console.error(`ERROR formatting listItem ${ticket.id}:`, error);
+            return { id: ticket.id, error: true };
+        }
     }
 
     function formatDetail(ticket) {
@@ -102,11 +123,11 @@ module.exports = function (db, authenticate) {
             upgraded_at: ticket.upgraded_at,
 
             // Timestamps
-            first_response_at: ticket.first_response_at,
-            resolved_at: ticket.resolved_at,
-            reopened_at: ticket.reopened_at,
-            created_at: ticket.created_at,
-            updated_at: ticket.updated_at
+            first_response_at: parseDate(ticket.first_response_at),
+            resolved_at: parseDate(ticket.resolved_at),
+            reopened_at: parseDate(ticket.reopened_at),
+            created_at: parseDate(ticket.created_at),
+            updated_at: parseDate(ticket.updated_at)
         };
     }
 
@@ -120,6 +141,20 @@ module.exports = function (db, authenticate) {
      */
     router.get('/stats', authenticate, (req, res) => {
         try {
+            const {
+                status,
+                service_type,
+                channel,
+                dealer_id,
+                handler_id,
+                customer_id,
+                serial_number,
+                created_from,
+                created_to,
+                keyword,
+                product_id
+            } = req.query;
+
             const user = req.user;
             let conditions = [];
             let params = [];
@@ -134,6 +169,62 @@ module.exports = function (db, authenticate) {
             } else if (user.role === 'Member') {
                 conditions.push('(handler_id = ? OR created_by = ?)');
                 params.push(user.id, user.id);
+            }
+
+            // Filter conditions
+            if (status) {
+                const statuses = status.split(',');
+                conditions.push(`status IN (${statuses.map(() => '?').join(',')})`);
+                params.push(...statuses);
+            }
+            if (service_type) {
+                conditions.push('service_type = ?');
+                params.push(service_type);
+            }
+            if (channel) {
+                conditions.push('channel = ?');
+                params.push(channel);
+            }
+            if (product_id) {
+                conditions.push('product_id = ?');
+                params.push(product_id);
+            }
+            if (dealer_id) {
+                conditions.push('dealer_id = ?');
+                params.push(dealer_id);
+            }
+            if (handler_id === 'me') {
+                conditions.push('handler_id = ?');
+                params.push(user.id);
+            } else if (handler_id) {
+                conditions.push('handler_id = ?');
+                params.push(parseInt(handler_id));
+            }
+            if (customer_id) {
+                conditions.push('customer_id = ?');
+                params.push(customer_id);
+            }
+            if (serial_number) {
+                conditions.push('serial_number LIKE ?');
+                params.push(`%${serial_number}%`);
+            }
+            if (created_from) {
+                conditions.push('date(created_at) >= date(?)');
+                params.push(created_from);
+            }
+            if (created_to) {
+                conditions.push('date(created_at) <= date(?)');
+                params.push(created_to);
+            }
+            if (keyword) {
+                conditions.push(`(
+                    ticket_number LIKE ? OR 
+                    customer_name LIKE ? OR 
+                    problem_summary LIKE ? OR
+                    serial_number LIKE ?
+                )`);
+                const term = `%${keyword}%`;
+                params.push(term, term, term, term);
             }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -181,7 +272,8 @@ module.exports = function (db, authenticate) {
                 serial_number,
                 created_from,
                 created_to,
-                keyword
+                keyword,
+                product_id
             } = req.query;
 
             console.log('DEBUG: GET /inquiry-tickets');
@@ -248,11 +340,11 @@ module.exports = function (db, authenticate) {
             }
             console.log('DEBUG: Checkpoint 6 - Dates');
             if (created_from) {
-                conditions.push('date(t.created_at) >= ?');
+                conditions.push('date(t.created_at) >= date(?)');
                 params.push(created_from);
             }
             if (created_to) {
-                conditions.push('date(t.created_at) <= ?');
+                conditions.push('date(t.created_at) <= date(?)');
                 params.push(created_to);
             }
             console.log('DEBUG: Checkpoint 7 - Keyword');
@@ -342,7 +434,17 @@ module.exports = function (db, authenticate) {
                 return res.status(404).json({ success: false, error: { message: 'Ticket not found' } });
             }
 
-            res.json({ success: true, data: formatDetail(ticket) });
+            // Get attachments
+            const attachments = db.prepare(`
+                SELECT id, file_name, file_path, file_size, file_type, uploaded_at
+                FROM service_attachments
+                WHERE ticket_type = 'Inquiry' AND ticket_id = ?
+            `).all(req.params.id);
+
+            const formatted = formatDetail(ticket);
+            formatted.attachments = attachments;
+
+            res.json({ success: true, data: formatted });
         } catch (error) {
             console.error('Error getting inquiry ticket:', error);
             res.status(500).json({ success: false, error: { message: error.message } });
@@ -353,7 +455,7 @@ module.exports = function (db, authenticate) {
      * POST /api/v1/inquiry-tickets
      * Create new inquiry ticket
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, serviceUpload.array('attachments'), (req, res) => {
         try {
             const {
                 customer_name,
@@ -389,10 +491,33 @@ module.exports = function (db, authenticate) {
                 communication_log, req.user.id, req.user.id
             );
 
+            const ticketId = result.lastInsertRowid;
+
+            // Handle attachments
+            if (req.files && req.files.length > 0) {
+                const insertAttachment = db.prepare(`
+                    INSERT INTO service_attachments (
+                        ticket_type, ticket_id, file_name, file_path, 
+                        file_size, file_type, uploaded_by
+                    ) VALUES ('Inquiry', ?, ?, ?, ?, ?, ?)
+                `);
+
+                for (const file of req.files) {
+                    insertAttachment.run(
+                        ticketId,
+                        file.originalname,
+                        `/uploads/service/${file.filename}`,
+                        file.size,
+                        file.mimetype,
+                        req.user.id
+                    );
+                }
+            }
+
             res.status(201).json({
                 success: true,
                 data: {
-                    id: result.lastInsertRowid,
+                    id: ticketId,
                     ticket_number: ticketNumber,
                     status: 'InProgress',
                     created_at: new Date().toISOString()

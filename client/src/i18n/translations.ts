@@ -1237,6 +1237,20 @@ export const translations = {
         'proforma.payment.paid': '已付款',
         'proforma.from_restock': '从补货单生成PI',
         'proforma.record_payment': '记录付款',
+
+        // Service / Robust Creation
+        'ticket.create.inquiry': '新建咨询工单',
+        'ticket.create.rma': '新建 RMA 工单',
+        'ticket.create.dealerrepair': '新建经销商维修单',
+        'field.customer_name': '客户姓名',
+        'field.customer_contact': '联系方式',
+        'field.product': '对应产品',
+        'field.serial_number': '产品序列号',
+        'field.problem_summary': '问题摘要',
+        'field.problem_description': '问题描述',
+        'section.media_attachments': '媒体附件 (图片/视频)',
+        'service.upload.drop_hint': '点击或拖拽文件到此处上传',
+        'service.upload.support_hint': '支持图片、视频、PDF等 (最大 50MB)',
     },
     en: {
 
@@ -2310,6 +2324,20 @@ export const translations = {
         'proforma.payment.paid': 'Paid',
         'proforma.from_restock': 'Generate PI from Restock',
         'proforma.record_payment': 'Record Payment',
+
+        // Service / Robust Creation
+        'ticket.create.inquiry': 'New Inquiry Ticket',
+        'ticket.create.rma': 'New RMA Ticket',
+        'ticket.create.dealerrepair': 'New Dealer Repair',
+        'field.customer_name': 'Customer Name',
+        'field.customer_contact': 'Contact Info',
+        'field.product': 'Product',
+        'field.serial_number': 'Serial Number',
+        'field.problem_summary': 'Problem Summary',
+        'field.problem_description': 'Problem Description',
+        'section.media_attachments': 'Media Attachments (Images/Videos)',
+        'service.upload.drop_hint': 'Click or drag files here to upload',
+        'service.upload.support_hint': 'Supports images, videos, PDF etc (Max 50MB)',
     },
     de: {
         // App

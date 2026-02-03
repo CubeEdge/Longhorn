@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Wrench } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useTicketStore } from '../../store/useTicketStore';
 
 interface DealerRepair {
     id: number;
@@ -33,6 +34,8 @@ const DealerRepairListPage: React.FC = () => {
     const { token } = useAuthStore();
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const openModal = useTicketStore(state => state.openModal);
 
     const [repairs, setRepairs] = useState<DealerRepair[]>([]);
     const [loading, setLoading] = useState(true);
@@ -40,20 +43,28 @@ const DealerRepairListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Load saved filters from localStorage, default to 'all' for guaranteed display
-    const FILTER_KEY = 'dealer_repair_filters';
-    const savedFilters = localStorage.getItem(FILTER_KEY);
-    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'all' };
+    // Filter states derived from URL
+    const statusFilter = searchParams.get('status') || 'all';
+    const searchTerm = searchParams.get('keyword') || '';
 
-    // Filters with smart defaults
-    const [statusFilter, setStatusFilter] = useState(defaultFilters.status);
-    const [searchTerm, setSearchTerm] = useState('');
+    // Local search state for input
+    const [searchInput, setSearchInput] = useState(searchTerm);
+
+    // Sync local input when URL changes
+    useEffect(() => {
+        setSearchInput(searchTerm);
+    }, [searchTerm]);
+
     const [showFilters, setShowFilters] = useState(false);
 
-    // Persist filter changes to localStorage
-    useEffect(() => {
-        localStorage.setItem(FILTER_KEY, JSON.stringify({ status: statusFilter }));
-    }, [statusFilter]);
+    // Helper to update filters
+    const updateFilter = (newParams: Record<string, string>) => {
+        const current = Object.fromEntries(searchParams.entries());
+        setSearchParams({ ...current, ...newParams });
+        setPage(1);
+    };
+
+    const setStatusFilter = (val: string) => updateFilter({ status: val });
 
     const fetchRepairs = async () => {
         setLoading(true);
@@ -81,12 +92,11 @@ const DealerRepairListPage: React.FC = () => {
 
     useEffect(() => {
         fetchRepairs();
-    }, [page, statusFilter]);
+    }, [page, statusFilter, searchTerm]);
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setPage(1);
-        fetchRepairs();
+        updateFilter({ keyword: searchInput });
     };
 
     const totalPages = Math.ceil(total / pageSize);
@@ -130,7 +140,7 @@ const DealerRepairListPage: React.FC = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/service/dealer-repairs/new')}
+                    onClick={() => openModal('DealerRepair')}
                     className="btn btn-primary"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -148,13 +158,13 @@ const DealerRepairListPage: React.FC = () => {
                 border: '1px solid var(--border-color)'
             }}>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <form onSubmit={handleSearch} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
+                    <form onSubmit={handleSearchSubmit} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
                         <div style={{ flex: 1, position: 'relative' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
                                 placeholder={t('dealer_repair.search_placeholder')}
                                 className="form-control"
                                 style={{ paddingLeft: '40px' }}
@@ -176,22 +186,28 @@ const DealerRepairListPage: React.FC = () => {
                 {/* Quick Filters */}
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
                     <button
-                        onClick={() => { setStatusFilter('Received'); setSearchTerm(''); setPage(1); }}
+                        onClick={() => updateFilter({ status: 'Received', keyword: '' })}
                         className={`btn btn-sm ${statusFilter === 'Received' ? 'btn-primary' : 'btn-ghost'}`}
                     >
                         {t('dealer_repair.status.received')}
                     </button>
                     <button
-                        onClick={() => { setStatusFilter('InRepair'); setSearchTerm(''); setPage(1); }}
+                        onClick={() => updateFilter({ status: 'InRepair', keyword: '' })}
                         className={`btn btn-sm ${statusFilter === 'InRepair' ? 'btn-primary' : 'btn-ghost'}`}
                     >
                         {t('dealer_repair.status.in_repair')}
                     </button>
                     <button
-                        onClick={() => { setStatusFilter('AwaitingParts'); setSearchTerm(''); setPage(1); }}
+                        onClick={() => updateFilter({ status: 'AwaitingParts', keyword: '' })}
                         className={`btn btn-sm ${statusFilter === 'AwaitingParts' ? 'btn-primary' : 'btn-ghost'}`}
                     >
                         {t('dealer_repair.status.awaiting_parts')}
+                    </button>
+                    <button
+                        onClick={() => updateFilter({ status: 'all', keyword: '' })}
+                        className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                        {t('filter.all_status')}
                     </button>
                 </div>
 
@@ -199,7 +215,7 @@ const DealerRepairListPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
                         <select
                             value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                             className="form-control"
                             style={{ width: 'auto' }}
                         >

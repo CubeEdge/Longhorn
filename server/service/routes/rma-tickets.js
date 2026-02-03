@@ -8,27 +8,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
 
-module.exports = function (db, authenticate, attachmentsDir, multerModule) {
+module.exports = function (db, authenticate, attachmentsDir, multerModule, serviceUpload) {
     const router = express.Router();
-
-    // Setup multer for attachments
-    let upload = null;
-    if (multerModule && attachmentsDir) {
-        upload = multerModule({
-            storage: multerModule.diskStorage({
-                destination: (req, file, cb) => {
-                    const ticketDir = path.join(attachmentsDir, 'rma-tickets', req.params.id || 'temp');
-                    fs.ensureDirSync(ticketDir);
-                    cb(null, ticketDir);
-                },
-                filename: (req, file, cb) => {
-                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-                    cb(null, uniqueSuffix + path.extname(file.originalname));
-                }
-            }),
-            limits: { fileSize: 50 * 1024 * 1024 }
-        });
-    }
 
     // ==============================
     // Helper Functions
@@ -319,8 +300,8 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
             const tickets = db.prepare(`
                 SELECT 
                     t.*,
-                    a.name as assigned_name,
-                    p.name as product_name
+                    a.username as assigned_name,
+                    p.model_name as product_name
                 FROM rma_tickets t
                 LEFT JOIN users a ON t.assigned_to = a.id
                 LEFT JOIN products p ON t.product_id = p.id
@@ -353,9 +334,9 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
             const ticket = db.prepare(`
                 SELECT 
                     t.*,
-                    a.name as assigned_name,
-                    s.name as submitter_name,
-                    p.name as product_name,
+                    a.username as assigned_name,
+                    s.username as submitter_name,
+                    p.model_name as product_name,
                     d.name as dealer_name,
                     inq.ticket_number as inquiry_ticket_number
                 FROM rma_tickets t
@@ -371,7 +352,17 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
                 return res.status(404).json({ success: false, error: { message: 'Ticket not found' } });
             }
 
-            res.json({ success: true, data: formatDetail(ticket) });
+            // Get attachments
+            const attachments = db.prepare(`
+                SELECT id, file_name, file_path, file_size, file_type, uploaded_at
+                FROM service_attachments
+                WHERE ticket_type = 'RMA' AND ticket_id = ?
+            `).all(req.params.id);
+
+            const formatted = formatDetail(ticket);
+            formatted.attachments = attachments;
+
+            res.json({ success: true, data: formatted });
         } catch (error) {
             console.error('Error getting RMA ticket:', error);
             res.status(500).json({ success: false, error: { message: error.message } });
@@ -382,7 +373,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
      * POST /api/v1/rma-tickets
      * Create new RMA ticket (single device)
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, serviceUpload.array('attachments'), (req, res) => {
         try {
             const {
                 channel_code = 'D',
@@ -423,6 +414,29 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
                 is_warranty ? 1 : 0, reporter_name, customer_id, dealer_id, req.user.id,
                 inquiry_ticket_id
             );
+
+            const ticketId = result.lastInsertRowid;
+
+            // Handle attachments
+            if (req.files && req.files.length > 0) {
+                const insertAttachment = db.prepare(`
+                    INSERT INTO service_attachments (
+                        ticket_type, ticket_id, file_name, file_path, 
+                        file_size, file_type, uploaded_by
+                    ) VALUES ('RMA', ?, ?, ?, ?, ?, ?)
+                `);
+
+                for (const file of req.files) {
+                    insertAttachment.run(
+                        ticketId,
+                        file.originalname,
+                        `/uploads/service/${file.filename}`,
+                        file.size,
+                        file.mimetype,
+                        req.user.id
+                    );
+                }
+            }
 
             // Update inquiry ticket if linked
             if (inquiry_ticket_id) {

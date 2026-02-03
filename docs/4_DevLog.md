@@ -2,6 +2,27 @@
 
 **概述**: 本文档记录每次开发会话的内容、投入的"Prompt轮数/精力"以及具体的技术产出。
 
+## 会话: 2026-02-03 (Creation 2.0 & Media Attachments)
+
+### 任务: Robust Creation Flow & Attachment Display
+- **状态**: ✅ 已完成
+- **变更内容**:
+    - **Frontend (Creation 2.0)**:
+        - **Unified Modal**: 实现 `TicketCreationModal`，使用 Zustand 管理显隐及类型切换。
+        - **Draft Persistence**: 通过 `zustand/middleware` 的 `persist` 将草稿自动存入 LocalStorage。
+        - **Media Upload**: 集成 `react-dropzone`，实现多文件拖拽上传、预览及删除。
+    - **Frontend (Detail Pages)**:
+        - 在三种工单详情页添加了 "Attachments" 列表，支持图片预览、视频播放/下载及 PDF 图标区分。
+    - **Backend**:
+        - **Schema**: 引入 `service_attachments` 表，关联文件路径、MIME 类型与工单 ID。
+        - **Upload Logic**: `multer` 配置支持 `public/uploads/service` 存储，实现 `multipart/form-data` 解析。
+- **验证**:
+    - ✅ 刷新页面后草稿可正常恢复。
+    - ✅ 详情页实时显示上传成功的附件。
+    - ✅ 修复了所有详情页的 `ImageIcon` 未使用 lint 警告。
+
+---
+
 ## 会话: 2026-02-02 (Service Module Foundation)
 
 ### 任务: Service Data / Creation Fix / App Rail Navigation

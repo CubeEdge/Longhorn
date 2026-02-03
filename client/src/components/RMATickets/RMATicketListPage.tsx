@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useTicketStore } from '../../store/useTicketStore';
 
 interface RMATicket {
     id: number;
@@ -42,6 +43,8 @@ const RMATicketListPage: React.FC = () => {
     const { token } = useAuthStore();
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const openModal = useTicketStore(state => state.openModal);
 
     const [tickets, setTickets] = useState<RMATicket[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,21 +52,30 @@ const RMATicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Load saved filters from localStorage, default to 'all' for guaranteed display
-    const FILTER_KEY = 'rma_ticket_filters';
-    const savedFilters = localStorage.getItem(FILTER_KEY);
-    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'all', channel: 'all' };
+    // Filter states derived from URL
+    const statusFilter = searchParams.get('status') || 'all';
+    const channelFilter = searchParams.get('channel_code') || 'all';
+    const searchTerm = searchParams.get('keyword') || '';
 
-    // Filters with smart defaults
-    const [statusFilter, setStatusFilter] = useState(defaultFilters.status);
-    const [channelFilter, setChannelFilter] = useState(defaultFilters.channel);
-    const [searchTerm, setSearchTerm] = useState('');
+    // Local search state for input
+    const [searchInput, setSearchInput] = useState(searchTerm);
+
+    // Sync local input when URL changes
+    useEffect(() => {
+        setSearchInput(searchTerm);
+    }, [searchTerm]);
+
     const [showFilters, setShowFilters] = useState(false);
 
-    // Persist filter changes to localStorage
-    useEffect(() => {
-        localStorage.setItem(FILTER_KEY, JSON.stringify({ status: statusFilter, channel: channelFilter }));
-    }, [statusFilter, channelFilter]);
+    // Helper to update filters
+    const updateFilter = (newParams: Record<string, string>) => {
+        const current = Object.fromEntries(searchParams.entries());
+        setSearchParams({ ...current, ...newParams });
+        setPage(1);
+    };
+
+    const setStatusFilter = (val: string) => updateFilter({ status: val });
+    const setChannelFilter = (val: string) => updateFilter({ channel_code: val });
 
     const fetchTickets = async () => {
         setLoading(true);
@@ -92,13 +104,13 @@ const RMATicketListPage: React.FC = () => {
 
     useEffect(() => {
         fetchTickets();
-    }, [page, statusFilter, channelFilter]);
+    }, [page, statusFilter, channelFilter, searchTerm]);
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setPage(1);
-        fetchTickets();
+        updateFilter({ keyword: searchInput });
     };
+
 
     const totalPages = Math.ceil(total / pageSize);
 
@@ -140,7 +152,7 @@ const RMATicketListPage: React.FC = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/service/rma-tickets/new')}
+                    onClick={() => openModal('RMA')}
                     className="btn btn-primary"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -158,13 +170,13 @@ const RMATicketListPage: React.FC = () => {
                 border: '1px solid var(--border-color)'
             }}>
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <form onSubmit={handleSearch} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
+                    <form onSubmit={handleSearchSubmit} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
                         <div style={{ flex: 1, position: 'relative' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
                                 placeholder={t('rma_ticket.search_placeholder')}
                                 className="form-control"
                                 style={{ paddingLeft: '40px' }}
@@ -186,16 +198,22 @@ const RMATicketListPage: React.FC = () => {
                 {/* Quick Filters */}
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
                     <button
-                        onClick={() => { setStatusFilter('Pending'); setChannelFilter('all'); setSearchTerm(''); setPage(1); }}
+                        onClick={() => updateFilter({ status: 'Pending', channel_code: 'all', keyword: '' })}
                         className={`btn btn-sm ${statusFilter === 'Pending' ? 'btn-primary' : 'btn-ghost'}`}
                     >
                         {t('rma_ticket.status.pending')}
                     </button>
                     <button
-                        onClick={() => { setStatusFilter('InRepair'); setChannelFilter('all'); setSearchTerm(''); setPage(1); }}
+                        onClick={() => updateFilter({ status: 'InRepair', channel_code: 'all', keyword: '' })}
                         className={`btn btn-sm ${statusFilter === 'InRepair' ? 'btn-primary' : 'btn-ghost'}`}
                     >
                         {t('rma_ticket.status.in_repair')}
+                    </button>
+                    <button
+                        onClick={() => updateFilter({ status: 'all', channel_code: 'all', keyword: '' })}
+                        className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                        {t('filter.all_status')}
                     </button>
                 </div>
 
@@ -203,7 +221,7 @@ const RMATicketListPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
                         <select
                             value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                            onChange={(e) => setStatusFilter(e.target.value)}
                             className="form-control"
                             style={{ width: 'auto' }}
                         >
@@ -217,7 +235,7 @@ const RMATicketListPage: React.FC = () => {
                         </select>
                         <select
                             value={channelFilter}
-                            onChange={(e) => { setChannelFilter(e.target.value); setPage(1); }}
+                            onChange={(e) => setChannelFilter(e.target.value)}
                             className="form-control"
                             style={{ width: 'auto' }}
                         >

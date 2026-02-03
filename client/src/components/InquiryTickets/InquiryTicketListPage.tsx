@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, ChevronLeft, ChevronRight, Phone, Mail, MessageSquare, Clock, CheckCircle, ArrowUpCircle, Loader2, XCircle, AlertCircle, AlertTriangle, Calendar, Package } from 'lucide-react';
 import axios from 'axios';
-import { formatDistanceToNow, differenceInHours, subDays } from 'date-fns';
+import { formatDistanceToNow, differenceInHours, subDays, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useTicketStore } from '../../store/useTicketStore';
 
 interface InquiryTicket {
     id: number;
@@ -51,6 +52,7 @@ const InquiryTicketListPage: React.FC = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const openModal = useTicketStore(state => state.openModal);
 
     const [tickets, setTickets] = useState<InquiryTicket[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -104,10 +106,12 @@ const InquiryTicketListPage: React.FC = () => {
             params.append('page', page.toString());
             params.append('page_size', pageSize.toString());
 
+
+
             // Apply Scope Logic
             let createdFrom;
-            if (timeScope === '7d') createdFrom = subDays(new Date(), 7).toISOString();
-            else if (timeScope === '30d') createdFrom = subDays(new Date(), 30).toISOString();
+            if (timeScope === '7d') createdFrom = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+            else if (timeScope === '30d') createdFrom = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
             if (createdFrom) params.append('created_from', createdFrom);
 
@@ -397,7 +401,7 @@ const InquiryTicketListPage: React.FC = () => {
                         />
                     </div>
                     <button
-                        onClick={() => navigate('/service/inquiry-tickets/new')}
+                        onClick={() => openModal('Inquiry')}
                         className="btn btn-primary btn-sm"
                         style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                     >

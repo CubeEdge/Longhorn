@@ -30,6 +30,19 @@ const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 // Multer Setup
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
 const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
+const serviceUpload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            const dir = path.join(__dirname, 'public', 'uploads', 'service');
+            fs.mkdirSync(dir, { recursive: true });
+            cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueSuffix + path.extname(file.originalname));
+        }
+    })
+});
 
 // Database Initialization
 const db = new Database(DB_PATH, { verbose: console.log });
@@ -183,6 +196,21 @@ db.exec(`
         FOREIGN KEY(uploaded_by) REFERENCES users(id)
     );
     CREATE INDEX IF NOT EXISTS idx_attachments_issue ON issue_attachments(issue_id);
+
+    -- Service Attachments (Unified for Inquiry, RMA, Dealer Repair)
+    CREATE TABLE IF NOT EXISTS service_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_type TEXT NOT NULL CHECK(ticket_type IN ('Inquiry', 'RMA', 'DealerRepair')),
+        ticket_id INTEGER NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER,
+        file_type TEXT,
+        uploaded_by INTEGER NOT NULL,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(uploaded_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_service_attachments_ticket ON service_attachments(ticket_type, ticket_id);
 
     -- Import History
     CREATE TABLE IF NOT EXISTS import_history (
@@ -4424,6 +4452,7 @@ try {
     const { initService } = require('./service');
     initService(app, db, {
         attachmentsDir: ISSUE_ATTACHMENTS_DIR,
+        serviceUpload: serviceUpload,
         authenticate,
         multer
     });

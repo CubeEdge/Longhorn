@@ -5,73 +5,82 @@ import { useAuthStore } from '../store/useAuthStore';
 import type { ModuleType } from '../hooks/useNavigationState';
 
 interface AppRailProps {
-    currentModule: ModuleType;
-    onModuleChange: (module: ModuleType) => void;
-    canAccessFiles: boolean;
-    userRole: string;
+  currentModule: ModuleType;
+  onModuleChange: (module: ModuleType) => void;
+  canAccessFiles: boolean;
+  userRole: string;
 }
 
 const AppRail: React.FC<AppRailProps> = ({
-    currentModule,
-    onModuleChange,
-    canAccessFiles,
-    userRole
+  currentModule,
+  onModuleChange,
+  canAccessFiles,
+  userRole
 }) => {
-    const { t } = useLanguage();
-    const { logout } = useAuthStore();
+  const { t } = useLanguage();
+  const { logout } = useAuthStore();
 
-    return (
-        <div className="app-rail">
-            {/* Brand / Logo Area */}
-            <div className="rail-brand">
-                <div className="brand-logo">L</div>
-            </div>
+  return (
+    <div className="app-rail">
+      {/* Brand / Logo Area */}
+      <div className="rail-brand" style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: 'var(--accent-blue)',
+            mask: 'url(/kine_logo.png) center/contain no-repeat',
+            WebkitMask: 'url(/kine_logo.png) center/contain no-repeat'
+          }}
+          title="Kinefinity"
+        />
+      </div>
 
-            {/* Main Navigation Items */}
-            <nav className="rail-nav">
-                {/* Service Module */}
-                <button
-                    className={`rail-item ${currentModule === 'service' ? 'active' : ''}`}
-                    onClick={() => onModuleChange('service')}
-                    title={t('nav.service')}
-                >
-                    <Headphones size={24} />
-                    <span className="rail-label">{t('nav.service')}</span>
-                </button>
+      {/* Main Navigation Items */}
+      <nav className="rail-nav">
+        {/* Service Module */}
+        <button
+          className={`rail-item ${currentModule === 'service' ? 'active' : ''}`}
+          onClick={() => onModuleChange('service')}
+          title={t('nav.service')}
+        >
+          <Headphones size={24} />
+          <span className="rail-label">{t('nav.service')}</span>
+        </button>
 
-                {/* Files Module (only if accessible) */}
-                {canAccessFiles && (
-                    <button
-                        className={`rail-item ${currentModule === 'files' ? 'active' : ''}`}
-                        onClick={() => onModuleChange('files')}
-                        title={t('nav.files')}
-                    >
-                        <FolderOpen size={24} />
-                        <span className="rail-label">{t('nav.files')}</span>
-                    </button>
-                )}
+        {/* Files Module (only if accessible) */}
+        {canAccessFiles && (
+          <button
+            className={`rail-item ${currentModule === 'files' ? 'active' : ''}`}
+            onClick={() => onModuleChange('files')}
+            title={t('nav.files')}
+          >
+            <FolderOpen size={24} />
+            <span className="rail-label">{t('nav.files')}</span>
+          </button>
+        )}
 
-                {/* Admin Module (if Admin) */}
-                {userRole === 'Admin' && (
-                    <button
-                        className={`rail-item ${window.location.pathname.startsWith('/admin') ? 'active' : ''}`}
-                        onClick={() => window.location.href = '/admin'}
-                        title={t('sidebar.system_admin')}
-                    >
-                        <Network size={24} />
-                        <span className="rail-label">Admin</span>
-                    </button>
-                )}
-            </nav>
+        {/* Admin Module (if Admin) */}
+        {userRole === 'Admin' && (
+          <button
+            className={`rail-item ${window.location.pathname.startsWith('/admin') ? 'active' : ''}`}
+            onClick={() => window.location.href = '/admin'}
+            title={t('sidebar.system_admin')}
+          >
+            <Network size={24} />
+            <span className="rail-label">Admin</span>
+          </button>
+        )}
+      </nav>
 
-            {/* Bottom Actions */}
-            <div className="rail-bottom">
-                <button className="rail-item" onClick={logout} title={t('auth.logout')}>
-                    <LogOut size={20} />
-                </button>
-            </div>
+      {/* Bottom Actions */}
+      <div className="rail-bottom">
+        <button className="rail-item" onClick={logout} title={t('auth.logout')}>
+          <LogOut size={20} />
+        </button>
+      </div>
 
-            <style>{`
+      <style>{`
         .app-rail {
           width: 72px;
           height: 100vh;
@@ -83,23 +92,6 @@ const AppRail: React.FC<AppRailProps> = ({
           padding: 16px 0;
           flex-shrink: 0;
           z-index: 50;
-        }
-
-        .rail-brand {
-          margin-bottom: 24px;
-        }
-
-        .brand-logo {
-          width: 40px;
-          height: 40px;
-          background: var(--accent-blue);
-          color: #000;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          font-size: 20px;
         }
 
         .rail-nav {
@@ -152,8 +144,8 @@ const AppRail: React.FC<AppRailProps> = ({
           display: none; /* Icon only for cleanliness, can enable if needed */
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default AppRail;

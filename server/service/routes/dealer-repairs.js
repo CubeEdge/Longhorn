@@ -6,7 +6,7 @@
 
 const express = require('express');
 
-module.exports = function (db, authenticate) {
+module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
 
     // ==============================
@@ -57,7 +57,7 @@ module.exports = function (db, authenticate) {
             issue_category: repair.issue_category,
             repair_content: repair.repair_content,
             status: repair.status,
-            created_at: repair.created_at
+            created_at: repair.created_at ? new Date(repair.created_at.replace(' ', 'T')).toISOString() : null
         };
     }
 
@@ -94,8 +94,8 @@ module.exports = function (db, authenticate) {
             status: repair.status,
 
             // Timestamps
-            created_at: repair.created_at,
-            updated_at: repair.updated_at
+            created_at: repair.created_at ? new Date(repair.created_at.replace(' ', 'T')).toISOString() : null,
+            updated_at: repair.updated_at ? new Date(repair.updated_at.replace(' ', 'T')).toISOString() : null
         };
     }
 
@@ -210,7 +210,7 @@ module.exports = function (db, authenticate) {
                 SELECT 
                     r.*,
                     d.name as dealer_name,
-                    p.name as product_name
+                    p.model_name as product_name
                 FROM dealer_repairs r
                 LEFT JOIN dealers d ON r.dealer_id = d.id
                 LEFT JOIN products p ON r.product_id = p.id
@@ -244,7 +244,7 @@ module.exports = function (db, authenticate) {
                 SELECT 
                     r.*,
                     d.name as dealer_name,
-                    p.name as product_name,
+                    p.model_name as product_name,
                     inq.ticket_number as inquiry_ticket_number
                 FROM dealer_repairs r
                 LEFT JOIN dealers d ON r.dealer_id = d.id
@@ -262,15 +262,23 @@ module.exports = function (db, authenticate) {
                 SELECT * FROM dealer_repair_parts WHERE dealer_repair_id = ?
             `).all(req.params.id);
 
-            const result = formatDetail(repair);
-            result.parts_used = parts.map(p => ({
+            // Get attachments
+            const attachments = db.prepare(`
+                SELECT id, file_name, file_path, file_size, file_type, uploaded_at
+                FROM service_attachments
+                WHERE ticket_type = 'DealerRepair' AND ticket_id = ?
+            `).all(req.params.id);
+
+            const detailResponse = formatDetail(repair);
+            detailResponse.parts_used = parts.map(p => ({
                 part_id: p.part_id,
                 part_name: p.part_name,
                 quantity: p.quantity,
                 unit_price: p.unit_price
             }));
+            detailResponse.attachments = attachments;
 
-            res.json({ success: true, data: result });
+            res.json({ success: true, data: detailResponse });
         } catch (error) {
             console.error('Error getting dealer repair:', error);
             res.status(500).json({ success: false, error: { message: error.message } });
@@ -281,7 +289,7 @@ module.exports = function (db, authenticate) {
      * POST /api/v1/dealer-repairs
      * Create new dealer repair
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, serviceUpload.array('attachments'), (req, res) => {
         try {
             const {
                 dealer_id,
@@ -321,6 +329,27 @@ module.exports = function (db, authenticate) {
 
             const repairId = result.lastInsertRowid;
 
+            // Handle attachments
+            if (req.files && req.files.length > 0) {
+                const insertAttachment = db.prepare(`
+                    INSERT INTO service_attachments (
+                        ticket_type, ticket_id, file_name, file_path, 
+                        file_size, file_type, uploaded_by
+                    ) VALUES ('DealerRepair', ?, ?, ?, ?, ?, ?)
+                `);
+
+                for (const file of req.files) {
+                    insertAttachment.run(
+                        repairId,
+                        file.originalname,
+                        `/uploads/service/${file.filename}`,
+                        file.size,
+                        file.mimetype,
+                        req.user.id
+                    );
+                }
+            }
+
             // Insert parts used
             const partsConsumed = [];
             if (parts_used && Array.isArray(parts_used)) {
@@ -338,7 +367,6 @@ module.exports = function (db, authenticate) {
                 }
             }
 
-            // Update inquiry ticket if linked
             if (inquiry_ticket_id) {
                 db.prepare(`
                     UPDATE inquiry_tickets 

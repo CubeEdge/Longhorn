@@ -4,6 +4,15 @@ import { ArrowLeft, Edit2, Save, X, ArrowUpCircle, RotateCcw, Loader2 } from 'lu
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { Paperclip, Film, FileText, Download } from 'lucide-react';
+
+interface Attachment {
+    id: number;
+    file_path: string;
+    mime_type: string;
+    size: number;
+    created_at: string;
+}
 
 interface InquiryTicket {
     id: number;
@@ -30,6 +39,7 @@ interface InquiryTicket {
     reopened_at: string | null;
     created_at: string;
     updated_at: string;
+    attachments?: Attachment[];
 }
 
 const statusColors: Record<string, string> = {
@@ -303,6 +313,82 @@ const InquiryTicketDetailPage: React.FC = () => {
                             <p style={{ lineHeight: 1.6 }}>{ticket.resolution || t('inquiry_ticket.no_resolution')}</p>
                         )}
                     </div>
+
+                    {/* Attachments Section */}
+                    {ticket.attachments && ticket.attachments.length > 0 && (
+                        <div style={{
+                            background: 'var(--bg-card)',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            marginTop: '16px',
+                            border: '1px solid var(--border-color)'
+                        }}>
+                            <h3 style={{ fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Paperclip size={18} className="text-primary" />
+                                {t('section.media_attachments')} ({ticket.attachments.length})
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+                                {ticket.attachments.map((file) => {
+                                    const isImage = file.mime_type.startsWith('image/');
+                                    const isVideo = file.mime_type.startsWith('video/');
+                                    const isPdf = file.mime_type === 'application/pdf';
+
+                                    return (
+                                        <div key={file.id}
+                                            style={{
+                                                borderRadius: '8px',
+                                                overflow: 'hidden',
+                                                border: '1px solid var(--border-color)',
+                                                position: 'relative',
+                                                background: 'var(--bg-secondary)'
+                                            }}
+                                            className="group"
+                                        >
+                                            {isImage ? (
+                                                <img src={file.file_path} alt="" style={{ width: '100%', height: '100px', objectFit: 'cover' }} />
+                                            ) : isVideo ? (
+                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+                                                    <Film size={24} color="#fff" />
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {isPdf ? <FileText size={24} /> : <Paperclip size={24} />}
+                                                </div>
+                                            )}
+                                            <div style={{ padding: '8px' }}>
+                                                <p style={{
+                                                    fontSize: '0.75rem',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    color: 'var(--text-primary)',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    {file.file_path.split('/').pop()}
+                                                </p>
+                                                <a
+                                                    href={file.file_path}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        color: 'var(--primary)',
+                                                        textDecoration: 'none',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
+                                                    }}
+                                                >
+                                                    <Download size={12} />
+                                                    {t('action.download')}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar */}

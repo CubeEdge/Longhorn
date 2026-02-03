@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import {
   Share2,
   LogOut,
@@ -14,7 +14,8 @@ import {
   Network,
   LayoutDashboard,
   ClipboardList,
-  Headphones,
+
+  MessageCircleQuestion,
   Search as SearchIcon,
   BookOpen,
   Package
@@ -40,6 +41,7 @@ import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import AppRail from './components/AppRail';
+import TicketCreationModal from './components/Service/TicketCreationModal';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
 
@@ -84,6 +86,9 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
           <Outlet />
         </div>
       </main>
+
+      {/* Global Ticket Creation Modal */}
+      <TicketCreationModal />
     </div>
   );
 };
@@ -270,7 +275,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
         <h2 className="sidebar-title">{t('app.name')}</h2>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t('app.slogan')}</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+          {currentModule === 'files' ? 'Kinefinity 文件小角' : 'Kinefinity Service Hub'}
+        </p>
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -278,7 +285,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
         {currentModule === 'service' && (
           <>
             <Link to="/service/inquiry-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
-              <Headphones size={18} />
+              <MessageCircleQuestion size={18} />
               <span>{t('sidebar.inquiry_tickets')}</span>
             </Link>
             <Link to="/service/rma-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
@@ -462,71 +469,141 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 };
 
-// Service Module Stats Card for TopBar
-const ServiceStatsCard: React.FC = () => {
+
+// Service Module Stats Card for TopBar (Context Aware)
+const ServiceTopBarStats: React.FC = () => {
   const { token } = useAuthStore();
   const navigate = useNavigate();
-  const [stats, setStats] = React.useState<{ inquiry: number; rma: number; dealer: number }>({ inquiry: 0, rma: 0, dealer: 0 });
-  const [loading, setLoading] = React.useState(true);
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const currentStatus = searchParams.get('status') || 'all';
 
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Determine context
+  const context = React.useMemo(() => {
+    if (location.pathname.startsWith('/service/inquiry-tickets')) return 'inquiry';
+    if (location.pathname.startsWith('/service/rma-tickets')) return 'rma';
+    if (location.pathname.startsWith('/service/dealer-repairs')) return 'dealer';
+    return null;
+  }, [location.pathname]);
+
+  // Fetch stats based on context
   React.useEffect(() => {
+    if (!context) return;
+
     const fetchStats = async () => {
+      setLoading(true);
       try {
-        const [inquiryRes, rmaRes, dealerRes] = await Promise.all([
-          axios.get('/api/v1/inquiry-tickets/stats', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/v1/rma-tickets/stats', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('/api/v1/dealer-repairs/stats', { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setStats({
-          inquiry: inquiryRes.data?.data?.total || 0,
-          rma: rmaRes.data?.data?.total || 0,
-          dealer: dealerRes.data?.data?.total || 0
-        });
+        let endpoint = '';
+        if (context === 'inquiry') endpoint = '/api/v1/inquiry-tickets/stats';
+        else if (context === 'rma') endpoint = '/api/v1/rma-tickets/stats';
+        else if (context === 'dealer') endpoint = '/api/v1/dealer-repairs/stats';
+
+        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        setStats(res.data?.data || {});
       } catch (err) {
-        console.error('Failed to fetch service stats:', err);
+        console.error('Failed to fetch stats:', err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchStats();
-  }, [token]);
+  }, [context, token]);
+
+  if (!context || !stats) return null;
+
+  const handleFilter = (status: string) => {
+    navigate({
+      pathname: location.pathname,
+      search: `?status=${status}`
+    });
+  };
+
+  const renderStatItem = (key: string, label: string, color: string, countKey?: string) => {
+    const count = key === 'all'
+      ? (stats.total || 0)
+      : (stats.by_status?.[key] || (context === 'rma' && stats.by_status?.[countKey || key]) || 0); // Special handling if needed
+
+    const isActive = currentStatus === key;
+
+    return (
+      <div
+        key={key}
+        onClick={() => handleFilter(key)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          cursor: 'pointer',
+          padding: '4px 8px',
+          borderRadius: '6px',
+          background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+          border: isActive ? `1px solid ${color}` : '1px solid transparent',
+          transition: 'all 0.2s'
+        }}
+      >
+        <div style={{ fontSize: '0.8rem', color: isActive ? '#fff' : 'var(--text-secondary)' }}>{label}</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: color }}>{count}</div>
+      </div>
+    );
+  };
+
+  const divider = <div style={{ width: '1px', height: '16px', background: 'rgba(255, 255, 255, 0.15)' }} />;
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '20px',
-        padding: '10px 16px',
+        gap: '4px',
+        padding: '6px 12px',
         background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: '12px',
-        opacity: loading ? 0.5 : 1
+        opacity: loading ? 0.7 : 1
       }}
     >
-      <div
-        onClick={() => navigate('/service/inquiry-tickets')}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-      >
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>咨询工单</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#3b82f6' }}>{stats.inquiry}</div>
-      </div>
-      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
-      <div
-        onClick={() => navigate('/service/rma-tickets')}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-      >
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>RMA返厂</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>{stats.rma}</div>
-      </div>
-      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
-      <div
-        onClick={() => navigate('/service/dealer-repairs')}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-      >
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>经销商维修</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>{stats.dealer}</div>
-      </div>
+      {context === 'inquiry' && (
+        <>
+          {renderStatItem('all', '全部', '#6b7280')}
+          {divider}
+          {renderStatItem('InProgress', '处理中', '#3b82f6')}
+          {divider}
+          {renderStatItem('AwaitingFeedback', '待反馈', '#8b5cf6')}
+          {divider}
+          {renderStatItem('Resolved', '已解决', '#10b981')}
+        </>
+      )}
+
+      {context === 'rma' && (
+        <>
+          {renderStatItem('all', '全部', '#6b7280')}
+          {divider}
+          {renderStatItem('Pending', '待处理', '#f59e0b')}
+          {divider}
+          {renderStatItem('InRepair', '维修中', '#3b82f6')}
+          {divider}
+          {/* If "Completed" status exists in enum, add it here. RMATicketListPage didn't show it explicitly but let's assume Completed or Returned */}
+          {renderStatItem('Returned', '已寄回', '#10b981')}
+        </>
+      )}
+
+      {context === 'dealer' && (
+        <>
+          {renderStatItem('all', '全部', '#6b7280')}
+          {divider}
+          {renderStatItem('Received', '已收货', '#f59e0b')}
+          {divider}
+          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}
+          {divider}
+          {renderStatItem('InRepair', '维修中', '#3b82f6')}
+          {divider}
+          {renderStatItem('Completed', '已完成', '#10b981')}
+        </>
+      )}
     </div>
   );
 };
@@ -573,7 +650,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
         {/* Stats card for SERVICE module */}
         {currentModule === 'service' && (
           <div className="hidden-mobile">
-            <ServiceStatsCard />
+            <ServiceTopBarStats />
           </div>
         )}
 
