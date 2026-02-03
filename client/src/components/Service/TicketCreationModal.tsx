@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Loader2, MessageSquare, ShieldCheck, Wrench, AlertCircle } from 'lucide-react';
 import axios from 'axios';
-import { useTicketStore, type TicketType } from '../../store/useTicketStore';
+import { useTicketStore } from '../../store/useTicketStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import AttachmentZone from './AttachmentZone';
