@@ -56,7 +56,10 @@
 - **变更内容**:
     - **Backend**:
         - `server/index.js`: Explicitly registered `/api/v1/inquiry-tickets` etc.
-        - `inquiry-tickets.js`: Fixed `ReferenceError` (missing `created_from` declaration). Added debug checkpoints.
+        - `inquiry-tickets.js`: 
+            - Fixed `ReferenceError` (missing `created_from` declaration).
+            - Fixed SQL Column Mismatches: `h.name` -> `h.username`, `p.name` -> `p.model_name`.
+            - Added debug checkpoints.
     - **Frontend**:
         - `AppRail.tsx`: Implemented CSS Mask for SVG-like coloring of PNG logo (`mask: url(/kine_logo.png)`).
 - **验证**:
