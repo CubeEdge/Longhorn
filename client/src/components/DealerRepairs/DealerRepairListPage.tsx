@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Clock, CheckCircle, Loader2, Wrench, Package } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Wrench } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';

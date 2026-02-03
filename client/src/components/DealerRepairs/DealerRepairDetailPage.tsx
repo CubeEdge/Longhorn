@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, X, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -218,7 +218,7 @@ const DealerRepairDetailPage: React.FC = () => {
                     ) : (
                         <button onClick={() => setIsEditing(true)} className="btn btn-primary">
                             <Edit2 size={16} />
-                            <span style={{ marginLeft: '6px' }}>{t('action.edit')}</span>
+                            <span style={{ marginLeft: '6px' }}>编辑</span>
                         </button>
                     )}
                 </div>
