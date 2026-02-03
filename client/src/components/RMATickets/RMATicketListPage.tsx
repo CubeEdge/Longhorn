@@ -138,7 +138,7 @@ const RMATicketListPage: React.FC = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/rma-tickets/new')}
+                    onClick={() => navigate('/service/rma-tickets/new')}
                     className="btn btn-primary"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -244,7 +244,7 @@ const RMATicketListPage: React.FC = () => {
                     {tickets.map((ticket) => (
                         <div
                             key={ticket.id}
-                            onClick={() => navigate(`/rma-tickets/${ticket.id}`)}
+                            onClick={() => navigate(`/service/rma-tickets/${ticket.id}`)}
                             style={{
                                 background: 'var(--bg-card)',
                                 borderRadius: '12px',

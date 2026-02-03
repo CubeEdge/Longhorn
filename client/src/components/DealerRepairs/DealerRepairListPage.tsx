@@ -128,7 +128,7 @@ const DealerRepairListPage: React.FC = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/dealer-repairs/new')}
+                    onClick={() => navigate('/service/dealer-repairs/new')}
                     className="btn btn-primary"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -229,7 +229,7 @@ const DealerRepairListPage: React.FC = () => {
                     {repairs.map((repair) => (
                         <div
                             key={repair.id}
-                            onClick={() => navigate(`/dealer-repairs/${repair.id}`)}
+                            onClick={() => navigate(`/service/dealer-repairs/${repair.id}`)}
                             style={{
                                 background: 'var(--bg-card)',
                                 borderRadius: '12px',

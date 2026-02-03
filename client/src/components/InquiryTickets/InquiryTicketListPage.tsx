@@ -148,7 +148,7 @@ const InquiryTicketListPage: React.FC = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/inquiry-tickets/new')}
+                    onClick={() => navigate('/service/inquiry-tickets/new')}
                     className="btn btn-primary"
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -254,7 +254,7 @@ const InquiryTicketListPage: React.FC = () => {
                     {tickets.map((ticket) => (
                         <div
                             key={ticket.id}
-                            onClick={() => navigate(`/inquiry-tickets/${ticket.id}`)}
+                            onClick={() => navigate(`/service/inquiry-tickets/${ticket.id}`)}
                             style={{
                                 background: 'var(--bg-card)',
                                 borderRadius: '12px',

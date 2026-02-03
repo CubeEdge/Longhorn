@@ -68,7 +68,7 @@ const DealerRepairCreatePage: React.FC = () => {
             });
 
             if (res.data.success) {
-                navigate(`/dealer-repairs/${res.data.data.id}`);
+                navigate(`/service/dealer-repairs/${res.data.data.id}`);
             }
         } catch (err: any) {
             console.error('Failed to create dealer repair:', err);
