@@ -633,10 +633,11 @@ app.use((req, res, next) => {
 });
 
 // Service Routes - Layer 1
-app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate));
+const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');
+app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate, serviceUpload));
 app.use('/api/v1/products', products(db, authenticate));
-app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate));
-app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate));
+app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate, attachmentsDir, multer, serviceUpload));
+app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate, serviceUpload));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing

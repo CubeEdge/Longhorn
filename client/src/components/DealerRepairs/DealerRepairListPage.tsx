@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Wrench } from 'lucide-react';
-import axios from 'axios';
-import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useTicketStore } from '../../store/useTicketStore';
+import { useCachedTickets } from '../../hooks/useCachedTickets';
 
 interface DealerRepair {
     id: number;
@@ -31,15 +30,11 @@ const statusColors: Record<string, string> = {
 };
 
 const DealerRepairListPage: React.FC = () => {
-    const { token } = useAuthStore();
     const { t } = useLanguage();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
 
-    const [repairs, setRepairs] = useState<DealerRepair[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
@@ -57,6 +52,21 @@ const DealerRepairListPage: React.FC = () => {
 
     const [showFilters, setShowFilters] = useState(false);
 
+    // Build params for SWR hook
+    const queryParams = useMemo(() => {
+        const params: Record<string, string | number | undefined> = {
+            page,
+            page_size: pageSize
+        };
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (searchTerm) params.keyword = searchTerm;
+        return params;
+    }, [page, pageSize, statusFilter, searchTerm]);
+
+    // SWR-based data fetching
+    const { tickets: repairs, meta, isLoading } = useCachedTickets<DealerRepair>('dealer', queryParams);
+    const total = meta.total;
+
     // Helper to update filters
     const updateFilter = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
@@ -65,34 +75,6 @@ const DealerRepairListPage: React.FC = () => {
     };
 
     const setStatusFilter = (val: string) => updateFilter({ status: val });
-
-    const fetchRepairs = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams();
-            params.append('page', page.toString());
-            params.append('page_size', pageSize.toString());
-            if (statusFilter !== 'all') params.append('status', statusFilter);
-            if (searchTerm) params.append('keyword', searchTerm);
-
-            const res = await axios.get(`/api/v1/dealer-repairs?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (res.data.success) {
-                setRepairs(res.data.data);
-                setTotal(res.data.meta.total);
-            }
-        } catch (err) {
-            console.error('Failed to fetch dealer repairs:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchRepairs();
-    }, [page, statusFilter, searchTerm]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -232,7 +214,7 @@ const DealerRepairListPage: React.FC = () => {
             </div>
 
             {/* Repair List */}
-            {loading ? (
+            {isLoading && repairs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
                     <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
                     <p>{t('common.loading')}</p>

@@ -7,6 +7,7 @@ import { zhCN } from 'date-fns/locale';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useTicketStore } from '../../store/useTicketStore';
+import { useCachedTickets } from '../../hooks/useCachedTickets';
 
 interface InquiryTicket {
     id: number;
@@ -54,29 +55,42 @@ const InquiryTicketListPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
 
-    const [tickets, setTickets] = useState<InquiryTicket[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize] = useState(50);
 
     // Scope Filters
-    const [timeScope, setTimeScope] = useState(searchParams.get('time_scope') || '7d');
-    const [productScope, setProductScope] = useState(searchParams.get('product_scope') || 'all');
-    const [searchTerm, setSearchTerm] = useState(searchParams.get('keyword') || '');
+    const timeScope = searchParams.get('time_scope') || '7d';
+    const productScope = searchParams.get('product_scope') || 'all';
+    const searchTerm = searchParams.get('keyword') || '';
+    const statusFilter = searchParams.get('status') || 'all';
 
-    // Derived Filters
-    const statusFilter = searchParams.get('status') || 'all'; // Keep url param support but generic
+    // Build params for SWR hook
+    const queryParams = useMemo(() => {
+        const params: Record<string, string | number | undefined> = {
+            page,
+            page_size: pageSize
+        };
 
-    useEffect(() => {
-        // Sync URL to State if URL changes externally
-        setTimeScope(searchParams.get('time_scope') || '7d');
-        setProductScope(searchParams.get('product_scope') || 'all');
-        setSearchTerm(searchParams.get('keyword') || '');
-    }, [searchParams]);
+        // Apply time scope
+        if (timeScope === '7d') {
+            params.created_from = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+        } else if (timeScope === '30d') {
+            params.created_from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        }
 
-    // Fetch Products
+        if (productScope !== 'all') params.product_id = productScope;
+        if (searchTerm) params.keyword = searchTerm;
+        if (statusFilter !== 'all') params.status = statusFilter;
+
+        return params;
+    }, [page, pageSize, timeScope, productScope, searchTerm, statusFilter]);
+
+    // SWR-based data fetching (instant navigation, no full-screen spinner on filter change)
+    const { tickets, meta, isLoading } = useCachedTickets<InquiryTicket>('inquiry', queryParams);
+    const total = meta.total;
+
+    // Fetch Products (static data, keep simple)
     useEffect(() => {
         const fetchProducts = async () => {
             try {
@@ -98,45 +112,6 @@ const InquiryTicketListPage: React.FC = () => {
         setSearchParams({ ...current, ...newParams });
         setPage(1);
     };
-
-    const fetchTickets = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams();
-            params.append('page', page.toString());
-            params.append('page_size', pageSize.toString());
-
-
-
-            // Apply Scope Logic
-            let createdFrom;
-            if (timeScope === '7d') createdFrom = format(subDays(new Date(), 7), 'yyyy-MM-dd');
-            else if (timeScope === '30d') createdFrom = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-
-            if (createdFrom) params.append('created_from', createdFrom);
-
-            if (productScope !== 'all') params.append('product_id', productScope);
-            if (searchTerm) params.append('keyword', searchTerm);
-            if (statusFilter !== 'all') params.append('status', statusFilter);
-
-            const res = await axios.get(`/api/v1/inquiry-tickets?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (res.data.success) {
-                setTickets(res.data.data);
-                setTotal(res.data.meta.total);
-            }
-        } catch (err) {
-            console.error('Failed to fetch inquiry tickets:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchTickets();
-    }, [page, timeScope, productScope, searchTerm, statusFilter]);
 
     // Smart Grouping Logic ("Pulse")
     const groupedTickets = useMemo(() => {
@@ -387,8 +362,7 @@ const InquiryTicketListPage: React.FC = () => {
                         <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && updateFilter({ keyword: searchTerm })}
+                            onChange={(e) => updateFilter({ keyword: e.target.value })}
                             placeholder="搜索客户/单号..."
                             style={{
                                 padding: '8px 12px 8px 32px',
@@ -412,7 +386,7 @@ const InquiryTicketListPage: React.FC = () => {
             </div>
 
             {/* Grouped Lists */}
-            {loading ? (
+            {isLoading && tickets.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px' }}>
                     <Loader2 size={32} className="animate-spin text-primary" style={{ margin: '0 auto' }} />
                 </div>

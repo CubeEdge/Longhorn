@@ -7,7 +7,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
@@ -46,7 +46,7 @@ module.exports = function(db, authenticate) {
                     regions: grouped.region || [],
                     rma_product_codes: grouped.rma_product_code || [],
                     rma_channel_codes: grouped.rma_channel_code || [],
-                    
+
                     // Static values not in DB
                     status_list: [
                         { key: 'Pending', value: '待处理' },
@@ -117,8 +117,8 @@ module.exports = function(db, authenticate) {
     router.get('/products', authenticate, (req, res) => {
         try {
             const { category } = req.query;
-            
-            let sql = 'SELECT id, product_line, model_name, current_firmware_version FROM products';
+
+            let sql = 'SELECT id, product_line, model_name, firmware_version FROM products';
             let params = [];
 
             if (category) {
@@ -136,7 +136,7 @@ module.exports = function(db, authenticate) {
                     id: p.id,
                     name: p.model_name,
                     line: p.product_line,
-                    firmware_version: p.current_firmware_version
+                    firmware_version: p.firmware_version
                 }))
             });
         } catch (err) {
@@ -155,7 +155,7 @@ module.exports = function(db, authenticate) {
     router.get('/users', authenticate, (req, res) => {
         try {
             const { department, role } = req.query;
-            
+
             let conditions = ["user_type = 'Employee' OR user_type IS NULL"];
             let params = [];
 
@@ -196,7 +196,7 @@ module.exports = function(db, authenticate) {
     router.get('/customers', authenticate, (req, res) => {
         try {
             const { search, limit = 20 } = req.query;
-            
+
             let sql = `
                 SELECT id, customer_name as name, customer_type as type, 
                        company_name as company, phone, email
