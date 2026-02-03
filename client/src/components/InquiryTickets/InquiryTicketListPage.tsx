@@ -48,11 +48,21 @@ const InquiryTicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Filters
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
+    // Load saved filters from localStorage, default to 'InProgress' for better UX
+    const FILTER_KEY = 'inquiry_ticket_filters';
+    const savedFilters = localStorage.getItem(FILTER_KEY);
+    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'InProgress', serviceType: 'all' };
+
+    // Filters with smart defaults
+    const [statusFilter, setStatusFilter] = useState(defaultFilters.status);
+    const [serviceTypeFilter, setServiceTypeFilter] = useState(defaultFilters.serviceType);
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+
+    // Persist filter changes to localStorage
+    useEffect(() => {
+        localStorage.setItem(FILTER_KEY, JSON.stringify({ status: statusFilter, serviceType: serviceTypeFilter }));
+    }, [statusFilter, serviceTypeFilter]);
 
     const fetchTickets = async () => {
         setLoading(true);

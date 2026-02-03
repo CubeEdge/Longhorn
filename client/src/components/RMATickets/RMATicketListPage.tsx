@@ -49,11 +49,21 @@ const RMATicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Filters
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [channelFilter, setChannelFilter] = useState('all');
+    // Load saved filters from localStorage, default to 'Pending' for better UX
+    const FILTER_KEY = 'rma_ticket_filters';
+    const savedFilters = localStorage.getItem(FILTER_KEY);
+    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'Pending', channel: 'all' };
+
+    // Filters with smart defaults
+    const [statusFilter, setStatusFilter] = useState(defaultFilters.status);
+    const [channelFilter, setChannelFilter] = useState(defaultFilters.channel);
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+
+    // Persist filter changes to localStorage
+    useEffect(() => {
+        localStorage.setItem(FILTER_KEY, JSON.stringify({ status: statusFilter, channel: channelFilter }));
+    }, [statusFilter, channelFilter]);
 
     const fetchTickets = async () => {
         setLoading(true);
