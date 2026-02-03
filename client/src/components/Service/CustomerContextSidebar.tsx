@@ -36,10 +36,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             }
 
             if (!url) {
-                // Fallback or specific logic if we don't have ID/Name but have SN, or vice versa
+                // Fallback or specific logic
                 if (serialNumber && activeTab === 'customer') {
-                    // If we only have SN, we might want to switch tab or just fetch by SN to find owner?
-                    // For now, let's just wait for user to switch tab
                     setLoading(false);
                     return;
                 }
@@ -53,7 +51,6 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             if (json.success) {
                 setData(json.data);
             } else {
-                // If 404, just clear data
                 setData(null);
             }
         } catch (err) {
@@ -63,17 +60,14 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         }
     };
 
-    // Switch tabs also triggers fetch if needed
     const handleTabChange = (tab: 'customer' | 'device') => {
         setActiveTab(tab);
-        // Logic to ensure we have params for the other tab? 
-        // Usually the parent passes all available info.
     };
 
     if (!customerId && !customerName && !serialNumber) return null;
 
     return (
-        <div className="w-80 border-l border-white/10 bg-[#1A1A1A] flex flex-col h-full absolute right-0 top-0 z-20 shadow-xl">
+        <div className="flex flex-col h-full bg-[#1A1A1A] border-l border-white/10 shadow-2xl">
             {/* Header */}
             <div className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-[#1A1A1A]/50 backdrop-blur-md">
                 <h3 className="text-sm font-medium text-white/90 flex items-center gap-2">

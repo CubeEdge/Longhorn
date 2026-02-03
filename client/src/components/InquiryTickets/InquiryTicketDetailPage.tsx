@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, X, ArrowUpCircle, RotateCcw, Loader2, User, Paperclip, Film, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, ArrowUpCircle, RotateCcw, Loader2, Paperclip, Film, FileText, Download } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useConfirm } from '../../store/useConfirm';
 import { useLanguage } from '../../i18n/useLanguage';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 
@@ -55,12 +56,12 @@ const InquiryTicketDetailPage: React.FC = () => {
     const { token } = useAuthStore();
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const confirm = useConfirm();
 
     const [ticket, setTicket] = useState<InquiryTicket | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [showContextSidebar, setShowContextSidebar] = useState(false);
 
     // Edit fields
     const [resolution, setResolution] = useState('');
@@ -80,9 +81,11 @@ const InquiryTicketDetailPage: React.FC = () => {
             if (res.data.success) {
                 const data = res.data.data;
                 setTicket(data);
-                setResolution(data.resolution || '');
-                setCommunicationLog(data.communication_log || '');
-                setStatus(data.status);
+                if (!isEditing) {
+                    setResolution(data.resolution || '');
+                    setCommunicationLog(data.communication_log || '');
+                    setStatus(data.status);
+                }
             }
         } catch (err) {
             console.error('Failed to fetch inquiry ticket:', err);
@@ -111,13 +114,21 @@ const InquiryTicketDetailPage: React.FC = () => {
         }
     };
 
-    const handleUpgrade = async (upgradeType: 'rma' | 'svc') => {
+    const handleUpgrade = async () => {
         if (!ticket) return;
-        if (!confirm(t('inquiry_ticket.confirm_upgrade', { type: upgradeType.toUpperCase() }))) return;
+
+        const confirmed = await confirm.confirm(
+            t('inquiry_ticket.confirm_upgrade', { type: 'RMA' }),
+            t('inquiry_ticket.action.upgrade_rma'),
+            'Upgrade to RMA',
+            t('common.cancel')
+        );
+
+        if (!confirmed) return;
 
         try {
             await axios.post(`/api/v1/inquiry-tickets/${id}/upgrade`, {
-                upgrade_type: upgradeType
+                upgrade_type: 'rma'
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -157,240 +168,202 @@ const InquiryTicketDetailPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-                <Loader2 size={32} className="animate-spin" />
+            <div className="flex justify-center items-center h-full">
+                <Loader2 size={32} className="animate-spin text-white/20" />
             </div>
         );
     }
 
     if (!ticket) {
         return (
-            <div style={{ padding: '24px', textAlign: 'center' }}>
-                <p>{t('inquiry_ticket.not_found')}</p>
+            <div className="flex flex-col items-center justify-center h-full text-white/30 space-y-4">
+                <div className="text-lg">{t('inquiry_ticket.not_found')}</div>
+                <button onClick={() => navigate(-1)} className="text-sm hover:text-white transition-colors">
+                    {t('common.back')}
+                </button>
             </div>
         );
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm">
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div>
-                        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {ticket.ticket_number}
-                            <span
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '4px 12px',
-                                    borderRadius: '16px',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    background: `${statusColors[ticket.status] || '#6b7280'}20`,
-                                    color: statusColors[ticket.status] || '#6b7280'
-                                }}
+        <div className="flex h-full w-full overflow-hidden bg-black">
+            {/* Left Column: Ticket Details (Scrollable) */}
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto custom-scrollbar">
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-xl border-b border-white/5 px-8 py-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                        >
+                            <ArrowLeft size={16} className="text-white/70" />
+                        </button>
+
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-xl font-bold tracking-tight text-white font-display">
+                                    {ticket.ticket_number}
+                                </h1>
+                                <span
+                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                                    style={{
+                                        borderColor: `${statusColors[ticket.status]}30`,
+                                        backgroundColor: `${statusColors[ticket.status]}10`,
+                                        color: statusColors[ticket.status]
+                                    }}
+                                >
+                                    {getStatusLabel(ticket.status)}
+                                </span>
+                            </div>
+                            <div className="text-xs text-white/40 mt-0.5 font-mono">
+                                {t('inquiry_ticket.created_at')}: {formatDate(ticket.created_at)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        {['Resolved', 'AutoClosed'].includes(ticket.status) && (
+                            <button onClick={handleReopen} className="btn-secondary">
+                                <RotateCcw size={14} className="mr-2" />
+                                {t('inquiry_ticket.action.reopen')}
+                            </button>
+                        )}
+
+                        {ticket.status !== 'Upgraded' && (
+                            <button
+                                onClick={handleUpgrade}
+                                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-white transition-all flex items-center gap-2"
                             >
-                                {getStatusLabel(ticket.status)}
-                            </span>
-                        </h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                            {t('inquiry_ticket.created_at')}: {formatDate(ticket.created_at)}
-                        </p>
+                                <ArrowUpCircle size={14} className="text-kine-yellow" />
+                                {t('inquiry_ticket.action.upgrade_rma')}
+                            </button>
+                        )}
+
+                        {isEditing ? (
+                            <>
+                                <button onClick={() => setIsEditing(false)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5">
+                                    <X size={16} />
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-white/90 disabled:opacity-50 flex items-center gap-2"
+                                    disabled={saving}
+                                >
+                                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {t('action.save')}
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="w-8 h-8 rounded-lg bg-kine-yellow/10 text-kine-yellow hover:bg-kine-yellow/20 flex items-center justify-center transition-colors"
+                            >
+                                <Edit2 size={16} />
+                            </button>
+                        )}
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
 
-                    {/* Context Sidebar Toggle */}
-                    <button
-                        onClick={() => setShowContextSidebar(!showContextSidebar)}
-                        className={`btn ${showContextSidebar ? 'btn-primary' : 'btn-secondary'}`}
-                        title="Customer Context"
-                    >
-                        <User size={16} />
-                    </button>
+                {/* Content Body */}
+                <div className="p-8 space-y-8 max-w-4xl">
 
-                    {['Resolved', 'AutoClosed'].includes(ticket.status) && (
-                        <button onClick={handleReopen} className="btn btn-secondary">
-                            <RotateCcw size={16} />
-                            <span style={{ marginLeft: '6px' }}>{t('inquiry_ticket.action.reopen')}</span>
-                        </button>
-                    )}
-                    {ticket.status !== 'Upgraded' && (
-                        <>
-                            <button onClick={() => handleUpgrade('rma')} className="btn btn-secondary">
-                                <ArrowUpCircle size={16} />
-                                <span style={{ marginLeft: '6px' }}>{t('inquiry_ticket.action.upgrade_rma')}</span>
-                            </button>
-                            <button onClick={() => handleUpgrade('svc')} className="btn btn-secondary">
-                                <ArrowUpCircle size={16} />
-                                <span style={{ marginLeft: '6px' }}>{t('inquiry_ticket.action.upgrade_svc')}</span>
-                            </button>
-                        </>
-                    )}
-                    {isEditing ? (
-                        <>
-                            <button onClick={() => setIsEditing(false)} className="btn btn-ghost">
-                                <X size={16} />
-                            </button>
-                            <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
-                                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                <span style={{ marginLeft: '6px' }}>{t('action.save')}</span>
-                            </button>
-                        </>
-                    ) : (
-                        <button onClick={() => setIsEditing(true)} className="btn btn-primary">
-                            <Edit2 size={16} />
-                            <span style={{ marginLeft: '6px' }}>编辑</span>
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-                {/* Main Content */}
-                <div>
-                    {/* Problem Summary */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.field.problem_summary')}</h3>
-                        <p style={{ lineHeight: 1.6 }}>{ticket.problem_summary}</p>
+                    {/* Problem Section */}
+                    <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                        <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                            {t('inquiry_ticket.field.problem_summary')}
+                        </h3>
+                        <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-sm leading-relaxed text-white/90">
+                            {ticket.problem_summary}
+                        </div>
                     </div>
 
                     {/* Communication Log */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.field.communication_log')}</h3>
+                    <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                        <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                            {t('inquiry_ticket.field.communication_log')}
+                        </h3>
                         {isEditing ? (
                             <textarea
                                 value={communicationLog}
                                 onChange={(e) => setCommunicationLog(e.target.value)}
-                                className="form-control"
-                                rows={6}
+                                className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                                rows={8}
                             />
                         ) : (
-                            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', lineHeight: 1.6 }}>
+                            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 font-mono text-xs leading-relaxed text-white/70 whitespace-pre-wrap">
                                 {ticket.communication_log || t('inquiry_ticket.no_communication')}
-                            </pre>
+                            </div>
                         )}
                     </div>
 
                     {/* Resolution */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.field.resolution')}</h3>
+                    <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                        <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                            {t('inquiry_ticket.field.resolution')}
+                        </h3>
                         {isEditing ? (
-                            <>
+                            <div className="space-y-4">
                                 <textarea
                                     value={resolution}
                                     onChange={(e) => setResolution(e.target.value)}
-                                    className="form-control"
+                                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                                     rows={4}
                                     placeholder={t('inquiry_ticket.placeholder.resolution')}
                                 />
-                                <div style={{ marginTop: '12px' }}>
-                                    <label className="form-label">{t('inquiry_ticket.field.status')}</label>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-xs text-white/50">{t('inquiry_ticket.field.status')}</label>
                                     <select
                                         value={status}
                                         onChange={(e) => setStatus(e.target.value)}
-                                        className="form-control"
-                                        style={{ width: 'auto' }}
+                                        className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none"
                                     >
                                         <option value="InProgress">{t('inquiry_ticket.status.in_progress')}</option>
                                         <option value="AwaitingFeedback">{t('inquiry_ticket.status.awaiting_feedback')}</option>
                                         <option value="Resolved">{t('inquiry_ticket.status.resolved')}</option>
                                     </select>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <p style={{ lineHeight: 1.6 }}>{ticket.resolution || t('inquiry_ticket.no_resolution')}</p>
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-sm leading-relaxed text-white/90">
+                                {ticket.resolution || t('inquiry_ticket.no_resolution')}
+                            </div>
                         )}
                     </div>
 
-                    {/* Attachments Section */}
+                    {/* Attachments */}
                     {ticket.attachments && ticket.attachments.length > 0 && (
-                        <div style={{
-                            background: 'var(--bg-card)',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            marginTop: '16px',
-                            border: '1px solid var(--border-color)'
-                        }}>
-                            <h3 style={{ fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Paperclip size={18} className="text-primary" />
-                                {t('section.media_attachments')} ({ticket.attachments.length})
+                        <div className="space-y-3 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
+                                <Paperclip size={12} />
+                                {t('section.media_attachments')}
                             </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {ticket.attachments.map((file) => {
                                     const isImage = file.mime_type.startsWith('image/');
                                     const isVideo = file.mime_type.startsWith('video/');
                                     const isPdf = file.mime_type === 'application/pdf';
 
                                     return (
-                                        <div key={file.id}
-                                            style={{
-                                                borderRadius: '8px',
-                                                overflow: 'hidden',
-                                                border: '1px solid var(--border-color)',
-                                                position: 'relative',
-                                                background: 'var(--bg-secondary)'
-                                            }}
-                                            className="group"
-                                        >
+                                        <div key={file.id} className="group relative aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/5 hover:border-white/20 transition-all">
                                             {isImage ? (
-                                                <img src={file.file_path} alt="" style={{ width: '100%', height: '100px', objectFit: 'cover' }} />
-                                            ) : isVideo ? (
-                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-                                                    <Film size={24} color="#fff" />
-                                                </div>
+                                                <img src={file.file_path} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                                             ) : (
-                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    {isPdf ? <FileText size={24} /> : <Paperclip size={24} />}
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white/20 group-hover:text-white/50 transition-colors">
+                                                    {isVideo ? <Film size={24} /> : isPdf ? <FileText size={24} /> : <Paperclip size={24} />}
                                                 </div>
                                             )}
-                                            <div style={{ padding: '8px' }}>
-                                                <p style={{
-                                                    fontSize: '0.75rem',
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    color: 'var(--text-primary)',
-                                                    marginBottom: '4px'
-                                                }}>
+
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                                                <div className="text-[10px] text-white/90 truncate font-medium">
                                                     {file.file_path.split('/').pop()}
-                                                </p>
+                                                </div>
                                                 <a
                                                     href={file.file_path}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        color: 'var(--primary)',
-                                                        textDecoration: 'none',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px'
-                                                    }}
+                                                    className="mt-1 flex items-center gap-1.5 text-[10px] text-kine-yellow hover:underline"
                                                 >
-                                                    <Download size={12} />
+                                                    <Download size={10} />
                                                     {t('action.download')}
                                                 </a>
                                             </div>
@@ -401,67 +374,16 @@ const InquiryTicketDetailPage: React.FC = () => {
                         </div>
                     )}
                 </div>
-
-                {/* Sidebar */}
-                <div>
-                    {/* Customer Info */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.section.customer')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('inquiry_ticket.field.customer_name')}:</strong> {ticket.customer_name || '-'}</div>
-                            <div><strong>{t('inquiry_ticket.field.customer_contact')}:</strong> {ticket.customer_contact || '-'}</div>
-                            {ticket.dealer_name && <div><strong>{t('inquiry_ticket.field.dealer')}:</strong> {ticket.dealer_name}</div>}
-                        </div>
-                    </div>
-
-                    {/* Product Info */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.section.product')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('inquiry_ticket.field.product')}:</strong> {ticket.product?.name || '-'}</div>
-                            <div><strong>{t('inquiry_ticket.field.serial_number')}:</strong> {ticket.serial_number || '-'}</div>
-                        </div>
-                    </div>
-
-                    {/* Service Info */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('inquiry_ticket.section.service')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('inquiry_ticket.field.service_type')}:</strong> {ticket.service_type}</div>
-                            <div><strong>{t('inquiry_ticket.field.channel')}:</strong> {ticket.channel || '-'}</div>
-                            <div><strong>{t('inquiry_ticket.field.handler')}:</strong> {ticket.handler?.name || '-'}</div>
-                            <div><strong>{t('inquiry_ticket.field.created_by')}:</strong> {ticket.created_by?.name || '-'}</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            {/* Context Sidebar Overlay */}
-            {showContextSidebar && (
+            {/* Right Column: Customer Inspector (Fixed Width) */}
+            <div className="w-[320px] h-full flex-shrink-0 border-l border-white/10 bg-[#1A1A1A]">
                 <CustomerContextSidebar
                     customerId={ticket.customer_id || undefined}
                     customerName={ticket.customer_name}
                     serialNumber={ticket.serial_number}
-                    onClose={() => setShowContextSidebar(false)}
                 />
-            )}
+            </div>
         </div>
     );
 };
