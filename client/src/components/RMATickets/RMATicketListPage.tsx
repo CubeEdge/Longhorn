@@ -56,14 +56,6 @@ const RMATicketListPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     const fetchTickets = async () => {
-        const isDefaultState = !searchTerm && statusFilter === 'all' && channelFilter === 'all';
-        if (isDefaultState) {
-            setTickets([]);
-            setTotal(0);
-            setLoading(false);
-            return;
-        }
-
         setLoading(true);
         try {
             const params = new URLSearchParams();

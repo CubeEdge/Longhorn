@@ -46,14 +46,6 @@ const DealerRepairListPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     const fetchRepairs = async () => {
-        const isDefaultState = !searchTerm && statusFilter === 'all';
-        if (isDefaultState) {
-            setRepairs([]);
-            setTotal(0);
-            setLoading(false);
-            return;
-        }
-
         setLoading(true);
         try {
             const params = new URLSearchParams();

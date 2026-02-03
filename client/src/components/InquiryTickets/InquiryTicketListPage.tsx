@@ -55,15 +55,6 @@ const InquiryTicketListPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     const fetchTickets = async () => {
-        // Search-First: Don't load anything if no search term and default filters
-        const isDefaultState = !searchTerm && statusFilter === 'all' && serviceTypeFilter === 'all';
-        if (isDefaultState) {
-            setTickets([]);
-            setTotal(0);
-            setLoading(false);
-            return;
-        }
-
         setLoading(true);
         try {
             const params = new URLSearchParams();
