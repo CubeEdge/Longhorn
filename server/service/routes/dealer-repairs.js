@@ -104,6 +104,47 @@ module.exports = function (db, authenticate) {
     // ==============================
 
     /**
+     * GET /api/v1/dealer-repairs/stats
+     * Get dashboard statistics for dealer repairs
+     */
+    router.get('/stats', authenticate, (req, res) => {
+        try {
+            const user = req.user;
+            let conditions = [];
+            let params = [];
+
+            // Role-based filtering
+            if (user.user_type === 'Dealer') {
+                conditions.push('dealer_id = ?');
+                params.push(user.dealer_id);
+            }
+
+            const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+            const stats = db.prepare(`
+                SELECT status, COUNT(*) as count 
+                FROM dealer_repairs ${whereClause}
+                GROUP BY status
+            `).all(...params);
+
+            const totalRow = db.prepare(`
+                SELECT COUNT(*) as total FROM dealer_repairs ${whereClause}
+            `).get(...params);
+
+            const result = {
+                total: totalRow.total,
+                by_status: {}
+            };
+            stats.forEach(s => { result.by_status[s.status] = s.count; });
+
+            res.json({ success: true, data: result });
+        } catch (error) {
+            console.error('Error getting dealer repair stats:', error);
+            res.status(500).json({ success: false, error: { message: error.message } });
+        }
+    });
+
+    /**
      * GET /api/v1/dealer-repairs
      * List dealer repairs with filtering and pagination
      */

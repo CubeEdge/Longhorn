@@ -115,6 +115,53 @@ module.exports = function (db, authenticate) {
     // ==============================
 
     /**
+     * GET /api/v1/inquiry-tickets/stats
+     * Get dashboard statistics for inquiry tickets
+     */
+    router.get('/stats', authenticate, (req, res) => {
+        try {
+            const user = req.user;
+            let conditions = [];
+            let params = [];
+
+            // Role-based filtering
+            if (user.user_type === 'Dealer') {
+                conditions.push('dealer_id = ?');
+                params.push(user.dealer_id);
+            } else if (user.user_type === 'Customer') {
+                conditions.push('customer_id = ?');
+                params.push(user.id);
+            } else if (user.role === 'Member') {
+                conditions.push('(handler_id = ? OR created_by = ?)');
+                params.push(user.id, user.id);
+            }
+
+            const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+            const stats = db.prepare(`
+                SELECT status, COUNT(*) as count 
+                FROM inquiry_tickets ${whereClause}
+                GROUP BY status
+            `).all(...params);
+
+            const totalRow = db.prepare(`
+                SELECT COUNT(*) as total FROM inquiry_tickets ${whereClause}
+            `).get(...params);
+
+            const result = {
+                total: totalRow.total,
+                by_status: {}
+            };
+            stats.forEach(s => { result.by_status[s.status] = s.count; });
+
+            res.json({ success: true, data: result });
+        } catch (error) {
+            console.error('Error getting inquiry ticket stats:', error);
+            res.status(500).json({ success: false, error: { message: error.message } });
+        }
+    });
+
+    /**
      * GET /api/v1/inquiry-tickets
      * List inquiry tickets with filtering and pagination
      */
