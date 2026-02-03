@@ -158,11 +158,68 @@
 {
   "success": true,
   "data": [
-    { "id": 1, "model_name": "MAVO Edge 8K" },
-    { "id": 2, "model_name": "MAVO Edge 6K" }
+    {
+      "id": 1,
+      "model_name": "MAVO Edge 8K",
+      "product_family": "A"
+    },
+    {
+      "id": 2,
+      "model_name": "MAVO Edge 6K",
+      "product_family": "A"
+    },
+    {
+      "id": 3,
+      "model_name": "MAVO mark2 LF",
+      "product_family": "A"
+    },
+    {
+      "id": 5,
+      "model_name": "MAVO LF",
+      "product_family": "B"
+    },
+    {
+      "id": 7,
+      "model_name": "Terra 4K",
+      "product_family": "B"
+    },
+    {
+      "id": 8,
+      "model_name": "Eagle HDMI",
+      "product_family": "C"
+    },
+    {
+      "id": 9,
+      "model_name": "Eagle SDI",
+      "product_family": "C"
+    },
+    {
+      "id": 10,
+      "model_name": "KineMON 7U2",
+      "product_family": "C"
+    },
+    {
+      "id": 11,
+      "model_name": "GripBAT PD75",
+      "product_family": "D"
+    }
   ]
 }
 ```
+
+**字段说明**：
+- `product_family`：产品族群标识，对应 PRD 1.5.2.0 中的产品体系分类：
+  - `A`：在售电影摄影机（如 MAVO Edge 8K / 6K、MAVO mark2 等）
+  - `B`：存档/历史机型（如 MAVO LF、Terra 4K/6K 等）
+  - `C`：电子寻像器（如 Eagle SDI/HDMI、KineMON 系列等，仅保证与 Kinefinity 电影机适配）
+  - `D`：通用配件（如 GripBAT 电池、Magic Arm 等跨代通用配件）
+
+**前端使用建议**：
+- 根据 `product_family` 控制产品在选择列表中的展示优先级：
+  - A 类优先展示在顶部；
+  - B 类可折叠或标记为「历史机型」；
+  - C 类触发「宿主设备信息」填写要求（见下文）；
+  - D 类可独立展示，不强制绑定具体机型。
 
 ---
 
@@ -179,12 +236,24 @@
 
 **Content-Type**: `multipart/form-data`
 
+**产品与宿主设备字段规则**：
+- `product_id`：
+  - 引用 `/api/v1/products` 返回的产品ID；
+  - 前端可通过 `product_family` 控制展示优先级（A 类优先展示，B 类折叠，C/D 类按需展示）。
+- `host_device_type` / `host_device_model`：
+  - 仅当 `product_family = C`（电子寻像器，如 Eagle/KineMON 等）时必填；
+  - 用于区分「Kinefinity 相机 + e-Viewfinder」的常规硬件问题，和「第三方相机 + e-Viewfinder」的兼容性排查。
+
+**字段列表**：
+
 | 字段 | 类型 | 必须 | 说明 |
 |-----|------|------|------|
 | customer_name | string | 否 | 客户姓名 |
 | customer_contact | string | 否 | 客户联系方式 |
-| product_id | int | 否 | 产品ID |
+| product_id | int | 否 | 产品ID（从 `/products` 选择） |
 | serial_number | string | 否 | 序列号 |
+| host_device_type | string | C类必填 | 宿主类型：`KINEFINITY_CAMERA` / `THIRD_PARTY_CAMERA` |
+| host_device_model | string | C类必填 | 宿主机型名称，如 "MAVO Edge 6K" 或 "Canon C400" |
 | service_type | string | 是 | 咨询/问题排查/远程协助/投诉 |
 | channel | string | 是 | 渠道 (邮件/电话/等) |
 | problem_summary | string | 是 | 问题摘要 |
@@ -204,12 +273,22 @@
   "product_id": "prod_edge8k",
   "serial_number": "ME_207890",
   
+  // 仅当 product_family = C (电子寻像器) 时必填
+  // 示例：如产品为 Eagle HDMI / Eagle SDI / KineMON 等
+  "host_device_type": null,  // "KINEFINITY_CAMERA" / "THIRD_PARTY_CAMERA" / null
+  "host_device_model": null, // 宿主机型名称，如 "MAVO Edge 6K" 或 "Canon C400"
+  
   // 服务内容
   "service_type": "问题排查",  // 咨询/问题排查/远程协助/投诉
   "channel": "邮件",  // 电话/邮件/微信/企业微信/Facebook/在线
   "problem_summary": "拍摄4K 50fps时死机",
   "communication_log": "Q: 客户询问...\nA: 建议..."
 }
+
+// 字段说明补充：
+// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将工单归档到具体客户名下。
+// - dealer_id: 工单的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
+//   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
 
 // Response
 {
@@ -347,6 +426,29 @@
 
 > 支持按客户或按产品SN查询上下文信息，用于服务时快速了解背景
 
+### 4.0 客户账户数据模型（Account / Customer）
+
+上下文查询 API 使用统一的客户账户数据模型，所有对外主体（终端客户、机构大客户、经销商、内部/合作伙伴）均映射为 Customer 对象的一种。
+
+**Customer 对象核心字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 客户唯一ID |
+| name | string | 客户名称（个人姓名或公司名） |
+| contact | string | 主要联系方式（邮箱/电话等） |
+| account_type | string | 账户类型：DEALER / END_USER / CORPORATE / INTERNAL |
+| acquisition_channel | string | 获客/购买来源：DIRECT / CHANNEL |
+| parent_dealer_id | string/null | 关联经销商ID，仅当 acquisition_channel = CHANNEL 时必填，指向 account_type = DEALER 的账户 |
+| service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST |
+| industry_tags | string[] | 行业标签列表，如 ["RENTAL_HOUSE", "PRODUCTION"] |
+
+> 说明：
+> - account_type 用于区分经销商、终端用户、机构大客户和内部/合作伙伴，支撑视图隔离和权限控制。
+> - acquisition_channel 表示客户/设备的长期获客渠道，与 RMA 中的 channel_code（本次工单来源）不同。
+> - parent_dealer_id 表示该客户的销售归属经销商，经销商视图下「名下客户」即通过此字段确定。
+> - service_tier 和 industry_tags 会被 AI 客户画像和统计报表复用。
+
 ### 4.1 按客户查询上下文
 
 **GET** `/api/v1/context/by-customer`
@@ -368,7 +470,11 @@
       "id": "cust_001",
       "name": "Max Mueller",
       "contact": "max@example.uk",
-      "customer_level": "VIP"
+      "account_type": "END_USER",
+      "acquisition_channel": "CHANNEL",
+      "parent_dealer_id": "dealer_proav",
+      "service_tier": "VIP",
+      "industry_tags": ["RENTAL_HOUSE"]
     },
     "devices": [
       {
@@ -413,6 +519,16 @@
   }
 }
 ```
+
+#### 4.1.1 访问控制与经销商视图
+
+- 内部用户（市场部、生产部、研发、管理层）调用 `/context/by-customer` 时，可按权限查看任意客户的上下文信息，用于全局服务分析和质量追踪。
+- 经销商用户调用时，系统会自动限制：
+  - 仅允许查询 account_type ∈ {END_USER, CORPORATE} 且 parent_dealer_id = 当前经销商.id 的客户；
+  - 即只能看到「自己名下客户」及其设备、服务历史，无法访问其他经销商的客户数据。
+- 这样设计的必要性：
+  - 保护各经销商的客户数据安全，避免渠道之间互相窥视客户名单；
+  - 清晰界定服务责任边界，便于统计「本经销商名下客户满意度与故障率」。
 
 ### 4.2 按产品SN查询上下文
 
@@ -488,6 +604,57 @@
 
 ---
 
+## 4B. 客户与经销商列表 API
+
+> 提供客户列表和经销商列表视图，基于统一的客户账户模型进行过滤和权限控制。
+
+### 4B.1 客户列表（Customers）
+
+**GET** `/api/v1/customers`
+
+**说明**：
+- 返回 account_type ∈ {END_USER, CORPORATE} 的客户列表，用于市场部和经销商查看客户档案。
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认20 |
+| account_type | string | 账户类型筛选：END_USER / CORPORATE |
+| acquisition_channel | string | 获客渠道：DIRECT / CHANNEL |
+| parent_dealer_id | string | 销售归属经销商ID，用于筛选某经销商名下客户 |
+| service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST |
+| industry_tag | string | 行业标签筛选，如 RENTAL_HOUSE、PRODUCTION |
+| keyword | string | 关键词搜索（名称、联系信息等） |
+
+**权限与视图规则**：
+
+- 内部用户（市场部、管理层等）：可按上述条件查询所有客户。
+- 经销商用户：系统自动追加过滤条件 `parent_dealer_id = 当前经销商.id`，只能看到自己名下客户。
+
+### 4B.2 经销商列表（Dealers）
+
+**GET** `/api/v1/dealers`
+
+**说明**：
+- 返回 account_type = DEALER 的账户列表，用于市场部管理经销商、在创建工单/RMA 时选择经销商等场景。
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认20 |
+| region | string | 区域筛选，如 Europe、US、APAC 等 |
+| level | string | 经销商级别（一级/二级/三级），对应 PRD 中的经销商分级字段 |
+| keyword | string | 关键词搜索（经销商名称、联系人等） |
+
+**权限规则**：
+- 仅内部用户可访问经销商完整列表；经销商自身仅在与自己相关的下拉选择中被引用，不需要访问全量经销商列表。
+
+---
+
 ## 5. RMA返厂单 API
 
 > RMA返厂单用于设备寄回Kinefinity总部维修。
@@ -502,12 +669,20 @@
 
 **Content-Type**: `multipart/form-data`
 
+**产品与宿主设备字段规则**：
+- `product_id`：引用 `/api/v1/products` 返回的产品ID，可通过其中的 `product_family` 字段判断产品族（A/B/C/D）。
+- `host_device_type` / `host_device_model`：
+  - 仅当 `product_family = C`（电子寻像器，如 Eagle / KineMON 等）时必填；
+  - 用于区分「Kinefinity 相机 + e-Viewfinder」的常规硬件问题，和「第三方相机 + e-Viewfinder」的兼容性排查场景。
+
 | 字段 | 类型 | 必须 | 说明 |
 |-----|------|------|------|
 | channel_code | string | 是 | D=Dealer, C=Customer, I=Internal |
 | problem_description | string | 是 | 问题描述 |
-| product_id | int | 否 | 产品ID |
+| product_id | int | 否 | 产品ID（从 `/products` 选择） |
 | serial_number | string | 否 | 业务序列号 |
+| host_device_type | string | C类必填 | 宿主类型：`KINEFINITY_CAMERA` / `THIRD_PARTY_CAMERA` |
+| host_device_model | string | C类必填 | 宿主机型名称，如 "MAVO Edge 6K" 或 "Canon C400" |
 | files | file[] | 否 | 附件文件 (图片/视频/PDF) |
 
 ```json
@@ -527,6 +702,10 @@
   "serial_number": "ME_207624",
   "firmware_version": "8023",
   
+  // 仅当 product_family = C (电子寻像器，如 Eagle/KineMON 等) 时必填
+  "host_device_type": null,  // "KINEFINITY_CAMERA" / "THIRD_PARTY_CAMERA" / null
+  "host_device_model": null, // 宿主机型，如 "MAVO Edge 6K" 或 "Canon C400"
+  
   // 问题描述
   "problem_description": "拍摄时随机死机，约每小时一次",
   "is_warranty": true,
@@ -539,6 +718,12 @@
   // 关联咨询工单 (如从咨询工单升级)
   "inquiry_ticket_id": "inq_001"
 }
+
+// 字段说明补充：
+// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将 RMA 归档到具体客户名下。
+// - dealer_id: RMA 的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
+//   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
+// - 当 product_family = "C" (电子寻像器，如 Eagle/KineMON 等) 且 host_device_type = "THIRD_PARTY_CAMERA" 时，后台应将该RMA标记为「兼容性排查」类别，便于研发统计和分析。
 
 // Response
 {
@@ -708,11 +893,16 @@
     "product": {
       "id": "prod_edge8k",
       "name": "MAVO Edge 8K",
-      "series": "Edge"
+      "series": "Edge",
+      "product_family": "A"
     },
     "serial_number": "ME_207624",
     "firmware_version": "8023",
     "hardware_version": "Rev.B",
+    
+    // 仅当产品族为 C (电子寻像器) 时存在，用于兼容性分析
+    "host_device_type": null,   // "KINEFINITY_CAMERA" / "THIRD_PARTY_CAMERA" / null
+    "host_device_model": null,  // 宿主机型，如 "MAVO Edge 6K" 或 "Canon C400"
     
     "problem_description": "拍摄时随机死机，约每小时一次",
     "solution_for_customer": "建议升级至8025固件，如问题持续请返修",
@@ -877,6 +1067,15 @@
     { "part_id": "part_001", "quantity": 1 }
   ]
 }
+
+// 字段说明补充：
+// - dealer_id: 必须指向 account_type = DEALER 的账户。经销商用户创建时系统自动填入当前经销商；
+//   市场部代创建时，用于指定承担本次维修、配件消耗和结算的经销商。
+// - customer_name / customer_contact: 终端用户的基础信息，便于沟通和后续在客户账户中补录该用户（END_USER/CORPORATE）。
+// - 使用配件 parts_used 在前端选择时，应根据产品的 product_family 自动过滤候选列表：
+//   - 当产品族为 A（在售电影摄影机，如 Edge/mark2 系列）时，仅允许选择 KineMAG Nano 系列存储卡；
+//   - 当产品族为 B（历史机型，如 Terra/MAVO LF 系列）时，仅允许选择 KineMAG SSD (SATA) 系列存储卡；
+//   以避免经销商误选卡型导致备件发错。
 
 // Response
 {
