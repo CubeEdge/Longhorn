@@ -1,439 +1,233 @@
-/**
- * Context Query Routes
- * Dual-dimensional context query: by Customer or by Serial Number
- * Phase 1: Service context for customer support
- */
-
 const express = require('express');
+const router = express.Router();
 
-module.exports = function(db, authenticate) {
-    const router = express.Router();
+module.exports = (db) => {
 
     /**
-     * GET /api/v1/context/customer/:identifier
-     * Query service history by customer ID, name, or contact info
-     * Returns: service records, work orders, and product ownership
+     * @route GET /api/v1/context/by-customer
+     * @desc Get full context (profile, devices, history) by customer ID or Name
      */
-    router.get('/customer/:identifier', authenticate, (req, res) => {
+    router.get('/by-customer', (req, res) => {
         try {
-            const { identifier } = req.params;
-            const { 
-                include_issues = 'true',
-                include_service_records = 'true',
-                include_products = 'true',
-                limit = 50
-            } = req.query;
+            const { customer_id, customer_name } = req.query;
 
-            const results = {
-                customer: null,
-                service_records: [],
-                issues: [],
-                products: []
-            };
+            if (!customer_id && !customer_name) {
+                return res.status(400).json({ success: false, error: "Missing customer_id or customer_name" });
+            }
 
-            // Try to find customer by ID, name, or contact
-            let customer = null;
-            
-            // First try as numeric ID
-            if (!isNaN(identifier)) {
+            let customer;
+
+            // 1. Fetch Customer Profile
+            if (customer_id) {
                 customer = db.prepare(`
                     SELECT * FROM customers WHERE id = ?
-                `).get(parseInt(identifier));
-            }
-            
-            // Then try by name or contact
-            if (!customer) {
+                `).get(customer_id);
+            } else if (customer_name) {
+                // Fuzzy match for name search
                 customer = db.prepare(`
                     SELECT * FROM customers 
-                    WHERE customer_name LIKE ? OR phone LIKE ? OR email LIKE ?
+                    WHERE customer_name LIKE ? OR contact_person LIKE ? OR email LIKE ?
                     LIMIT 1
-                `).get(`%${identifier}%`, `%${identifier}%`, `%${identifier}%`);
+                `).get(`%${customer_name}%`, `%${customer_name}%`, `%${customer_name}%`);
             }
 
-            if (customer) {
-                results.customer = formatCustomer(customer);
-                
-                // Get service records for this customer
-                if (include_service_records === 'true') {
-                    results.service_records = db.prepare(`
-                        SELECT sr.*, h.username as handler_name
-                        FROM service_records sr
-                        LEFT JOIN users h ON sr.handler_id = h.id
-                        WHERE sr.customer_id = ? OR sr.customer_name LIKE ?
-                        ORDER BY sr.created_at DESC
-                        LIMIT ?
-                    `).all(customer.id, `%${customer.customer_name}%`, parseInt(limit))
-                        .map(formatServiceRecordBrief);
-                }
-
-                // Get work orders (issues) for this customer
-                if (include_issues === 'true') {
-                    results.issues = db.prepare(`
-                        SELECT i.*, p.model_name as product_name
-                        FROM issues i
-                        LEFT JOIN products p ON i.product_id = p.id
-                        WHERE i.customer_id = ? OR i.reporter_name LIKE ?
-                        ORDER BY i.created_at DESC
-                        LIMIT ?
-                    `).all(customer.id, `%${customer.customer_name}%`, parseInt(limit))
-                        .map(formatIssueBrief);
-                }
-
-                // Get products owned by this customer (via device_owners or issues)
-                if (include_products === 'true') {
-                    results.products = db.prepare(`
-                        SELECT DISTINCT 
-                            i.serial_number,
-                            i.firmware_version,
-                            p.id as product_id,
-                            p.model_name as product_name,
-                            p.product_line,
-                            MAX(i.created_at) as last_service_date
-                        FROM issues i
-                        LEFT JOIN products p ON i.product_id = p.id
-                        WHERE (i.customer_id = ? OR i.reporter_name LIKE ?)
-                            AND i.serial_number IS NOT NULL
-                        GROUP BY i.serial_number
-                        ORDER BY last_service_date DESC
-                        LIMIT ?
-                    `).all(customer.id, `%${customer.customer_name}%`, parseInt(limit))
-                        .map(p => ({
-                            serial_number: p.serial_number,
-                            product_id: p.product_id,
-                            product_name: p.product_name,
-                            product_line: p.product_line,
-                            firmware_version: p.firmware_version,
-                            last_service_date: p.last_service_date
-                        }));
-                }
-            } else {
-                // No customer found, but still try to find records by name/contact
-                if (include_service_records === 'true') {
-                    results.service_records = db.prepare(`
-                        SELECT sr.*, h.username as handler_name
-                        FROM service_records sr
-                        LEFT JOIN users h ON sr.handler_id = h.id
-                        WHERE sr.customer_name LIKE ? OR sr.customer_contact LIKE ?
-                        ORDER BY sr.created_at DESC
-                        LIMIT ?
-                    `).all(`%${identifier}%`, `%${identifier}%`, parseInt(limit))
-                        .map(formatServiceRecordBrief);
-                }
-
-                if (include_issues === 'true') {
-                    results.issues = db.prepare(`
-                        SELECT i.*, p.model_name as product_name
-                        FROM issues i
-                        LEFT JOIN products p ON i.product_id = p.id
-                        WHERE i.reporter_name LIKE ?
-                        ORDER BY i.created_at DESC
-                        LIMIT ?
-                    `).all(`%${identifier}%`, parseInt(limit))
-                        .map(formatIssueBrief);
-                }
+            // Mock customer if not found (for dev/demo purposes if needed, strictly fallback)
+            // But better to return 404 if not found in DB to avoid confusion
+            if (!customer) {
+                return res.status(404).json({ success: false, error: "Customer not found" });
             }
 
-            // Calculate summary stats
-            const summary = {
-                total_service_records: results.service_records.length,
-                total_issues: results.issues.length,
-                total_products: results.products.length,
-                open_issues: results.issues.filter(i => !['Closed', 'Resolved'].includes(i.status)).length,
-                pending_service_records: results.service_records.filter(sr => !['Resolved', 'AutoClosed', 'UpgradedToTicket'].includes(sr.status)).length
-            };
+            const cId = customer.id;
 
-            res.json({
-                success: true,
-                data: {
-                    ...results,
-                    summary
-                }
-            });
-        } catch (err) {
-            console.error('[Context] Customer query error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
-            });
-        }
-    });
+            // 2. Fetch Owned Devices (based on service history interactions or explicit ownership table if it existed)
+            // Since we don't have a strict 'ownership' table yet, we infer from tickets or just search products if there was a link.
+            // For now, let's find products linked to this customer in tickets.
+            const relatedProducts = db.prepare(`
+                SELECT DISTINCT p.* 
+                FROM products p
+                JOIN inquiry_tickets it ON it.product_id = p.id
+                WHERE it.customer_id = ?
+                UNION
+                SELECT DISTINCT p.* 
+                FROM products p
+                JOIN rma_tickets rt ON rt.product_id = p.id
+                WHERE rt.customer_id = ?
+            `).all(cId, cId);
 
-    /**
-     * GET /api/v1/context/serial/:serialNumber
-     * Query service history by product serial number
-     * Useful for transferred devices or when customer is unknown
-     */
-    router.get('/serial/:serialNumber', authenticate, (req, res) => {
-        try {
-            const { serialNumber } = req.params;
-            const { 
-                include_issues = 'true',
-                include_service_records = 'true',
-                limit = 50
-            } = req.query;
-
-            const results = {
-                product: null,
-                current_owner: null,
-                service_records: [],
-                issues: [],
-                ownership_history: []
-            };
-
-            // Find product info from issues or service records
-            const productInfo = db.prepare(`
+            // 3. Fetch Service History (Inquiry, RMA, Dealer Repairs)
+            // Inquiry Tickets
+            const inquiries = db.prepare(`
                 SELECT 
-                    i.serial_number,
-                    i.firmware_version,
-                    i.hardware_version,
-                    p.id as product_id,
-                    p.model_name,
-                    p.product_line
-                FROM issues i
-                LEFT JOIN products p ON i.product_id = p.id
-                WHERE i.serial_number = ?
-                ORDER BY i.created_at DESC
-                LIMIT 1
-            `).get(serialNumber);
+                    id, ticket_number, 'Inquiry' as type, 
+                    service_type as category, problem_summary as summary, 
+                    status, created_at as date
+                FROM inquiry_tickets 
+                WHERE customer_id = ?
+                ORDER BY created_at DESC
+            `).all(cId);
 
-            if (productInfo) {
-                results.product = {
-                    serial_number: productInfo.serial_number,
-                    product_id: productInfo.product_id,
-                    model_name: productInfo.model_name,
-                    product_line: productInfo.product_line,
-                    firmware_version: productInfo.firmware_version,
-                    hardware_version: productInfo.hardware_version
-                };
+            // RMA Tickets
+            const rmas = db.prepare(`
+                SELECT 
+                    id, ticket_number, 'RMA' as type, 
+                    issue_category as category, problem_description as summary, 
+                    status, created_at as date
+                FROM rma_tickets 
+                WHERE customer_id = ?
+                ORDER BY created_at DESC
+            `).all(cId);
+
+            // Dealer Repairs
+            const repairs = db.prepare(`
+                SELECT 
+                    id, ticket_number, 'DealerRepair' as type, 
+                    issue_category as category, problem_description as summary, 
+                    status, created_at as date
+                FROM dealer_repairs 
+                WHERE customer_id = ?
+                ORDER BY created_at DESC
+            `).all(cId);
+
+            // Combine and sort history
+            const history = [...inquiries, ...rmas, ...repairs].sort((a, b) =>
+                new Date(b.date) - new Date(a.date)
+            );
+
+            // 4. Mock AI Profile (Placeholder for future AI analysis)
+            let parsedTags = ["Verified Customer"];
+            if (customer.industry_tags) {
+                try {
+                    const dbTags = JSON.parse(customer.industry_tags);
+                    if (Array.isArray(dbTags)) parsedTags = [...parsedTags, ...dbTags];
+                } catch (e) { console.warn('Failed to parse industry_tags', e); }
+            }
+            if (customer.service_tier) {
+                parsedTags.push(customer.service_tier + ' Tier');
             }
 
-            // Get service records for this serial number
-            if (include_service_records === 'true') {
-                results.service_records = db.prepare(`
-                    SELECT sr.*, h.username as handler_name
-                    FROM service_records sr
-                    LEFT JOIN users h ON sr.handler_id = h.id
-                    WHERE sr.serial_number = ?
-                    ORDER BY sr.created_at DESC
-                    LIMIT ?
-                `).all(serialNumber, parseInt(limit))
-                    .map(formatServiceRecordBrief);
-            }
-
-            // Get work orders (issues) for this serial number
-            if (include_issues === 'true') {
-                results.issues = db.prepare(`
-                    SELECT i.*, p.model_name as product_name, c.customer_name
-                    FROM issues i
-                    LEFT JOIN products p ON i.product_id = p.id
-                    LEFT JOIN customers c ON i.customer_id = c.id
-                    WHERE i.serial_number = ?
-                    ORDER BY i.created_at DESC
-                    LIMIT ?
-                `).all(serialNumber, parseInt(limit))
-                    .map(formatIssueBrief);
-            }
-
-            // Build ownership history from issues (showing different customers over time)
-            const ownershipData = db.prepare(`
-                SELECT DISTINCT
-                    COALESCE(c.customer_name, i.reporter_name) as owner_name,
-                    c.id as customer_id,
-                    MIN(i.created_at) as first_seen,
-                    MAX(i.created_at) as last_seen,
-                    COUNT(*) as service_count
-                FROM issues i
-                LEFT JOIN customers c ON i.customer_id = c.id
-                WHERE i.serial_number = ? AND (c.customer_name IS NOT NULL OR i.reporter_name IS NOT NULL)
-                GROUP BY COALESCE(c.customer_name, i.reporter_name)
-                ORDER BY last_seen DESC
-            `).all(serialNumber);
-
-            results.ownership_history = ownershipData.map(o => ({
-                owner_name: o.owner_name,
-                customer_id: o.customer_id,
-                first_seen: o.first_seen,
-                last_seen: o.last_seen,
-                service_count: o.service_count
-            }));
-
-            // Current owner is the most recent
-            if (results.ownership_history.length > 0) {
-                results.current_owner = results.ownership_history[0];
-            }
-
-            // Calculate summary stats
-            const summary = {
-                total_service_records: results.service_records.length,
-                total_issues: results.issues.length,
-                total_owners: results.ownership_history.length,
-                warranty_repairs: results.issues.filter(i => i.is_warranty).length,
-                non_warranty_repairs: results.issues.filter(i => !i.is_warranty).length
+            const aiProfile = {
+                activity_level: history.length > 5 ? "High" : "Normal",
+                tags: parsedTags,
+                notes: "Auto-generated context from service history."
             };
+
+            // 5. Fetch Associated Dealer
+            let dealer = null;
+            if (customer.parent_dealer_id) {
+                dealer = db.prepare('SELECT * FROM dealers WHERE id = ?').get(customer.parent_dealer_id);
+            }
 
             res.json({
                 success: true,
                 data: {
-                    ...results,
-                    summary
+                    customer,
+                    dealer,
+                    devices: relatedProducts,
+                    service_history: history,
+                    ai_profile: aiProfile
                 }
             });
+
         } catch (err) {
-            console.error('[Context] Serial query error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
-            });
+            console.error('[Context] Error fetching by customer:', err);
+            res.status(500).json({ success: false, error: err.message });
         }
     });
 
     /**
-     * GET /api/v1/context/search
-     * Unified search across customers and serial numbers
+     * @route GET /api/v1/context/by-serial-number
+     * @desc Get device context (specs, history) by Serial Number
      */
-    router.get('/search', authenticate, (req, res) => {
+    router.get('/by-serial-number', (req, res) => {
         try {
-            const { q, type = 'all', limit = 20 } = req.query;
+            const { serial_number } = req.query;
 
-            if (!q || q.length < 2) {
-                return res.status(400).json({
-                    success: false,
-                    error: { code: 'VALIDATION_ERROR', message: '搜索关键词至少需要2个字符' }
-                });
+            if (!serial_number) {
+                return res.status(400).json({ success: false, error: "Missing serial_number" });
             }
 
-            const results = {
-                customers: [],
-                serial_numbers: []
-            };
+            // 1. Fetch Device Info
+            const device = db.prepare(`
+                SELECT * FROM products WHERE serial_number = ?
+            `).get(serial_number);
 
-            // Search customers
-            if (type === 'all' || type === 'customer') {
-                results.customers = db.prepare(`
-                    SELECT DISTINCT
-                        c.id,
-                        c.customer_name,
-                        c.contact_person,
-                        c.phone,
-                        c.email,
-                        c.company_name,
-                        COUNT(DISTINCT i.id) as issue_count
-                    FROM customers c
-                    LEFT JOIN issues i ON i.customer_id = c.id
-                    WHERE c.customer_name LIKE ? 
-                        OR c.contact_person LIKE ? 
-                        OR c.phone LIKE ? 
-                        OR c.email LIKE ?
-                        OR c.company_name LIKE ?
-                    GROUP BY c.id
-                    ORDER BY issue_count DESC
-                    LIMIT ?
-                `).all(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, parseInt(limit))
-                    .map(c => ({
-                        id: c.id,
-                        name: c.customer_name,
-                        contact_person: c.contact_person,
-                        phone: c.phone,
-                        email: c.email,
-                        company: c.company_name,
-                        issue_count: c.issue_count
-                    }));
+            if (!device) {
+                return res.status(404).json({ success: false, error: "Device not found" });
             }
 
-            // Search serial numbers
-            if (type === 'all' || type === 'serial') {
-                results.serial_numbers = db.prepare(`
-                    SELECT DISTINCT
-                        i.serial_number,
-                        p.model_name as product_name,
-                        p.product_line,
-                        COALESCE(c.customer_name, i.reporter_name) as current_owner,
-                        COUNT(*) as service_count,
-                        MAX(i.created_at) as last_service
-                    FROM issues i
-                    LEFT JOIN products p ON i.product_id = p.id
-                    LEFT JOIN customers c ON i.customer_id = c.id
-                    WHERE i.serial_number LIKE ?
-                    GROUP BY i.serial_number
-                    ORDER BY last_service DESC
-                    LIMIT ?
-                `).all(`%${q}%`, parseInt(limit))
-                    .map(s => ({
-                        serial_number: s.serial_number,
-                        product_name: s.product_name,
-                        product_line: s.product_line,
-                        current_owner: s.current_owner,
-                        service_count: s.service_count,
-                        last_service: s.last_service
-                    }));
+            const pId = device.id;
+
+            // 2. Fetch Service History for this Device
+            const inquiries = db.prepare(`
+                SELECT 
+                    it.id, it.ticket_number, 'Inquiry' as type, 
+                    it.problem_summary as summary, it.status, it.created_at as date,
+                    c.customer_name
+                FROM inquiry_tickets it
+                LEFT JOIN customers c ON it.customer_id = c.id
+                WHERE it.product_id = ?
+                ORDER BY it.created_at DESC
+            `).all(pId);
+
+            const rmas = db.prepare(`
+                SELECT 
+                    rt.id, rt.ticket_number, 'RMA' as type, 
+                    rt.problem_description as summary, rt.status, rt.created_at as date,
+                    c.customer_name
+                FROM rma_tickets rt
+                LEFT JOIN customers c ON rt.customer_id = c.id
+                WHERE rt.product_id = ?
+                ORDER BY rt.created_at DESC
+            `).all(pId);
+
+            const repairs = db.prepare(`
+                SELECT 
+                    dr.id, dr.ticket_number, 'DealerRepair' as type, 
+                    dr.problem_description as summary, dr.status, dr.created_at as date,
+                    c.customer_name
+                FROM dealer_repairs dr
+                LEFT JOIN customers c ON dr.customer_id = c.id
+                WHERE dr.product_id = ?
+                ORDER BY dr.created_at DESC
+            `).all(pId);
+
+            const history = [...inquiries, ...rmas, ...repairs].sort((a, b) =>
+                new Date(b.date) - new Date(a.date)
+            );
+
+            // 3. Infer Ownership History (simplistic version)
+            // Just listing unique customers associated with this device over time
+            const owners = [...new Set(history.map(h => h.customer_name).filter(Boolean))];
+
+            // 4. Fetch Parts Catalog based on product family
+            // If family is A (Cameras), show modules/boards/fans
+            // If family is C (EVF), show optical/cables, etc.
+            let parts = [];
+            if (device.product_family) {
+                parts = db.prepare(`
+                    SELECT * FROM parts_catalog 
+                    WHERE category IN ('Module', 'PCB', 'Cooling', 'Mechanical')
+                    LIMIT 5
+                `).all();
+            } else {
+                parts = db.prepare('SELECT * FROM parts_catalog LIMIT 5').all();
             }
 
             res.json({
                 success: true,
-                data: results,
-                meta: {
-                    query: q,
-                    type,
-                    customer_count: results.customers.length,
-                    serial_count: results.serial_numbers.length
+                data: {
+                    device,
+                    service_history: history,
+                    ownership_history: owners.map(name => ({ name, status: 'Associated' })),
+                    parts_catalog: parts
                 }
             });
+
         } catch (err) {
-            console.error('[Context] Search error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
-            });
+            console.error('[Context] Error fetching by SN:', err);
+            res.status(500).json({ success: false, error: err.message });
         }
     });
-
-    // Helper functions
-    function formatCustomer(customer) {
-        return {
-            id: customer.id,
-            name: customer.customer_name,
-            type: customer.customer_type,
-            contact_person: customer.contact_person,
-            phone: customer.phone,
-            email: customer.email,
-            company: customer.company_name,
-            country: customer.country,
-            province: customer.province,
-            city: customer.city
-        };
-    }
-
-    function formatServiceRecordBrief(sr) {
-        return {
-            id: sr.id,
-            record_number: sr.record_number,
-            service_type: sr.service_type,
-            channel: sr.channel,
-            problem_summary: sr.problem_summary?.substring(0, 100),
-            status: sr.status,
-            handler_name: sr.handler_name,
-            created_at: sr.created_at
-        };
-    }
-
-    function formatIssueBrief(issue) {
-        return {
-            id: issue.id,
-            issue_number: issue.issue_number,
-            rma_number: issue.rma_number,
-            ticket_type: issue.ticket_type,
-            issue_type: issue.issue_type,
-            issue_category: issue.issue_category,
-            severity: issue.severity,
-            status: issue.status,
-            title: issue.title || issue.problem_description?.substring(0, 100),
-            product_name: issue.product_name,
-            serial_number: issue.serial_number,
-            is_warranty: !!issue.is_warranty,
-            customer_name: issue.customer_name,
-            created_at: issue.created_at
-        };
-    }
 
     return router;
 };

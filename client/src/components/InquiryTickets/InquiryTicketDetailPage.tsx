@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, X, ArrowUpCircle, RotateCcw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, ArrowUpCircle, RotateCcw, Loader2, User, Paperclip, Film, FileText, Download } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
-import { Paperclip, Film, FileText, Download } from 'lucide-react';
+import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 
 interface Attachment {
     id: number;
@@ -60,6 +60,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [showContextSidebar, setShowContextSidebar] = useState(false);
 
     // Edit fields
     const [resolution, setResolution] = useState('');
@@ -171,7 +172,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -203,6 +204,16 @@ const InquiryTicketDetailPage: React.FC = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
+
+                    {/* Context Sidebar Toggle */}
+                    <button
+                        onClick={() => setShowContextSidebar(!showContextSidebar)}
+                        className={`btn ${showContextSidebar ? 'btn-primary' : 'btn-secondary'}`}
+                        title="Customer Context"
+                    >
+                        <User size={16} />
+                    </button>
+
                     {['Resolved', 'AutoClosed'].includes(ticket.status) && (
                         <button onClick={handleReopen} className="btn btn-secondary">
                             <RotateCcw size={16} />
@@ -441,6 +452,16 @@ const InquiryTicketDetailPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Context Sidebar Overlay */}
+            {showContextSidebar && (
+                <CustomerContextSidebar
+                    customerId={ticket.customer_id || undefined}
+                    customerName={ticket.customer_name}
+                    serialNumber={ticket.serial_number}
+                    onClose={() => setShowContextSidebar(false)}
+                />
+            )}
         </div>
     );
 };

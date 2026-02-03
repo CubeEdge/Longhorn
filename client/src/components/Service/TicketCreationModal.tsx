@@ -52,9 +52,9 @@ const TicketCreationModal: React.FC = () => {
     };
 
     const getFileIcon = (file: File) => {
-        if (file.type.startsWith('image/')) return <ImageIcon size={16} className="text-blue-400" />;
-        if (file.type.startsWith('video/')) return <Video size={16} className="text-purple-400" />;
-        return <FileText size={16} className="text-gray-400" />;
+        if (file.type.startsWith('image/')) return <ImageIcon size={16} style={{ color: '#60a5fa' }} />;
+        if (file.type.startsWith('video/')) return <Video size={16} style={{ color: '#a78bfa' }} />;
+        return <FileText size={16} style={{ color: '#9ca3af' }} />;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -102,82 +102,150 @@ const TicketCreationModal: React.FC = () => {
 
     const renderTypeIcon = () => {
         switch (ticketType) {
-            case 'Inquiry': return <MessageSquare className="text-blue-500" size={24} />;
-            case 'RMA': return <ShieldCheck className="text-orange-500" size={24} />;
-            case 'DealerRepair': return <Wrench className="text-green-500" size={24} />;
+            case 'Inquiry': return <MessageSquare style={{ color: '#3b82f6' }} size={24} />;
+            case 'RMA': return <ShieldCheck style={{ color: '#f97316' }} size={24} />;
+            case 'DealerRepair': return <Wrench style={{ color: '#22c55e' }} size={24} />;
         }
     };
 
-    const getTypeColor = () => {
+    const getHeaderStyle = (): React.CSSProperties => {
+        const base: React.CSSProperties = {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '24px 32px',
+            borderBottom: '1px solid rgba(255,255,255,0.1)'
+        };
         switch (ticketType) {
-            case 'Inquiry': return 'border-blue-500/30 bg-blue-500/5';
-            case 'RMA': return 'border-orange-500/30 bg-orange-500/5';
-            case 'DealerRepair': return 'border-green-500/30 bg-green-500/5';
+            case 'Inquiry': return { ...base, background: 'rgba(59, 130, 246, 0.05)', borderLeft: '3px solid rgba(59, 130, 246, 0.5)' };
+            case 'RMA': return { ...base, background: 'rgba(249, 115, 22, 0.05)', borderLeft: '3px solid rgba(249, 115, 22, 0.5)' };
+            case 'DealerRepair': return { ...base, background: 'rgba(34, 197, 94, 0.05)', borderLeft: '3px solid rgba(34, 197, 94, 0.5)' };
+            default: return base;
         }
+    };
+
+    // 通用样式
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        height: '44px',
+        background: 'rgba(0,0,0,0.3)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '10px',
+        padding: '0 16px',
+        color: 'white',
+        fontSize: '14px',
+        outline: 'none'
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: '13px',
+        fontWeight: 500,
+        color: 'rgba(255,255,255,0.7)',
+        marginBottom: '6px',
+        display: 'block'
+    };
+
+    const sectionTitleStyle: React.CSSProperties = {
+        fontSize: '11px',
+        fontWeight: 600,
+        color: 'rgba(255,255,255,0.4)',
+        textTransform: 'uppercase',
+        letterSpacing: '1.5px',
+        marginBottom: '16px'
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-6">
-            <div
-                className="bg-[#1c1c1e] border border-white/10 rounded-2xl w-full max-w-[800px] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
-                style={{ animation: 'modalIn 0.2s ease-out' }}
-            >
-                {/* Header - macOS Sheet Style */}
-                <div className={`flex items-center justify-between px-8 py-6 border-b border-white/10 ${getTypeColor()}`}>
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-black/30 border border-white/10">
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(8px)',
+            padding: '24px'
+        }}>
+            <div style={{
+                background: '#1c1c1e',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '16px',
+                width: '100%',
+                maxWidth: '800px',
+                maxHeight: '85vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                overflow: 'hidden',
+                animation: 'modalIn 0.2s ease-out'
+            }}>
+                {/* Header */}
+                <div style={getHeaderStyle()}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{
+                            padding: '12px',
+                            borderRadius: '12px',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
                             {renderTypeIcon()}
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-white tracking-tight">
+                            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'white', margin: 0 }}>
                                 {ticketType === 'Inquiry' ? t('ticket.create.inquiry') :
                                     ticketType === 'RMA' ? t('ticket.create.rma') :
                                         t('ticket.create.dealerrepair')}
                             </h2>
-                            <p className="text-sm text-white/50 mt-0.5">
+                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '4px 0 0 0' }}>
                                 Kinefinity Service Operation
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={closeModal}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
+                        style={{
+                            padding: '8px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            color: 'rgba(255,255,255,0.6)'
+                        }}
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Form Body - Two Column Layout */}
-                <div className="flex-1 overflow-y-auto p-8">
+                <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
                     <form id="ticket-form" onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Left Column - Customer & Product Info */}
-                            <div className="space-y-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">
-                                        客户信息
-                                    </h3>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '32px'
+                        }}>
+                            {/* Left Column */}
+                            <div>
+                                {/* 客户信息 */}
+                                <div style={{ marginBottom: '28px' }}>
+                                    <div style={sectionTitleStyle}>客户信息</div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">
-                                            {t('field.customer_name')}
-                                        </label>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={labelStyle}>{t('field.customer_name')}</label>
                                         <input
                                             type="text"
-                                            className="w-full h-12 bg-black/30 border border-white/10 rounded-xl px-4 text-white placeholder-white/30 focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all outline-none"
+                                            style={inputStyle}
                                             value={draft.customer_name || ''}
                                             onChange={(e) => handleFieldChange('customer_name', e.target.value)}
                                             placeholder="输入客户名称..."
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">
-                                            {t('field.customer_contact')}
-                                        </label>
+                                    <div>
+                                        <label style={labelStyle}>{t('field.customer_contact')}</label>
                                         <input
                                             type="text"
-                                            className="w-full h-12 bg-black/30 border border-white/10 rounded-xl px-4 text-white placeholder-white/30 focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all outline-none"
+                                            style={inputStyle}
                                             value={draft.customer_contact || ''}
                                             onChange={(e) => handleFieldChange('customer_contact', e.target.value)}
                                             placeholder="邮箱或电话..."
@@ -185,36 +253,31 @@ const TicketCreationModal: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="h-px bg-white/5" />
+                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '28px' }} />
 
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">
-                                        产品信息
-                                    </h3>
+                                {/* 产品信息 */}
+                                <div>
+                                    <div style={sectionTitleStyle}>产品信息</div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">
-                                            {t('field.product')}
-                                        </label>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={labelStyle}>{t('field.product')}</label>
                                         <select
-                                            className="w-full h-12 bg-black/30 border border-white/10 rounded-xl px-4 text-white focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all outline-none appearance-none cursor-pointer"
+                                            style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}
                                             value={draft.product_id || ''}
                                             onChange={(e) => handleFieldChange('product_id', e.target.value)}
                                         >
-                                            <option value="" className="bg-[#1c1c1e]">选择产品...</option>
+                                            <option value="">选择产品...</option>
                                             {products.map(p => (
-                                                <option key={p.id} value={p.id} className="bg-[#1c1c1e]">{p.name}</option>
+                                                <option key={p.id} value={p.id}>{p.name}</option>
                                             ))}
                                         </select>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">
-                                            {t('field.serial_number')}
-                                        </label>
+                                    <div>
+                                        <label style={labelStyle}>{t('field.serial_number')}</label>
                                         <input
                                             type="text"
-                                            className="w-full h-12 bg-black/30 border border-white/10 rounded-xl px-4 text-white placeholder-white/30 focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all outline-none font-mono"
+                                            style={{ ...inputStyle, fontFamily: 'monospace' }}
                                             value={draft.serial_number || ''}
                                             onChange={(e) => handleFieldChange('serial_number', e.target.value)}
                                             placeholder="S/N..."
@@ -223,19 +286,24 @@ const TicketCreationModal: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Right Column - Description & Attachments */}
-                            <div className="space-y-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">
-                                        问题详情
-                                    </h3>
+                            {/* Right Column */}
+                            <div>
+                                {/* 问题详情 */}
+                                <div style={{ marginBottom: '28px' }}>
+                                    <div style={sectionTitleStyle}>问题详情</div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">
+                                    <div>
+                                        <label style={labelStyle}>
                                             {ticketType === 'Inquiry' ? t('field.problem_summary') : t('field.problem_description')}
                                         </label>
                                         <textarea
-                                            className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:border-white/30 focus:ring-2 focus:ring-white/10 transition-all outline-none min-h-[160px] resize-none"
+                                            style={{
+                                                ...inputStyle,
+                                                height: 'auto',
+                                                minHeight: '140px',
+                                                padding: '12px 16px',
+                                                resize: 'none'
+                                            }}
                                             value={ticketType === 'Inquiry' ? (draft.problem_summary || '') : (draft.problem_description || '')}
                                             onChange={(e) => handleFieldChange(ticketType === 'Inquiry' ? 'problem_summary' : 'problem_description', e.target.value)}
                                             placeholder="请详细描述问题..."
@@ -243,47 +311,68 @@ const TicketCreationModal: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="h-px bg-white/5" />
+                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '28px' }} />
 
-                                {/* Attachments Section */}
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">
-                                        附件
-                                    </h3>
+                                {/* 附件 */}
+                                <div>
+                                    <div style={sectionTitleStyle}>附件</div>
 
-                                    {/* Upload Zone */}
-                                    <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all group">
-                                        <Upload size={24} className="text-white/30 group-hover:text-white/50 mb-2" />
-                                        <span className="text-sm text-white/40 group-hover:text-white/60">点击或拖拽文件到此处</span>
-                                        <span className="text-xs text-white/20 mt-1">图片、视频、PDF (最大 50MB)</span>
+                                    <label style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        height: '100px',
+                                        border: '2px dashed rgba(255,255,255,0.1)',
+                                        borderRadius: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}>
+                                        <Upload size={22} style={{ color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }} />
+                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>点击或拖拽文件到此处</span>
+                                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>图片、视频、PDF (最大 50MB)</span>
                                         <input
                                             type="file"
                                             multiple
-                                            className="hidden"
+                                            style={{ display: 'none' }}
                                             onChange={handleFileSelect}
                                             accept="image/*,video/*,.pdf"
                                         />
                                     </label>
 
-                                    {/* File List */}
                                     {attachments.length > 0 && (
-                                        <div className="space-y-2">
+                                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {attachments.map((file, index) => (
                                                 <div
                                                     key={index}
-                                                    className="flex items-center justify-between p-3 bg-black/20 border border-white/5 rounded-lg group"
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '10px 12px',
+                                                        background: 'rgba(0,0,0,0.2)',
+                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                        borderRadius: '8px'
+                                                    }}
                                                 >
-                                                    <div className="flex items-center gap-3 min-w-0">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                                         {getFileIcon(file)}
-                                                        <span className="text-sm text-white/70 truncate">{file.name}</span>
-                                                        <span className="text-xs text-white/30">
+                                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                                                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
                                                             {(file.size / 1024 / 1024).toFixed(1)}MB
                                                         </span>
                                                     </div>
                                                     <button
                                                         type="button"
                                                         onClick={() => removeAttachment(index)}
-                                                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                                        style={{
+                                                            padding: '6px',
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            color: 'rgba(255,255,255,0.3)'
+                                                        }}
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -297,17 +386,33 @@ const TicketCreationModal: React.FC = () => {
                     </form>
                 </div>
 
-                {/* Footer - macOS Style */}
-                <div className="px-8 py-5 border-t border-white/10 bg-black/20 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-white/30">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                {/* Footer */}
+                <div style={{
+                    padding: '20px 32px',
+                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
                         草稿已自动保存
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <button
                             type="button"
                             onClick={closeModal}
-                            className="px-6 h-11 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 hover:text-white font-medium transition-all"
+                            style={{
+                                padding: '0 24px',
+                                height: '42px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'transparent',
+                                color: 'rgba(255,255,255,0.7)',
+                                fontWeight: 500,
+                                cursor: 'pointer'
+                            }}
                         >
                             {t('action.cancel')}
                         </button>
@@ -315,8 +420,20 @@ const TicketCreationModal: React.FC = () => {
                             type="submit"
                             form="ticket-form"
                             disabled={loading}
-                            style={{ backgroundColor: 'var(--kine-yellow)' }}
-                            className="px-8 h-11 rounded-xl text-black font-semibold hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-yellow-500/20"
+                            style={{
+                                padding: '0 32px',
+                                height: '42px',
+                                borderRadius: '10px',
+                                border: 'none',
+                                background: '#FFD200',
+                                color: 'black',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                opacity: loading ? 0.5 : 1
+                            }}
                         >
                             {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             {t('action.create')}

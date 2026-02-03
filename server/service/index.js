@@ -71,7 +71,7 @@ function initService(app, db, options = {}) {
 
     // Phase 1 routes (legacy)
     app.use('/api/v1/service-records', serviceRecordsRoutes);  // Legacy, kept for backward compatibility
-    app.use('/api/v1/context', contextRoutes);
+    app.use('/api/v1/context', contextRoutes); // Registered Context Route
 
     // Phase 1.5: Three-Layer Ticket Model routes (新三层工单模型)
     app.use('/api/v1/inquiry-tickets', inquiryTicketsRoutes);

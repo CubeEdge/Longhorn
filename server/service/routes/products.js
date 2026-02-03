@@ -14,9 +14,9 @@ module.exports = function (db, authenticate) {
     router.get('/', authenticate, (req, res) => {
         try {
             const products = db.prepare(`
-                SELECT id, model_name as name, product_line as type 
+                SELECT id, model_name as name, product_line as type, product_family
                 FROM products 
-                ORDER BY type ASC, model_name ASC
+                ORDER BY product_family ASC, type ASC, model_name ASC
             `).all();
 
             res.json({

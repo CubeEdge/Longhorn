@@ -330,7 +330,43 @@ module.exports = function (db, authenticate) {
     });
 
     /**
+     * POST /api/v1/system/seed
+     * Manually trigger database seeding
+     */
+    router.post('/seed', authenticate, (req, res) => {
+        try {
+            const seedPath = path.join(__dirname, '../seeds/seed_tickets.sql');
+
+            if (!fs.existsSync(seedPath)) {
+                return res.status(404).json({ success: false, error: "Seed file not found" });
+            }
+
+            const sql = fs.readFileSync(seedPath, 'utf8');
+            const statements = sql.split(';').filter(s => s.trim());
+
+            db.transaction(() => {
+                for (const stmt of statements) {
+                    try {
+                        db.exec(stmt);
+                    } catch (err) {
+                        // Ignore unique constraint violations (already seeded)
+                        if (!err.message.includes('UNIQUE constraint failed')) {
+                            throw err;
+                        }
+                    }
+                }
+            })();
+
+            res.json({ success: true, message: "Database seeded successfully" });
+        } catch (err) {
+            console.error('[System] Seed error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
      * GET /api/v1/attachments/:id/thumbnail
+
      * Get image thumbnail
      */
     router.get('/attachments/:id/thumbnail', authenticate, async (req, res) => {
