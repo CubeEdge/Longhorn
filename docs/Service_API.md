@@ -1,10 +1,10 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.4.0 (Draft)
+**版本**: 0.5.1 (Draft)
 **状态**: 草稿
 **最后更新**: 2026-02-03
-**关联PRD**: Service_PRD.md v0.8.0
-**关联场景**: Service_UserScenarios.md v0.5.0
+**关联PRD**: Service_PRD.md v0.9.0
+**关联场景**: Service_UserScenarios.md v0.6.0
 
 ---
 
@@ -147,6 +147,25 @@
 
 ---
 
+### 2.5 获取产品列表 (Phase 6 引入)
+
+**GET** `/api/v1/products`
+
+**权限**: 全部登录用户
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    { "id": 1, "model_name": "MAVO Edge 8K" },
+    { "id": 2, "model_name": "MAVO Edge 6K" }
+  ]
+}
+```
+
+---
+
 ## 3. 咨询工单 API (Inquiry Ticket)
 
 > 咨询工单用于记录咨询、问题排查等服务，可升级为RMA返厂单或经销商维修单。
@@ -157,6 +176,20 @@
 **POST** `/api/v1/inquiry-tickets`
 
 **权限**: 市场部、经销商(2.0)
+
+**Content-Type**: `multipart/form-data`
+
+| 字段 | 类型 | 必须 | 说明 |
+|-----|------|------|------|
+| customer_name | string | 否 | 客户姓名 |
+| customer_contact | string | 否 | 客户联系方式 |
+| product_id | int | 否 | 产品ID |
+| serial_number | string | 否 | 序列号 |
+| service_type | string | 是 | 咨询/问题排查/远程协助/投诉 |
+| channel | string | 是 | 渠道 (邮件/电话/等) |
+| problem_summary | string | 是 | 问题摘要 |
+| problem_description | string | 否 | 详细描述 |
+| files | file[] | 否 | 附件文件 (图片/视频/PDF) |
 
 ```json
 // Request
@@ -185,7 +218,15 @@
     "id": "inq_20260202_001",
     "ticket_number": "K2602-0001",
     "status": "处理中",
-    "created_at": "2026-02-02T10:30:00Z"
+    "created_at": "2026-02-02T10:30:00Z",
+    "attachments": [
+      {
+        "id": 1,
+        "file_path": "/uploads/service/image.png",
+        "mime_type": "image/png",
+        "size": 102400
+      }
+    ]
   }
 }
 ```
@@ -459,6 +500,16 @@
 
 **权限**: 市场部(1.0)、经销商需审批(2.0)
 
+**Content-Type**: `multipart/form-data`
+
+| 字段 | 类型 | 必须 | 说明 |
+|-----|------|------|------|
+| channel_code | string | 是 | D=Dealer, C=Customer, I=Internal |
+| problem_description | string | 是 | 问题描述 |
+| product_id | int | 否 | 产品ID |
+| serial_number | string | 否 | 业务序列号 |
+| files | file[] | 否 | 附件文件 (图片/视频/PDF) |
+
 ```json
 // Request
 {
@@ -496,7 +547,8 @@
     "id": "rma_20260130_001",
     "ticket_number": "RMA-D-2602-0001",
     "status": "待处理",
-    "created_at": "2026-01-30T10:30:00Z"
+    "created_at": "2026-01-30T10:30:00Z",
+    "attachments": []
   }
 }
 ```
@@ -789,6 +841,17 @@
 **POST** `/api/v1/dealer-repairs`
 
 **权限**: 市场部(1.0)、经销商(2.0)
+
+**Content-Type**: `multipart/form-data`
+
+| 字段 | 类型 | 必须 | 说明 |
+|-----|------|------|------|
+| dealer_id | string | 否 | 经销商ID |
+| product_id | int | 否 | 产品ID |
+| serial_number | string | 否 | 序列号 |
+| customer_name | string | 是 | 客户姓名 |
+| problem_description | string | 是 | 问题描述 |
+| files | file[] | 否 | 附件文件 (图片/视频/PDF) |
 
 ```json
 // Request
