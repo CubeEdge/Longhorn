@@ -23,6 +23,7 @@ interface InquiryTicket {
     serial_number: string;
     created_at: string;
     updated_at: string;
+    product_family?: string;
 }
 
 interface Product {
@@ -59,6 +60,9 @@ const InquiryTicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(50);
 
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [customRange, setCustomRange] = useState({ start: '', end: '' });
+
     // Scope Filters
     const timeScope = searchParams.get('time_scope') || '7d';
     const productScope = searchParams.get('product_scope') || 'all';
@@ -77,6 +81,11 @@ const InquiryTicketListPage: React.FC = () => {
             params.created_from = format(subDays(new Date(), 7), 'yyyy-MM-dd');
         } else if (timeScope === '30d') {
             params.created_from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        } else if (timeScope === 'custom') {
+            const start = searchParams.get('start_date');
+            const end = searchParams.get('end_date');
+            if (start) params.created_from = start;
+            if (end) params.created_to = end;
         }
 
         if (productScope !== 'all') params.product_id = productScope;
@@ -84,7 +93,7 @@ const InquiryTicketListPage: React.FC = () => {
         if (statusFilter !== 'all') params.status = statusFilter;
 
         return params;
-    }, [page, pageSize, timeScope, productScope, searchTerm, statusFilter]);
+    }, [page, pageSize, timeScope, productScope, searchTerm, statusFilter, searchParams]);
 
     // SWR-based data fetching (instant navigation, no full-screen spinner on filter change)
     const { tickets, meta, isLoading } = useCachedTickets<InquiryTicket>('inquiry', queryParams);
@@ -111,6 +120,26 @@ const InquiryTicketListPage: React.FC = () => {
         const current = Object.fromEntries(searchParams.entries());
         setSearchParams({ ...current, ...newParams });
         setPage(1);
+    };
+
+    const handleTimeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const val = e.target.value;
+        if (val === 'custom') {
+            setShowDatePicker(true);
+        } else {
+            updateFilter({ time_scope: val, start_date: '', end_date: '' });
+        }
+    };
+
+    const applyCustomDate = () => {
+        if (customRange.start && customRange.end) {
+            updateFilter({
+                time_scope: 'custom',
+                start_date: customRange.start,
+                end_date: customRange.end
+            });
+            setShowDatePicker(false);
+        }
     };
 
     // Smart Grouping Logic ("Pulse")
@@ -171,6 +200,8 @@ const InquiryTicketListPage: React.FC = () => {
 
     const TicketCard = ({ ticket }: { ticket: InquiryTicket }) => {
         const isUrgent = !['Resolved', 'AutoClosed', 'Upgraded'].includes(ticket.status) && differenceInHours(new Date(), new Date(ticket.updated_at)) > 72;
+        // Determine product family style/label
+        const family = ticket.product_family || (ticket.product ? 'Unknown' : null);
 
         return (
             <div
@@ -214,6 +245,7 @@ const InquiryTicketListPage: React.FC = () => {
                             }}>
                                 {ticket.problem_summary}
                             </h3>
+                            {/* Product Badge */}
                             {ticket.product && (
                                 <span style={{
                                     fontSize: '0.75rem',
@@ -221,9 +253,26 @@ const InquiryTicketListPage: React.FC = () => {
                                     borderRadius: '4px',
                                     background: 'var(--bg-tertiary)',
                                     color: 'var(--text-secondary)',
-                                    whiteSpace: 'nowrap'
+                                    whiteSpace: 'nowrap',
+                                    border: '1px solid rgba(255,255,255,0.05)'
                                 }}>
                                     {ticket.product.name}
+                                </span>
+                            )}
+                            {/* Family Badge */}
+                            {family && family !== 'Unknown' && (
+                                <span style={{
+                                    fontSize: '0.70rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    // Make family distinct (e.g. slight yellowish for Kine)
+                                    background: 'rgba(234, 179, 8, 0.1)',
+                                    color: '#eab308',
+                                    whiteSpace: 'nowrap',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase'
+                                }}>
+                                    {family}
                                 </span>
                             )}
                         </div>
@@ -305,8 +354,8 @@ const InquiryTicketListPage: React.FC = () => {
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <Calendar size={16} style={{ position: 'absolute', left: '10px', color: 'var(--text-tertiary)' }} />
                         <select
-                            value={timeScope}
-                            onChange={(e) => updateFilter({ time_scope: e.target.value })}
+                            value={searchParams.get('time_scope') === 'custom' ? 'custom' : timeScope}
+                            onChange={handleTimeSelect}
                             style={{
                                 padding: '8px 12px 8px 32px',
                                 borderRadius: '6px',
@@ -323,6 +372,7 @@ const InquiryTicketListPage: React.FC = () => {
                             <option value="7d">最近 7 天</option>
                             <option value="30d">最近 30 天</option>
                             <option value="all">所有时间</option>
+                            <option value="custom">自定义时间...</option>
                         </select>
                         <ChevronLeft size={16} style={{ position: 'absolute', right: '10px', transform: 'rotate(-90deg)', pointerEvents: 'none', color: 'var(--text-tertiary)' }} />
                     </div>
@@ -384,6 +434,58 @@ const InquiryTicketListPage: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Date Range Picker Modal */}
+            {showDatePicker && (
+                <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => setShowDatePicker(false)}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{ background: '#1c1c1e', padding: '24px', borderRadius: '16px', width: '320px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
+                    >
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', marginBottom: '20px' }}>选择自定义时间段</h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, marginBottom: '6px' }}>开始日期</label>
+                                <input
+                                    type="date"
+                                    value={customRange.start}
+                                    onChange={e => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', color: '#fff' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, marginBottom: '6px' }}>结束日期</label>
+                                <input
+                                    type="date"
+                                    value={customRange.end}
+                                    onChange={e => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', color: '#fff' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                            <button
+                                onClick={() => setShowDatePicker(false)}
+                                className="px-4 py-2 rounded-lg text-sm text-white/60 hover:text-white"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={applyCustomDate}
+                                disabled={!customRange.start || !customRange.end}
+                                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                确认应用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Grouped Lists */}
             {isLoading && tickets.length === 0 ? (

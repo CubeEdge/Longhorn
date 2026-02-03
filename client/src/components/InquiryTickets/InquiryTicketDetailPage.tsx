@@ -186,7 +186,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     }
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-black">
+        <div className="absolute inset-0 flex h-full w-full overflow-hidden bg-black">
             {/* Left Column: Ticket Details (Scrollable) */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto custom-scrollbar">
                 {/* Header */}
