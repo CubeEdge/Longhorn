@@ -12,7 +12,7 @@
   - **Service Record List**: 支持分页、筛选（状态、优先级）、搜索（客户名/SN）。
   - **Service Record Detail**: 实现类似聊天流的交互界面，显示完整的时间轴（创建、回复、状态变更）。
   - **Issue List**: 独立的工单列表（区分本地/返修），支持看板视图或列表视图。
-- **状态**: 📋 待定 (Todo)
+- **状态**: 🚧 进行中 (In Progress) - Basic List View Implemented & Debugged
 
 ### [Feature] Service Module: 客户上下文 (Customer Context)
 - **优先级**: 🟠 高 (P1)

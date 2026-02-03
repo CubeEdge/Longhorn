@@ -795,3 +795,19 @@
    - **iOS**: Updated `WordEntry` model and `DailyWordBadge` to display topic tags (e.g. "PHYSICS").
 5. **Verification**: Performed full stack restart (Server + iOS Clean Build). All systems Green.
 **Status**: Complete (Infrastructure Ready for AI Key).
+### 2026-02-03 - Debug Empty List & Logo
+**User Prompt**:
+1. "列表还是不显示" (Debug Empty Ticket List).
+2. "更换左侧 L 为 Kinefinity Logo" (UI Polish).
+
+**Action**:
+1. **Debugging Empty List**:
+   - **Root Cause 1**: API Routes (`inquiry-tickets`, `rma-tickets`) were NOT registered in `server/index.js`. Fixed by adding `app.use(...)`.
+   - **Root Cause 2**: `ReferenceError: created_from is not defined` in `inquiry-tickets.js` due to accidental removal during variable destructuring. Fixed by restoring variable.
+   - **Methodology**: Injected checkpoint logs (`DEBUG: Checkpoint X`) to binary search the crash location.
+2. **UI Polish**:
+   - **AppRail**: Replaced generic 'L' icon with Kinefinity Logo using CSS Mask (`mask-image` with `var(--accent-blue)`).
+   - **Asset**: Used `client/public/kine_logo.png` (copied from uploaded media).
+
+**Status**: Completed
+**Result**: Ticket list functionality restored; Logo updated.

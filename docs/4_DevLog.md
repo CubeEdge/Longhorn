@@ -46,8 +46,22 @@
     - **FrontEnd**: Updated `IssueCreatePage.tsx` payload.
     - **Seeding**: Rewrote `02_service_data.js` with realistic PRD cases and correct schema fields.
 - **验证**:
-    - `node server/seeds/02_service_data.js` -> Success.
-    - Manual creation flow verified.
+### 会话: 2026-02-03 (Bugfix & UI Polish)
+
+### 任务: Debug Empty Ticket List & Logo Update
+- **状态**: ✅ 已完成
+- **问题**:
+    - **Empty List**: Inquiry/RMA lists returned 0 items (initially 404, then 500 potential).
+    - **Logo**: User requested "Kine Yellow" Horseshoe logo instead of 'L'.
+- **变更内容**:
+    - **Backend**:
+        - `server/index.js`: Explicitly registered `/api/v1/inquiry-tickets` etc.
+        - `inquiry-tickets.js`: Fixed `ReferenceError` (missing `created_from` declaration). Added debug checkpoints.
+    - **Frontend**:
+        - `AppRail.tsx`: Implemented CSS Mask for SVG-like coloring of PNG logo (`mask: url(/kine_logo.png)`).
+- **验证**:
+    - Backend logs confirmed execution flow passed all checkpoints.
+    - Logo renders in correct theme color.
 
 ---
 
