@@ -48,9 +48,6 @@ const InquiryTicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Dashboard stats
-    const [stats, setStats] = useState<{ total: number; by_status: Record<string, number> }>({ total: 0, by_status: {} });
-
     // Load saved filters from localStorage, default to 'all' for guaranteed display
     const FILTER_KEY = 'inquiry_ticket_filters';
     const savedFilters = localStorage.getItem(FILTER_KEY);
@@ -66,24 +63,6 @@ const InquiryTicketListPage: React.FC = () => {
     useEffect(() => {
         localStorage.setItem(FILTER_KEY, JSON.stringify({ status: statusFilter, serviceType: serviceTypeFilter }));
     }, [statusFilter, serviceTypeFilter]);
-
-    // Fetch dashboard stats
-    const fetchStats = async () => {
-        try {
-            const res = await axios.get('/api/v1/inquiry-tickets/stats', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data.success) {
-                setStats(res.data.data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch stats:', err);
-        }
-    };
-
-    useEffect(() => {
-        fetchStats();
-    }, [token]);
 
     const fetchTickets = async () => {
         setLoading(true);
@@ -159,20 +138,16 @@ const InquiryTicketListPage: React.FC = () => {
         return labels[type] || type;
     };
 
-    // Dashboard stat card config
-    const statCards = [
-        { key: 'all', label: '全部', color: '#6b7280' },
-        { key: 'InProgress', label: t('inquiry_ticket.status.in_progress'), color: '#3b82f6' },
-        { key: 'AwaitingFeedback', label: t('inquiry_ticket.status.awaiting_feedback'), color: '#8b5cf6' },
-        { key: 'Resolved', label: t('inquiry_ticket.status.resolved'), color: '#10b981' },
-        { key: 'Upgraded', label: t('inquiry_ticket.status.upgraded'), color: '#06b6d4' }
-    ];
-
     return (
         <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
             {/* Header with Create Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{t('inquiry_ticket.title')}</h1>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '4px' }}>{t('inquiry_ticket.title')}</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                        {t('inquiry_ticket.total_count', { count: total })}
+                    </p>
+                </div>
                 <button
                     onClick={() => navigate('/service/inquiry-tickets/new')}
                     className="btn btn-primary"
@@ -181,43 +156,6 @@ const InquiryTicketListPage: React.FC = () => {
                     <Plus size={18} />
                     {t('inquiry_ticket.create')}
                 </button>
-            </div>
-
-            {/* Dashboard Stats Cards */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: '12px',
-                marginBottom: '20px'
-            }}>
-                {statCards.map(card => {
-                    const count = card.key === 'all'
-                        ? (stats.total || 0)
-                        : (stats.by_status?.[card.key] || 0);
-                    const isActive = statusFilter === card.key;
-                    return (
-                        <div
-                            key={card.key}
-                            onClick={() => { setStatusFilter(card.key); setPage(1); }}
-                            style={{
-                                background: isActive ? `${card.color}20` : 'var(--bg-card)',
-                                border: isActive ? `2px solid ${card.color}` : '1px solid var(--border-color)',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                cursor: 'pointer',
-                                textAlign: 'center',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: card.color }}>
-                                {count}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                                {card.label}
-                            </div>
-                        </div>
-                    );
-                })}
             </div>
 
             {/* Search & Filters */}

@@ -40,10 +40,10 @@ const DealerRepairListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Load saved filters from localStorage, default to 'InProgress' for better UX
+    // Load saved filters from localStorage, default to 'all' for guaranteed display
     const FILTER_KEY = 'dealer_repair_filters';
     const savedFilters = localStorage.getItem(FILTER_KEY);
-    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'InProgress' };
+    const defaultFilters = savedFilters ? JSON.parse(savedFilters) : { status: 'all' };
 
     // Filters with smart defaults
     const [statusFilter, setStatusFilter] = useState(defaultFilters.status);

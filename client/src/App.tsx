@@ -462,6 +462,75 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 };
 
+// Service Module Stats Card for TopBar
+const ServiceStatsCard: React.FC = () => {
+  const { token } = useAuthStore();
+  const navigate = useNavigate();
+  const [stats, setStats] = React.useState<{ inquiry: number; rma: number; dealer: number }>({ inquiry: 0, rma: 0, dealer: 0 });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [inquiryRes, rmaRes, dealerRes] = await Promise.all([
+          axios.get('/api/v1/inquiry-tickets/stats', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/v1/rma-tickets/stats', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/v1/dealer-repairs/stats', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setStats({
+          inquiry: inquiryRes.data?.data?.total || 0,
+          rma: rmaRes.data?.data?.total || 0,
+          dealer: dealerRes.data?.data?.total || 0
+        });
+      } catch (err) {
+        console.error('Failed to fetch service stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [token]);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        padding: '10px 16px',
+        background: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '12px',
+        opacity: loading ? 0.5 : 1
+      }}
+    >
+      <div
+        onClick={() => navigate('/service/inquiry-tickets')}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+      >
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>咨询工单</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#3b82f6' }}>{stats.inquiry}</div>
+      </div>
+      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div
+        onClick={() => navigate('/service/rma-tickets')}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+      >
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>RMA返厂</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>{stats.rma}</div>
+      </div>
+      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div
+        onClick={() => navigate('/service/dealer-repairs')}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+      >
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>经销商维修</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>{stats.dealer}</div>
+      </div>
+    </div>
+  );
+};
+
 
 const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: ModuleType }> = ({ user, onMenuClick, currentModule }) => {
   const navigate = useNavigate();
@@ -498,6 +567,13 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
         {currentModule === 'files' && (
           <div className="hidden-mobile">
             <UserStatsCard onClick={() => navigate('/dashboard')} />
+          </div>
+        )}
+
+        {/* Stats card for SERVICE module */}
+        {currentModule === 'service' && (
+          <div className="hidden-mobile">
+            <ServiceStatsCard />
           </div>
         )}
 
