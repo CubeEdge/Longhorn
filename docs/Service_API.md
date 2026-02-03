@@ -1969,7 +1969,7 @@
     "completed": true,
     "diagnosis": "根据排查结果，可能需要更换主板",
     "suggested_actions": [
-      { "action": "create_issue", "label": "创建返修工单" }
+      { "action": "create_issue", "label": "创建RMA返厂单" }
     ]
   }
 }
@@ -2181,7 +2181,7 @@
 
 ### Phase 1 (基础)
 - 认证API (2.1-2.4)
-- 服务记录API (3.1-3.6)
+- 咨询工单API (3.1-3.6)
 - 上下文查询API (4.1-4.2)
 - 工单CRUD (5.1-5.7)
 - 工单评论 (6.x)
