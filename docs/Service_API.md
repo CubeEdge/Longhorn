@@ -1917,7 +1917,7 @@
       {
         "type": "issue",
         "id": "issue_847",
-        "rma_number": "RA09C-2512-047",
+        "rma_number": "RMA-C-2512-0047",
         "snippet": "客户反馈录制中断，更换SSD后解决"
       }
     ],
@@ -2091,25 +2091,41 @@
 }
 ```
 
-### 18.3 RMA编号规则
+### 18.3 工单编号规则
 
-**GET** `/api/v1/system/rma-rules`
+**GET** `/api/v1/system/ticket-rules`
 
 ```json
 // Response
 {
   "success": true,
   "data": {
-    "format": "RA + 产品类型(2) + 渠道(2) + 年份(2) + 序号(3)",
-    "product_codes": {
-      "09": "电影机",
-      "10": "Eagle",
-      "11": "配件"
-    },
-    "channel_codes": {
-      "01": "国内",
-      "02": "海外-ProAV",
-      "03": "海外-Gafpa"
+    "ticket_types": [
+      {
+        "type": "inquiry",
+        "format": "KYYMM-XXXX",
+        "example": "K2602-0001",
+        "description": "咨询工单"
+      },
+      {
+        "type": "rma",
+        "format": "RMA-{C}-YYMM-XXXX",
+        "example": "RMA-D-2602-0015",
+        "description": "RMA返厂单，{C}=D(经销商)/C(直客)"
+      },
+      {
+        "type": "dealer_repair",
+        "format": "SVC-D-YYMM-XXXX",
+        "example": "SVC-D-2602-0001",
+        "description": "经销商维修单"
+      }
+    ],
+    "serial_number_rules": {
+      "format": "YYMM-XXXX",
+      "yymm_description": "年份后两位+月份，如2602=2026年2月",
+      "sequence_description": "0001-9999(十进制), A000-FFFF(16进制)",
+      "reset_policy": "每月重置",
+      "max_capacity": 65535
     }
   }
 }
