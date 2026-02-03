@@ -1,0 +1,323 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, Clock, CheckCircle, Loader2, Wrench, Package } from 'lucide-react';
+import axios from 'axios';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useLanguage } from '../../i18n/useLanguage';
+
+interface DealerRepair {
+    id: number;
+    ticket_number: string;
+    repair_type: string;
+    product: { id: number; name: string } | null;
+    serial_number: string;
+    customer_name: string;
+    problem_description: string;
+    status: string;
+    technician: { id: number; name: string } | null;
+    created_at: string;
+    updated_at: string;
+}
+
+const statusColors: Record<string, string> = {
+    Received: '#f59e0b',
+    Diagnosing: '#3b82f6',
+    AwaitingParts: '#8b5cf6',
+    InRepair: '#06b6d4',
+    Completed: '#22c55e',
+    Returned: '#10b981',
+    Cancelled: '#6b7280'
+};
+
+const DealerRepairListPage: React.FC = () => {
+    const { token } = useAuthStore();
+    const { t } = useLanguage();
+    const navigate = useNavigate();
+
+    const [repairs, setRepairs] = useState<DealerRepair[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(20);
+
+    // Filters
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+
+    const fetchRepairs = async () => {
+        const isDefaultState = !searchTerm && statusFilter === 'all';
+        if (isDefaultState) {
+            setRepairs([]);
+            setTotal(0);
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.append('page', page.toString());
+            params.append('page_size', pageSize.toString());
+            if (statusFilter !== 'all') params.append('status', statusFilter);
+            if (searchTerm) params.append('keyword', searchTerm);
+
+            const res = await axios.get(`/api/v1/dealer-repairs?${params.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data.success) {
+                setRepairs(res.data.data);
+                setTotal(res.data.meta.total);
+            }
+        } catch (err) {
+            console.error('Failed to fetch dealer repairs:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRepairs();
+    }, [page, statusFilter]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPage(1);
+        fetchRepairs();
+    };
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            Received: t('dealer_repair.status.received'),
+            Diagnosing: t('dealer_repair.status.diagnosing'),
+            AwaitingParts: t('dealer_repair.status.awaiting_parts'),
+            InRepair: t('dealer_repair.status.in_repair'),
+            Completed: t('dealer_repair.status.completed'),
+            Returned: t('dealer_repair.status.returned'),
+            Cancelled: t('dealer_repair.status.cancelled')
+        };
+        return labels[status] || status;
+    };
+
+    const getRepairTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+            InWarranty: t('dealer_repair.type.in_warranty'),
+            OutOfWarranty: t('dealer_repair.type.out_of_warranty'),
+            Upgrade: t('dealer_repair.type.upgrade'),
+            Maintenance: t('dealer_repair.type.maintenance')
+        };
+        return labels[type] || type;
+    };
+
+    return (
+        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '4px' }}>{t('dealer_repair.title')}</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                        {t('dealer_repair.total_count', { count: total })}
+                    </p>
+                </div>
+                <button
+                    onClick={() => navigate('/dealer-repairs/new')}
+                    className="btn btn-primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    <Plus size={18} />
+                    {t('dealer_repair.create')}
+                </button>
+            </div>
+
+            {/* Search & Filters */}
+            <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px',
+                border: '1px solid var(--border-color)'
+            }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <form onSubmit={handleSearch} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={t('dealer_repair.search_placeholder')}
+                                className="form-control"
+                                style={{ paddingLeft: '40px' }}
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-secondary">{t('action.search')}</button>
+                    </form>
+
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                        <Filter size={16} />
+                        {t('action.filter')}
+                    </button>
+                </div>
+
+                {/* Quick Filters */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
+                    <button
+                        onClick={() => { setStatusFilter('Received'); setSearchTerm(''); setPage(1); }}
+                        className={`btn btn-sm ${statusFilter === 'Received' ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                        {t('dealer_repair.status.received')}
+                    </button>
+                    <button
+                        onClick={() => { setStatusFilter('InRepair'); setSearchTerm(''); setPage(1); }}
+                        className={`btn btn-sm ${statusFilter === 'InRepair' ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                        {t('dealer_repair.status.in_repair')}
+                    </button>
+                    <button
+                        onClick={() => { setStatusFilter('AwaitingParts'); setSearchTerm(''); setPage(1); }}
+                        className={`btn btn-sm ${statusFilter === 'AwaitingParts' ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                        {t('dealer_repair.status.awaiting_parts')}
+                    </button>
+                </div>
+
+                {showFilters && (
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                            className="form-control"
+                            style={{ width: 'auto' }}
+                        >
+                            <option value="all">{t('filter.all_status')}</option>
+                            <option value="Received">{t('dealer_repair.status.received')}</option>
+                            <option value="Diagnosing">{t('dealer_repair.status.diagnosing')}</option>
+                            <option value="AwaitingParts">{t('dealer_repair.status.awaiting_parts')}</option>
+                            <option value="InRepair">{t('dealer_repair.status.in_repair')}</option>
+                            <option value="Completed">{t('dealer_repair.status.completed')}</option>
+                            <option value="Returned">{t('dealer_repair.status.returned')}</option>
+                        </select>
+                    </div>
+                )}
+            </div>
+
+            {/* Repair List */}
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+                    <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                    <p>{t('common.loading')}</p>
+                </div>
+            ) : repairs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+                    <Wrench size={48} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                    <p>{t('dealer_repair.empty_hint')}</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {repairs.map((repair) => (
+                        <div
+                            key={repair.id}
+                            onClick={() => navigate(`/dealer-repairs/${repair.id}`)}
+                            style={{
+                                background: 'var(--bg-card)',
+                                borderRadius: '12px',
+                                padding: '16px',
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+                            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontWeight: 600, fontSize: '1rem' }}>{repair.ticket_number}</span>
+                                        <span style={{
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            background: '#dbeafe',
+                                            color: '#1d4ed8'
+                                        }}>
+                                            {getRepairTypeLabel(repair.repair_type)}
+                                        </span>
+                                        <span
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                padding: '2px 8px',
+                                                borderRadius: '12px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500,
+                                                background: `${statusColors[repair.status] || '#6b7280'}20`,
+                                                color: statusColors[repair.status] || '#6b7280'
+                                            }}
+                                        >
+                                            {getStatusLabel(repair.status)}
+                                        </span>
+                                    </div>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                                        {repair.customer_name || '客户'}
+                                    </p>
+                                </div>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                    {formatDate(repair.created_at)}
+                                </span>
+                            </div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                                {repair.problem_description}
+                            </p>
+                            {(repair.product || repair.technician) && (
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    {repair.product && <span>📷 {repair.product.name}</span>}
+                                    {repair.serial_number && <span>SN: {repair.serial_number}</span>}
+                                    {repair.technician && <span>🔧 {repair.technician.name}</span>}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px' }}>
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="btn btn-secondary btn-sm"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontSize: '0.875rem' }}>
+                        {page} / {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="btn btn-secondary btn-sm"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default DealerRepairListPage;

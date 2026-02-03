@@ -35,8 +35,10 @@ import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
-import { IssueListPage, IssueCreatePage, IssueDetailPage } from './components/Issues';
-import { ServiceRecordListPage, ServiceRecordCreatePage, ServiceRecordDetailPage, ContextPanel } from './components/ServiceRecords';
+import { ContextPanel } from './components/ServiceRecords';
+import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
+import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
+import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import AppRail from './components/AppRail';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
@@ -109,24 +111,41 @@ const App: React.FC = () => {
           <Route path="/" element={<HomeRedirect user={user} />} />
 
           {/* ==================== SERVICE MODULE ==================== */}
-          {/* Service Records */}
-          <Route path="/service/records" element={<ServiceRecordListPage />} />
-          <Route path="/service/records/new" element={<ServiceRecordCreatePage />} />
-          <Route path="/service/records/:id" element={<ServiceRecordDetailPage />} />
+          {/* Inquiry Tickets (咨询工单) - Layer 1 */}
+          <Route path="/service/inquiry-tickets" element={<InquiryTicketListPage />} />
+          <Route path="/service/inquiry-tickets/new" element={<InquiryTicketCreatePage />} />
+          <Route path="/service/inquiry-tickets/:id" element={<InquiryTicketDetailPage />} />
+          <Route path="/inquiry-tickets" element={<Navigate to="/service/inquiry-tickets" replace />} />
+          <Route path="/inquiry-tickets/*" element={<Navigate to="/service/inquiry-tickets" replace />} />
 
-          {/* Issues / Work Orders */}
-          <Route path="/service/issues" element={<IssueListPage />} />
-          <Route path="/service/issues/new" element={<IssueCreatePage />} />
-          <Route path="/service/issues/:id" element={<IssueDetailPage />} />
+          {/* RMA Tickets (RMA返厂单) - Layer 2 */}
+          <Route path="/service/rma-tickets" element={<RMATicketListPage />} />
+          <Route path="/service/rma-tickets/new" element={<RMATicketCreatePage />} />
+          <Route path="/service/rma-tickets/:id" element={<RMATicketDetailPage />} />
+          <Route path="/rma-tickets" element={<Navigate to="/service/rma-tickets" replace />} />
+          <Route path="/rma-tickets/*" element={<Navigate to="/service/rma-tickets" replace />} />
+
+          {/* Dealer Repairs (经销商维修单) - Layer 3 */}
+          <Route path="/service/dealer-repairs" element={<DealerRepairListPage />} />
+          <Route path="/service/dealer-repairs/new" element={<DealerRepairCreatePage />} />
+          <Route path="/service/dealer-repairs/:id" element={<DealerRepairDetailPage />} />
+          <Route path="/dealer-repairs" element={<Navigate to="/service/dealer-repairs" replace />} />
+          <Route path="/dealer-repairs/*" element={<Navigate to="/service/dealer-repairs" replace />} />
 
           {/* Context Query */}
           <Route path="/service/context" element={<ContextPanel />} />
 
-          {/* Knowledge Base (placeholder - to be implemented) */}
-          <Route path="/service/knowledge" element={<ServiceRecordListPage />} />
+          {/* Knowledge Base (placeholder) */}
+          <Route path="/service/knowledge" element={<InquiryTicketListPage />} />
 
-          {/* Parts Management (placeholder - to be implemented) */}
-          <Route path="/service/parts" element={<ServiceRecordListPage />} />
+          {/* Parts Management (placeholder) */}
+          <Route path="/service/parts" element={<InquiryTicketListPage />} />
+
+          {/* Legacy Service Routes - Redirects */}
+          <Route path="/service/records" element={<Navigate to="/service/inquiry-tickets" replace />} />
+          <Route path="/service/records/*" element={<Navigate to="/service/inquiry-tickets" replace />} />
+          <Route path="/service/issues" element={<Navigate to="/service/rma-tickets" replace />} />
+          <Route path="/service/issues/*" element={<Navigate to="/service/rma-tickets" replace />} />
 
           {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
@@ -258,13 +277,17 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
         {/* ==================== SERVICE MODULE ITEMS ==================== */}
         {currentModule === 'service' && (
           <>
-            <Link to="/service/records" className={`sidebar-item ${location.pathname.startsWith('/service/records') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/service/inquiry-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
               <Headphones size={18} />
-              <span>{t('sidebar.service_records')}</span>
+              <span>{t('sidebar.inquiry_tickets')}</span>
             </Link>
-            <Link to="/service/issues" className={`sidebar-item ${location.pathname.startsWith('/service/issues') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/service/rma-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
               <ClipboardList size={18} />
-              <span>{t('sidebar.issues')}</span>
+              <span>{t('sidebar.rma_tickets')}</span>
+            </Link>
+            <Link to="/service/dealer-repairs" className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
+              <Package size={18} />
+              <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
             <Link to="/service/context" className={`sidebar-item ${location.pathname === '/service/context' ? 'active' : ''}`} onClick={onClose}>
               <SearchIcon size={18} />
@@ -273,10 +296,6 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''}`} onClick={onClose}>
               <BookOpen size={18} />
               <span>{t('sidebar.knowledge')}</span>
-            </Link>
-            <Link to="/service/parts" className={`sidebar-item ${location.pathname === '/service/parts' ? 'active' : ''}`} onClick={onClose}>
-              <Package size={18} />
-              <span>{t('sidebar.parts')}</span>
             </Link>
           </>
         )}
