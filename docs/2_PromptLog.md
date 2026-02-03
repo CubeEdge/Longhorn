@@ -804,7 +804,8 @@
 1. **Debugging Empty List**:
    - **Root Cause 1**: API Routes (`inquiry-tickets`, `rma-tickets`) were NOT registered in `server/index.js`. Fixed by adding `app.use(...)`.
    - **Root Cause 2**: `ReferenceError: created_from is not defined` in `inquiry-tickets.js` due to accidental removal during variable destructuring. Fixed by restoring variable.
-   - **Root Cause 3**: `SqliteError: no such column: h.name` and `p.name`. Data model mismatch (Should be `h.username` and `p.model_name`). Fixed SQL Query.
+   - **Root Cause 3**: `SqliteError: no such column: h.name` (users) and `p.name` (products). Mismatch in All List/Detail queries (Inquiry, RMA, Dealer).
+   - **Fix**: Replaced identifiers with `h.username`, `a.username`, `s.username`, `c.username` and `p.model_name` across all 3 route files.
    - **Methodology**: Injected checkpoint logs (`DEBUG: Checkpoint X`) to binary search the crash location. Checked Error Logs to find specific SqliteError.
 2. **UI Polish**:
    - **AppRail**: Replaced generic 'L' icon with Kinefinity Logo using CSS Mask (`mask-image` with `var(--accent-blue)`).
