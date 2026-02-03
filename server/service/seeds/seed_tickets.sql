@@ -16,8 +16,7 @@ INSERT INTO products (product_line, model_name, serial_number, firmware_version,
 -- =============================================================================
 -- 2. Insert Inquiry Ticket Sequences for 2026-02
 -- =============================================================================
-INSERT OR IGNORE INTO inquiry_ticket_sequences (year_month) VALUES ('2602');
-UPDATE inquiry_ticket_sequences SET last_number = 5 WHERE year_month = '2602';
+INSERT OR IGNORE INTO inquiry_ticket_sequences (year_month, last_sequence) VALUES ('2602', 5);
 
 -- =============================================================================
 -- 3. Insert 5 Inquiry Tickets (Layer 1: K2602-0001 to K2602-0005)
@@ -71,12 +70,9 @@ INSERT INTO inquiry_tickets (
 -- =============================================================================
 -- 4. Insert RMA Ticket Sequences for 2026-02
 -- =============================================================================
-INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code) VALUES ('2602', 'D');
-INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code) VALUES ('2602', 'C');
-INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code) VALUES ('2602', 'I');
-UPDATE rma_ticket_sequences SET last_number = 3 WHERE year_month = '2602' AND channel_code = 'D';
-UPDATE rma_ticket_sequences SET last_number = 1 WHERE year_month = '2602' AND channel_code = 'C';
-UPDATE rma_ticket_sequences SET last_number = 1 WHERE year_month = '2602' AND channel_code = 'I';
+INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code, last_sequence) VALUES ('2602', 'D', 3);
+INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code, last_sequence) VALUES ('2602', 'C', 1);
+INSERT OR IGNORE INTO rma_ticket_sequences (year_month, channel_code, last_sequence) VALUES ('2602', 'I', 1);
 
 -- =============================================================================
 -- 5. Insert 5 RMA Tickets (Layer 2)
@@ -90,85 +86,78 @@ INSERT INTO rma_tickets (
     received_date, created_at, updated_at
 ) VALUES
 -- RMA 1: 经销商渠道，传感器问题
-('RMA-D-2602-0001', 'D', 'Hardware', 'Sensor', 'Dead Pixel', 1,
+('RMA-D-2602-0001', 'D', 'Production', 'Sensor', 'Dead Pixel', 1,
  (SELECT id FROM products WHERE serial_number = '8624-A001'), '8624-A001', 'KineOS 7.2.3', 'Rev.C',
  '传感器右上角区域发现3个聚集坏点，拍摄纯色背景时可见。', '可寄回原厂进行传感器校准或更换。', 1, NULL, NULL,
  'ProAV Berlin', NULL, 1, 1, 37,
- NULL, 0.00, NULL, 'Pending', 'High',
+ NULL, 0.00, NULL, 'Pending', 'R1',
  NULL, datetime('now', '-3 days'), datetime('now', '-1 day')),
 
 -- RMA 2: 经销商渠道，ND滤镜故障
-('RMA-D-2602-0002', 'D', 'Hardware', 'ND Filter', 'Motor Failure', 2,
+('RMA-D-2602-0002', 'D', 'Production', 'ND Filter', 'Motor Failure', 2,
  (SELECT id FROM products WHERE serial_number = '6623-F072'), '6623-F072', 'KineOS 7.2.0', 'Rev.B',
  '内置ND滤镜切换时卡顿，有时无法响应指令。', '需返厂检修ND滤镜电机。', 1, '更换ND滤镜电机组件', '电机老化导致驱动力不足',
  'Gafpa Gear', NULL, 2, 1, 37,
- NULL, 0.00, NULL, 'InRepair', 'Normal',
+ NULL, 0.00, NULL, 'InRepair', 'R2',
  date('now', '-5 days'), datetime('now', '-5 days'), datetime('now', '-2 days')),
 
 -- RMA 3: 经销商渠道，主板故障
-('RMA-D-2602-0003', 'D', 'Hardware', 'Mainboard', 'Power Issue', 1,
+('RMA-D-2602-0003', 'D', 'Production', 'Mainboard', 'Power Issue', 1,
  (SELECT id FROM products WHERE serial_number = '4522-C012'), '4522-C012', 'KineOS 6.5.1', 'Rev.A',
  '开机后3-5分钟自动关机，无论电池或DC供电。', '主板电源管理芯片故障，需返厂维修。', 0, NULL, NULL,
  'Cinetx', NULL, 5, 1, 37,
- 'PayPal', 450.00, date('now', '-2 days'), 'Assigned', 'Urgent',
+ 'PayPal', 450.00, date('now', '-2 days'), 'Assigned', 'R1',
  date('now', '-2 days'), datetime('now', '-4 days'), datetime('now', '-1 day')),
 
 -- RMA 4: 客户直送，SSD卡槽问题
-('RMA-C-2602-0001', 'C', 'Hardware', 'Media Slot', 'Connection Issue', 2,
+('RMA-C-2602-0001', 'C', 'CustomerReturn', 'Media Slot', 'Connection Issue', 2,
  (SELECT id FROM products WHERE serial_number = '6624-B088'), '6624-B088', 'KineOS 7.1.12', 'Rev.B',
  'CFexpress卡槽接触不良，需要反复插拔才能识别存储卡。', '清洁卡槽或更换卡槽模块。', 1, NULL, NULL,
  'Direct Customer - Tom Lee', NULL, NULL, 1, 11,
- NULL, 0.00, NULL, 'Pending', 'Normal',
+ NULL, 0.00, NULL, 'Pending', 'R2',
  NULL, datetime('now', '-1 day'), datetime('now', '-6 hours')),
 
 -- RMA 5: 内部渠道，测试机返修
-('RMA-I-2602-0001', 'I', 'Hardware', 'LCD', 'Display Defect', 3,
+('RMA-I-2602-0001', 'I', 'InternalSample', 'LCD', 'Display Defect', 3,
  (SELECT id FROM products WHERE serial_number = '1523-D045'), '1523-D045', 'KineOS 7.0.8', 'Rev.C',
  '展示机LCD显示屏边缘出现漏光现象。', '内部测试机，更换LCD模组。', 1, '更换LCD显示模组', '长期展示使用导致背光老化',
  'Internal QA', NULL, NULL, 1, 11,
- NULL, 0.00, NULL, 'Repaired', 'Low',
+ NULL, 0.00, NULL, 'Repaired', 'R3',
  date('now', '-10 days'), datetime('now', '-10 days'), datetime('now', '-2 days'));
 
 -- =============================================================================
 -- 6. Insert Dealer Repair Sequences for 2026-02
 -- =============================================================================
-INSERT OR IGNORE INTO dealer_repair_sequences (year_month) VALUES ('2602');
-UPDATE dealer_repair_sequences SET last_number = 3 WHERE year_month = '2602';
+INSERT OR IGNORE INTO dealer_repair_sequences (year_month, last_sequence) VALUES ('2602', 3);
 
 -- =============================================================================
 -- 7. Insert 3 Dealer Repairs (Layer 3)
+-- dealer_repairs schema: dealer_id(required), product_id, serial_number, customer_name, customer_contact,
+--   issue_category, issue_subcategory, problem_description, repair_content, status
 -- =============================================================================
 INSERT INTO dealer_repairs (
-    ticket_number, repair_type, product_id, serial_number,
-    customer_name, customer_contact, problem_description,
-    diagnosis_result, repair_content, received_condition, accessories,
-    labor_hours, labor_cost, parts_cost, total_cost, status,
-    technician_id, created_by, inquiry_ticket_id,
-    received_at, diagnosed_at, completed_at, created_at, updated_at
+    ticket_number, dealer_id, product_id, serial_number,
+    customer_name, customer_contact, 
+    issue_category, issue_subcategory, problem_description, repair_content,
+    status, created_at, updated_at
 ) VALUES
 -- Dealer Repair 1: 清洁保养
-('SVC-D-2602-0001', 'Maintenance', 
+('SVC-D-2602-0001', 1,
  (SELECT id FROM products WHERE serial_number = '8624-A001'), '8624-A001',
- 'Berlin Film Studio', 'contact@berlinfilm.de', '机器使用一年后进行常规保养和清洁。',
- '外观正常，内部积灰较多，传感器有少量灰点。', '全机清洁，传感器清洁，风扇除尘，固件更新到7.3。', '外观良好，轻微使用痕迹', '原装电池x2, SD卡x1',
- 2.0, 200.00, 0.00, 200.00, 'Completed',
- 37, 1, NULL,
- datetime('now', '-5 days'), datetime('now', '-4 days'), datetime('now', '-3 days'), datetime('now', '-5 days'), datetime('now', '-3 days')),
+ 'Berlin Film Studio', 'contact@berlinfilm.de',
+ 'Maintenance', 'Cleaning', '机器使用一年后进行常规保养和清洁。', '全机清洁，传感器清洁，风扇除尘，固件更新到7.3。',
+ 'Completed', datetime('now', '-5 days'), datetime('now', '-3 days')),
 
 -- Dealer Repair 2: 镜头卡口维修
-('SVC-D-2602-0002', 'OutOfWarranty',
+('SVC-D-2602-0002', 2,
  (SELECT id FROM products WHERE serial_number = '6623-F072'), '6623-F072',
- 'Munich Rental', 'rental@munich-gear.de', '镜头卡口松动，怀疑是长期更换镜头磨损。',
- '卡口固定螺丝松动，卡口环有轻微磨损。', '紧固螺丝，更换卡口密封圈。', '机身有使用痕迹', 'EF转接环',
- 1.5, 150.00, 35.00, 185.00, 'Returned',
- 11, 1, NULL,
- datetime('now', '-8 days'), datetime('now', '-7 days'), datetime('now', '-5 days'), datetime('now', '-8 days'), datetime('now', '-4 days')),
+ 'Munich Rental', 'rental@munich-gear.de',
+ 'MountSystem', 'Loose Mount', '镜头卡口松动，怀疑是长期更换镜头磨损。', '紧固螺丝，更换卡口密封圈。',
+ 'Completed', datetime('now', '-8 days'), datetime('now', '-4 days')),
 
 -- Dealer Repair 3: 固件异常修复
-('SVC-D-2602-0003', 'InWarranty',
+('SVC-D-2602-0003', 3,
  (SELECT id FROM products WHERE serial_number = '1523-D045'), '1523-D045',
- 'Frankfurt Media', 'tech@frankfurtmedia.de', '固件升级失败后无法开机，显示错误代码E-101。',
- '固件升级中断导致系统分区损坏。', NULL, '无法开机，屏幕显示E-101', '无',
- 0.0, 0.00, 0.00, 0.00, 'Diagnosing',
- 37, 1, NULL,
- datetime('now', '-1 day'), datetime('now', '-1 day'), NULL, datetime('now', '-1 day'), datetime('now', '-6 hours'));
+ 'Frankfurt Media', 'tech@frankfurtmedia.de',
+ 'Firmware', 'Boot Failure', '固件升级失败后无法开机，显示错误代码E-101。', NULL,
+ 'InProgress', datetime('now', '-1 day'), datetime('now', '-6 hours'));
