@@ -531,3 +531,4 @@
     - 发现 `isLargeImage` 逻辑中针对 0 字节文件的判断缺陷。
     - 修复 "查看原图" 按钮的显示逻辑。
 - [2026-02-03] Implemented 'Pulse View' for Inquiry Tickets: grouped by urgency (>3d, >24h, Active), optimized card layout for market efficiency.
+- [2026-02-03] Phase 6 Completed: Added 'Scope Bar' (Time/Product Filters). Created 'products.js' API, updated backend query logic, and replaced frontend Tabs.

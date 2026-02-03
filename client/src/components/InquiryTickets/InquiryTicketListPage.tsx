@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, ChevronLeft, ChevronRight, Phone, Mail, MessageSquare, Clock, CheckCircle, ArrowUpCircle, Loader2, XCircle, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Phone, Mail, MessageSquare, Clock, CheckCircle, ArrowUpCircle, Loader2, XCircle, AlertCircle, AlertTriangle, Calendar, Package } from 'lucide-react';
 import axios from 'axios';
-import { formatDistanceToNow, differenceInHours } from 'date-fns';
+import { formatDistanceToNow, differenceInHours, subDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -21,6 +21,12 @@ interface InquiryTicket {
     serial_number: string;
     created_at: string;
     updated_at: string;
+}
+
+interface Product {
+    id: number;
+    name: string;
+    type: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -47,21 +53,43 @@ const InquiryTicketListPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [tickets, setTickets] = useState<InquiryTicket[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize] = useState(50);
 
-    // Filter states derived from URL
-    const statusFilter = searchParams.get('status') || 'all';
-    const serviceTypeFilter = searchParams.get('service_type') || 'all';
-    const searchTerm = searchParams.get('keyword') || '';
+    // Scope Filters
+    const [timeScope, setTimeScope] = useState(searchParams.get('time_scope') || '7d');
+    const [productScope, setProductScope] = useState(searchParams.get('product_scope') || 'all');
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('keyword') || '');
 
-    const [searchInput, setSearchInput] = useState(searchTerm);
+    // Derived Filters
+    const statusFilter = searchParams.get('status') || 'all'; // Keep url param support but generic
 
     useEffect(() => {
-        setSearchInput(searchTerm);
-    }, [searchTerm]);
+        // Sync URL to State if URL changes externally
+        setTimeScope(searchParams.get('time_scope') || '7d');
+        setProductScope(searchParams.get('product_scope') || 'all');
+        setSearchTerm(searchParams.get('keyword') || '');
+    }, [searchParams]);
+
+    // Fetch Products
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await axios.get('/api/v1/products', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.data.success) {
+                    setProducts(res.data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch products', err);
+            }
+        };
+        fetchProducts();
+    }, [token]);
 
     const updateFilter = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
@@ -75,9 +103,17 @@ const InquiryTicketListPage: React.FC = () => {
             const params = new URLSearchParams();
             params.append('page', page.toString());
             params.append('page_size', pageSize.toString());
-            if (statusFilter !== 'all') params.append('status', statusFilter);
-            if (serviceTypeFilter !== 'all') params.append('service_type', serviceTypeFilter);
+
+            // Apply Scope Logic
+            let createdFrom;
+            if (timeScope === '7d') createdFrom = subDays(new Date(), 7).toISOString();
+            else if (timeScope === '30d') createdFrom = subDays(new Date(), 30).toISOString();
+
+            if (createdFrom) params.append('created_from', createdFrom);
+
+            if (productScope !== 'all') params.append('product_id', productScope);
             if (searchTerm) params.append('keyword', searchTerm);
+            if (statusFilter !== 'all') params.append('status', statusFilter);
 
             const res = await axios.get(`/api/v1/inquiry-tickets?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -96,15 +132,15 @@ const InquiryTicketListPage: React.FC = () => {
 
     useEffect(() => {
         fetchTickets();
-    }, [page, statusFilter, serviceTypeFilter, searchTerm]);
+    }, [page, timeScope, productScope, searchTerm, statusFilter]);
 
     // Smart Grouping Logic ("Pulse")
     const groupedTickets = useMemo(() => {
         const groups = {
-            urgent: [] as InquiryTicket[],   // > 3 days stagnant & not resolved
-            attention: [] as InquiryTicket[], // > 24h stagnant & not resolved
-            active: [] as InquiryTicket[],    // < 24h updated & not resolved
-            done: [] as InquiryTicket[]       // Resolved / AutoClosed / Upgraded
+            urgent: [] as InquiryTicket[],
+            attention: [] as InquiryTicket[],
+            active: [] as InquiryTicket[],
+            done: [] as InquiryTicket[]
         };
 
         const now = new Date();
@@ -274,34 +310,81 @@ const InquiryTicketListPage: React.FC = () => {
 
     return (
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                    <nav style={{ display: 'flex', gap: '20px', marginBottom: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0' }}>
-                        <button
-                            className={`btn-ghost ${statusFilter !== 'all' ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
-                            style={{ paddingBottom: '12px', borderRadius: 0, fontWeight: 500 }}
-                            onClick={() => updateFilter({ status: 'InProgress', service_type: 'all', keyword: '' })}
+            {/* Scope Bar (Constraint Entry) */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px',
+                background: 'var(--bg-secondary)',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {/* Time Scope */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Calendar size={16} style={{ position: 'absolute', left: '10px', color: 'var(--text-tertiary)' }} />
+                        <select
+                            value={timeScope}
+                            onChange={(e) => updateFilter({ time_scope: e.target.value })}
+                            style={{
+                                padding: '8px 12px 8px 32px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-color)',
+                                background: 'var(--bg-card)',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                color: 'var(--text-primary)',
+                                appearance: 'none',
+                                paddingRight: '32px',
+                                cursor: 'pointer'
+                            }}
                         >
-                            待处理事项
-                        </button>
-                        <button
-                            className={`btn-ghost ${statusFilter === 'all' ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
-                            style={{ paddingBottom: '12px', borderRadius: 0, fontWeight: 500 }}
-                            onClick={() => updateFilter({ status: 'all', service_type: 'all', keyword: '' })}
+                            <option value="7d">最近 7 天</option>
+                            <option value="30d">最近 30 天</option>
+                            <option value="all">所有时间</option>
+                        </select>
+                        <ChevronLeft size={16} style={{ position: 'absolute', right: '10px', transform: 'rotate(-90deg)', pointerEvents: 'none', color: 'var(--text-tertiary)' }} />
+                    </div>
+
+                    {/* Product Scope */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Package size={16} style={{ position: 'absolute', left: '10px', color: 'var(--text-tertiary)' }} />
+                        <select
+                            value={productScope}
+                            onChange={(e) => updateFilter({ product_scope: e.target.value })}
+                            style={{
+                                padding: '8px 12px 8px 32px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border-color)',
+                                background: 'var(--bg-card)',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                color: 'var(--text-primary)',
+                                appearance: 'none',
+                                paddingRight: '32px',
+                                cursor: 'pointer',
+                                maxWidth: '200px'
+                            }}
                         >
-                            所有工单
-                        </button>
-                    </nav>
+                            <option value="all">所有产品</option>
+                            {products.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                        <ChevronLeft size={16} style={{ position: 'absolute', right: '10px', transform: 'rotate(-90deg)', pointerEvents: 'none', color: 'var(--text-tertiary)' }} />
+                    </div>
                 </div>
+
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ position: 'relative' }}>
                         <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
                         <input
                             type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && updateFilter({ keyword: searchInput })}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && updateFilter({ keyword: searchTerm })}
                             placeholder="搜索客户/单号..."
                             style={{
                                 padding: '8px 12px 8px 32px',
@@ -333,6 +416,9 @@ const InquiryTicketListPage: React.FC = () => {
                 <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
                     <MessageSquare size={48} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
                     <p>{t('inquiry_ticket.empty_hint')}</p>
+                    <p style={{ fontSize: '0.8rem', marginTop: '8px', opacity: 0.7 }}>
+                        (当前视图受限于顶部的时间和产品筛选，请尝试调整筛选条件)
+                    </p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>

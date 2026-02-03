@@ -11,6 +11,12 @@ const multer = require('multer');
 const archiver = require('archiver');
 const sharp = require('sharp');
 
+// Service Ticket Routes
+const inquiryTickets = require('./service/routes/inquiry-tickets');
+const rmaTickets = require('./service/routes/rma-tickets');
+const dealerRepairs = require('./service/routes/dealer-repairs');
+const products = require('./service/routes/products');
+
 dotenv.config();
 
 const app = express();
@@ -597,6 +603,12 @@ app.use((req, res, next) => {
     console.log(`[HTTP] ${req.method} ${req.url} | IP: ${req.ip}`);
     next();
 });
+
+// Service Routes - Layer 1
+app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate));
+app.use('/api/v1/products', products(db, authenticate));
+app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate));
+app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
@@ -3716,14 +3728,14 @@ function generateIssueNumber() {
 // Permission check for issues
 function canAccessIssue(user, issue) {
     if (user.role === 'Admin') return { read: true, write: true };
-    
+
     // Lead can access all issues, write own department's
     if (user.role === 'Lead') {
         const creator = db.prepare('SELECT department_id FROM users WHERE id = ?').get(issue.created_by);
         const isOwnDept = creator && creator.department_id === user.department_id;
         return { read: true, write: isOwnDept || issue.assigned_to === user.id };
     }
-    
+
     // Member can only access assigned or created issues
     const canAccess = issue.assigned_to === user.id || issue.created_by === user.id;
     return { read: canAccess, write: canAccess };
@@ -3736,16 +3748,16 @@ app.get('/api/issues', authenticate, (req, res) => {
     try {
         const { status, category, source, severity, assigned_to, search, page = 1, limit = 20 } = req.query;
         const user = req.user;
-        
+
         let whereConditions = [];
         let params = [];
-        
+
         // Role-based filtering
         if (user.role === 'Member') {
             whereConditions.push('(i.assigned_to = ? OR i.created_by = ?)');
             params.push(user.id, user.id);
         }
-        
+
         // Filter conditions
         if (status && status !== 'all') {
             whereConditions.push('i.status = ?');
@@ -3775,10 +3787,10 @@ app.get('/api/issues', authenticate, (req, res) => {
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm);
         }
-        
+
         const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
         const offset = (parseInt(page) - 1) * parseInt(limit);
-        
+
         // Count total
         const countSql = `
             SELECT COUNT(*) as total FROM issues i
@@ -3786,7 +3798,7 @@ app.get('/api/issues', authenticate, (req, res) => {
             ${whereClause}
         `;
         const total = db.prepare(countSql).get(...params).total;
-        
+
         // Get issues
         const sql = `
             SELECT 
@@ -3806,9 +3818,9 @@ app.get('/api/issues', authenticate, (req, res) => {
             ORDER BY i.created_at DESC
             LIMIT ? OFFSET ?
         `;
-        
+
         const issues = db.prepare(sql).all(...params, parseInt(limit), offset);
-        
+
         res.json({
             issues,
             total,
@@ -3826,13 +3838,13 @@ app.get('/api/issues', authenticate, (req, res) => {
 app.post('/api/issues', authenticate, (req, res) => {
     try {
         const { product_id, customer_id, issue_category, issue_source, title, description, severity } = req.body;
-        
+
         if (!issue_category || !issue_source || !title || !description) {
             return res.status(400).json({ error: 'Missing required fields: issue_category, issue_source, title, description' });
         }
-        
+
         const issue_number = generateIssueNumber();
-        
+
         const result = db.prepare(`
             INSERT INTO issues (issue_number, product_id, customer_id, issue_category, issue_source, title, description, severity, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -3847,7 +3859,7 @@ app.post('/api/issues', authenticate, (req, res) => {
             severity || 'Medium',
             req.user.id
         );
-        
+
         res.json({ success: true, issue_id: result.lastInsertRowid, issue_number });
     } catch (err) {
         console.error('[Issues] Create error:', err);
@@ -3874,16 +3886,16 @@ app.get('/api/issues/:id', authenticate, (req, res) => {
             LEFT JOIN users closer ON i.closed_by = closer.id
             WHERE i.id = ?
         `).get(req.params.id);
-        
+
         if (!issue) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         const access = canAccessIssue(req.user, issue);
         if (!access.read) {
             return res.status(403).json({ error: 'No permission to view this issue' });
         }
-        
+
         // Get comments
         const comments = db.prepare(`
             SELECT ic.*, u.username as user_name
@@ -3892,7 +3904,7 @@ app.get('/api/issues/:id', authenticate, (req, res) => {
             WHERE ic.issue_id = ?
             ORDER BY ic.created_at ASC
         `).all(req.params.id);
-        
+
         // Get attachments
         const attachments = db.prepare(`
             SELECT ia.*, u.username as uploaded_by_name
@@ -3901,7 +3913,7 @@ app.get('/api/issues/:id', authenticate, (req, res) => {
             WHERE ia.issue_id = ?
             ORDER BY ia.uploaded_at DESC
         `).all(req.params.id);
-        
+
         res.json({
             issue,
             comments,
@@ -3921,26 +3933,26 @@ app.put('/api/issues/:id', authenticate, (req, res) => {
         if (!issue) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         const access = canAccessIssue(req.user, issue);
         if (!access.write) {
             return res.status(403).json({ error: 'No permission to edit this issue' });
         }
-        
+
         const { title, description, severity, status, resolution } = req.body;
         const updates = [];
         const params = [];
-        
+
         if (title !== undefined) { updates.push('title = ?'); params.push(title); }
         if (description !== undefined) { updates.push('description = ?'); params.push(description); }
         if (severity !== undefined) { updates.push('severity = ?'); params.push(severity); }
         if (resolution !== undefined) { updates.push('resolution = ?'); params.push(resolution); }
-        
+
         // Status change with timestamp updates
         if (status !== undefined && status !== issue.status) {
             updates.push('status = ?');
             params.push(status);
-            
+
             if (status === 'Closed') {
                 updates.push('closed_at = CURRENT_TIMESTAMP', 'closed_by = ?');
                 params.push(req.user.id);
@@ -3948,23 +3960,23 @@ app.put('/api/issues/:id', authenticate, (req, res) => {
             if (status === 'AwaitingVerification' && !issue.resolved_at) {
                 updates.push('resolved_at = CURRENT_TIMESTAMP');
             }
-            
+
             // Log status change
             db.prepare(`
                 INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
                 VALUES (?, ?, 'StatusChange', ?)
             `).run(req.params.id, req.user.id, `Status changed from ${issue.status} to ${status}`);
         }
-        
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
-        
+
         updates.push('updated_at = CURRENT_TIMESTAMP');
         params.push(req.params.id);
-        
+
         db.prepare(`UPDATE issues SET ${updates.join(', ')} WHERE id = ?`).run(...params);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('[Issues] Update error:', err);
@@ -3978,31 +3990,31 @@ app.post('/api/issues/:id/assign', authenticate, (req, res) => {
         if (req.user.role === 'Member') {
             return res.status(403).json({ error: 'Only Admin or Lead can assign issues' });
         }
-        
+
         const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
         if (!issue) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         const { assigned_to } = req.body;
         const assignee = db.prepare('SELECT id, username FROM users WHERE id = ?').get(assigned_to);
         if (!assignee) {
             return res.status(400).json({ error: 'Invalid assignee' });
         }
-        
+
         const newStatus = issue.status === 'Pending' ? 'Assigned' : issue.status;
-        
+
         db.prepare(`
             UPDATE issues SET assigned_to = ?, assigned_at = CURRENT_TIMESTAMP, status = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(assigned_to, newStatus, req.params.id);
-        
+
         // Log assignment
         db.prepare(`
             INSERT INTO issue_comments (issue_id, user_id, comment_type, content)
             VALUES (?, ?, 'Assignment', ?)
         `).run(req.params.id, req.user.id, `Assigned to ${assignee.username}`);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('[Issues] Assign error:', err);
@@ -4017,25 +4029,25 @@ app.post('/api/issues/:id/comments', authenticate, (req, res) => {
         if (!issue) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         const access = canAccessIssue(req.user, issue);
         if (!access.read) {
             return res.status(403).json({ error: 'No permission to comment on this issue' });
         }
-        
+
         const { content, is_internal } = req.body;
         if (!content) {
             return res.status(400).json({ error: 'Comment content is required' });
         }
-        
+
         const result = db.prepare(`
             INSERT INTO issue_comments (issue_id, user_id, content, is_internal)
             VALUES (?, ?, ?, ?)
         `).run(req.params.id, req.user.id, content, is_internal ? 1 : 0);
-        
+
         // Update issue timestamp
         db.prepare('UPDATE issues SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
-        
+
         res.json({ success: true, comment_id: result.lastInsertRowid });
     } catch (err) {
         console.error('[Issues] Comment error:', err);
@@ -4050,16 +4062,16 @@ app.post('/api/issues/:id/attachments', authenticate, issueUpload.array('files',
         if (!issue) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         const access = canAccessIssue(req.user, issue);
         if (!access.write) {
             return res.status(403).json({ error: 'No permission to upload attachments' });
         }
-        
+
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'No files uploaded' });
         }
-        
+
         const insertedIds = [];
         for (const file of req.files) {
             const result = db.prepare(`
@@ -4068,7 +4080,7 @@ app.post('/api/issues/:id/attachments', authenticate, issueUpload.array('files',
             `).run(req.params.id, file.originalname, file.filename, file.size, file.mimetype, req.user.id);
             insertedIds.push(result.lastInsertRowid);
         }
-        
+
         res.json({ success: true, attachment_ids: insertedIds });
     } catch (err) {
         console.error('[Issues] Upload error:', err);
@@ -4085,22 +4097,22 @@ app.get('/api/issues/attachments/:attachmentId', authenticate, (req, res) => {
             JOIN issues i ON ia.issue_id = i.id
             WHERE ia.id = ?
         `).get(req.params.attachmentId);
-        
+
         if (!attachment) {
             return res.status(404).json({ error: 'Attachment not found' });
         }
-        
+
         const issue = { created_by: attachment.created_by, assigned_to: attachment.assigned_to };
         const access = canAccessIssue(req.user, issue);
         if (!access.read) {
             return res.status(403).json({ error: 'No permission to download this attachment' });
         }
-        
+
         const filePath = path.join(ISSUE_ATTACHMENTS_DIR, attachment.file_path);
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'File not found on disk' });
         }
-        
+
         res.download(filePath, attachment.file_name);
     } catch (err) {
         console.error('[Issues] Download attachment error:', err);
@@ -4114,12 +4126,12 @@ app.delete('/api/issues/:id', authenticate, (req, res) => {
         if (req.user.role !== 'Admin') {
             return res.status(403).json({ error: 'Only Admin can delete issues' });
         }
-        
+
         const result = db.prepare('DELETE FROM issues WHERE id = ?').run(req.params.id);
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Issue not found' });
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('[Issues] Delete error:', err);
@@ -4133,10 +4145,10 @@ app.delete('/api/issues/:id', authenticate, (req, res) => {
 app.get('/api/products', authenticate, (req, res) => {
     try {
         const { product_line, search, page = 1, limit = 50 } = req.query;
-        
+
         let whereConditions = [];
         let params = [];
-        
+
         if (product_line && product_line !== 'all') {
             whereConditions.push('product_line = ?');
             params.push(product_line);
@@ -4146,17 +4158,17 @@ app.get('/api/products', authenticate, (req, res) => {
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm);
         }
-        
+
         const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
         const offset = (parseInt(page) - 1) * parseInt(limit);
-        
+
         const total = db.prepare(`SELECT COUNT(*) as total FROM products ${whereClause}`).get(...params).total;
         const products = db.prepare(`
             SELECT * FROM products ${whereClause}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         `).all(...params, parseInt(limit), offset);
-        
+
         res.json({ products, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {
         console.error('[Products] List error:', err);
@@ -4168,16 +4180,16 @@ app.get('/api/products', authenticate, (req, res) => {
 app.post('/api/products', authenticate, (req, res) => {
     try {
         const { product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes } = req.body;
-        
+
         if (!product_line || !model_name) {
             return res.status(400).json({ error: 'product_line and model_name are required' });
         }
-        
+
         const result = db.prepare(`
             INSERT INTO products (product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `).run(product_line, model_name, serial_number || null, firmware_version || null, production_batch || null, production_date || null, notes || null);
-        
+
         res.json({ success: true, product_id: result.lastInsertRowid });
     } catch (err) {
         console.error('[Products] Create error:', err);
@@ -4192,14 +4204,14 @@ app.get('/api/products/:id', authenticate, (req, res) => {
         if (!product) {
             return res.status(404).json({ error: 'Product not found' });
         }
-        
+
         const relatedIssues = db.prepare(`
             SELECT id, issue_number, title, status, severity, created_at
             FROM issues WHERE product_id = ?
             ORDER BY created_at DESC
             LIMIT 20
         `).all(req.params.id);
-        
+
         res.json({ product, related_issues: relatedIssues });
     } catch (err) {
         console.error('[Products] Detail error:', err);
@@ -4211,10 +4223,10 @@ app.get('/api/products/:id', authenticate, (req, res) => {
 app.put('/api/products/:id', authenticate, (req, res) => {
     try {
         const { product_line, model_name, serial_number, firmware_version, production_batch, production_date, notes } = req.body;
-        
+
         const updates = [];
         const params = [];
-        
+
         if (product_line !== undefined) { updates.push('product_line = ?'); params.push(product_line); }
         if (model_name !== undefined) { updates.push('model_name = ?'); params.push(model_name); }
         if (serial_number !== undefined) { updates.push('serial_number = ?'); params.push(serial_number); }
@@ -4222,19 +4234,19 @@ app.put('/api/products/:id', authenticate, (req, res) => {
         if (production_batch !== undefined) { updates.push('production_batch = ?'); params.push(production_batch); }
         if (production_date !== undefined) { updates.push('production_date = ?'); params.push(production_date); }
         if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
-        
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
-        
+
         updates.push('updated_at = CURRENT_TIMESTAMP');
         params.push(req.params.id);
-        
+
         const result = db.prepare(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`).run(...params);
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Product not found' });
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('[Products] Update error:', err);
@@ -4248,10 +4260,10 @@ app.put('/api/products/:id', authenticate, (req, res) => {
 app.get('/api/customers', authenticate, (req, res) => {
     try {
         const { customer_type, country, search, page = 1, limit = 50 } = req.query;
-        
+
         let whereConditions = [];
         let params = [];
-        
+
         if (customer_type && customer_type !== 'all') {
             whereConditions.push('customer_type = ?');
             params.push(customer_type);
@@ -4265,17 +4277,17 @@ app.get('/api/customers', authenticate, (req, res) => {
             const searchTerm = `%${search}%`;
             params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
         }
-        
+
         const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
         const offset = (parseInt(page) - 1) * parseInt(limit);
-        
+
         const total = db.prepare(`SELECT COUNT(*) as total FROM customers ${whereClause}`).get(...params).total;
         const customers = db.prepare(`
             SELECT * FROM customers ${whereClause}
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         `).all(...params, parseInt(limit), offset);
-        
+
         res.json({ customers, total, page: parseInt(page), limit: parseInt(limit) });
     } catch (err) {
         console.error('[Customers] List error:', err);
@@ -4287,16 +4299,16 @@ app.get('/api/customers', authenticate, (req, res) => {
 app.post('/api/customers', authenticate, (req, res) => {
     try {
         const { customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes } = req.body;
-        
+
         if (!customer_type || !customer_name) {
             return res.status(400).json({ error: 'customer_type and customer_name are required' });
         }
-        
+
         const result = db.prepare(`
             INSERT INTO customers (customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(customer_type, customer_name, contact_person || null, phone || null, email || null, country || null, province || null, city || null, company_name || null, notes || null);
-        
+
         res.json({ success: true, customer_id: result.lastInsertRowid });
     } catch (err) {
         console.error('[Customers] Create error:', err);
@@ -4311,21 +4323,21 @@ app.get('/api/customers/:id', authenticate, (req, res) => {
         if (!customer) {
             return res.status(404).json({ error: 'Customer not found' });
         }
-        
+
         const relatedIssues = db.prepare(`
             SELECT id, issue_number, title, status, severity, created_at
             FROM issues WHERE customer_id = ?
             ORDER BY created_at DESC
             LIMIT 20
         `).all(req.params.id);
-        
+
         const stats = db.prepare(`
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as resolved
             FROM issues WHERE customer_id = ?
         `).get(req.params.id);
-        
+
         res.json({ customer, related_issues: relatedIssues, issue_statistics: stats });
     } catch (err) {
         console.error('[Customers] Detail error:', err);
@@ -4337,10 +4349,10 @@ app.get('/api/customers/:id', authenticate, (req, res) => {
 app.put('/api/customers/:id', authenticate, (req, res) => {
     try {
         const { customer_type, customer_name, contact_person, phone, email, country, province, city, company_name, notes } = req.body;
-        
+
         const updates = [];
         const params = [];
-        
+
         if (customer_type !== undefined) { updates.push('customer_type = ?'); params.push(customer_type); }
         if (customer_name !== undefined) { updates.push('customer_name = ?'); params.push(customer_name); }
         if (contact_person !== undefined) { updates.push('contact_person = ?'); params.push(contact_person); }
@@ -4351,19 +4363,19 @@ app.put('/api/customers/:id', authenticate, (req, res) => {
         if (city !== undefined) { updates.push('city = ?'); params.push(city); }
         if (company_name !== undefined) { updates.push('company_name = ?'); params.push(company_name); }
         if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
-        
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
-        
+
         updates.push('updated_at = CURRENT_TIMESTAMP');
         params.push(req.params.id);
-        
+
         const result = db.prepare(`UPDATE customers SET ${updates.join(', ')} WHERE id = ?`).run(...params);
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Customer not found' });
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('[Customers] Update error:', err);
@@ -4379,20 +4391,20 @@ app.get('/api/issues/statistics/overview', authenticate, (req, res) => {
         const byStatus = db.prepare(`
             SELECT status, COUNT(*) as count FROM issues GROUP BY status
         `).all();
-        
+
         const byCategory = db.prepare(`
             SELECT issue_category, COUNT(*) as count FROM issues GROUP BY issue_category
         `).all();
-        
+
         const total = db.prepare('SELECT COUNT(*) as count FROM issues').get().count;
         const closed = db.prepare("SELECT COUNT(*) as count FROM issues WHERE status = 'Closed'").get().count;
-        
+
         // Average resolution time (in hours)
         const avgTime = db.prepare(`
             SELECT AVG((julianday(closed_at) - julianday(created_at)) * 24) as avg_hours
             FROM issues WHERE closed_at IS NOT NULL
         `).get();
-        
+
         res.json({
             total_issues: total,
             by_status: Object.fromEntries(byStatus.map(s => [s.status, s.count])),
