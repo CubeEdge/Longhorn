@@ -67,7 +67,90 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         boxShadow: '-10px 0 30px rgba(0,0,0,0.3)'
     };
 
-    // ... (keep existing styles)
+    const headerStyle: React.CSSProperties = {
+        padding: '20px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'rgba(255, 255, 255, 0.02)'
+    };
+
+    const tabContainerStyle: React.CSSProperties = {
+        display: 'flex',
+        padding: '12px 20px',
+        gap: '12px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+    };
+
+    const tabStyle = (isActive: boolean): React.CSSProperties => ({
+        flex: 1,
+        padding: '8px 0',
+        textAlign: 'center',
+        cursor: 'pointer',
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.4)',
+        background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+        borderRadius: '8px',
+        transition: 'all 0.2s ease',
+        border: isActive ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent'
+    });
+
+    const contentStyle: React.CSSProperties = {
+        flex: 1,
+        overflowY: 'auto',
+        padding: '24px'
+    };
+
+    const sectionTitleStyle: React.CSSProperties = {
+        fontSize: '0.75rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: 'rgba(255, 255, 255, 0.4)',
+        marginBottom: '12px',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+    };
+
+    const cardStyle: React.CSSProperties = {
+        background: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: '12px',
+        padding: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        marginBottom: '20px'
+    };
+
+    const rowStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'flex-start',
+        marginBottom: '12px',
+        fontSize: '0.9rem',
+        lineHeight: '1.4'
+    };
+
+    const iconColStyle: React.CSSProperties = {
+        width: '24px',
+        color: 'rgba(255, 255, 255, 0.4)',
+        paddingTop: '2px'
+    };
+
+    const textColStyle: React.CSSProperties = {
+        flex: 1,
+        color: 'rgba(255, 255, 255, 0.9)'
+    };
+
+    if (loading) {
+        return (
+            <div style={sidebarStyle}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                    <div className="loading-spinner" style={{ width: 24, height: 24 }} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
