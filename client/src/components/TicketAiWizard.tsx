@@ -53,12 +53,12 @@ const TicketAiWizard: React.FC = () => {
         <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', color: '#eee' }}>
             <header style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
                     padding: '10px',
                     borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)'
+                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)'
                 }}>
-                    <Sparkles size={24} color="white" />
+                    <Sparkles size={24} color="#000" />
                 </div>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.5rem' }}>AI Smart Ticket Assistant</h2>
@@ -111,18 +111,19 @@ const TicketAiWizard: React.FC = () => {
                         onClick={handleGenerate}
                         disabled={loading || !inputText.trim()}
                         style={{
-                            background: loading ? '#4b5563' : 'var(--accent-blue, #3b82f6)',
-                            color: 'white',
+                            background: loading ? '#4b5563' : '#FFD700',
+                            color: loading ? 'white' : 'black',
                             border: 'none',
                             padding: '12px',
                             borderRadius: '8px',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            fontWeight: 600,
+                            fontWeight: 700,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '8px',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            boxShadow: loading ? 'none' : '0 2px 8px rgba(255, 215, 0, 0.3)'
                         }}
                     >
                         {loading ? (
@@ -229,7 +230,7 @@ const TicketAiWizard: React.FC = () => {
                                     onClick={handleCreate}
                                     style={{
                                         flex: 1,
-                                        background: '#10b981',
+                                        background: '#10b981', // Success green is allowed for confirming actions
                                         color: 'white',
                                         border: 'none',
                                         padding: '12px',
