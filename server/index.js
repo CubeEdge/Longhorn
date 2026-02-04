@@ -225,7 +225,10 @@ db.exec(`
         error_log TEXT,
         imported_by INTEGER NOT NULL,
         imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CREATE TABLE IF NOT EXISTS ai_usage_logs (
+        FOREIGN KEY(imported_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_usage_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         model TEXT,
         task_type TEXT,
@@ -233,8 +236,6 @@ db.exec(`
         completion_tokens INTEGER,
         total_tokens INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    FOREIGN KEY(imported_by) REFERENCES users(id)
     );
 `);
 

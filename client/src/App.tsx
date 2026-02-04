@@ -41,6 +41,7 @@ import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './c
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import AppRail from './components/AppRail';
 import TicketCreationModal from './components/Service/TicketCreationModal';
+import TicketAiWizard from './components/TicketAiWizard';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
 
@@ -127,6 +128,9 @@ const App: React.FC = () => {
           <Route path="/service/inquiry-tickets/:id" element={<InquiryTicketDetailPage />} />
           <Route path="/inquiry-tickets" element={<Navigate to="/service/inquiry-tickets" replace />} />
           <Route path="/inquiry-tickets/*" element={<Navigate to="/service/inquiry-tickets" replace />} />
+
+          {/* AI Ticket Wizard */}
+          <Route path="/service/ticket-wizard" element={<TicketAiWizard />} />
 
           {/* RMA Tickets (RMA返厂单) - Layer 2 */}
           <Route path="/service/rma-tickets" element={<RMATicketListPage />} />
