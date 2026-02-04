@@ -4,38 +4,49 @@
 
 ---
 
-## 🏗 开发与发布流程 (Git Workflow)
+## 🏗 开发与部署流程 (Workflow)
 
-Longhorn 采用 **"MBAir 开发 -> GitHub 中转 -> Mac mini 自动部署"** 的工作流。
+Longhorn 支持两种部署模式：**快速部署 (Fast Mode)** 和 **标准部署 (Standard Mode)**。
 
-### 1. 本地开发 (MBAir)
-所有代码修改均应在 MBAir 上进行。
+### 1. 快速部署 (Fast Mode) - 推荐日常开发
+直接将本地代码同步到服务器并自动重启，无需经过 GitHub，速度最快（通常 <5秒）。
 
 ```bash
-# 1. 修改代码后提交
+# 在项目根目录执行
+./scripts/deploy.sh
+```
+**`deploy.sh` 的执行逻辑：**
+1.  **本地构建**：自动运行 `npm run build` 编译前端代码。
+2.  **增量同步**：使用 `rsync` 将前后端代码同步到服务器 (排除 `node_modules` 等无关文件)。
+3.  **远程重启**：通过 SSH 触发服务器上的 PM2 重启服务。
+
+---
+
+### 2. 标准部署 (Standard Mode) - 版本发布/备份
+通过 GitHub 进行版本控制，适用于里程碑发布或多人协作。
+
+#### A. 推送代码 (各开发者)
+```bash
+# 1. 提交本地更改
 git add .
 git commit -m "feat: 描述更新内容"
 
 # 2. 推送到 GitHub
-git push
+git push origin master
 ```
 
-### 2. 服务器更新 (Mac mini)
+#### B. 服务器自动更新 (Mac mini)
+服务器运行着 **哨兵脚本 (`longhorn-watcher`)**，每 60 秒检测一次 GitHub 更新。
+-   **机制**：一旦检测到新 Commit，自动 `git pull` -> `npm install` -> `pm2 restart`。
+-   **优点**：全自动，无需登录服务器。
 
-#### 自动模式 (推荐)
-Mac mini 上运行着哨兵脚本 (`longhorn-watcher`)，它每 60 秒检测一次 GitHub 更新。
-- **只要您 Push 代码，服务器会在 1 分钟内自动 拉取 -> 构建 -> 重启。**
-- 无需登录服务器操作。
-
-#### 手动模式 (紧急情况)
-如果需要立即更新或自动更新失效：
-
+#### C. 服务器手动更新 (紧急情况)
+如果自动更新失效，可 SSH 登录手动操作：
 ```bash
-# 1. SSH 连接
-ssh mini  # 需配置 .ssh/config
-
-# 2. 手动执行部署脚本
+ssh mini
 cd ~/Documents/server/Longhorn
+git pull
+npm install
 npm run deploy
 ```
 

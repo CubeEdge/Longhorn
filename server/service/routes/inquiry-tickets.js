@@ -152,7 +152,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 created_from,
                 created_to,
                 keyword,
-                product_id
+                product_id,
+                product_family
             } = req.query;
 
             const user = req.user;
@@ -188,6 +189,10 @@ module.exports = function (db, authenticate, serviceUpload) {
             if (product_id) {
                 conditions.push('product_id = ?');
                 params.push(product_id);
+            }
+            if (product_family) {
+                conditions.push('product_family = ?');
+                params.push(product_family);
             }
             if (dealer_id) {
                 conditions.push('dealer_id = ?');
@@ -273,19 +278,15 @@ module.exports = function (db, authenticate, serviceUpload) {
                 created_from,
                 created_to,
                 keyword,
-                product_id
+                product_id,
+                product_family
             } = req.query;
-
-            console.log('DEBUG: GET /inquiry-tickets');
-            console.log('Query:', req.query);
-            console.log('User:', req.user);
 
             const user = req.user;
             let conditions = [];
             let params = [];
 
             // Role-based filtering
-            console.log('DEBUG: Checkpoint 1 - Roles');
             if (user.user_type === 'Dealer') {
                 conditions.push('t.dealer_id = ?');
                 params.push(user.dealer_id);
@@ -297,14 +298,12 @@ module.exports = function (db, authenticate, serviceUpload) {
                 params.push(user.id, user.id);
             }
 
-            console.log('DEBUG: Checkpoint 2 - Params');
             // Filter conditions
             if (status) {
                 const statuses = status.split(',');
                 conditions.push(`t.status IN (${statuses.map(() => '?').join(',')})`);
                 params.push(...statuses);
             }
-            console.log('DEBUG: Checkpoint 3 - ServiceType');
             if (service_type) {
                 conditions.push('t.service_type = ?');
                 params.push(service_type);
@@ -317,7 +316,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.product_id = ?');
                 params.push(product_id);
             }
-            console.log('DEBUG: Checkpoint 4 - Dealer');
+            if (product_family) {
+                conditions.push('t.product_family = ?');
+                params.push(product_family);
+            }
             if (dealer_id) {
                 conditions.push('t.dealer_id = ?');
                 params.push(dealer_id);
@@ -329,7 +331,6 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.handler_id = ?');
                 params.push(parseInt(handler_id));
             }
-            console.log('DEBUG: Checkpoint 5 - Customer');
             if (customer_id) {
                 conditions.push('t.customer_id = ?');
                 params.push(customer_id);
@@ -338,7 +339,6 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.serial_number LIKE ?');
                 params.push(`%${serial_number}%`);
             }
-            console.log('DEBUG: Checkpoint 6 - Dates');
             if (created_from) {
                 conditions.push('date(t.created_at) >= date(?)');
                 params.push(created_from);
@@ -347,7 +347,6 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('date(t.created_at) <= date(?)');
                 params.push(created_to);
             }
-            console.log('DEBUG: Checkpoint 7 - Keyword');
             if (keyword) {
                 conditions.push(`(
                     t.ticket_number LIKE ? OR 
@@ -360,8 +359,6 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
-            console.log('DEBUG: WhereClause:', whereClause);
-            console.log('DEBUG: Params:', params);
 
             // Validate sort
             const allowedSorts = ['created_at', 'updated_at', 'status', 'ticket_number'];
@@ -387,12 +384,6 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ORDER BY t.${safeSortBy} ${safeSortOrder}
                 LIMIT ? OFFSET ?
             `).all(...params, parseInt(page_size), offset);
-
-            console.log('DEBUG: Count Result:', countResult);
-            console.log('DEBUG: Tickets Found:', tickets.length);
-            if (tickets.length > 0) {
-                console.log('DEBUG: First Ticket:', tickets[0]);
-            }
 
             res.json({
                 success: true,

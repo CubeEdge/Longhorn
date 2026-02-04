@@ -1,5 +1,5 @@
 import React from 'react';
-import { Headphones, FolderOpen, Network, LogOut } from 'lucide-react';
+import { Headphones, FolderOpen, LogOut } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { useAuthStore } from '../store/useAuthStore';
 import type { ModuleType } from '../hooks/useNavigationState';
@@ -8,14 +8,14 @@ interface AppRailProps {
   currentModule: ModuleType;
   onModuleChange: (module: ModuleType) => void;
   canAccessFiles: boolean;
-  userRole: string;
+  userRole: string; // Kept in interface to avoid breaking caller, but unused in component
 }
 
 const AppRail: React.FC<AppRailProps> = ({
   currentModule,
   onModuleChange,
   canAccessFiles,
-  userRole
+  // userRole - removed unused destructuring
 }) => {
   const { t } = useLanguage();
   const { logout } = useAuthStore();
@@ -60,17 +60,6 @@ const AppRail: React.FC<AppRailProps> = ({
           </button>
         )}
 
-        {/* Admin Module (if Admin) */}
-        {userRole === 'Admin' && (
-          <button
-            className={`rail-item ${window.location.pathname.startsWith('/admin') ? 'active' : ''}`}
-            onClick={() => window.location.href = '/admin'}
-            title={t('sidebar.system_admin')}
-          >
-            <Network size={24} />
-            <span className="rail-label">Admin</span>
-          </button>
-        )}
       </nav>
 
       {/* Bottom Actions */}

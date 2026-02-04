@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Package } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Package, List, Layers, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useTicketStore } from '../../store/useTicketStore';
 import { useCachedTickets } from '../../hooks/useCachedTickets';
+import { KineSelect } from '../UI/KineSelect';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
+import { format, subDays, subMonths, formatDistanceToNow } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 
 interface RMATicket {
     id: number;
@@ -47,59 +51,94 @@ const RMATicketListPage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
-    // Filter states derived from URL
+    // Filters
+    const timeScope = searchParams.get('time_scope') || '7d';
+    const productFamilyScope = searchParams.get('product_family') || 'all';
     const statusFilter = searchParams.get('status') || 'all';
     const channelFilter = searchParams.get('channel_code') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
+    const viewModeParam = searchParams.get('view') || 'list';
 
-    // Local search state for input
-    const [searchInput, setSearchInput] = useState(searchTerm);
+    // Local States
+    const [viewMode, setViewMode] = useState<'list' | 'card'>(viewModeParam as 'list' | 'card');
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [localSearch, setLocalSearch] = useState(searchTerm);
+    const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [customRange, setCustomRange] = useState({
+        start: format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
+        end: format(new Date(), 'yyyy-MM-dd')
+    });
 
-    // Sync local input when URL changes
+    // Debounce Search
     useEffect(() => {
-        setSearchInput(searchTerm);
-    }, [searchTerm]);
+        const timer = setTimeout(() => {
+            if (localSearch !== searchTerm) {
+                updateFilter({ keyword: localSearch });
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [localSearch]);
 
-    const [showFilters, setShowFilters] = useState(false);
-
-    // Build params for SWR hook
+    // Build params
     const queryParams = useMemo(() => {
         const params: Record<string, string | number | undefined> = {
             page,
             page_size: pageSize
         };
+
+        if (timeScope === '7d') {
+            params.created_from = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+        } else if (timeScope === '30d') {
+            params.created_from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        } else if (timeScope === 'custom') {
+            const start = searchParams.get('start_date');
+            const end = searchParams.get('end_date');
+            if (start) params.created_from = start;
+            if (end) params.created_to = end;
+        }
+
+        if (productFamilyScope !== 'all') params.product_family = productFamilyScope;
         if (statusFilter !== 'all') params.status = statusFilter;
         if (channelFilter !== 'all') params.channel_code = channelFilter;
         if (searchTerm) params.keyword = searchTerm;
-        return params;
-    }, [page, pageSize, statusFilter, channelFilter, searchTerm]);
 
-    // SWR-based data fetching
+        return params;
+    }, [page, pageSize, timeScope, productFamilyScope, statusFilter, channelFilter, searchTerm, searchParams]);
+
     const { tickets, meta, isLoading } = useCachedTickets<RMATicket>('rma', queryParams);
     const total = meta.total;
+    const totalPages = Math.ceil(total / pageSize);
 
-    // Helper to update filters
     const updateFilter = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
         setSearchParams({ ...current, ...newParams });
         setPage(1);
     };
 
-    const setStatusFilter = (val: string) => updateFilter({ status: val });
-    const setChannelFilter = (val: string) => updateFilter({ channel_code: val });
-
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        updateFilter({ keyword: searchInput });
+    const applyCustomDate = () => {
+        if (customRange.start && customRange.end) {
+            updateFilter({
+                time_scope: 'custom',
+                start_date: customRange.start,
+                end_date: customRange.end
+            });
+            setShowDatePicker(false);
+        }
     };
 
-
-    const totalPages = Math.ceil(total / pageSize);
-
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const toggleViewMode = (mode: 'list' | 'card') => {
+        setViewMode(mode);
+        updateFilter({ view: mode });
     };
+
+    const productFamilies = [
+        { id: 'all', label: t('filter.all_products') },
+        { id: 'Current Cine Cameras', label: 'Current Cine Cameras' },
+        { id: 'Archived Cine Cameras', label: 'Archived Cine Cameras' },
+        { id: 'Eagle e-Viewfinder', label: 'Eagle e-Viewfinder' },
+        { id: 'Universal Accessories', label: 'Universal Accessories' }
+    ];
 
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
@@ -124,111 +163,202 @@ const RMATicketListPage: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '4px' }}>{t('rma_ticket.title')}</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                        {t('rma_ticket.total_count', { count: total })}
-                    </p>
-                </div>
-                <button
-                    onClick={() => openModal('RMA')}
-                    className="btn btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                    <Plus size={18} />
-                    {t('rma_ticket.create')}
-                </button>
-            </div>
+        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-            {/* Search & Filters */}
-            <div style={{
-                background: 'var(--bg-card)',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '16px',
-                border: '1px solid var(--border-color)'
-            }}>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <form onSubmit={handleSearchSubmit} style={{ flex: 1, minWidth: '200px', display: 'flex', gap: '8px' }}>
-                        <div style={{ flex: 1, position: 'relative' }}>
-                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                            <input
-                                type="text"
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                placeholder={t('rma_ticket.search_placeholder')}
-                                className="form-control"
-                                style={{ paddingLeft: '40px' }}
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-secondary">{t('action.search')}</button>
-                    </form>
-
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="btn btn-secondary"
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                        <Filter size={16} />
-                        {t('action.filter')}
-                    </button>
-                </div>
-
-                {/* Quick Filters */}
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '12px' }}>
-                    <button
-                        onClick={() => updateFilter({ status: 'Pending', channel_code: 'all', keyword: '' })}
-                        className={`btn btn-sm ${statusFilter === 'Pending' ? 'btn-primary' : 'btn-ghost'}`}
-                    >
-                        {t('rma_ticket.status.pending')}
-                    </button>
-                    <button
-                        onClick={() => updateFilter({ status: 'InRepair', channel_code: 'all', keyword: '' })}
-                        className={`btn btn-sm ${statusFilter === 'InRepair' ? 'btn-primary' : 'btn-ghost'}`}
-                    >
-                        {t('rma_ticket.status.in_repair')}
-                    </button>
-                    <button
-                        onClick={() => updateFilter({ status: 'all', channel_code: 'all', keyword: '' })}
-                        className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
-                    >
-                        {t('filter.all_status')}
-                    </button>
-                </div>
-
-                {showFilters && (
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="form-control"
-                            style={{ width: 'auto' }}
-                        >
-                            <option value="all">{t('filter.all_status')}</option>
-                            <option value="Pending">{t('rma_ticket.status.pending')}</option>
-                            <option value="Assigned">{t('rma_ticket.status.assigned')}</option>
-                            <option value="InRepair">{t('rma_ticket.status.in_repair')}</option>
-                            <option value="Repaired">{t('rma_ticket.status.repaired')}</option>
-                            <option value="Shipped">{t('rma_ticket.status.shipped')}</option>
-                            <option value="Completed">{t('rma_ticket.status.completed')}</option>
-                        </select>
-                        <select
-                            value={channelFilter}
-                            onChange={(e) => setChannelFilter(e.target.value)}
-                            className="form-control"
-                            style={{ width: 'auto' }}
-                        >
-                            <option value="all">{t('filter.all_channels')}</option>
-                            <option value="D">{t('rma_ticket.channel.dealer')}</option>
-                            <option value="C">{t('rma_ticket.channel.customer')}</option>
-                            <option value="I">{t('rma_ticket.channel.internal')}</option>
-                        </select>
+            {/* Filter Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {/* Time Scope */}
+                    <div style={{ minWidth: '150px' }}>
+                        <KineSelect
+                            value={timeScope}
+                            onChange={(val) => {
+                                if (val === 'custom') {
+                                    setShowDatePicker(true);
+                                } else {
+                                    updateFilter({ time_scope: val, start_date: '', end_date: '' });
+                                }
+                            }}
+                            options={[
+                                { value: '7d', label: t('filter.last_7_days') },
+                                { value: '30d', label: t('filter.last_30_days') },
+                                {
+                                    value: 'custom',
+                                    label: (timeScope === 'custom' && searchParams.get('start_date') && searchParams.get('end_date'))
+                                        ? `${searchParams.get('start_date')} ~ ${searchParams.get('end_date')}`
+                                        : '自定义日期' // Fallback if translations not ready, but user asked for it
+                                }
+                            ]}
+                        />
                     </div>
-                )}
+
+                    {/* Product Family */}
+                    <div style={{ minWidth: '180px' }}>
+                        <KineSelect
+                            value={productFamilyScope}
+                            onChange={(val) => updateFilter({ product_family: val })}
+                            options={productFamilies.map(fam => ({ value: fam.id, label: fam.label }))}
+                        />
+                    </div>
+                </div>
+
+                {/* Right: Search & Actions */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* View Mode */}
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
+                        <button
+                            onClick={() => toggleViewMode('list')}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                                background: viewMode === 'list' ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: viewMode === 'list' ? '#fff' : 'var(--text-tertiary)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <Layers size={16} />
+                        </button>
+                        <button
+                            onClick={() => toggleViewMode('card')}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                                background: viewMode === 'card' ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: viewMode === 'card' ? '#fff' : 'var(--text-tertiary)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <List size={16} />
+                        </button>
+                    </div>
+
+                    {/* Expanding Search */}
+                    <div style={{ display: 'flex', alignItems: 'center', height: '40px' }}>
+                        {!searchOpen ? (
+                            <button
+                                onClick={() => setSearchOpen(true)}
+                                style={{
+                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Search size={16} />
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '8px', animation: 'fadeIn 0.2s ease-out' }}>
+                                <div style={{ position: 'relative', width: '240px', height: '40px' }}>
+                                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder={t('rma_ticket.search_placeholder')}
+                                        style={{
+                                            width: '100%', height: '100%', padding: '0 12px 0 32px',
+                                            borderRadius: '8px', border: '1px solid #FFD700', background: '#1C1C1E',
+                                            color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                        }}
+                                        value={localSearch}
+                                        onChange={(e) => setLocalSearch(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { updateFilter({ keyword: localSearch }); } }}
+                                        onBlur={() => { if (!localSearch) setSearchOpen(false); }}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => updateFilter({ keyword: localSearch })}
+                                    style={{
+                                        height: '40px', padding: '0 16px', borderRadius: '8px', border: 'none',
+                                        background: '#FFD700', color: '#000', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
+                                    }}
+                                >
+                                    {t('action.confirm')}
+                                </button>
+                                <button
+                                    onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+                                    style={{
+                                        width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                                        background: showAdvancedFilter ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                                        color: showAdvancedFilter ? '#FFD700' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Filter size={16} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => openModal('RMA')}
+                        className="btn"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
+                            padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
+                            background: 'rgba(255, 215, 0, 0.1)',
+                            border: '1px solid rgba(255, 215, 0, 0.5)',
+                            color: '#FFD700',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)';
+                            e.currentTarget.style.borderColor = '#FFD700';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.5)';
+                        }}
+                    >
+                        <Plus size={16} />
+                        {t('rma_ticket.title')}
+                    </button>
+                </div>
             </div>
+
+            {/* Advanced Filters Panel */}
+            {showAdvancedFilter && (
+                <div style={{
+                    marginBottom: '16px', padding: '16px', background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+                    display: 'flex', alignItems: 'center', gap: '24px', animation: 'slideDown 0.2s ease-out'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>STATUS</span>
+                        <KineSelect
+                            value={statusFilter}
+                            onChange={(val) => updateFilter({ status: val })}
+                            options={[
+                                { value: 'all', label: t('filter.all_status') },
+                                { value: 'Pending', label: t('rma_ticket.status.pending') },
+                                { value: 'Assigned', label: t('rma_ticket.status.assigned') },
+                                { value: 'InRepair', label: t('rma_ticket.status.in_repair') },
+                                { value: 'Repaired', label: t('rma_ticket.status.repaired') },
+                                { value: 'Shipped', label: t('rma_ticket.status.shipped') },
+                                { value: 'Completed', label: t('rma_ticket.status.completed') },
+                                { value: 'Cancelled', label: t('rma_ticket.status.cancelled') }
+                            ]}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>CHANNEL</span>
+                        <KineSelect
+                            value={channelFilter}
+                            onChange={(val) => updateFilter({ channel_code: val })}
+                            options={[
+                                { value: 'all', label: 'All Channels' },
+                                { value: 'D', label: t('rma_ticket.channel.dealer') },
+                                { value: 'C', label: t('rma_ticket.channel.customer') },
+                                { value: 'I', label: t('rma_ticket.channel.internal') }
+                            ]}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Ticket List */}
             {isLoading && tickets.length === 0 ? (
@@ -242,65 +372,32 @@ const RMATicketListPage: React.FC = () => {
                     <p>{t('rma_ticket.empty_hint')}</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {tickets.map((ticket) => (
                         <div
                             key={ticket.id}
                             onClick={() => navigate(`/service/rma-tickets/${ticket.id}`)}
                             style={{
-                                background: 'var(--bg-card)',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                border: '1px solid var(--border-color)',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                background: 'var(--bg-card)', borderRadius: '12px', padding: '16px',
+                                border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',
+                                position: 'relative'
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
                             onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                                 <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                                         <span style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.ticket_number}</span>
-                                        <span style={{
-                                            padding: '2px 6px',
-                                            borderRadius: '4px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            background: '#e5e7eb',
-                                            color: '#374151'
-                                        }}>
+                                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: '#e5e7eb', color: '#374151' }}>
                                             {getChannelLabel(ticket.channel_code)}
                                         </span>
                                         {ticket.severity && (
-                                            <span style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '2px',
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 600,
-                                                background: `${severityColors[ticket.severity]}20`,
-                                                color: severityColors[ticket.severity]
-                                            }}>
-                                                <AlertTriangle size={10} />
-                                                P{ticket.severity}
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: `${severityColors[ticket.severity]}20`, color: severityColors[ticket.severity] }}>
+                                                <AlertTriangle size={10} /> P{ticket.severity}
                                             </span>
                                         )}
-                                        <span
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                padding: '2px 8px',
-                                                borderRadius: '12px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500,
-                                                background: `${statusColors[ticket.status] || '#6b7280'}20`,
-                                                color: statusColors[ticket.status] || '#6b7280'
-                                            }}
-                                        >
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500, background: `${statusColors[ticket.status] || '#6b7280'}20`, color: statusColors[ticket.status] || '#6b7280' }}>
                                             {getStatusLabel(ticket.status)}
                                         </span>
                                     </div>
@@ -309,14 +406,16 @@ const RMATicketListPage: React.FC = () => {
                                     </p>
                                 </div>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                    {formatDate(ticket.created_at)}
+                                    {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: zhCN })}
                                 </span>
                             </div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '12px' }}>
                                 {ticket.problem_description}
                             </p>
+
                             {(ticket.product || ticket.assigned_to) && (
-                                <div style={{ display: 'flex', gap: '16px', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                     {ticket.product && <span>📷 {ticket.product.name}</span>}
                                     {ticket.serial_number && <span>SN: {ticket.serial_number}</span>}
                                     {ticket.assigned_to && <span>🔧 {ticket.assigned_to.name}</span>}
@@ -327,26 +426,52 @@ const RMATicketListPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Custom Date Modal */}
+            {showDatePicker && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 2000,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }} onClick={() => setShowDatePicker(false)}>
+                    <div style={{
+                        width: '400px', background: '#1C1C1E', borderRadius: '16px', padding: '24px',
+                        border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', marginBottom: '20px' }}>
+                            {t('filter.custom_range')}
+                        </h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                            <CustomDatePicker
+                                label={t('common.start_date')}
+                                value={customRange.start}
+                                onChange={v => setCustomRange(p => ({ ...p, start: v }))}
+                            />
+                            <CustomDatePicker
+                                label={t('common.end_date')}
+                                value={customRange.end}
+                                onChange={v => setCustomRange(p => ({ ...p, end: v }))}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setShowDatePicker(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>
+                                {t('action.cancel')}
+                            </button>
+                            <button onClick={applyCustomDate} style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', background: '#FFD700', color: '#000', fontWeight: 600, cursor: 'pointer' }}>
+                                {t('action.confirm')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Pagination */}
             {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px' }}>
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="btn btn-secondary btn-sm"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-                    <span style={{ fontSize: '0.875rem' }}>
-                        {page} / {totalPages}
-                    </span>
-                    <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="btn btn-secondary btn-sm"
-                    >
-                        <ChevronRight size={16} />
-                    </button>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', paddingBottom: '24px' }}>
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-secondary btn-sm"><ChevronLeft size={16} /></button>
+                    <span style={{ fontSize: '0.875rem' }}>{page} / {totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-secondary btn-sm"><ChevronRight size={16} /></button>
                 </div>
             )}
         </div>

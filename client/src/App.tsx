@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import {
@@ -14,9 +15,7 @@ import {
   Network,
   LayoutDashboard,
   ClipboardList,
-
   MessageCircleQuestion,
-  Search as SearchIcon,
   BookOpen,
   Package
 } from 'lucide-react';
@@ -67,12 +66,13 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
         userRole={user.role}
       />
 
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay - FIX: Use correct class name without extra spaces */}
       <div
         className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
 
+      {/* Sidebar - Always rendered (logic inside handles content) */}
       <Sidebar
         role={user.role}
         isOpen={isSidebarOpen}
@@ -82,7 +82,12 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
 
       <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} currentModule={currentModule} />
-        <div className="content-area" style={{ flex: 1, overflow: 'auto' }}>
+
+        {/* Content Area - Service module handles its own layout/scrolling, Files module uses standard padding */}
+        <div
+          className={currentModule === 'service' ? '' : 'content-area'}
+          style={currentModule === 'service' ? { flex: 1, overflow: 'hidden', position: 'relative' } : { flex: 1, overflow: 'auto' }}
+        >
           <Outlet />
         </div>
       </main>
@@ -210,7 +215,6 @@ const App: React.FC = () => {
   );
 };
 
-// Helper component for dept redirects
 const DeptRedirect: React.FC = () => {
   const location = useLocation();
   const newPath = location.pathname.replace(/^\/dept\//, '/files/dept/');
@@ -253,6 +257,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
   const getDeptCode = (name: string): string => {
     // 1. Try to extract code from parentheses, e.g., "Market (MS)" -> "MS"
     const match = name.match(/\(([A-Z]+)\)/);
+    // ... existing helper logic ...
     if (match) return match[1];
 
     // 2. If name itself is short uppercase (like "MS"), use it
@@ -272,7 +277,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
   };
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${isOpen ? 'open' : ''} `}>
       <div className="sidebar-brand">
         <h2 className="sidebar-title">{t('app.name')}</h2>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -281,106 +286,80 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* ==================== SERVICE MODULE ITEMS ==================== */}
         {currentModule === 'service' && (
           <>
-            <Link to="/service/inquiry-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/service/inquiry-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''} `} onClick={onClose}>
               <MessageCircleQuestion size={18} />
               <span>{t('sidebar.inquiry_tickets')}</span>
             </Link>
-            <Link to="/service/rma-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/service/rma-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''} `} onClick={onClose}>
               <ClipboardList size={18} />
               <span>{t('sidebar.rma_tickets')}</span>
             </Link>
-            <Link to="/service/dealer-repairs" className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/service/dealer-repairs" className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''} `} onClick={onClose}>
               <Package size={18} />
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
-            <Link to="/service/context" className={`sidebar-item ${location.pathname === '/service/context' ? 'active' : ''}`} onClick={onClose}>
-              <SearchIcon size={18} />
-              <span>{t('sidebar.context')}</span>
-            </Link>
-            <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''}`} onClick={onClose}>
+
+            <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''} `} onClick={onClose}>
               <BookOpen size={18} />
               <span>{t('sidebar.knowledge')}</span>
             </Link>
           </>
         )}
 
-        {/* ==================== FILES MODULE ITEMS ==================== */}
         {currentModule === 'files' && (
           <>
-            {/* Quick Access */}
-            <Link to="/files/starred" className={`sidebar-item ${location.pathname === '/files/starred' ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/files/starred" className={`sidebar-item ${location.pathname === '/files/starred' ? 'active' : ''} `} onClick={onClose}>
               <Star size={18} />
               <span>{t('sidebar.favorites')}</span>
             </Link>
-            <Link to="/files/shares" className={`sidebar-item ${location.pathname === '/files/shares' ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/files/shares" className={`sidebar-item ${location.pathname === '/files/shares' ? 'active' : ''} `} onClick={onClose}>
               <Share2 size={18} />
               <span>{t('share.my_shares')}</span>
             </Link>
 
-            {/* Divider */}
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
-            {/* Personal Space */}
-            <Link to="/files/personal" className={`sidebar-item ${location.pathname.startsWith('/files/personal') ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/files/personal" className={`sidebar-item ${location.pathname.startsWith('/files/personal') ? 'active' : ''} `} onClick={onClose}>
               <User size={18} />
               <span>{t('sidebar.personal')}</span>
             </Link>
 
-            {/* Divider */}
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
-            {/* Departments */}
             {Array.from(new Map(accessibleDepts.map(d => [getDeptCode(d.name), d])).values()).map((dept: any) => {
               const code = getDeptCode(dept.name);
               const Icon = deptIcons[code] || Box;
 
-              // Translation Logic:
               const transKey = `dept.${code}`;
               const translated = t(transKey as any);
               const displayName = translated !== transKey ? `${translated} (${code})` : dept.name;
 
               const isActive = location.pathname.startsWith(`/files/dept/${code}`) || location.pathname.includes(encodeURIComponent(code));
               return (
-                <Link key={dept.name} to={`/files/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''}`} onClick={onClose}>
+                <Link key={dept.name} to={`/files/dept/${code}`} className={`sidebar-item ${isActive ? 'active' : ''} `} onClick={onClose}>
                   <Icon size={20} />
                   <span>{displayName}</span>
                 </Link>
               );
             })}
 
-            {/* Divider before recycle */}
             <div style={{ marginTop: 'auto' }} />
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
-            {/* Recycle Bin */}
-            <Link to="/files/recycle" className={`sidebar-item ${location.pathname === '/files/recycle' ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/files/recycle" className={`sidebar-item ${location.pathname === '/files/recycle' ? 'active' : ''} `} onClick={onClose}>
               <Trash2 size={20} />
               <span>{t('browser.recycle')}</span>
             </Link>
           </>
         )}
 
-        {/* ==================== ADMIN SECTION (shown in both modules) ==================== */}
-        {role === 'Admin' && (
-          <>
-            <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-            <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`} onClick={onClose}>
-              <Network size={18} />
-              <span>{t('sidebar.system_admin')}</span>
-            </Link>
-          </>
-        )}
-
-        {/* Department Management - For Lead Users */}
         {role === 'Lead' && (
           <>
             <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-            <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''}`} onClick={onClose}>
+            <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''} `} onClick={onClose}>
               <Network size={20} />
               <span>{t('admin.dept_manage')}</span>
             </Link>
@@ -402,7 +381,7 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
     const fetchStats = async () => {
       try {
         const res = await axios.get('/api/user/stats', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token} ` }
         });
         setStats(res.data);
       } catch (err) {
@@ -470,7 +449,11 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 };
 
 
-// Service Module Stats Card for TopBar (Context Aware)
+
+// TopBar Component
+
+
+
 const ServiceTopBarStats: React.FC = () => {
   const { token } = useAuthStore();
   const navigate = useNavigate();
@@ -501,7 +484,7 @@ const ServiceTopBarStats: React.FC = () => {
         else if (context === 'rma') endpoint = '/api/v1/rma-tickets/stats';
         else if (context === 'dealer') endpoint = '/api/v1/dealer-repairs/stats';
 
-        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token} ` } });
         setStats(res.data?.data || {});
       } catch (err) {
         console.error('Failed to fetch stats:', err);
@@ -513,20 +496,32 @@ const ServiceTopBarStats: React.FC = () => {
     fetchStats();
   }, [context, token]);
 
-  if (!context || !stats) return null;
+  if (!context) return null;
+
+  const displayStats = stats || { total: '-', by_status: {} };
 
   const handleFilter = (status: string) => {
     navigate({
       pathname: location.pathname,
-      search: `?status=${status}`
+      search: `? status = ${status} `
     });
   };
 
   const renderStatItem = (key: string, label: string, color: string, countKey?: string) => {
-    const count = key === 'all'
-      ? (stats.total || 0)
-      : (stats.by_status?.[key] || (context === 'rma' && stats.by_status?.[countKey || key]) || 0); // Special handling if needed
+    // Correctly extract count based on context
+    let rawCount;
 
+    if (key === 'all') {
+      rawCount = displayStats.total;
+    } else {
+      // For RMA, we might use a special countKey if provided
+      const effectiveKey = (context === 'rma' && countKey) ? countKey : key;
+      rawCount = displayStats.by_status?.[effectiveKey];
+    }
+
+    // Default to 0 if valid stats object exists but key is missing/undefined
+    // Default to '-' if stats are still loading (null)
+    const count = (stats && rawCount !== undefined) ? rawCount : (stats ? 0 : '-');
     const isActive = currentStatus === key;
 
     return (
@@ -570,9 +565,11 @@ const ServiceTopBarStats: React.FC = () => {
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
+          {renderStatItem('Pending', '待处理', '#ef4444')}
+          {divider}
           {renderStatItem('InProgress', '处理中', '#3b82f6')}
           {divider}
-          {renderStatItem('AwaitingFeedback', '待反馈', '#8b5cf6')}
+          {renderStatItem('AwaitingFeedback', '待反馈', '#d946ef')}
           {divider}
           {renderStatItem('Resolved', '已解决', '#10b981')}
         </>
@@ -586,7 +583,6 @@ const ServiceTopBarStats: React.FC = () => {
           {divider}
           {renderStatItem('InRepair', '维修中', '#3b82f6')}
           {divider}
-          {/* If "Completed" status exists in enum, add it here. RMATicketListPage didn't show it explicitly but let's assume Completed or Returned */}
           {renderStatItem('Returned', '已寄回', '#10b981')}
         </>
       )}
@@ -635,7 +631,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
 
   return (
     <header className="top-bar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button className="menu-toggle" onClick={onMenuClick}>
           <Menu size={24} />
         </button>
@@ -647,9 +643,9 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
           </div>
         )}
 
-        {/* Stats card for SERVICE module */}
+        {/* SERVICE MODULE: Stats Only (Nav is in Sidebar) */}
         {currentModule === 'service' && (
-          <div className="hidden-mobile">
+          <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center' }}>
             <ServiceTopBarStats />
           </div>
         )}
@@ -873,14 +869,17 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                 fontSize: '0.75rem',
                 color: 'rgba(255,255,255,0.3)',
                 textAlign: 'center',
-                lineHeight: '1.5'
+                fontFamily: 'monospace'
               }}>
-                <div>Longhorn v{__APP_VERSION__}</div>
-                <div style={{ margin: '4px 0' }}>
-                  <div style={{ opacity: 0.9 }}>代码版本: {__APP_COMMIT_TIME__}</div>
-                  <div style={{ opacity: 0.6 }}>构建部署: {__APP_BUILD_TIME__}</div>
+                {/* @ts-ignore */}
+                <div style={{ marginBottom: 4 }}>Longhorn {window.__APP_FULL_VERSION__ || 'v1.5.14'}</div>
+                {/* @ts-ignore */}
+                <div style={{ opacity: 0.8 }}>Code: {window.__APP_COMMIT_TIME__ || '2026-02-04 22:20'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                  {/* @ts-ignore */}
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>v{window.__APP_VERSION__ || '1.1.7'}</span>
                 </div>
-                <div style={{ opacity: 0.3, fontSize: '0.65rem' }}>{__APP_COMMIT__}</div>
               </div>
             </div>
           )}

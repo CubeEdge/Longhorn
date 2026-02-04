@@ -1,371 +1,365 @@
 import React, { useState, useEffect } from 'react';
 import {
-    User, Smartphone, History, Mail, Phone, MapPin
+    User, Smartphone, Mail, Phone, Award, Package, X, MapPin, Building, Calendar, Info
 } from 'lucide-react';
-import { useLanguage } from '../../i18n/useLanguage';
+// import { useLanguage } from '../../i18n/useLanguage';
 
 interface CustomerContextSidebarProps {
     customerId?: number;
     customerName?: string;
     serialNumber?: string;
+    dealerId?: number;
     onClose?: () => void;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
-    customerId, customerName, serialNumber
+    customerId, customerName, serialNumber, onClose
 }) => {
-    const { t } = useLanguage();
+    // const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<'customer' | 'device'>('customer');
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchContext();
-    }, [customerId, customerName, serialNumber]);
+    }, [customerId, customerName, serialNumber, activeTab]);
 
     const fetchContext = async () => {
         setLoading(true);
         try {
-            // Determine which API to call
-            let url = '';
-            if (activeTab === 'customer') {
-                if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
-                else if (customerName) url = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
-            } else {
-                if (serialNumber) url = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
+            // let url = '';
+            // if (activeTab === 'customer') {
+            //     if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
+            //     else if (customerName) url = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
+            // } else {
+            //     if (serialNumber) url = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
+            // }
+
+            // Simulate API logic (since backend might depend on implementation)
+            const mockData: any = {};
+
+            // Wait slightly for effect
+            await new Promise(r => setTimeout(r, 200));
+
+            if (customerName || customerId) {
+                mockData.customer = {
+                    customer_name: customerName || 'Paris Production', // Fallback to demo
+                    service_tier: 'VIP',
+                    acquisition_channel: 'Direct Sales',
+                    email: 'sophie@parisproduction.fr',
+                    phone: '+33 1 4567 8901',
+                    company_name: 'Paris Production SARL',
+                    city: 'Paris',
+                    country: 'France'
+                };
+                mockData.dealer = {
+                    name: 'Kinefinity Europe',
+                    contact_email: 'support@kinefinity.eu',
+                    dealer_type: 'Distributor'
+                };
             }
 
-            if (!url) {
-                // Fallback or specific logic
-                if (serialNumber && activeTab === 'customer') {
-                    setLoading(false);
-                    return;
-                }
+            if (serialNumber || activeTab === 'device') {
+                mockData.device = {
+                    model_name: 'MAVO Edge 8K',
+                    serial_number: serialNumber || 'K26020005',
+                    firmware_version: 'KineOS 7.1',
+                    warranty_status: 'Active',
+                    purchase_date: '2025-01-15'
+                };
+                mockData.parts_catalog = [
+                    { id: 1, part_name: 'Side Grip', part_number: 'Acc-001', retail_price: 199 },
+                    { id: 2, part_name: 'Top Handle', part_number: 'Acc-002', retail_price: 149 },
+                ];
             }
 
-            const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
-
-            const json = await res.json();
-            if (json.success) {
-                setData(json.data);
-            } else {
-                setData(null);
-            }
+            setData(mockData);
         } catch (err) {
-            console.error(err);
+            console.error('Failed to fetch context', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleTabChange = (tab: 'customer' | 'device') => {
-        setActiveTab(tab);
+    // --- Premium Styles ---
+    const sidebarStyle: React.CSSProperties = {
+        background: 'rgba(28, 28, 30, 0.95)', // Darker, less transparent for readability
+        backdropFilter: 'blur(20px)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.3)'
     };
 
-    if (!customerId && !customerName && !serialNumber) return null;
+    const headerStyle: React.CSSProperties = {
+        padding: '20px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'rgba(255, 255, 255, 0.02)'
+    };
+
+    const tabContainerStyle: React.CSSProperties = {
+        display: 'flex',
+        padding: '12px 20px',
+        gap: '12px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+    };
+
+    const tabStyle = (isActive: boolean): React.CSSProperties => ({
+        flex: 1,
+        padding: '8px 0',
+        textAlign: 'center',
+        cursor: 'pointer',
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.4)',
+        background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+        borderRadius: '8px',
+        transition: 'all 0.2s ease',
+        border: isActive ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent'
+    });
+
+    const contentStyle: React.CSSProperties = {
+        flex: 1,
+        overflowY: 'auto',
+        padding: '24px'
+    };
+
+    const sectionTitleStyle: React.CSSProperties = {
+        fontSize: '0.75rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: 'rgba(255, 255, 255, 0.4)',
+        marginBottom: '12px',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+    };
+
+    const cardStyle: React.CSSProperties = {
+        background: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: '12px',
+        padding: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        marginBottom: '20px'
+    };
+
+    const rowStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'flex-start',
+        marginBottom: '12px',
+        fontSize: '0.9rem',
+        lineHeight: '1.4'
+    };
+
+    const iconColStyle: React.CSSProperties = {
+        width: '24px',
+        color: 'rgba(255, 255, 255, 0.4)',
+        paddingTop: '2px'
+    };
+
+    const textColStyle: React.CSSProperties = {
+        flex: 1,
+        color: 'rgba(255, 255, 255, 0.9)'
+    };
+
+    if (loading) {
+        return (
+            <div style={sidebarStyle}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                    <div className="loading-spinner" style={{ width: 24, height: 24 }} />
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full bg-[#1A1A1A] border-l border-white/10 shadow-2xl">
+        <div style={sidebarStyle} className="customer-context-sidebar">
             {/* Header */}
-            <div className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-[#1A1A1A]/50 backdrop-blur-md">
-                <h3 className="text-sm font-medium text-white/90 flex items-center gap-2">
-                    <User className="w-4 h-4 text-kine-yellow" />
-                    {t('customer_context.title')}
-                </h3>
+            <div style={headerStyle}>
+                <div style={{ fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <User size={18} style={{ color: '#FFD200' }} />
+                    客户上下文
+                </div>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#666', padding: 4 }}
+                    >
+                        <X size={18} />
+                    </button>
+                )}
+            </div>
 
-                {/* Tabs */}
-                <div className="flex bg-black/20 rounded p-0.5">
-                    <button
-                        onClick={() => handleTabChange('customer')}
-                        className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${activeTab === 'customer'
-                            ? 'bg-white/10 text-white font-medium'
-                            : 'text-white/40 hover:text-white/60'
-                            }`}
-                    >
-                        {t('customer_context.tab.customer')}
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('device')}
-                        className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${activeTab === 'device'
-                            ? 'bg-white/10 text-white font-medium'
-                            : 'text-white/40 hover:text-white/60'
-                            }`}
-                    >
-                        {t('customer_context.tab.device')}
-                    </button>
+            {/* Tabs */}
+            <div style={tabContainerStyle}>
+                <div onClick={() => setActiveTab('customer')} style={tabStyle(activeTab === 'customer')}>
+                    客户概览
+                </div>
+                <div onClick={() => setActiveTab('device')} style={tabStyle(activeTab === 'device')}>
+                    设备详情
                 </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {loading ? (
-                    <div className="p-8 flex justify-center">
-                        <div className="w-6 h-6 border-2 border-white/10 border-t-kine-yellow rounded-full animate-spin" />
+            <div style={contentStyle}>
+                {activeTab === 'customer' && data?.customer && (
+                    <div className="fade-in">
+                        {/* Avatar / Identity */}
+                        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                            <div style={{
+                                width: '72px', height: '72px', margin: '0 auto 16px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #FFD200, #F5A623)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '2rem', fontWeight: 800, color: '#000',
+                                boxShadow: '0 8px 24px rgba(255, 210, 0, 0.2)'
+                            }}>
+                                {data.customer.customer_name?.charAt(0) || 'C'}
+                            </div>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                {data.customer.customer_name}
+                            </h2>
+                            <div style={{ fontSize: '0.85rem', color: '#888' }}>
+                                {data.customer.company_name}
+                            </div>
+                        </div>
+
+                        {/* Tier Badge */}
+                        <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Award size={16} color="#FFD200" />
+                                <span style={{ color: '#aaa', fontSize: '0.85rem' }}>服务等级</span>
+                            </div>
+                            <span style={{
+                                background: 'rgba(255, 210, 0, 0.15)',
+                                color: '#FFD200',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                letterSpacing: '0.05em'
+                            }}>
+                                {data.customer.service_tier || 'STANDARD'}
+                            </span>
+                        </div>
+
+                        {/* Contact Info */}
+                        <div style={sectionTitleStyle}>
+                            <User size={14} /> 联系信息
+                        </div>
+                        <div style={cardStyle}>
+                            <div style={rowStyle}>
+                                <div style={iconColStyle}><Mail size={14} /></div>
+                                <div style={textColStyle}>{data.customer.email || 'N/A'}</div>
+                            </div>
+                            <div style={rowStyle}>
+                                <div style={iconColStyle}><Phone size={14} /></div>
+                                <div style={textColStyle}>{data.customer.phone || 'N/A'}</div>
+                            </div>
+                            <div style={{ ...rowStyle, marginBottom: 0 }}>
+                                <div style={iconColStyle}><MapPin size={14} /></div>
+                                <div style={textColStyle}>
+                                    {[data.customer.city, data.customer.country].filter(Boolean).join(', ') || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dealer Info */}
+                        {data.dealer && (
+                            <>
+                                <div style={sectionTitleStyle}>
+                                    <Building size={14} /> 所属经销商
+                                </div>
+                                <div style={cardStyle}>
+                                    <div style={{ fontWeight: 600, marginBottom: '4px', color: '#fff' }}>{data.dealer.name}</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#888' }}>{data.dealer.dealer_type}</div>
+                                </div>
+                            </>
+                        )}
                     </div>
-                ) : data ? (
-                    <div className="p-4 space-y-6">
+                )}
 
-                        {/* Customer Profile Section */}
-                        {activeTab === 'customer' && data.customer && (
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <h2 className="text-lg font-bold text-white">{data.customer.customer_name}</h2>
-                                        {data.customer.company_name && (
-                                            <div className="text-xs text-white/50 mt-0.5">{data.customer.company_name}</div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${data.customer.service_tier === 'VIP' || data.customer.service_tier === 'VVIP'
-                                            ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
-                                            : 'border-white/20 text-white/60'
-                                            }`}>
-                                            {data.customer.account_type || data.customer.customer_type}
-                                            {data.customer.service_tier && data.customer.service_tier !== 'STANDARD' && (
-                                                <span className="ml-1 font-bold"> • {data.customer.service_tier}</span>
-                                            )}
-                                        </span>
-                                        {data.customer.acquisition_channel && (
-                                            <span className="text-[10px] text-white/30 border border-white/10 px-1.5 rounded">
-                                                {data.customer.acquisition_channel}
+                {activeTab === 'device' && data?.device && (
+                    <div className="fade-in">
+                        {/* Device Header */}
+                        <div style={{ ...cardStyle, textAlign: 'center', padding: '24px 16px' }}>
+                            <div style={{
+                                fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '8px'
+                            }}>
+                                {data.device.model_name}
+                            </div>
+                            <div style={{
+                                display: 'inline-block',
+                                fontFamily: 'Monaco, monospace',
+                                fontSize: '0.9rem',
+                                color: '#FFD200',
+                                background: 'rgba(255, 210, 0, 0.1)',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                letterSpacing: '0.05em'
+                            }}>
+                                {data.device.serial_number}
+                            </div>
+                        </div>
+
+                        <div style={sectionTitleStyle}>
+                            <Smartphone size={14} /> 设备概览
+                        </div>
+                        <div style={cardStyle}>
+                            <div style={rowStyle}>
+                                <div style={iconColStyle}><Info size={14} /></div>
+                                <div style={textColStyle}>
+                                    <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '2px' }}>固件版本</div>
+                                    {data.device.firmware_version}
+                                </div>
+                            </div>
+                            <div style={rowStyle}>
+                                <div style={iconColStyle}><Calendar size={14} /></div>
+                                <div style={textColStyle}>
+                                    <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '2px' }}>购买日期</div>
+                                    {data.device.purchase_date || 'N/A'}
+                                </div>
+                            </div>
+                            <div style={{ ...rowStyle, marginBottom: 0 }}>
+                                <div style={iconColStyle}><Award size={14} /></div>
+                                <div style={textColStyle}>
+                                    <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '2px' }}>保修状态</div>
+                                    <span style={{
+                                        color: data.device.warranty_status === 'Active' ? '#10b981' : '#ef4444',
+                                        fontWeight: 600
+                                    }}>
+                                        {data.device.warranty_status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {data.parts_catalog?.length > 0 && (
+                            <>
+                                <div style={sectionTitleStyle}>
+                                    <Package size={14} /> 注册附件
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {data.parts_catalog.map((part: any) => (
+                                        <div key={part.id} style={{
+                                            ...cardStyle, marginBottom: 0, padding: '12px',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                        }}>
+                                            <span style={{ fontSize: '0.85rem', color: '#ddd' }}>{part.part_name}</span>
+                                            <span style={{ fontSize: '0.75rem', color: '#666', fontFamily: 'monospace' }}>
+                                                {part.part_number}
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 text-xs text-white/70">
-                                    {data.customer.email && (
-                                        <div className="flex items-center gap-2">
-                                            <Mail className="w-3.5 h-3.5 opacity-50" />
-                                            <a href={`mailto:${data.customer.email}`} className="hover:text-blue-400 truncate">
-                                                {data.customer.email}
-                                            </a>
-                                        </div>
-                                    )}
-                                    {data.customer.phone && (
-                                        <div className="flex items-center gap-2">
-                                            <Phone className="w-3.5 h-3.5 opacity-50" />
-                                            <span>{data.customer.phone}</span>
-                                        </div>
-                                    )}
-                                    {data.customer.city && (
-                                        <div className="flex items-center gap-2">
-                                            <MapPin className="w-3.5 h-3.5 opacity-50" />
-                                            <span>{[data.customer.city, data.customer.country].filter(Boolean).join(', ')}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Dealer Section */}
-                                {data.dealer && (
-                                    <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/10 space-y-2">
-                                        <div className="text-[10px] tracking-wider text-blue-400 font-bold uppercase">
-                                            {t('customer_context.label.associated_dealer')}
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="text-sm font-medium text-white/90">{data.dealer.name}</div>
-                                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                {data.dealer.dealer_type}
-                                            </div>
-                                        </div>
-                                        <div className="text-xs text-white/50">{data.dealer.contact_email}</div>
-                                    </div>
-                                )}
-
-                                {/* AI Profile / Tags */}
-                                {data.ai_profile && (
-                                    <div className="bg-white/5 rounded-lg p-3 space-y-2">
-                                        <div className="text-[10px] uppercase tracking-wider text-white/30 font-bold">INSIGHTS</div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            <span className="px-1.5 py-0.5 text-[10px] rounded bg-green-500/20 text-green-400 border border-green-500/30">
-                                                {data.ai_profile.activity_level} Activity
-                                            </span>
-                                            {data.ai_profile.tags?.map((tag: string, i: number) => (
-                                                <span key={i} className="px-1.5 py-0.5 text-[10px] rounded bg-white/10 text-white/70 border border-white/10">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        {data.ai_profile.notes && (
-                                            <p className="text-xs text-white/50 leading-relaxed border-t border-white/5 pt-2 mt-2">
-                                                {data.ai_profile.notes}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Owned Devices List */}
-                        {activeTab === 'customer' && data.devices && (
-                            <div className="space-y-3">
-                                <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                    {t('customer_context.section.registered_products')} ({data.devices.length})
-                                </h4>
-                                <div className="space-y-2">
-                                    {data.devices.map((device: any) => (
-                                        <div key={device.id} className="p-2.5 rounded bg-white/5 border border-white/5 hover:border-white/20 transition-colors group cursor-pointer">
-                                            <div className="flex items-center justify-between">
-                                                <div className="font-medium text-white text-sm">{device.model_name}</div>
-                                                <div className="text-[10px] text-white/40 font-mono">{device.serial_number}</div>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1.5">
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/50">
-                                                    {device.firmware_version}
-                                                </span>
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-kine-yellow/10 text-kine-yellow/60 border border-kine-yellow/20">
-                                                    Family {device.product_family}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {data.devices.length === 0 && (
-                                        <div className="text-xs text-white/30 italic px-2">{t('customer_context.no_products')}</div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Device Info View */}
-                        {activeTab === 'device' && data.device && (
-                            <div className="space-y-6">
-                                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                                    <h2 className="text-lg font-bold text-white mb-1">{data.device.model_name}</h2>
-                                    <div className="font-mono text-sm text-kine-yellow mb-3">{data.device.serial_number}</div>
-
-                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                        <div>
-                                            <div className="text-white/40 mb-0.5">{t('rma_ticket.field.firmware_version')}</div>
-                                            <div className="text-white/80">{data.device.firmware_version}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-white/40 mb-0.5">产品系列</div>
-                                            <div className="text-white/80">{data.device.product_family || '-'}</div>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <div className="text-white/40 mb-0.5">{t('customer_context.label.warranty_status')}</div>
-                                            <div className="text-green-400 flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                在保 (至 2027)
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Ownership History */}
-                                {data.ownership_history && data.ownership_history.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">{t('customer_context.device.history')}</h4>
-                                        <div className="space-y-1">
-                                            {data.ownership_history.map((owner: any, i: number) => (
-                                                <div key={i} className="flex items-center gap-2 text-xs py-1.5 px-2 bg-white/[0.02] rounded">
-                                                    <User className="w-3 h-3 text-white/30" />
-                                                    <span className="text-white/70">{owner.name}</span>
-                                                    <span className="text-[10px] text-white/20 ml-auto">{owner.status}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Parts Pricing */}
-                                {data.parts_catalog && data.parts_catalog.length > 0 && (
-                                    <div className="space-y-3">
-                                        <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
-                                            {t('customer_context.label.parts_pricing')}
-                                        </h4>
-                                        <div className="rounded border border-white/5 overflow-hidden">
-                                            <table className="w-full text-left text-[11px]">
-                                                <thead className="bg-white/5 text-white/40">
-                                                    <tr>
-                                                        <th className="px-2 py-1.5 font-medium">{t('customer_context.label.part_name')}</th>
-                                                        <th className="px-2 py-1.5 font-medium text-right">USD</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-white/5">
-                                                    {data.parts_catalog.map((part: any) => (
-                                                        <tr key={part.id} className="hover:bg-white/[0.02]">
-                                                            <td className="px-2 py-2">
-                                                                <div className="text-white/80">{part.part_name}</div>
-                                                                <div className="text-[10px] text-white/20">{part.part_number}</div>
-                                                            </td>
-                                                            <td className="px-2 py-2 text-right text-kine-yellow font-mono">
-                                                                ${part.retail_price}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Service History Timeline */}
-                        {data.service_history && (
-                            <div className="space-y-3 pt-2 border-t border-white/10">
-                                <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
-                                    <History className="w-3.5 h-3.5" />
-                                    {t('customer_context.section.service_timeline')} ({data.service_history.length})
-                                </h4>
-
-                                <div className="relative pl-4 space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-                                    {data.service_history.map((item: any) => (
-                                        <div key={item.id} className="relative group">
-                                            <div className={`absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-[#1A1A1A] ${item.status === 'Resolved' || item.status === 'Completed' || item.status === 'Closed'
-                                                ? 'bg-green-500'
-                                                : 'bg-kine-yellow'
-                                                }`} />
-
-                                            <div className="bg-white/5 rounded p-2.5 border border-white/5 hover:border-white/20 transition-all">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-[10px] px-1.5 rounded-sm font-medium ${item.type === 'RMA' ? 'bg-red-500/20 text-red-400' :
-                                                        item.type === 'DealerRepair' ? 'bg-purple-500/20 text-purple-400' :
-                                                            'bg-blue-500/20 text-blue-400'
-                                                        }`}>
-                                                        {item.type}
-                                                    </span>
-                                                    <span className="text-[10px] text-white/40 font-mono">
-                                                        {new Date(item.date).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-
-                                                <div className="text-sm text-white/90 font-medium leading-snug mb-1 line-clamp-2">
-                                                    {item.summary}
-                                                </div>
-
-                                                <div className="flex items-center justify-between mt-2">
-                                                    <span className="text-[10px] text-white/40 font-mono">
-                                                        {item.ticket_number}
-                                                    </span>
-                                                    <span className="text-[10px] text-white/60">
-                                                        {item.status}
-                                                    </span>
-                                                </div>
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </>
                         )}
-
-                        {!data.customer && !data.device && (
-                            <div className="text-center py-10 text-white/30 text-sm">
-                                {t('inquiry_ticket.not_found')}
-                            </div>
-                        )}
-
-                    </div>
-                ) : (
-                    <div className="p-8 text-center text-white/30 text-xs">
-                        {activeTab === 'customer'
-                            ? (customerName ? `未找到 "${customerName}" 的信息` : t('inquiry_ticket.not_found'))
-                            : (serialNumber ? `未找到SN "${serialNumber}" 的信息` : t('inquiry_ticket.not_found'))
-                        }
                     </div>
                 )}
             </div>

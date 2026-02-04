@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const archiver = require('archiver');
 const sharp = require('sharp');
+const AIService = require('./service/ai_service');
 
 // Service Ticket Routes
 const inquiryTickets = require('./service/routes/inquiry-tickets');
@@ -47,6 +48,7 @@ const serviceUpload = multer({
 // Database Initialization
 const db = new Database(DB_PATH, { verbose: console.log });
 db.pragma('journal_mode = WAL');
+const aiService = new AIService(db);
 
 // Ensure tables exist
 db.exec(`
@@ -223,7 +225,16 @@ db.exec(`
         error_log TEXT,
         imported_by INTEGER NOT NULL,
         imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(imported_by) REFERENCES users(id)
+        CREATE TABLE IF NOT EXISTS ai_usage_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        model TEXT,
+        task_type TEXT,
+        prompt_tokens INTEGER,
+        completion_tokens INTEGER,
+        total_tokens INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    FOREIGN KEY(imported_by) REFERENCES users(id)
     );
 `);
 
@@ -629,7 +640,22 @@ app.use(express.json());
 // GLOBAL LOGGER
 app.use((req, res, next) => {
     console.log(`[HTTP] ${req.method} ${req.url} | IP: ${req.ip}`);
+    console.log(`[HTTP] ${req.method} ${req.url} | IP: ${req.ip}`);
     next();
+});
+
+// AI Routes
+app.post('/api/ai/ticket_parse', authenticate, async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text) return res.status(400).json({ error: 'Missing text content' });
+
+        const ticketData = await aiService.parseTicket(text);
+        res.json({ success: true, data: ticketData });
+    } catch (err) {
+        console.error('[AI] Ticket Parse Error:', err);
+        res.status(500).json({ error: 'AI processing failed', details: err.message });
+    }
 });
 
 // Service Routes - Layer 1

@@ -157,7 +157,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 product_id,
                 created_from,
                 created_to,
-                keyword
+                keyword,
+                product_family
             } = req.query;
 
             const user = req.user;
@@ -178,6 +179,10 @@ module.exports = function (db, authenticate, serviceUpload) {
             if (product_id) {
                 conditions.push('r.product_id = ?');
                 params.push(product_id);
+            }
+            if (product_family) {
+                conditions.push('r.product_family = ?');
+                params.push(product_family);
             }
             if (created_from) {
                 conditions.push('date(r.created_at) >= ?');

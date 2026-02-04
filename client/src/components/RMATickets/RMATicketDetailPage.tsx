@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, X, Loader2 } from 'lucide-react';
+import {
+    ArrowLeft, Edit2, Save, Loader2,
+    AlertCircle, CheckCircle, Clock, Truck, Hammer, XCircle,
+    Activity, FileText, Download
+} from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
-import { Paperclip, Film, FileText, Download } from 'lucide-react';
+import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 
 interface Attachment {
     id: number;
@@ -33,7 +37,9 @@ interface RMATicket {
     problem_analysis: string;
     reporter_name: string;
     customer: { id: number; name: string } | null;
+    customer_id: number | null;
     dealer: { id: number; name: string } | null;
+    dealer_id: number | null;
     submitted_by: { id: number; name: string } | null;
     assigned_to: { id: number; name: string } | null;
     inquiry_ticket: { id: number; ticket_number: string } | null;
@@ -51,14 +57,14 @@ interface RMATicket {
     attachments?: Attachment[];
 }
 
-const statusColors: Record<string, string> = {
-    Pending: '#f59e0b',
-    Assigned: '#3b82f6',
-    InRepair: '#8b5cf6',
-    Repaired: '#10b981',
-    Shipped: '#06b6d4',
-    Completed: '#22c55e',
-    Cancelled: '#6b7280'
+const statusConfig: Record<string, { color: string, icon: any }> = {
+    Pending: { color: '#f59e0b', icon: Clock },
+    Assigned: { color: '#3b82f6', icon: Activity },
+    InRepair: { color: '#8b5cf6', icon: Hammer },
+    Repaired: { color: '#10b981', icon: CheckCircle },
+    Shipped: { color: '#06b6d4', icon: Truck },
+    Completed: { color: '#22c55e', icon: CheckCircle },
+    Cancelled: { color: '#6b7280', icon: XCircle }
 };
 
 const RMATicketDetailPage: React.FC = () => {
@@ -126,20 +132,17 @@ const RMATicketDetailPage: React.FC = () => {
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleString('zh-CN');
+        return new Date(dateStr).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     const getStatusLabel = (s: string) => {
-        const labels: Record<string, string> = {
-            Pending: t('rma_ticket.status.pending'),
-            Assigned: t('rma_ticket.status.assigned'),
-            InRepair: t('rma_ticket.status.in_repair'),
-            Repaired: t('rma_ticket.status.repaired'),
-            Shipped: t('rma_ticket.status.shipped'),
-            Completed: t('rma_ticket.status.completed'),
-            Cancelled: t('rma_ticket.status.cancelled')
-        };
-        return labels[s] || s;
+        return t(`rma_ticket.status.${s.toLowerCase()}` as any) || s;
     };
 
     const getChannelLabel = (code: string) => {
@@ -151,306 +154,319 @@ const RMATicketDetailPage: React.FC = () => {
         return labels[code] || code;
     };
 
+    const StatusIcon = ticket ? (statusConfig[ticket.status]?.icon || AlertCircle) : AlertCircle;
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-                <Loader2 size={32} className="animate-spin" />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                <Loader2 className="animate-spin" />
             </div>
         );
     }
 
     if (!ticket) {
-        return (
-            <div style={{ padding: '24px', textAlign: 'center' }}>
-                <p>{t('rma_ticket.not_found')}</p>
-            </div>
-        );
+        return <div style={{ padding: '40px', textAlign: 'center' }}>{t('rma_ticket.not_found')}</div>;
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm">
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div>
-                        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {ticket.ticket_number}
-                            <span style={{
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: '#e5e7eb',
-                                color: '#374151'
-                            }}>
-                                {getChannelLabel(ticket.channel_code)}
-                            </span>
-                            <span
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '4px 12px',
-                                    borderRadius: '16px',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    background: `${statusColors[ticket.status] || '#6b7280'}20`,
-                                    color: statusColors[ticket.status] || '#6b7280'
-                                }}
-                            >
-                                {getStatusLabel(ticket.status)}
-                            </span>
-                        </h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                            {t('rma_ticket.created_at')}: {formatDate(ticket.created_at)}
-                        </p>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {isEditing ? (
-                        <>
-                            <button onClick={() => setIsEditing(false)} className="btn btn-ghost">
-                                <X size={16} />
-                            </button>
-                            <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
-                                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                <span style={{ marginLeft: '6px' }}>{t('action.save')}</span>
-                            </button>
-                        </>
-                    ) : (
-                        <button onClick={() => setIsEditing(true)} className="btn btn-primary">
-                            <Edit2 size={16} />
-                            <span style={{ marginLeft: '6px' }}>编辑</span>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#000' }}>
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                {/* LEFT COLUMN: Main Content */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+                    {/* Header Strip */}
+                    <div style={{
+                        padding: '20px 40px',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        background: 'rgba(255,255,255,0.02)',
+                        backdropFilter: 'blur(20px)'
+                    }}>
+                        <button
+                            onClick={() => navigate('/service/rma-tickets')}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                            <ArrowLeft size={18} />
                         </button>
-                    )}
-                </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-                {/* Main Content */}
-                <div>
-                    {/* Problem Description */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.field.problem_description')}</h3>
-                        <p style={{ lineHeight: 1.6 }}>{ticket.problem_description}</p>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+                            {ticket.ticket_number}
+                        </h1>
+
+                        <div style={{
+                            padding: '4px 12px',
+                            borderRadius: '100px',
+                            background: statusConfig[ticket.status]?.color ? `${statusConfig[ticket.status].color}20` : 'rgba(255,255,255,0.1)',
+                            color: statusConfig[ticket.status]?.color || 'white',
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            border: `1px solid ${statusConfig[ticket.status]?.color ? statusConfig[ticket.status].color + '40' : 'transparent'}`
+                        }}>
+                            {StatusIcon && <StatusIcon size={14} />}
+                            {getStatusLabel(ticket.status)}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '12px' }}>
+                            <span>{formatDate(ticket.created_at)}</span>
+                            <span style={{ color: 'var(--glass-border)' }}>|</span>
+                            <span>{getChannelLabel(ticket.channel_code)}</span>
+                        </div>
+
+                        <div style={{ flex: 1 }} />
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {!isEditing ? (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        background: '#fff',
+                                        border: 'none',
+                                        color: '#000',
+                                        padding: '8px 24px',
+                                        borderRadius: '8px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Edit2 size={16} />
+                                    编辑
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            padding: '8px 16px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {t('action.cancel') || 'Cancel'}
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            background: 'var(--accent-blue)',
+                                            border: 'none',
+                                            color: '#000',
+                                            padding: '8px 24px',
+                                            borderRadius: '8px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer'
+                                        }}
+                                        disabled={saving}
+                                    >
+                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                        {saving ? 'Saving...' : (t('action.save') || 'Save')}
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Solution for Customer */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.field.solution_for_customer')}</h3>
-                        {isEditing ? (
-                            <textarea
-                                value={solutionForCustomer}
-                                onChange={(e) => setSolutionForCustomer(e.target.value)}
-                                className="form-control"
-                                rows={3}
-                            />
-                        ) : (
-                            <p style={{ lineHeight: 1.6 }}>{ticket.solution_for_customer || '-'}</p>
-                        )}
-                    </div>
+                    {/* Content Body */}
+                    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
+                        {/* Problem Description Hero */}
+                        <div style={{ marginBottom: '40px' }}>
+                            <h2 style={{
+                                fontSize: '1.5rem', fontWeight: 800, lineHeight: '1.3',
+                                color: '#fff', marginBottom: '24px', letterSpacing: '-0.01em'
+                            }}>
+                                {ticket.problem_description}
+                            </h2>
 
-                    {/* Repair Info */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.section.repair')}</h3>
-                        {isEditing ? (
-                            <>
-                                <div style={{ marginBottom: '12px' }}>
-                                    <label className="form-label">{t('rma_ticket.field.repair_content')}</label>
-                                    <textarea
-                                        value={repairContent}
-                                        onChange={(e) => setRepairContent(e.target.value)}
-                                        className="form-control"
-                                        rows={2}
-                                    />
-                                </div>
-                                <div style={{ marginBottom: '12px' }}>
-                                    <label className="form-label">{t('rma_ticket.field.problem_analysis')}</label>
-                                    <textarea
-                                        value={problemAnalysis}
-                                        onChange={(e) => setProblemAnalysis(e.target.value)}
-                                        className="form-control"
-                                        rows={2}
-                                    />
+                            {/* Meta Grid */}
+                            <div style={{
+                                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px',
+                                background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px',
+                                border: '1px solid rgba(255,255,255,0.08)'
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Issue Type</div>
+                                    <div style={{ color: 'var(--text-main)', fontWeight: 500 }}>{ticket.issue_type}</div>
                                 </div>
                                 <div>
-                                    <label className="form-label">{t('rma_ticket.field.status')}</label>
-                                    <select
-                                        value={status}
-                                        onChange={(e) => setStatus(e.target.value)}
-                                        className="form-control"
-                                        style={{ width: 'auto' }}
-                                    >
-                                        <option value="Pending">{t('rma_ticket.status.pending')}</option>
-                                        <option value="Assigned">{t('rma_ticket.status.assigned')}</option>
-                                        <option value="InRepair">{t('rma_ticket.status.in_repair')}</option>
-                                        <option value="Repaired">{t('rma_ticket.status.repaired')}</option>
-                                        <option value="Shipped">{t('rma_ticket.status.shipped')}</option>
-                                        <option value="Completed">{t('rma_ticket.status.completed')}</option>
-                                    </select>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Severity</div>
+                                    <div style={{ color: ticket.severity === 1 ? '#ef4444' : 'var(--text-main)', fontWeight: 700 }}>P{ticket.severity}</div>
                                 </div>
-                            </>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                                <div><strong>{t('rma_ticket.field.repair_content')}:</strong> {ticket.repair_content || '-'}</div>
-                                <div><strong>{t('rma_ticket.field.problem_analysis')}:</strong> {ticket.problem_analysis || '-'}</div>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Warranty</div>
+                                    <div style={{ color: ticket.is_warranty ? '#10b981' : 'var(--text-tertiary)', fontWeight: 500 }}>
+                                        {ticket.is_warranty ? 'Yes' : 'No'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Reporter</div>
+                                    <div style={{ color: 'var(--text-main)', fontWeight: 500 }}>{ticket.reporter_name}</div>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
 
-                    {/* Attachments Section */}
-                    {ticket.attachments && ticket.attachments.length > 0 && (
-                        <div style={{
-                            background: 'var(--bg-card)',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            marginTop: '16px',
-                            border: '1px solid var(--border-color)'
-                        }}>
-                            <h3 style={{ fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Paperclip size={18} className="text-primary" />
-                                {t('section.media_attachments')} ({ticket.attachments.length})
-                            </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
-                                {ticket.attachments.map((file) => {
-                                    const isImage = file.mime_type.startsWith('image/');
-                                    const isVideo = file.mime_type.startsWith('video/');
-                                    const isPdf = file.mime_type === 'application/pdf';
+                        <div style={{ display: 'grid', gap: '32px' }}>
+                            {/* Customer Solution */}
+                            <div className="glass-panel" style={{
+                                padding: '24px',
+                                borderRadius: '16px',
+                                background: 'rgba(30, 30, 30, 0.6)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px',
+                                    display: 'flex', alignItems: 'center', gap: '8px', color: '#fff'
+                                }}>
+                                    <CheckCircle size={18} className="text-primary" />
+                                    {t('ticket.solution_for_customer' as any)}
+                                </h3>
+                                {isEditing ? (
+                                    <textarea
+                                        value={solutionForCustomer}
+                                        onChange={(e) => setSolutionForCustomer(e.target.value)}
+                                        placeholder="Enter solution visible to customer..."
+                                        style={{
+                                            width: '100%', minHeight: '120px', padding: '16px',
+                                            borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
+                                            border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
+                                            fontSize: '0.95rem', lineHeight: 1.6, resize: 'vertical'
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{
+                                        color: solutionForCustomer ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                        whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: '0.95rem',
+                                        padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px'
+                                    }}>
+                                        {solutionForCustomer || 'No solution provided yet.'}
+                                    </div>
+                                )}
+                            </div>
 
-                                    return (
-                                        <div key={file.id}
-                                            style={{
-                                                borderRadius: '8px',
-                                                overflow: 'hidden',
-                                                border: '1px solid var(--border-color)',
-                                                position: 'relative',
-                                                background: 'var(--bg-secondary)'
-                                            }}
-                                            className="group"
-                                        >
-                                            {isImage ? (
-                                                <img src={file.file_path} alt="" style={{ width: '100%', height: '100px', objectFit: 'cover' }} />
-                                            ) : isVideo ? (
-                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-                                                    <Film size={24} color="#fff" />
-                                                </div>
-                                            ) : (
-                                                <div style={{ width: '100%', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    {isPdf ? <FileText size={24} /> : <Paperclip size={24} />}
-                                                </div>
-                                            )}
-                                            <div style={{ padding: '8px' }}>
-                                                <p style={{
-                                                    fontSize: '0.75rem',
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    color: 'var(--text-primary)',
-                                                    marginBottom: '4px'
-                                                }}>
-                                                    {file.file_path.split('/').pop()}
-                                                </p>
-                                                <a
-                                                    href={file.file_path}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        color: 'var(--primary)',
-                                                        textDecoration: 'none',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px'
-                                                    }}
-                                                >
-                                                    <Download size={12} />
-                                                    {t('action.download')}
-                                                </a>
+                            {/* Internal Tech Notes */}
+                            <div className="glass-panel" style={{
+                                padding: '24px',
+                                borderRadius: '16px',
+                                background: 'rgba(30, 30, 30, 0.4)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '1rem', fontWeight: 600, marginBottom: '20px',
+                                    display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)'
+                                }}>
+                                    <Hammer size={16} />
+                                    Internal Tech Notes & Analysis
+                                </h3>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
+                                            Problem Analysis
+                                        </label>
+                                        {isEditing ? (
+                                            <textarea
+                                                value={problemAnalysis}
+                                                onChange={(e) => setProblemAnalysis(e.target.value)}
+                                                placeholder="Internal analysis..."
+                                                style={{
+                                                    width: '100%', minHeight: '150px', padding: '12px',
+                                                    borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
+                                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
+                                                    fontSize: '0.9rem', resize: 'vertical'
+                                                }}
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                fontSize: '0.9rem', color: 'var(--text-secondary)',
+                                                whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', minHeight: '60px'
+                                            }}>
+                                                {problemAnalysis || '-'}
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
+                                            Repair Actions
+                                        </label>
+                                        {isEditing ? (
+                                            <textarea
+                                                value={repairContent}
+                                                onChange={(e) => setRepairContent(e.target.value)}
+                                                placeholder="Repair steps taken..."
+                                                style={{
+                                                    width: '100%', minHeight: '150px', padding: '12px',
+                                                    borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
+                                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
+                                                    fontSize: '0.9rem', resize: 'vertical'
+                                                }}
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                fontSize: '0.9rem', color: 'var(--text-secondary)',
+                                                whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', minHeight: '60px'
+                                            }}>
+                                                {repairContent || '-'}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Attachments */}
+                            {ticket.attachments && ticket.attachments.length > 0 && (
+                                <div style={{ marginTop: '16px' }}>
+                                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Attachments</h3>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                        {ticket.attachments.map(att => (
+                                            <a
+                                                key={att.id}
+                                                href={`/api/uploads/${att.file_path}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                                    padding: '8px 12px',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    borderRadius: '8px',
+                                                    textDecoration: 'none',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.85rem',
+                                                    border: '1px solid rgba(255,255,255,0.1)'
+                                                }}
+                                            >
+                                                <FileText size={14} />
+                                                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {att.file_path.split('/').pop()}
+                                                </span>
+                                                <Download size={12} style={{ opacity: 0.5 }} />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                {/* Sidebar */}
-                <div>
-                    {/* Classification */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.section.classification')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('rma_ticket.field.issue_type')}:</strong> {ticket.issue_type}</div>
-                            <div><strong>{t('rma_ticket.field.issue_category')}:</strong> {ticket.issue_category || '-'}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <strong>{t('rma_ticket.field.severity')}:</strong>
-                                <span style={{ color: ticket.severity === 1 ? '#ef4444' : ticket.severity === 2 ? '#f59e0b' : '#6b7280' }}>
-                                    P{ticket.severity}
-                                </span>
-                            </div>
-                            <div><strong>{t('rma_ticket.field.is_warranty')}:</strong> {ticket.is_warranty ? '✅' : '❌'}</div>
-                        </div>
-                    </div>
-
-                    {/* Product Info */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        marginBottom: '16px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.section.product')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('rma_ticket.field.product')}:</strong> {ticket.product?.name || '-'}</div>
-                            <div><strong>{t('rma_ticket.field.serial_number')}:</strong> {ticket.serial_number || '-'}</div>
-                            <div><strong>{t('rma_ticket.field.firmware_version')}:</strong> {ticket.firmware_version || '-'}</div>
-                        </div>
-                    </div>
-
-                    {/* People */}
-                    <div style={{
-                        background: 'var(--bg-card)',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        border: '1px solid var(--border-color)'
-                    }}>
-                        <h3 style={{ fontWeight: 600, marginBottom: '12px' }}>{t('rma_ticket.section.people')}</h3>
-                        <div style={{ display: 'grid', gap: '8px', fontSize: '0.875rem' }}>
-                            <div><strong>{t('rma_ticket.field.reporter_name')}:</strong> {ticket.reporter_name || '-'}</div>
-                            {ticket.dealer && <div><strong>{t('rma_ticket.field.dealer')}:</strong> {ticket.dealer.name}</div>}
-                            <div><strong>{t('rma_ticket.field.submitted_by')}:</strong> {ticket.submitted_by?.name || '-'}</div>
-                            <div><strong>{t('rma_ticket.field.assigned_to')}:</strong> {ticket.assigned_to?.name || '-'}</div>
-                        </div>
-                    </div>
+                {/* RIGHT SIDEBAR: Customer Context */}
+                {/* RIGHT SIDEBAR: Customer Context */}
+                <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <CustomerContextSidebar
+                        customerId={ticket.customer_id ?? undefined}
+                        customerName={ticket.customer?.name}
+                        serialNumber={ticket.serial_number}
+                        // @ts-ignore
+                        dealerId={ticket.dealer_id ?? undefined}
+                    />
                 </div>
+
             </div>
         </div>
     );

@@ -379,6 +379,7 @@ export const translations = {
         'recycle.no_preview': '无法预览此文件类型',
 
         // Common
+        'common.edit': '编辑',
         'common.upload': '上传',
         'common.download': '下载',
         'common.share': '分享',
@@ -446,6 +447,8 @@ export const translations = {
 
         // Additional Common keys  
         'common.optional': '（可选）',
+        'common.start_date': '开始日期',
+        'common.end_date': '结束日期',
 
         // Additional Dept keys
         'dept.permission_conflict_rule': '权限冲突时，高权限优先 (Full > Read)。',
@@ -1126,6 +1129,19 @@ export const translations = {
         'service_record.upgrade_modal.category.hardware': '硬件/结构',
         'service_record.show_range': '显示 {from}-{to} 条，共 {total} 条',
 
+        // Inquiry Ticket Filters
+        'filter.all_products': '所有系列',
+        'filter.last_7_days': '最近 7 天',
+        'filter.last_30_days': '最近 30 天',
+        'filter.custom_range': '自定义时间...',
+        'filter.custom_selection': '自定义...',
+
+        // Inquiry Ticket Status & UI
+
+
+        'dashboard.urgent_attention': '需紧急关注',
+        'dashboard.active_tickets': '今日活跃',
+
         // Phase 1: Context Query
         'context.title': '上下文查询',
         'context.subtitle': '通过客户信息或产品序列号快速查询服务历史',
@@ -1482,6 +1498,8 @@ export const translations = {
 
         // Admin & Department Management
         'common.people_suffix': 'people',
+        'common.start_date': 'Start Date',
+        'common.end_date': 'End Date',
         'dept.active': 'Active',
         'dept.alert_code_format': 'Department code must be 2-3 uppercase letters (e.g., MS, HR)',
         'dept.alert_fill_info': 'Please fill in department name and code',
@@ -2080,6 +2098,19 @@ export const translations = {
         'share.view_details': 'View Details',
         'share.copy_link': 'Copy Link',
         'share.delete_link': 'Delete Share',
+
+        // Inquiry Ticket Filters
+        'filter.all_products': 'All Products',
+        'filter.last_7_days': 'Last 7 Days',
+        'filter.last_30_days': 'Last 30 Days',
+        'filter.custom_range': 'Custom Range...',
+        'filter.custom_selection': 'Custom...',
+
+        // Inquiry Ticket Status & UI
+
+
+        'dashboard.urgent_attention': 'Urgent Attention',
+        'dashboard.active_tickets': 'Active Today',
 
         // Issue Tracking System
         'issue.title': 'Issues',

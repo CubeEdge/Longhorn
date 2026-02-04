@@ -207,7 +207,8 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 is_warranty,
                 created_from,
                 created_to,
-                keyword
+                keyword,
+                product_family
             } = req.query;
 
             const user = req.user;
@@ -248,6 +249,10 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
             if (product_id) {
                 conditions.push('t.product_id = ?');
                 params.push(product_id);
+            }
+            if (product_family) {
+                conditions.push('t.product_family = ?');
+                params.push(product_family);
             }
             if (dealer_id) {
                 conditions.push('t.dealer_id = ?');
