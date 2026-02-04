@@ -64,6 +64,13 @@ rsync -avzc --delete \
     --exclude='*.log' \
     client/ $SERVER_HOST:$REMOTE_PATH/client/
 
+# 2.5 Sync Root Package.json (Version Source)
+echo "📤 Syncing Root Configuration..."
+rsync -avzc \
+    package.json \
+    $SERVER_HOST:$REMOTE_PATH/
+
+
 # 3. Execute Remote Build & Restart
 echo "🔄 Executing Remote Build & Restart..."
 ssh -t $SERVER_HOST "/bin/zsh -l -c \"

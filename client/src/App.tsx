@@ -876,7 +876,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                 fontFamily: 'monospace'
               }}>
                 {/* @ts-ignore */}
-                <div style={{ marginBottom: 4 }}>Longhorn {window.__APP_FULL_VERSION__ || 'v1.5.14'}</div>
+                <div style={{ marginBottom: 4 }}>Longhorn {window.__APP_FULL_VERSION__ || 'v1.5.16'}</div>
                 {/* @ts-ignore */}
                 <div style={{ opacity: 0.8 }}>Code: {window.__APP_COMMIT_TIME__ || '2026-02-04 22:20'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
