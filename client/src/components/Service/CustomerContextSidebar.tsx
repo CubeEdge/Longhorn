@@ -27,53 +27,27 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const fetchContext = async () => {
         setLoading(true);
         try {
-            // let url = '';
-            // if (activeTab === 'customer') {
-            //     if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
-            //     else if (customerName) url = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
-            // } else {
-            //     if (serialNumber) url = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
-            // }
-
-            // Simulate API logic (since backend might depend on implementation)
-            const mockData: any = {};
-
-            // Wait slightly for effect
-            await new Promise(r => setTimeout(r, 200));
-
-            if (customerName || customerId) {
-                mockData.customer = {
-                    customer_name: customerName || 'Paris Production', // Fallback to demo
-                    service_tier: 'VIP',
-                    acquisition_channel: 'Direct Sales',
-                    email: 'sophie@parisproduction.fr',
-                    phone: '+33 1 4567 8901',
-                    company_name: 'Paris Production SARL',
-                    city: 'Paris',
-                    country: 'France'
-                };
-                mockData.dealer = {
-                    name: 'Kinefinity Europe',
-                    contact_email: 'support@kinefinity.eu',
-                    dealer_type: 'Distributor'
-                };
+            let url = '';
+            if (activeTab === 'customer') {
+                if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
+                else if (customerName) url = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
+            } else {
+                if (serialNumber) url = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
             }
 
-            if (serialNumber || activeTab === 'device') {
-                mockData.device = {
-                    model_name: 'MAVO Edge 8K',
-                    serial_number: serialNumber || 'K26020005',
-                    firmware_version: 'KineOS 7.1',
-                    warranty_status: 'Active',
-                    purchase_date: '2025-01-15'
-                };
-                mockData.parts_catalog = [
-                    { id: 1, part_name: 'Side Grip', part_number: 'Acc-001', retail_price: 199 },
-                    { id: 2, part_name: 'Top Handle', part_number: 'Acc-002', retail_price: 149 },
-                ];
+            if (!url) {
+                // Fallback to mock only if no ID/Name provided
+                setLoading(false);
+                return;
             }
 
-            setData(mockData);
+            // Fetch actual data
+            const res = await fetch(url);
+            const json = await res.json();
+
+            if (json.success) {
+                setData(json.data);
+            }
         } catch (err) {
             console.error('Failed to fetch context', err);
         } finally {
@@ -93,93 +67,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         boxShadow: '-10px 0 30px rgba(0,0,0,0.3)'
     };
 
-    const headerStyle: React.CSSProperties = {
-        padding: '20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'rgba(255, 255, 255, 0.02)'
-    };
-
-    const tabContainerStyle: React.CSSProperties = {
-        display: 'flex',
-        padding: '12px 20px',
-        gap: '12px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-    };
-
-    const tabStyle = (isActive: boolean): React.CSSProperties => ({
-        flex: 1,
-        padding: '8px 0',
-        textAlign: 'center',
-        cursor: 'pointer',
-        fontSize: '0.9rem',
-        fontWeight: 600,
-        color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.4)',
-        background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-        borderRadius: '8px',
-        transition: 'all 0.2s ease',
-        border: isActive ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent'
-    });
-
-    const contentStyle: React.CSSProperties = {
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px'
-    };
-
-    const sectionTitleStyle: React.CSSProperties = {
-        fontSize: '0.75rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        color: 'rgba(255, 255, 255, 0.4)',
-        marginBottom: '12px',
-        fontWeight: 600,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px'
-    };
-
-    const cardStyle: React.CSSProperties = {
-        background: 'rgba(255, 255, 255, 0.04)',
-        borderRadius: '12px',
-        padding: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        marginBottom: '20px'
-    };
-
-    const rowStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'flex-start',
-        marginBottom: '12px',
-        fontSize: '0.9rem',
-        lineHeight: '1.4'
-    };
-
-    const iconColStyle: React.CSSProperties = {
-        width: '24px',
-        color: 'rgba(255, 255, 255, 0.4)',
-        paddingTop: '2px'
-    };
-
-    const textColStyle: React.CSSProperties = {
-        flex: 1,
-        color: 'rgba(255, 255, 255, 0.9)'
-    };
-
-    if (loading) {
-        return (
-            <div style={sidebarStyle}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                    <div className="loading-spinner" style={{ width: 24, height: 24 }} />
-                </div>
-            </div>
-        );
-    }
+    // ... (keep existing styles)
 
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
+            {/* ... (Header and Tabs) */}
             {/* Header */}
             <div style={headerStyle}>
                 <div style={{ fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -230,24 +122,58 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             </div>
                         </div>
 
-                        {/* Tier Badge */}
-                        <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Award size={16} color="#FFD200" />
-                                <span style={{ color: '#aaa', fontSize: '0.85rem' }}>服务等级</span>
+                        {/* INSIGHTS from AI Profile */}
+                        {data.ai_profile && (
+                            <div style={{ ...cardStyle, marginBottom: '20px' }}>
+                                <div style={{
+                                    fontSize: '0.75rem', fontWeight: 800, color: '#666',
+                                    marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em'
+                                }}>
+                                    INSIGHTS
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                                    <span style={{
+                                        background: 'rgba(255,255,255,0.1)', color: '#ddd',
+                                        padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem'
+                                    }}>
+                                        {data.ai_profile.activity_level} Activity
+                                    </span>
+                                    {data.ai_profile.tags?.map((tag: string, i: number) => (
+                                        <span key={i} style={{
+                                            background: tag.includes('Verification') || tag.includes('Verified') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 210, 0, 0.1)',
+                                            color: tag.includes('Verification') || tag.includes('Verified') ? '#10b981' : '#FFD200',
+                                            padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500
+                                        }}>
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
+                                    {data.ai_profile.notes}
+                                </div>
                             </div>
-                            <span style={{
-                                background: 'rgba(255, 210, 0, 0.15)',
-                                color: '#FFD200',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                letterSpacing: '0.05em'
-                            }}>
-                                {data.customer.service_tier || 'STANDARD'}
-                            </span>
-                        </div>
+                        )}
+
+                        {/* Legacy Tier Badge (Use AI Profile tags instead if available, else fallback) */}
+                        {!data.ai_profile && (
+                            <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Award size={16} color="#FFD200" />
+                                    <span style={{ color: '#aaa', fontSize: '0.85rem' }}>服务等级</span>
+                                </div>
+                                <span style={{
+                                    background: 'rgba(255, 210, 0, 0.15)',
+                                    color: '#FFD200',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800,
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    {data.customer.service_tier || 'STANDARD'}
+                                </span>
+                            </div>
+                        )}
 
                         {/* Contact Info */}
                         <div style={sectionTitleStyle}>
