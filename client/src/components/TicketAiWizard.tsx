@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Sparkles, ArrowRight, Save, X, RotateCcw } from 'lucide-react';
+import { Sparkles, ArrowRight, Save, RotateCcw } from 'lucide-react';
 
 interface TicketData {
     customer_name: string;
