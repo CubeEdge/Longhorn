@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Loader2, MessageSquare, ShieldCheck, Wrench, Upload, Trash2, Image as ImageIcon, Video, FileText } from 'lucide-react';
+import { X, Save, Loader2, MessageSquare, ShieldCheck, Wrench, Upload, Trash2, Image as ImageIcon, Video, FileText, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useTicketStore } from '../../store/useTicketStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -14,6 +14,10 @@ const TicketCreationModal: React.FC = () => {
     const [products, setProducts] = useState<any[]>([]);
     const [, setDealers] = useState<any[]>([]);
     const [attachments, setAttachments] = useState<File[]>([]);
+
+    // AI Assist State
+    const [aiInput, setAiInput] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
 
     const draft = drafts[ticketType];
 
@@ -57,6 +61,62 @@ const TicketCreationModal: React.FC = () => {
         return <FileText size={16} style={{ color: '#9ca3af' }} />;
     };
 
+    // AI Parsing Logic
+    const handleAiParse = async () => {
+        if (!aiInput.trim()) return;
+        setAiLoading(true);
+
+        try {
+            const res = await axios.post('/api/ai/ticket_parse', {
+                text: aiInput,
+                strictness: 'High'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data.success) {
+                const result = res.data.data;
+                const updates: any = {};
+
+                if (result.customer_name) updates.customer_name = result.customer_name;
+                if (result.contact_info) updates.customer_contact = result.contact_info;
+
+                // Match Product
+                if (result.product_model) {
+                    const matchedProduct = products.find(p =>
+                        p.name.toLowerCase().includes(result.product_model.toLowerCase()) ||
+                        result.product_model.toLowerCase().includes(p.name.toLowerCase())
+                    );
+                    if (matchedProduct) {
+                        updates.product_id = matchedProduct.id; // Map ID
+                    }
+                }
+
+                // Problem Summary & Description
+                let summary = result.issue_summary || '';
+                if (result.urgency === 'High' && !summary.startsWith('[URGENT]')) {
+                    summary = `[URGENT] ${summary}`;
+                }
+
+                if (ticketType === 'Inquiry') {
+                    updates.problem_summary = summary;
+                } else {
+                    updates.problem_description = summary + '\n\n' + (result.communication_log || '');
+                }
+
+                // Apply updates
+                Object.entries(updates).forEach(([key, val]) => {
+                    handleFieldChange(key, val);
+                });
+            }
+        } catch (err) {
+            console.error('AI Parse Failed:', err);
+            // Optional: Toast error here
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -87,6 +147,7 @@ const TicketCreationModal: React.FC = () => {
             if (res.data.success) {
                 clearDraft(ticketType);
                 setAttachments([]);
+                setAiInput(''); // Clear AI Input
                 closeModal();
                 window.location.reload();
             }
@@ -218,6 +279,69 @@ const TicketCreationModal: React.FC = () => {
 
                 {/* Form Body - Two Column Layout */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+
+                    {/* AI Smart Assist Panel - Visible Only for Inquiry or maybe all */}
+                    {ticketType === 'Inquiry' && (
+                        <div style={{
+                            marginBottom: '32px',
+                            background: 'rgba(255, 215, 0, 0.05)',
+                            border: '1px solid rgba(255, 215, 0, 0.2)',
+                            borderRadius: '12px',
+                            padding: '20px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                <Sparkles size={16} color="#FFD700" />
+                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#FFD700' }}>AI Smart Assist</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <textarea
+                                    style={{
+                                        ...inputStyle,
+                                        height: '60px',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255, 215, 0, 0.1)',
+                                        padding: '10px 14px',
+                                        resize: 'none',
+                                        fontSize: '0.85rem'
+                                    }}
+                                    placeholder="Paste email, chat logs, or description here to auto-fill..."
+                                    value={aiInput}
+                                    onChange={(e) => setAiInput(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAiParse}
+                                    disabled={aiLoading || !aiInput.trim()}
+                                    style={{
+                                        minWidth: '100px',
+                                        height: '60px',
+                                        background: '#FFD700',
+                                        color: '#000',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        opacity: (aiLoading || !aiInput.trim()) ? 0.5 : 1
+                                    }}
+                                >
+                                    {aiLoading ? (
+                                        <Loader2 size={18} className="animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Sparkles size={18} />
+                                            <span style={{ fontSize: '0.75rem' }}>Auto-Fill</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <form id="ticket-form" onSubmit={handleSubmit}>
                         <div style={{
                             display: 'grid',
@@ -435,7 +559,7 @@ const TicketCreationModal: React.FC = () => {
                                 opacity: loading ? 0.5 : 1
                             }}
                         >
-                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                             {t('action.create')}
                         </button>
                     </div>
