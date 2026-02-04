@@ -1,10 +1,17 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.5.1 (Draft)
+**版本**: 0.6.0 (Draft)
 **状态**: 草稿
 **最后更新**: 2026-02-03
 **关联PRD**: Service_PRD.md v0.9.0
 **关联场景**: Service_UserScenarios.md v0.6.0
+
+> **重要更新（2026-02-03）**：
+> - 根据PRD第5章新版本规划调整API版本路线图
+> - 新增Phase 4返修闭环管理API（报价预估、物流追踪、维修异常）
+> - 新增Phase 7 VoC管理API（Bug/Wishlist/原声）
+> - AI智能问答统一命名为"Bokeh"
+> - 更新需求决策记录关联至PRD第4章
 
 ---
 
@@ -1021,6 +1028,418 @@
 
 ---
 
+## 6.5 返修报价预估 API (Phase 4)
+
+> Phase 4引入：AI故障诊断+配件价格自动计算+客户确认流程
+
+### 6.5.1 AI故障诊断
+
+**POST** `/api/v1/rma-tickets/{id}/ai-diagnosis`
+
+**权限**: 市场部、生产部
+
+```json
+// Request
+{
+  "problem_description": "拍摄4K 50fps时随机死机",
+  "firmware_version": "8023",
+  "usage_scenario": "长时间4K RAW拍摄"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "diagnoses": [
+      {
+        "root_cause": "散热系统异常",
+        "probability": 0.72,
+        "estimated_parts": [
+          { "part_id": "part_015", "name_cn": "风扇模块", "price_usd": 65 }
+        ],
+        "estimated_labor": 0,
+        "estimated_total_usd": 65
+      },
+      {
+        "root_cause": "主板供电不稳",
+        "probability": 0.23,
+        "estimated_parts": [
+          { "part_id": "part_003", "name_cn": "主板", "price_usd": 890 }
+        ],
+        "estimated_labor": 120,
+        "estimated_total_usd": 1010
+      }
+    ],
+    "recommended_diagnosis": 0,
+    "note": "以上为AI预估，最终以实际检测为准"
+  }
+}
+```
+
+### 6.5.2 生成维修报价
+
+**POST** `/api/v1/rma-tickets/{id}/estimate`
+
+**权限**: 市场部、生产部
+
+```json
+// Request
+{
+  "currency": "usd",
+  "parts": [
+    { "part_id": "part_015", "quantity": 1 }
+  ],
+  "labor_hours": 0,
+  "include_shipping": true,
+  "shipping_region": "Europe"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "estimate_id": "est_001",
+    "rma_id": "rma_001",
+    "currency": "usd",
+    "breakdown": {
+      "parts": [
+        { "part_id": "part_015", "name_cn": "风扇模块", "quantity": 1, "unit_price": 65, "subtotal": 65 }
+      ],
+      "parts_total": 65,
+      "labor": 0,
+      "shipping": 29,
+      "tax": 0
+    },
+    "total": 94,
+    "valid_until": "2026-02-12",
+    "note": "最终费用以实际检测为准，过保设备需客户确认后才能维修"
+  }
+}
+```
+
+### 6.5.3 客户确认报价
+
+**POST** `/api/v1/rma-tickets/{id}/estimate/{estimate_id}/confirm`
+
+**权限**: 市场部（代客户确认）、经销商（代客户确认）
+
+```json
+// Request
+{
+  "confirmed_by": "customer",  // customer / dealer
+  "confirmation_method": "邮件",  // 邮件/微信/电话/在线
+  "confirmed_at": "2026-02-05T14:30:00Z",
+  "customer_notes": "同意维修，请尽快处理"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "estimate_id": "est_001",
+    "status": "confirmed",
+    "confirmed_at": "2026-02-05T14:30:00Z",
+    "rma_status_updated": "待寄回"
+  }
+}
+```
+
+### 6.5.4 报价超时管理
+
+**GET** `/api/v1/rma-tickets/estimate-timeout`
+
+**权限**: 市场部
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| timeout_level | string | 7d / 14d / 30d |
+| page | int | 页码 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "rma_id": "rma_089",
+      "ticket_number": "RMA-D-2602-0089",
+      "estimate_sent_at": "2026-01-29",
+      "days_elapsed": 7,
+      "status": "待确认",
+      "customer": "张先生",
+      "dealer": "ProAV Berlin",
+      "last_reminder_sent": "2026-02-03"
+    }
+  ]
+}
+```
+
+**POST** `/api/v1/rma-tickets/{id}/estimate-reminder`
+
+```json
+// Request
+{
+  "reminder_type": "7d_first",  // 7d_first / 14d_followup / 30d_final
+  "send_to": ["customer_email", "dealer_email"]
+}
+```
+
+---
+
+## 6.6 物流追踪 API (Phase 4)
+
+> Phase 4引入：快递单号管理、物流状态追踪、自动通知
+
+### 6.6.1 更新快递信息
+
+**PATCH** `/api/v1/rma-tickets/{id}/shipping`
+
+**权限**: 市场部、生产部、经销商
+
+```json
+// Request - 客户寄回总部
+{
+  "direction": "to_kinefinity",  // to_kinefinity / from_kinefinity
+  "tracking_method": "customer_fills",  // customer_fills / pending_fill / pickup / collect / bulk
+  "tracking_number": "SF1234567890",
+  "carrier": "顺丰速运",
+  "shipped_at": "2026-02-05",
+  "estimated_arrival": "2026-02-07"
+}
+
+// Request - 上门取件（无单号）
+{
+  "direction": "to_kinefinity",
+  "tracking_method": "pickup",
+  "pickup_scheduled_at": "2026-02-06T14:00:00Z",
+  "pickup_address": "北京市朝阳区XXX"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "rma_id": "rma_001",
+    "shipping_updated": true,
+    "status_updated": "运输中"
+  }
+}
+```
+
+### 6.6.2 查询物流状态
+
+**GET** `/api/v1/rma-tickets/{id}/shipping-status`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "rma_id": "rma_001",
+    "direction": "to_kinefinity",
+    "tracking_number": "SF1234567890",
+    "carrier": "顺丰速运",
+    "current_status": "运输中",
+    "shipped_at": "2026-02-05",
+    "estimated_arrival": "2026-02-07",
+    "tracking_history": [
+      {
+        "time": "2026-02-05 14:30",
+        "location": "北京分拨中心",
+        "status": "已发出"
+      },
+      {
+        "time": "2026-02-05 10:20",
+        "location": "北京XXX营业点",
+        "status": "已揽收"
+      }
+    ]
+  }
+}
+```
+
+### 6.6.3 物流到达通知
+
+**POST** `/api/v1/rma-tickets/{id}/shipping-arrived`
+
+**权限**: 市场部、生产部
+
+```json
+// Request
+{
+  "direction": "to_kinefinity",
+  "arrived_at": "2026-02-07T09:30:00Z",
+  "received_by": "usr_015",
+  "package_condition": "良好",  // 良好/破损/其他
+  "notes": "包装完好"
+}
+
+// Response - 自动触发通知
+{
+  "success": true,
+  "data": {
+    "rma_id": "rma_001",
+    "status_updated": "已收到",
+    "notifications_sent": [
+      { "to": "customer_email", "type": "arrival_confirmation" },
+      { "to": "production_team", "type": "device_received" }
+    ]
+  }
+}
+```
+
+---
+
+## 6.7 维修异常处理 API (Phase 4)
+
+> Phase 4引入：异常类型定义、三方确认流程、审批权限控制
+
+### 6.7.1 创建维修异常
+
+**POST** `/api/v1/rma-tickets/{id}/exceptions`
+
+**权限**: 生产部
+
+```json
+// Request
+{
+  "exception_type": "cost_increase",  // cost_increase / unfixable / part_unavailable / customer_issue / extended_time / other
+  "description": "检测发现主板需更换，费用增加至$890",
+  "estimated_additional_cost_usd": 825,
+  "estimated_parts": [
+    { "part_id": "part_003", "name_cn": "主板", "quantity": 1, "price_usd": 890 }
+  ],
+  "severity": "medium"  // low / medium / high
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "exception_id": "exc_001",
+    "rma_id": "rma_001",
+    "status": "待市场部确认",
+    "created_at": "2026-02-08T10:30:00Z",
+    "notifications_sent": [
+      { "to": "market_team", "priority": "high" }
+    ]
+  }
+}
+```
+
+### 6.7.2 异常类型定义
+
+| 异常类型 | 代码 | 说明 | 处理流程 |
+|---------|------|------|---------|
+| 费用增加 | cost_increase | 实际维修费用超出预估 | 生产部→市场部→客户 |
+| 无法维修 | unfixable | 设备损坏严重无法修复 | 生产部→市场部→客户（建议换新/报废） |
+| 配件缺货 | part_unavailable | 需要的配件暂时无货 | 生产部→市场部→客户（等待/替代方案） |
+| 客户原因 | customer_issue | 客户提供信息不全/设备不符 | 市场部→客户 |
+| 延期交付 | extended_time | 维修时间超出预期 | 生产部→市场部→客户 |
+| 其他异常 | other | 其他特殊情况 | 按实际情况处理 |
+
+### 6.7.3 市场部确认异常
+
+**POST** `/api/v1/rma-tickets/{id}/exceptions/{exception_id}/market-confirm`
+
+**权限**: 市场部
+
+```json
+// Request
+{
+  "action": "forward_to_customer",  // forward_to_customer / handle_internally / reject
+  "customer_communication": "已联系客户，建议更换主板，费用$890",
+  "proposed_solution": "继续维修",  // continue / cancel / replace_new / scrap
+  "notes": "客户为VIP，费用敏感"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "exception_id": "exc_001",
+    "status": "待客户确认",
+    "market_confirmed_at": "2026-02-08T14:30:00Z",
+    "notifications_sent": [
+      { "to": "customer_email", "type": "exception_notification" }
+    ]
+  }
+}
+```
+
+### 6.7.4 客户选择处理方案
+
+**POST** `/api/v1/rma-tickets/{id}/exceptions/{exception_id}/customer-decision`
+
+**权限**: 市场部（代客户操作）
+
+```json
+// Request
+{
+  "decision": "continue",  // continue / cancel / replace_new / scrap
+  "additional_payment_confirmed": true,
+  "customer_notes": "同意更换主板，请继续维修",
+  "decided_at": "2026-02-09T10:00:00Z"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "exception_id": "exc_001",
+    "status": "客户已确认-继续维修",
+    "rma_status_updated": "维修中",
+    "requires_approval": true,  // 费用超$500需审批
+    "approval_level": "manager"  // <$100: staff / $100-500: manager / >$500: executive
+  }
+}
+```
+
+### 6.7.5 审批异常处理
+
+**POST** `/api/v1/rma-tickets/{id}/exceptions/{exception_id}/approve`
+
+**权限**: 按费用分级
+
+```json
+// Request
+{
+  "action": "approve",  // approve / reject
+  "approver_notes": "同意继续维修，注意控制成本",
+  "special_discount": 0  // 特殊折扣金额（如VIP优惠）
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "exception_id": "exc_001",
+    "status": "已审批-可继续",
+    "approved_by": "usr_001",
+    "approved_at": "2026-02-09T14:30:00Z",
+    "notifications_sent": [
+      { "to": "production_team", "type": "approval_confirmed" }
+    ]
+  }
+}
+```
+
+### 6.7.6 获取异常列表
+
+**GET** `/api/v1/rma-exceptions`
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| status | string | pending_market / pending_customer / pending_approval / resolved |
+| exception_type | string | 异常类型筛选 |
+| severity | string | low / medium / high |
+
+---
+
 ## 7. 经销商维修单 API (Dealer Repair)
 
 > 经销商维修单用于记录经销商本地维修，用于配件消耗和库存管理。
@@ -1338,6 +1757,311 @@
       { "type": "固件知识", "count": 15 }
     ],
     "general": { "count": 20 }
+  }
+}
+```
+
+---
+
+## 10.8 VoC管理 API (Voice of Customer - Phase 7)
+
+> Phase 7引入：客户反馈→产品改进的闭环管理
+
+### 10.8.1 VoC类型定义
+
+| 类型 | 代码 | 说明 | 来源 |
+|-----|------|------|------|
+| Bug流 | bug | 产品缺陷、功能错误 | 工单系统自动标记 |
+| Wishlist流 | wishlist | 功能期望、改进建议 | 客户主动提出或从工单提取 |
+| 原声流 | voice | 客户原始反馈记录 | 邮件、社交媒体、调研 |
+
+### 10.8.2 创建VoC条目
+
+**POST** `/api/v1/voc`
+
+**权限**: 市场部、研发部
+
+```json
+// Request - Bug类型
+{
+  "voc_type": "bug",
+  "title": "Edge 8K录制ProRes时码跳帧",
+  "description": "使用ProRes编码录制时，时码偶尔出现跳帧现象",
+  "product_ids": ["prod_edge8k"],
+  "source": "issue",  // issue / email / social / survey / other
+  "source_ref_id": "inq_089",  // 关联工单ID
+  "reporter": {
+    "customer_id": "cust_001",
+    "customer_name": "张先生",
+    "customer_tier": "VIP"
+  },
+  "affected_firmware": "8023",
+  "reproducible": true,
+  "severity": "medium",  // low / medium / high / critical
+  "tags": ["时码", "ProRes", "Edge 8K"]
+}
+
+// Request - Wishlist类型
+{
+  "voc_type": "wishlist",
+  "title": "希望支持BRAW格式录制",
+  "description": "客户希望Edge系列能支持Blackmagic RAW格式",
+  "product_ids": ["prod_edge8k", "prod_edge6k"],
+  "source": "email",
+  "priority": "P3",  // P1高/P2中/P3低
+  "business_value": "可吸引BMPCC用户转换至Kinefinity",
+  "estimated_demand": "多个客户提及",
+  "tags": ["编码格式", "BRAW", "功能请求"]
+}
+
+// Request - 原声类型
+{
+  "voc_type": "voice",
+  "title": "客户对Eagle HDMI稳定性的积极反馈",
+  "original_content": "客户在Facebook发帖：Eagle HDMI与FX6搭配非常稳定...",
+  "source": "social",
+  "platform": "Facebook",
+  "sentiment": "positive",  // positive / neutral / negative
+  "url": "https://facebook.com/...",
+  "captured_at": "2026-02-01"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "voc_001",
+    "voc_number": "VOC-2602-001",
+    "voc_type": "bug",
+    "status": "new",
+    "created_at": "2026-02-03T10:30:00Z"
+  }
+}
+```
+
+### 10.8.3 获取VoC列表
+
+**GET** `/api/v1/voc`
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| voc_type | string | bug / wishlist / voice |
+| status | string | new / reviewing / planned / in_progress / resolved / wont_fix |
+| product_id | string | 产品筛选 |
+| priority | string | P1 / P2 / P3 |
+| severity | string | low / medium / high / critical |
+| tags | string | 标签筛选，逗号分隔 |
+| assigned_to | string | 处理人筛选 |
+| keyword | string | 关键词搜索 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "voc_001",
+      "voc_number": "VOC-2602-001",
+      "voc_type": "bug",
+      "title": "Edge 8K录制ProRes时码跳帧",
+      "status": "reviewing",
+      "priority": null,
+      "severity": "medium",
+      "product_names": ["MAVO Edge 8K"],
+      "reporter_name": "张先生",
+      "assigned_to": { "id": "usr_010", "name": "研发-李工" },
+      "votes": 5,
+      "created_at": "2026-02-03",
+      "updated_at": "2026-02-05"
+    }
+  ],
+  "meta": {
+    "total": 156,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### 10.8.4 VoC详情
+
+**GET** `/api/v1/voc/{id}`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "voc_001",
+    "voc_number": "VOC-2602-001",
+    "voc_type": "bug",
+    "title": "Edge 8K录制ProRes时码跳帧",
+    "description": "使用ProRes编码录制时，时码偶尔出现跳帧现象",
+    "status": "planned",
+    "priority": "P2",
+    "severity": "medium",
+    "products": [
+      { "id": "prod_edge8k", "name": "MAVO Edge 8K" }
+    ],
+    "reporter": {
+      "customer_id": "cust_001",
+      "customer_name": "张先生",
+      "customer_tier": "VIP"
+    },
+    "source": "issue",
+    "source_ref": {
+      "type": "inquiry_ticket",
+      "id": "inq_089",
+      "number": "K2602-0089"
+    },
+    "assigned_to": {
+      "id": "usr_010",
+      "name": "研发-李工",
+      "department": "研发部"
+    },
+    "planned_release": "v8026",
+    "votes": 5,
+    "voters": [
+      { "customer_id": "cust_001", "name": "张先生", "voted_at": "2026-02-03" },
+      { "customer_id": "cust_015", "name": "王导演", "voted_at": "2026-02-04" }
+    ],
+    "related_vocs": [
+      { "id": "voc_012", "title": "ProRes编码偶现花屏", "similarity": 0.75 }
+    ],
+    "timeline": [
+      { "time": "2026-02-03", "action": "created", "by": "usr_001" },
+      { "time": "2026-02-04", "action": "reviewed", "by": "usr_010", "note": "已复现，排查中" },
+      { "time": "2026-02-05", "action": "status_changed", "from": "reviewing", "to": "planned" }
+    ],
+    "created_at": "2026-02-03T10:30:00Z",
+    "updated_at": "2026-02-05T14:20:00Z"
+  }
+}
+```
+
+### 10.8.5 更新VoC状态
+
+**PATCH** `/api/v1/voc/{id}`
+
+**权限**: 研发部、市场部
+
+```json
+// Request - 研发部更新
+{
+  "status": "in_progress",
+  "assigned_to": "usr_010",
+  "priority": "P1",
+  "planned_release": "v8026",
+  "internal_notes": "已定位问题，预计2周内修复"
+}
+
+// Request - 标记为不修复
+{
+  "status": "wont_fix",
+  "resolution": "该功能设计如此，不属于Bug",
+  "notify_reporter": true
+}
+```
+
+### 10.8.6 VoC投票
+
+**POST** `/api/v1/voc/{id}/vote`
+
+**权限**: 所有登录用户
+
+```json
+// Request
+{
+  "voter_id": "cust_015",  // 可选，不填则使用当前用户
+  "voter_name": "王导演"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "voc_id": "voc_001",
+    "votes": 6,
+    "voted_at": "2026-02-06T10:30:00Z"
+  }
+}
+```
+
+**DELETE** `/api/v1/voc/{id}/vote` - 取消投票
+
+### 10.8.7 VoC关联开发
+
+**POST** `/api/v1/voc/{id}/link-development`
+
+**权限**: 研发部
+
+```json
+// Request
+{
+  "development_type": "firmware",  // firmware / feature / fix
+  "version": "v8026",
+  "jira_id": "KINE-1234",  // 可选，关联Jira
+  "estimated_release_date": "2026-03-15"
+}
+```
+
+### 10.8.8 发布通知相关客户
+
+**POST** `/api/v1/voc/{id}/notify-release`
+
+**权限**: 市场部
+
+```json
+// Request
+{
+  "release_version": "v8026",
+  "release_notes": "已修复ProRes时码跳帧问题",
+  "notify_targets": "voters_and_reporter"  // voters_and_reporter / all_interested
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "notifications_sent": 6,
+    "recipients": [
+      { "customer_id": "cust_001", "name": "张先生", "method": "邮件" }
+    ]
+  }
+}
+```
+
+### 10.8.9 VoC统计
+
+**GET** `/api/v1/voc/stats`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "by_type": {
+      "bug": 45,
+      "wishlist": 89,
+      "voice": 23
+    },
+    "by_status": {
+      "new": 12,
+      "reviewing": 15,
+      "planned": 34,
+      "in_progress": 28,
+      "resolved": 56,
+      "wont_fix": 11
+    },
+    "top_voted": [
+      { "id": "voc_023", "title": "支持BRAW格式", "votes": 45 },
+      { "id": "voc_089", "title": "增加LUT预览", "votes": 38 }
+    ],
+    "recent_resolved": [
+      { "id": "voc_156", "title": "ProRes时码问题", "resolved_in": "v8026" }
+    ]
   }
 }
 ```
@@ -1884,11 +2608,13 @@
 
 ---
 
-## 17. AI 智能问答 API
+## 17. Bokeh智能助手 API (Phase 6)
 
-### 17.1 智能问答
+> Phase 6引入：知识库智能检索 + AI辅助问答系统，统一命名为"Bokeh"
 
-**POST** `/api/v1/ai/chat`
+### 17.1 智能问答（Bokeh Chat）
+
+**POST** `/api/v1/bokeh/chat`
 
 **权限**: 按用户角色决定检索范围
 
@@ -1898,40 +2624,46 @@
   "question": "MAVO Edge 8K 录制时突然停止是什么原因？",
   "context": {
     "product_id": "prod_edge8k",  // 可选，限定产品范围
-    "include_issues": true  // 是否检索历史工单
-  }
+    "include_issues": true,  // 是否检索历史工单
+    "include_kb": true  // 是否检索知识库
+  },
+  "session_id": "bokeh_session_001"  // 可选，多轮对话时传入
 }
 
 // Response
 {
   "success": true,
   "data": {
+    "session_id": "bokeh_session_001",
     "answer": "根据历史记录，MAVO Edge 8K 录制中断通常有以下原因：\n1. SSD 写入速度不足\n2. 高温保护触发\n3. 电池电量不足\n\n建议排查步骤...",
     "references": [
       {
         "type": "knowledge",
         "id": "kb_023",
         "title": "SSD兼容性指南",
-        "snippet": "推荐使用Samsung T7..."
+        "snippet": "推荐使用Samsung T7...",
+        "relevance_score": 0.92
       },
       {
         "type": "issue",
         "id": "issue_847",
         "rma_number": "RMA-C-2512-0047",
-        "snippet": "客户反馈录制中断，更换SSD后解决"
+        "snippet": "客户反馈录制中断，更换SSD后解决",
+        "relevance_score": 0.85
       }
     ],
     "suggested_actions": [
       { "action": "create_issue", "label": "创建工单" },
       { "action": "view_knowledge", "id": "kb_023", "label": "查看知识库" }
-    ]
+    ],
+    "confidence": 0.88
   }
 }
 ```
 
-### 17.2 引导式故障排查
+### 17.2 引导式故障排查（Bokeh Troubleshoot）
 
-**POST** `/api/v1/ai/troubleshoot`
+**POST** `/api/v1/bokeh/troubleshoot`
 
 ```json
 // Request (开始排查)
@@ -2177,49 +2909,246 @@
 
 ## 20. 待确认问题汇总
 
-| 编号 | 问题 | 默认方案 | 影响API |
+> **注**：以下待确认问题已在PRD第4章明确，此处保留历史记录
+
+| 编号 | 问题 | 决策（PRD 4.1） | 影响API |
 |-----|------|---------|--------|
-| Q5 | 视频100MB限制是否足够 | 100MB | `POST /issues/{id}/attachments` |
-| Q6 | 是否自动压缩 | 不压缩 | 附件上传 |
-| Q7 | 是否用对象存储 | 本地存储 | 附件存储 |
-| Q8 | 知识库组织方式 | 混合模式 | `GET /knowledge/tree` |
-| Q9 | 是否版本控制 | 不需要 | 知识库API |
-| Q10 | 是否审核流程 | 不需要 | `POST /knowledge/{id}/publish` |
-| Q11 | 内容格式 | Markdown | 知识库创建/编辑 |
+| Q5 | 图片/视频大小限制 | 图片6MB/张，视频50MB/个 | `POST /attachments` |
+| Q6 | 是否自动压缩 | Backlog | 附件上传 |
+| Q7 | 是否用对象存储 | 暂不使用，本地SSD | 附件存储 |
+| Q8 | 知识库组织方式 | 混合模式（产品+分类） | `GET /knowledge/tree` |
+| Q9 | 知识库版本控制 | 不需要 | 知识库API |
+| Q10 | 知识库审核流程 | 需要（含推送提醒） | `POST /knowledge/{id}/publish` |
+| Q11 | 知识库内容格式 | Markdown/富文本 | 知识库创建/编辑 |
 | Q13 | 经销商独立入口 | 共用入口 | `POST /auth/login` |
-| Q14 | 经销商能否创建工单 | 可以 | `POST /issues` |
-| Q2 | 定时邮件推送 | Phase 1不实现 | `POST /stats/scheduled-reports` |
-| Q17 | 推送通知 | 基础通知,无推送 | 通知API |
+| Q14 | 经销商能否创建工单 | 可以 | `POST /inquiry-tickets`, `POST /rma-tickets` |
+| Q2 | 定时邮件推送 | 需要（Phase 8实现） | `POST /stats/scheduled-reports` |
+| Q17 | 推送通知 | 需要（Phase 8实现） | 通知API |
 
 ---
 
 ## 21. API 版本规划
 
-### Phase 1 (基础)
-- 认证API (2.1-2.4)
-- 咨询工单API (3.1-3.6)
+> 根据PRD第5章版本规划调整API开发路线图
+
+### Phase 1: 三层工单系统 ✅ **已完成**
+
+**API范围**：
+- 认证API (2.1-2.5)
+- 产品列表API (2.5)
+- 咨询工单API (3.x) - 完整CRUD+升级
 - 上下文查询API (4.1-4.2)
-- 工单CRUD (5.1-5.7)
-- 工单评论 (6.x)
-- 附件上传 (7.x) - 本地存储
-- 产品/客户/经销商基础API (9-11)
-- 维修配件API (12.1-12.5) **新增** - 配件价格查询、报价预估
-- 基础统计 (14.1-14.5)
+- 客户/经销商列表API (5.1-5.2)
+- RMA返厂单API (6.1-6.8) - 单/批量创建
+- 经销商维修单API (7.x)
+- 工单评论API (8.x)
+- 工单附件API (9.x) - 本地存储，50MB限制
+- 系统字典API (18.2-18.3)
 
-### Phase 2 (知识库+配件库存)
-- 知识库全部API (8.x)
-- AI智能问答 (15.1-15.2)
-- 经销商配件库存API (12.6-12.7) **新增**
+**交付物**：
+- 三种工单类型完整API
+- 基础认证与权限
+- 附件上传（本地存储）
 
-### Phase 3 (高级分析)
-- 高级统计 (14.6-14.8)
-- AI工单分析 (15.3-15.5)
-- 导出功能
+---
 
-### Phase 4 (扩展)
-- 定时报表
-- 推送通知
-- 对象存储迁移
+### Phase 2: 核心服务流程完善 🚧 **进行中**
+
+**API范围**：
+- 工单协作增强
+  - 评论@提醒功能
+  - 状态流转可视化
+  - 附件批量管理
+- 客户与设备管理
+  - 客户档案完善API
+  - 设备资产管理API
+  - 客户-设备关联
+- 统计与报表
+  - 统计大盘API (16.1-16.2)
+  - 多维度筛选查询
+  - Excel导出API (16.8)
+  - 预置查询模板
+
+**预计时间**：4-6周
+
+---
+
+### Phase 3: 知识库体系 📚
+
+**API范围**：
+- 知识库CRUD API (10.1-10.7)
+  - Markdown/富文本支持
+  - 混合组织模式
+  - 权限分级（Public/Dealer/Internal/Department）
+  - WIKI式浏览
+  - 全文搜索
+- 知识审核流程API
+  - 审核工作流（草稿→待审核→已发布）
+  - 审核推送通知
+- 工单-知识联动API
+
+**预计时间**：4-6周
+
+---
+
+### Phase 4: 返修闭环管理 🔄
+
+**API范围**：
+- **返修报价预估API** (6.5.x)
+  - AI故障诊断
+  - 配件价格自动计算
+  - 预估价格生成
+  - 客户确认流程
+  - 超时提醒机制（7/14/30天）
+- **物流追踪API** (6.6.x)
+  - 快递单号管理（5种模式）
+  - 物流状态追踪
+  - 到达通知
+- **维修异常处理API** (6.7.x)
+  - 异常类型定义（6种）
+  - 三方确认流程（生产部→市场部→客户）
+  - 分级审批（<$100/$100-500/>$500）
+- **维修配件管理API** (14.x)
+  - 配件目录
+  - 配件报价
+  - 维修PI生成
+
+**预计时间**：6-8周
+
+---
+
+### Phase 5: 经销商配件与结算 💰
+
+**API范围**：
+- **配件库存管理API** (14.6)
+  - 库存初始化
+  - 维修工单自动扣减
+  - 库存预警
+  - 库存变动记录
+- **补货管理API** (14.7)
+  - 补货申请
+  - 欠款检查机制（<30天警告/≥30天阻止）
+  - 市场部审批
+  - 紧急例外审批
+- **结算管理API**
+  - 定期结算（月度/季度）
+  - 对账单生成
+  - 欠款催收
+
+**预计时间**：4-6周
+
+---
+
+### Phase 6: Bokeh智能助手（第一期）🤖
+
+**API范围**：
+- **知识库智能检索API** (17.1)
+  - 向量化知识库
+  - 语义搜索
+  - 智能问答（Bokeh Chat）
+  - 引导式故障排查（Bokeh Troubleshoot）
+- **工单智能辅助API** (17.3-17.5)
+  - 工单智能分类
+  - 优先级自动建议
+  - 智能回复建议
+  - 知识点自动提取
+- **故障诊断API** (6.5.1)
+  - AI故障原因诊断
+  - 维修方案推荐
+  - 配件需求预测
+
+**预计时间**：6-8周
+
+---
+
+### Phase 7: VoC产品进化池 🌱
+
+**API范围**：
+- **VoC管理API** (10.8.x)
+  - Bug流管理
+  - Wishlist流管理
+  - 原声流管理
+  - VoC投票系统
+- **研发协同API**
+  - VoC关联开发
+  - 版本规划关联
+  - 发布推送给相关客户
+
+**预计时间**：4周
+
+---
+
+### Phase 8: 洞察与报告 📊
+
+**API范围**：
+- **质量仪表盘API**
+  - 问题趋势分析 (16.2)
+  - 高频问题识别
+  - 批次问题预警
+  - 产品健康度评分
+- **性能指标API** (16.7)
+  - TAT分析
+  - SLA达标率
+  - 客户满意度
+  - 地区热力图 (16.6)
+- **定期报告API**
+  - 自动报告生成
+  - 富文本HTML邮件推送
+  - 报告订阅管理
+
+**预计时间**：4-6周
+
+---
+
+### Phase 9: iOS移动端 API 📱
+
+**API优化**：
+- 移动端适配（简化返回数据）
+- 离线草稿同步API
+- APNs推送注册与管理
+- 快速操作API（快速创建、状态更新）
+
+**预计时间**：8-10周（含iOS开发）
+
+---
+
+### Phase 10: Bokeh智能助手（第二期）🚀
+
+**API范围**：
+- 高频问题自动识别
+- 相似工单智能推荐
+- 补货量智能建议
+- 邮件/通知自动起草
+- 报告智能摘要
+
+**预计时间**：4-6周
+
+---
+
+### Phase 11: Bokeh智能助手（第三期）💡
+
+**API范围**：
+- 处理人智能分配
+- 知识条目更新建议
+- 自然语言查询
+- 客户情绪识别
+- 结算异常检测
+- 维修记录规范化
+- 多语言翻译
+
+**预计时间**：4-6周
+
+---
+
+### Backlog（待规划）
+
+- 自定义报表功能
+- 图片/视频自动压缩
+- 对象存储迁移（OSS/S3）
+- 官网集成（知识库API对外开放）
+- 物流API对接（自动追踪）
+- 信用额度管理
+- 多语言支持（i18n）
 
 ---
 
