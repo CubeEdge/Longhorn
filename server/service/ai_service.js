@@ -148,14 +148,32 @@ class AIService {
         if (!client) throw new Error("Active AI Provider has no API Key configured.");
 
         const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
-Your task is to extract consultation ticket information from raw text (emails, chat logs).
-Return ONLY a JSON object with the following fields (if missing, use null or meaningful defaults):
-- customer_name: string
-- contact_info: string (email or phone)
-- product_model: string (e.g., MAVO Edge 8K, MAVO mark2, MC8020)
-- issue_summary: string (short title)
-- issue_description: string (detailed description)
-- urgency: "Normal" | "High" | "Critical" (infer from tone)
+Your task is to extract consultation ticket information from raw text (emails, chat logs, messages).
+Return ONLY a JSON object with the following fields (if missing, use null):
+
+**Customer Info:**
+- customer_name: string (full name)
+- contact_info: string (email or phone number)
+
+**Product Info:**
+- product_model: string (exact model name: MAVO Edge 8K, MAVO Edge 6K, MAVO LF, MAVO mark2, MC8020, KineMON, Eagle, Terra, etc.)
+- serial_number: string (format: XXXXXXXX or letters+numbers, usually 8+ chars)
+
+**Service Info:**
+- service_type: "Consultation" | "Troubleshooting" | "RemoteAssist" | "Complaint" (infer from content)
+- channel: "Phone" | "Email" | "WeChat" | "WeCom" | "Facebook" | "Online" (detect communication method)
+
+**Issue Info:**
+- issue_summary: string (concise title, max 50 chars)
+- issue_description: string (detailed description with context)
+- urgency: "Normal" | "High" | "Critical" (infer from tone, keywords like "urgent", "ASAP", "production stopped")
+
+**Important Rules:**
+- Recognize Kinefinity product names and variations (e.g., "Edge 8K" = "MAVO Edge 8K")
+- Extract serial numbers carefully (usually 8+ alphanumeric characters)
+- Infer service_type: questions → Consultation, technical issues → Troubleshooting, complaints → Complaint
+- Detect channel from context: "email from", "called", "WeChat message", etc.
+- Set urgency based on language: "urgent", "ASAP", "critical", "production", "deadline"
 
 Output raw JSON only, no markdown formatting blocks.`;
 
