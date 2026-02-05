@@ -320,9 +320,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <>
                 <div style={{ marginTop: 'auto' }} />
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-                <Link to="/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''} `} onClick={onClose}>
-                  <Settings size={20} />
-                  <span>{t('admin.system_settings')}</span>
+                <Link to="/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/admin/settings') ? 'active' : ''} `} onClick={onClose}>
+                  <Settings size={18} />
+                  <span>{t('sidebar.service_admin')}</span>
                 </Link>
               </>
             )}
@@ -379,7 +379,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
                 <Link to="/admin/dashboard" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
                   <LayoutDashboard size={20} />
-                  <span>{t('admin.control_panel')}</span>
+                  <span>{t('sidebar.files_admin')}</span>
                 </Link>
               </>
             )}
@@ -770,7 +770,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             marginRight: '12px',
             border: '1px solid rgba(16, 185, 129, 0.2)'
           }}>
-            v{import.meta.env.PACKAGE_VERSION || '1.1.10'}
+            v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}
           </div>
 
           {/* User Dropdown Menu */}

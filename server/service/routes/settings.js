@@ -20,26 +20,28 @@ module.exports = (db, authenticate) => {
     // GET /api/admin/settings
     router.get('/settings', (req, res) => {
         try {
-            const row = db.prepare('SELECT * FROM system_settings LIMIT 1').get();
-            // Default settings if none exist
-            const settings = row || {
-                ai_enabled: 1,
-                ai_work_mode: 0,
-                ai_allow_search: 0,
-                ai_provider: 'DeepSeek',
-                ai_model_chat: 'deepseek-chat',
-                ai_model_reasoner: 'deepseek-reasoner',
-                ai_model_vision: 'gemini-1.5-flash',
-                ai_temperature: 0.7,
-                system_name: 'Longhorn System'
-            };
+            const settings = db.prepare('SELECT * FROM system_settings LIMIT 1').get();
+            const providers = db.prepare('SELECT * FROM ai_providers').all();
 
             // Normalize booleans
-            settings.ai_enabled = Boolean(settings.ai_enabled);
-            settings.ai_work_mode = Boolean(settings.ai_work_mode);
-            settings.ai_allow_search = Boolean(settings.ai_allow_search);
+            if (settings) {
+                settings.ai_enabled = Boolean(settings.ai_enabled);
+                settings.ai_work_mode = Boolean(settings.ai_work_mode);
+                settings.ai_allow_search = Boolean(settings.ai_allow_search);
+            }
 
-            res.json({ success: true, data: settings });
+            providers.forEach(p => {
+                p.allow_search = Boolean(p.allow_search);
+                p.is_active = Boolean(p.is_active);
+            });
+
+            res.json({
+                success: true,
+                data: {
+                    settings: settings || { system_name: 'Longhorn System', ai_enabled: 1 },
+                    providers
+                }
+            });
         } catch (err) {
             console.error('[Settings] Fetch Error:', err);
             res.status(500).json({ error: err.message });
@@ -49,43 +51,78 @@ module.exports = (db, authenticate) => {
     // POST /api/admin/settings
     router.post('/settings', (req, res) => {
         try {
-            const s = req.body;
+            const { settings, providers } = req.body;
 
-            // Upsert Logic
+            // 1. Update general system settings
             const existing = db.prepare('SELECT id FROM system_settings LIMIT 1').get();
-
-            if (existing) {
+            if (existing && settings) {
                 db.prepare(`
                     UPDATE system_settings SET 
                         ai_enabled = @ai_enabled,
                         ai_work_mode = @ai_work_mode,
-                        ai_allow_search = @ai_allow_search,
-                        ai_provider = @ai_provider,
-                        ai_model_chat = @ai_model_chat,
-                        ai_model_reasoner = @ai_model_reasoner,
-                        ai_model_vision = @ai_model_vision,
-                        ai_temperature = @ai_temperature,
                         system_name = @system_name,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
-                `).run({ ...s, id: existing.id });
-            } else {
-                db.prepare(`
-                    INSERT INTO system_settings (
-                        ai_enabled, ai_work_mode, ai_allow_search, 
-                        ai_provider, ai_model_chat, ai_model_reasoner, ai_model_vision,
-                        ai_temperature, system_name
-                    ) VALUES (
-                        @ai_enabled, @ai_work_mode, @ai_allow_search, 
-                        @ai_provider, @ai_model_chat, @ai_model_reasoner, @ai_model_vision,
-                        @ai_temperature, @system_name
-                    )
-                `).run(s);
+                `).run({
+                    id: existing.id,
+                    system_name: settings.system_name,
+                    ai_enabled: settings.ai_enabled ? 1 : 0,
+                    ai_work_mode: settings.ai_work_mode ? 1 : 0
+                });
             }
 
-            res.json({ success: true, message: 'Settings updated' });
+            // 2. Update/Insert Providers
+            if (providers && Array.isArray(providers)) {
+                const upsertProvider = db.prepare(`
+                    INSERT INTO ai_providers (
+                        name, api_key, base_url, chat_model, reasoner_model, vision_model, allow_search, temperature, max_tokens, top_p, is_active, updated_at
+                    ) VALUES (
+                        @name, @api_key, @base_url, @chat_model, @reasoner_model, @vision_model, @allow_search, @temperature, @max_tokens, @top_p, @is_active, CURRENT_TIMESTAMP
+                    )
+                    ON CONFLICT(name) DO UPDATE SET
+                        api_key = COALESCE(@api_key, api_key),
+                        base_url = @base_url,
+                        chat_model = @chat_model,
+                        reasoner_model = @reasoner_model,
+                        vision_model = @vision_model,
+                        allow_search = @allow_search,
+                        temperature = @temperature,
+                        max_tokens = @max_tokens,
+                        top_p = @top_p,
+                        is_active = @is_active,
+                        updated_at = CURRENT_TIMESTAMP
+                `);
+
+                db.transaction(() => {
+                    // If multiple providers are sent as active, only one remains active (the last one or specifically handled)
+                    // For logic simplicity, we trust frontend sends only one is_active: true
+                    for (const p of providers) {
+                        upsertProvider.run({
+                            ...p,
+                            api_key: p.api_key || null,
+                            allow_search: p.allow_search ? 1 : 0,
+                            is_active: p.is_active ? 1 : 0
+                        });
+                    }
+                })();
+            }
+
+            res.json({ success: true, message: 'Settings and providers updated' });
         } catch (err) {
             console.error('[Settings] Update Error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // POST /api/admin/providers/delete
+    router.post('/providers/delete', (req, res) => {
+        try {
+            const { name } = req.body;
+            if (!name) return res.status(400).json({ error: 'Provider name required' });
+
+            db.prepare('DELETE FROM ai_providers WHERE name = ? AND is_active = 0').run(name);
+            res.json({ success: true, message: 'Provider deleted' });
+        } catch (err) {
             res.status(500).json({ error: err.message });
         }
     });

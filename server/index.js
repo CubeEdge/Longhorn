@@ -60,12 +60,35 @@ db.exec(`
         ai_work_mode BOOLEAN DEFAULT 0,
         ai_allow_search BOOLEAN DEFAULT 0,
         ai_provider TEXT DEFAULT 'DeepSeek',
-        ai_model_chat TEXT DEFAULT 'deepseek-chat',
-        ai_model_reasoner TEXT DEFAULT 'deepseek-reasoner',
-        ai_model_vision TEXT DEFAULT 'gemini-1.5-flash',
-        ai_temperature REAL DEFAULT 0.7,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS ai_providers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,      -- 'DeepSeek', 'Gemini', 'Custom'
+        api_key TEXT,
+        base_url TEXT,
+        chat_model TEXT,
+        reasoner_model TEXT,
+        vision_model TEXT,
+        allow_search BOOLEAN DEFAULT 0,
+        temperature REAL DEFAULT 0.7,
+        max_tokens INTEGER DEFAULT 4096,
+        top_p REAL DEFAULT 1.0,
+        is_active BOOLEAN DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Seed default providers if table is empty
+    INSERT OR IGNORE INTO ai_providers (name, base_url, chat_model, reasoner_model, vision_model, is_active, temperature)
+    VALUES ('DeepSeek', 'https://api.deepseek.com', 'deepseek-chat', 'deepseek-reasoner', 'deepseek-chat', 1, 0.7);
+    
+    INSERT OR IGNORE INTO ai_providers (name, base_url, chat_model, reasoner_model, vision_model, is_active, temperature)
+    VALUES ('Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 0, 0.7);
+
+    -- Ensure one system settings row exists
+    INSERT OR IGNORE INTO system_settings (id, system_name) VALUES (1, 'Longhorn System');
+
     CREATE TABLE IF NOT EXISTS departments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
@@ -3470,7 +3493,7 @@ app.post('/api/admin/restore-db', authenticate, upload.single('database'), async
 
 // Serve Frontend Static Files (Production)
 app.use(express.static(path.join(__dirname, '../client/dist'), {
-    maxAge: '1h',  // Cache static assets for 1 hour
+    maxAge: '0',  // Disabled for now to force cache refresh
     etag: true,
     lastModified: true
 }));

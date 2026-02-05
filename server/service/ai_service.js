@@ -4,56 +4,77 @@ const path = require('path');
 class AIService {
     constructor(db) {
         this.db = db;
-
-        const apiKey = process.env.AI_API_KEY;
-        const baseURL = process.env.AI_BASE_URL || 'https://api.deepseek.com';
-
-        if (!apiKey) {
-            console.warn('[AIService] No AI_API_KEY found in environment variables. AI features will be disabled.');
-            this.client = null;
-        } else {
-            this.client = new OpenAI({
-                baseURL: baseURL,
-                apiKey: apiKey,
-            });
-            console.log(`[AIService] Initialized with provider: ${process.env.AI_PROVIDER || 'DeepSeek'}`);
-        }
-
-        this.models = {
-        };
+        this.clients = new Map(); // Cache clients by provider name
     }
 
     /**
-     * Helper: Fetch current system settings or default
+     * Helper: Fetch active provider settings
      */
-    _getSettings() {
+    _getActiveProvider() {
+        try {
+            const provider = this.db.prepare('SELECT * FROM ai_providers WHERE is_active = 1 LIMIT 1').get();
+            if (provider) {
+                provider.allow_search = Boolean(provider.allow_search);
+                return provider;
+            }
+        } catch (e) {
+            console.warn('[AIService] Failed to fetch active provider, using env fallback');
+        }
+
+        // Fallback to env for backward compatibility
+        return {
+            name: process.env.AI_PROVIDER || 'DeepSeek',
+            api_key: process.env.AI_API_KEY,
+            base_url: process.env.AI_BASE_URL || 'https://api.deepseek.com',
+            chat_model: process.env.AI_MODEL_CHAT || 'deepseek-chat',
+            reasoner_model: process.env.AI_MODEL_REASONER || 'deepseek-reasoner',
+            vision_model: 'gemini-1.5-flash',
+            allow_search: false
+        };
+    }
+
+    _getSystemSettings() {
         try {
             const row = this.db.prepare('SELECT * FROM system_settings LIMIT 1').get();
-            if (row) return row;
-        } catch (e) {
-            console.warn('[AIService] Failed to fetch settings, using defaults');
-        }
-        return {
-            ai_provider: 'DeepSeek',
-            ai_model_chat: process.env.AI_MODEL_CHAT || 'deepseek-chat',
-            ai_model_reasoner: process.env.AI_MODEL_REASONER || 'deepseek-reasoner',
-            ai_model_vision: 'gemini-1.5-flash',
-            ai_temperature: 0.7,
-            ai_work_mode: 0,
-            ai_allow_search: 0
-        };
+            if (row) {
+                row.ai_work_mode = Boolean(row.ai_work_mode);
+                return row;
+            }
+        } catch (e) { }
+        return { ai_work_mode: false };
     }
 
     /**
-     * Determines which model to use based on task type.
-     * @param {string} taskType - 'chat', 'logic', 'vision'
-     * @returns {string} Model name
+     * Get or create OpenAI client for a provider
      */
+    _getClient(provider) {
+        if (!provider.api_key) return null;
+
+        // Cache by name, key AND baseURL to handle changes immediately
+        const cacheKey = `${provider.name}_${provider.api_key.substring(0, 8)}_${provider.base_url}`;
+        if (this.clients.has(cacheKey)) return this.clients.get(cacheKey);
+
+        const config = {
+            baseURL: provider.base_url,
+            apiKey: provider.api_key,
+            timeout: 60000,
+            maxRetries: 2,
+        };
+
+        // Note: Generic proxy support (OpenAI SDK uses fetch internally)
+        // If the environment has HTTPS_PROXY and https-proxy-agent is installed, 
+        // it would handle it. For now, we rely on the standard fetch environment.
+
+        const client = new OpenAI(config);
+        this.clients.set(cacheKey, client);
+        return client;
+    }
+
     _getModel(taskType) {
-        const settings = this._getSettings();
-        if (taskType === 'logic') return settings.ai_model_reasoner;
-        if (taskType === 'vision') return settings.ai_model_vision;
-        return settings.ai_model_chat; // Default
+        const provider = this._getActiveProvider();
+        if (taskType === 'logic') return provider.reasoner_model || provider.chat_model;
+        if (taskType === 'vision') return provider.vision_model || provider.chat_model;
+        return provider.chat_model;
     }
 
     /**
@@ -83,20 +104,23 @@ class AIService {
      * @param {string} userPrompt - User input
      */
     async generate(taskType, systemPrompt, userPrompt) {
-        if (!this.client) throw new Error("AI Service not fully configured.");
-        if (taskType === 'vision') throw new Error("Vision tasks not yet implemented.");
+        const provider = this._getActiveProvider();
+        const client = this._getClient(provider);
+        if (!client) throw new Error("Active AI Provider has no API Key configured.");
 
-        const settings = this._getSettings();
+        const settings = this._getSystemSettings();
         const model = this._getModel(taskType);
 
         try {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
                 model: model,
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt }
                 ],
-                temperature: settings.ai_temperature || 0.7,
+                temperature: provider.temperature ?? 0.7,
+                max_tokens: provider.max_tokens ?? 4096,
+                top_p: provider.top_p ?? 1.0,
                 stream: false,
             });
 
@@ -119,6 +143,10 @@ class AIService {
      * @returns {Promise<Object>} JSON object with ticket fields
      */
     async parseTicket(rawText) {
+        const provider = this._getActiveProvider();
+        const client = this._getClient(provider);
+        if (!client) throw new Error("Active AI Provider has no API Key configured.");
+
         const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
 Your task is to extract consultation ticket information from raw text (emails, chat logs).
 Return ONLY a JSON object with the following fields (if missing, use null or meaningful defaults):
@@ -131,17 +159,16 @@ Return ONLY a JSON object with the following fields (if missing, use null or mea
 
 Output raw JSON only, no markdown formatting blocks.`;
 
-        // Ticket parsing is a 'logic' heavy task? Actually 'chat' model (V3) is usually good enough for extraction and cheaper/faster. 
-        // But if complex reasoning is needed we could use reasoner. Let's stick to 'chat' for standard extraction to save query time.
         const model = this._getModel('chat');
 
         try {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
                 model: model,
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: rawText }
                 ],
+                temperature: 0.3, // Lower temp for factual extraction by default, but could follow global
                 response_format: { type: "json_object" }, // Enforce JSON if model supports it
             });
 
@@ -162,14 +189,17 @@ Output raw JSON only, no markdown formatting blocks.`;
      * @param {Object} context - Context object (page, title, etc.)
      */
     async chat(messages, context = {}) {
-        const settings = this._getSettings();
+        const provider = this._getActiveProvider();
+        const client = this._getClient(provider);
+        if (!client) throw new Error("Active AI Provider has no API Key configured.");
+
+        const settings = this._getSystemSettings();
 
         // Policy Check: Work Mode Only
         if (settings.ai_work_mode) {
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && lastMsg.role === 'user') {
-                // Simple keyword check or just add instruction to system prompt
-                // For robustness, we will inject a strict system instruction.
+                // Instruction is handled by system prompt
             }
         }
 
@@ -179,7 +209,7 @@ Current Context:
 - Page: ${context.path || 'Unknown'}
 - Title: ${context.title || 'Unknown'}
 - Strict Work Mode: ${settings.ai_work_mode ? 'ENABLED (Refuse casual chat, only answer work-related questions)' : 'DISABLED'}
-- Web Search: ${settings.ai_allow_search ? 'ENABLED' : 'DISABLED'}
+- Web Search: ${provider.allow_search ? 'ENABLED' : 'DISABLED'}
 
 Guidelines:
 - Be helpful, concise, and professional.
@@ -196,10 +226,12 @@ Guidelines:
         ];
 
         try {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
                 model: model,
                 messages: fullMessages,
-                temperature: settings.ai_temperature || 0.7,
+                temperature: provider.temperature ?? 0.7,
+                max_tokens: provider.max_tokens ?? 4096,
+                top_p: provider.top_p ?? 1.0,
             });
 
             const result = completion.choices[0].message.content;

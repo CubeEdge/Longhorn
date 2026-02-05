@@ -18,27 +18,36 @@ interface SavedPaths {
 const NAV_STATE_KEY = 'longhorn_nav_state';
 
 const DEFAULT_PATHS: SavedPaths = {
-  lastServicePath: '/service/records',
+  lastServicePath: '/service/inquiry-tickets', // Guaranteed entry point
   lastFilesPath: '/files/personal',
 };
 
 // Service module routes
 const SERVICE_ROUTES = [
   '/service',
-  '/issues',
+  '/admin/settings',
+  '/admin/intelligence',
+  '/admin/health',
+  '/service/rma-tickets',
+  '/service/inquiry-tickets',
+  '/service/dealer-repairs',
+  '/service/knowledge',
   '/service-records',
   '/context',
-  '/dashboard',
 ];
 
 // Files module routes
 const FILES_ROUTES = [
   '/files',
+  '/admin', // Catch-all for files admin (dashboard, users, depts)
+  '/dashboard', // Files overview
   '/personal',
   '/dept',
+  '/root',
+  '/members',
   '/starred',
   '/shares',
-  '/recycle-bin',
+  '/recycle',
   '/search',
   '/recent',
 ];
@@ -53,14 +62,14 @@ export function getModuleFromPath(path: string): ModuleType {
       return 'service';
     }
   }
-  
+
   // Check files routes
   for (const route of FILES_ROUTES) {
     if (path.startsWith(route)) {
       return 'files';
     }
   }
-  
+
   // Default to service
   return 'service';
 }
@@ -72,7 +81,21 @@ function loadSavedPaths(): SavedPaths {
   try {
     const saved = localStorage.getItem(NAV_STATE_KEY);
     if (saved) {
-      return { ...DEFAULT_PATHS, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      const paths = { ...DEFAULT_PATHS, ...parsed };
+
+      // Critical Validation: Ensure saved paths actually belong to the module they claim
+      // This prevents "unresponsive icon" if a path like /dashboard was moved from service to files
+      if (getModuleFromPath(paths.lastServicePath) !== 'service') {
+        console.log('[NavigationState] Invalid service path, resetting to default');
+        paths.lastServicePath = DEFAULT_PATHS.lastServicePath;
+      }
+      if (getModuleFromPath(paths.lastFilesPath) !== 'files') {
+        console.log('[NavigationState] Invalid files path, resetting to default');
+        paths.lastFilesPath = DEFAULT_PATHS.lastFilesPath;
+      }
+
+      return paths;
     }
   } catch (e) {
     console.warn('[NavigationState] Failed to load saved state:', e);
@@ -97,33 +120,33 @@ function savePaths(paths: SavedPaths): void {
 export function useNavigationState() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Store saved paths in state, initialized from localStorage
   const [savedPaths, setSavedPaths] = useState<SavedPaths>(loadSavedPaths);
-  
+
   // Derive current module from URL (computed, not stored)
   const currentModule = useMemo(() => {
     return getModuleFromPath(location.pathname);
   }, [location.pathname]);
-  
+
   // Update path when navigating - called explicitly, not in effect
   const updateCurrentPath = useCallback(() => {
     const currentPath = location.pathname;
     const module = getModuleFromPath(currentPath);
-    
+
     setSavedPaths(prev => {
       let newPaths = prev;
-      
+
       if (module === 'service' && currentPath !== prev.lastServicePath) {
         newPaths = { ...prev, lastServicePath: currentPath };
       } else if (module === 'files' && currentPath !== prev.lastFilesPath) {
         newPaths = { ...prev, lastFilesPath: currentPath };
       }
-      
+
       if (newPaths !== prev) {
         savePaths(newPaths);
       }
-      
+
       return newPaths;
     });
   }, [location.pathname]);
@@ -135,13 +158,13 @@ export function useNavigationState() {
   const switchModule = useCallback((targetModule: ModuleType) => {
     // First save current path
     updateCurrentPath();
-    
+
     if (targetModule === currentModule) return;
-    
-    const targetPath = targetModule === 'service' 
-      ? savedPaths.lastServicePath 
+
+    const targetPath = targetModule === 'service'
+      ? savedPaths.lastServicePath
       : savedPaths.lastFilesPath;
-    
+
     navigate(targetPath);
   }, [currentModule, savedPaths, navigate, updateCurrentPath]);
 

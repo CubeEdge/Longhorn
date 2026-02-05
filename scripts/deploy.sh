@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ==========================================
-# Atomic Deployment Script (Tarball Strategy)
-# Prevents "Ghost Code" by ensuring full source replacement
+# Optimized Deployment Script
+# Fast Mode (default): Local build + dist sync (~10s)
+# Full Mode (--full): Atomic tarball deployment (~60s)
 # ==========================================
 
-# 1. Safety First: Exit on any error
 set -e
 
 # Configuration
@@ -21,15 +21,21 @@ error() { echo "❌ $1"; exit 1; }
 cd "$(dirname "$0")/.."
 
 # ------------------------------------------
-# 2. Git Check (Optional)
+# Parse Arguments
 # ------------------------------------------
+FAST_MODE=true
 SYNC_GIT=false
+
 for arg in "$@"; do
     case $arg in
+        --full) FAST_MODE=false ;;
         --git) SYNC_GIT=true ;;
     esac
 done
 
+# ------------------------------------------
+# Git Sync (Optional)
+# ------------------------------------------
 if [ "$SYNC_GIT" = true ]; then
     log "🐙 GIT MODE: Committing and Pushing..."
     if [[ -n $(git status -s) ]]; then
@@ -38,16 +44,13 @@ if [ "$SYNC_GIT" = true ]; then
     fi
     git push || error "Git push failed"
     log "✅ Git push complete."
-else
-    echo "⚠️  FAST MODE: Direct sync only."
 fi
 
 echo "🚀 Deploying Longhorn to $SERVER_HOST..."
 
 # ------------------------------------------
-# 3. Server Sync (Backend) - Using Rsync
+# Server Sync (Backend) - Always rsync
 # ------------------------------------------
-# Backend files are small, rsync is acceptable here.
 log "📤 Syncing Server Code (Backend)..."
 rsync -avzc --delete \
     --exclude='node_modules' \
@@ -62,87 +65,102 @@ rsync -avzc --delete \
     server/ $SERVER_HOST:$REMOTE_PATH/server/ || error "Server rsync failed"
 
 # ------------------------------------------
-# 4. Client Sync (Frontend) - ATOMIC TARBALL
+# Client Deployment: Fast Mode vs Full Mode
 # ------------------------------------------
-# We use tarball strategy to prevent "partial sync" / zombie files
-log "📦 Packaging Client Code..."
-tar --exclude='node_modules' \
-    --exclude='dist' \
-    --exclude='.DS_Store' \
-    --exclude='*.log' \
-    -czf $TEMP_TAR client || error "Tar command failed"
-
-log "📤 Uploading Client Tarball..."
-rsync -avz $TEMP_TAR $SERVER_HOST:$REMOTE_PATH/ || error "Tarball upload failed"
-
-log "🧹 Swapping Client Code on Remote..."
-# Remote commands:
-# 1. Remove temp backup if exists
-# 2. Move node_modules to safe place (preserve dependencies)
-# 3. DELETE entire client folder (kill zombies)
-# 4. Extract new tarball
-# 5. Restore node_modules
-# 6. Cleanup tarball
-ssh $SERVER_HOST "
-    set -e
-    cd $REMOTE_PATH
+if [ "$FAST_MODE" = true ]; then
+    # ===== FAST MODE: Local Build + Dist Sync =====
+    log "⚡ FAST MODE: Local build + dist sync"
     
-    # Clean prev temp
-    rm -rf /tmp/nm_backup
-
-    # Backup modules if they exist
-    if [ -d client/node_modules ]; then
-        mv client/node_modules /tmp/nm_backup
-    fi
-    
-    # ATOMIC WIPE
-    rm -rf client
-    
-    # Extract
-    tar -xzf $TEMP_TAR
-    
-    # Restore modules
-    if [ -d /tmp/nm_backup ]; then
-        mkdir -p client
-        mv /tmp/nm_backup client/node_modules
-    fi
-    
-    # Cleanup
-    rm $TEMP_TAR
-" || error "Remote swap failed"
-
-# Cleanup local tarball
-rm $TEMP_TAR
-
-# ------------------------------------------
-# 5. Root Configuration
-# ------------------------------------------
-log "uploading package.json..."
-scp package.json $SERVER_HOST:$REMOTE_PATH/ || error "Package.json upload failed"
-
-
-# ------------------------------------------
-# 6. Remote Build & Restart
-# ------------------------------------------
-log "🔄 Executing Remote Build & Restart..."
-ssh -t $SERVER_HOST "/bin/zsh -l -c \"
-    set -e
-    cd $REMOTE_PATH
-    
-    echo '📦 Building client...'
+    log "🔨 Building client locally..."
     cd client
-    npm install --no-audit --no-fund --quiet # Fast install check
-    npm run build
+    npm run build || error "Local build failed"
+    cd ..
     
-    echo '🔄 Restarting server...'
-    cd ../server
-    npm install --no-audit --no-fund --quiet
+    log "📤 Syncing dist to server..."
+    rsync -avz --delete client/dist/ $SERVER_HOST:$REMOTE_PATH/client/dist/ || error "Dist sync failed"
     
-    pm2 reload longhorn --update-env || pm2 start index.js --name longhorn -i max
+    log "🔄 Restarting server..."
+    ssh -t $SERVER_HOST "/bin/zsh -l -c \"
+        set -e
+        cd $REMOTE_PATH/server
+        npm install --no-audit --no-fund --quiet
+        pm2 reload longhorn --update-env || pm2 start index.js --name longhorn -i max
+        pm2 describe longhorn-watcher > /dev/null 2>&1 && pm2 reload longhorn-watcher || true
+        pm2 save
+        echo '✅ Fast Deployment Complete!'
+    \"" || error "Remote restart failed"
+
+else
+    # ===== FULL MODE: Atomic Tarball Deployment =====
+    log "🐢 FULL MODE: Atomic tarball deployment"
     
-    # Restart watcher if exists
-    pm2 describe longhorn-watcher > /dev/null 2>&1 && pm2 reload longhorn-watcher || true
+    log "📦 Packaging Client Code..."
+    tar --exclude='node_modules' \
+        --exclude='dist' \
+        --exclude='.DS_Store' \
+        --exclude='*.log' \
+        -czf $TEMP_TAR client || error "Tar command failed"
     
-    pm2 save
-    echo '✅ Deployment Complete!'
-\"" || error "Remote build failed"
+    log "📤 Uploading Client Tarball..."
+    rsync -avz $TEMP_TAR $SERVER_HOST:$REMOTE_PATH/ || error "Tarball upload failed"
+    
+    log "🧹 Swapping Client Code on Remote..."
+    ssh $SERVER_HOST "
+        set -e
+        cd $REMOTE_PATH
+        
+        # Clean prev temp
+        rm -rf /tmp/nm_backup
+    
+        # Backup modules if they exist
+        if [ -d client/node_modules ]; then
+            mv client/node_modules /tmp/nm_backup
+        fi
+        
+        # ATOMIC WIPE
+        rm -rf client
+        
+        # Extract
+        tar -xzf $TEMP_TAR
+        
+        # Restore modules
+        if [ -d /tmp/nm_backup ]; then
+            mkdir -p client
+            mv /tmp/nm_backup client/node_modules
+        fi
+        
+        # Cleanup
+        rm $TEMP_TAR
+    " || error "Remote swap failed"
+    
+    # Cleanup local tarball
+    rm $TEMP_TAR
+    
+    log "📦 Uploading package.json..."
+    scp package.json $SERVER_HOST:$REMOTE_PATH/ || error "Package.json upload failed"
+    
+    log "🔄 Executing Remote Build & Restart..."
+    ssh -t $SERVER_HOST "/bin/zsh -l -c \"
+        set -e
+        cd $REMOTE_PATH
+        
+        echo '📦 Building client...'
+        cd client
+        npm install --no-audit --no-fund --quiet
+        npm run build
+        
+        echo '🔄 Restarting server...'
+        cd ../server
+        npm install --no-audit --no-fund --quiet
+        
+        pm2 reload longhorn --update-env || pm2 start index.js --name longhorn -i max
+        pm2 describe longhorn-watcher > /dev/null 2>&1 && pm2 reload longhorn-watcher || true
+        pm2 save
+        echo '✅ Full Deployment Complete!'
+    \"" || error "Remote build failed"
+fi
+
+echo ""
+echo "✨ Deployment successful!"
+echo "   Mode: $([ "$FAST_MODE" = true ] && echo "⚡ Fast" || echo "🐢 Full")"
+echo "   Server: $SERVER_HOST"
