@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, ShieldCheck, Settings, ChevronRight } from 'lucide-react';
 import SystemDashboard from './SystemDashboard';
 import UserManagement from './UserManagement';
 import DepartmentManagement from './DepartmentManagement';
+import AdminSettings from './Admin/AdminSettings';
 import { useLanguage } from '../i18n/useLanguage';
 
 type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings';
 
 const AdminPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+    const navigate = useNavigate();
+    const location = useLocation();
     const { t } = useLanguage();
+
+    // Determine active tab from URL path (last segment)
+    // Default to 'dashboard' if path is just '/admin' or unknown
+    const pathSegment = location.pathname.split('/').pop() || 'dashboard';
+    const activeTab = ['dashboard', 'users', 'depts', 'settings'].includes(pathSegment) ? pathSegment as AdminTab : 'dashboard';
 
     const menuItems = [
         { id: 'dashboard', label: t('admin.overview'), icon: LayoutDashboard },
@@ -23,11 +31,7 @@ const AdminPanel: React.FC = () => {
             case 'dashboard': return <SystemDashboard />;
             case 'users': return <UserManagement />;
             case 'depts': return <DepartmentManagement />;
-            case 'settings': return (
-                <div className="fade-in" style={{ padding: 40, textAlign: 'center' }}>
-                    <p className="hint">{t('admin.settings_placeholder')}</p>
-                </div>
-            );
+            case 'settings': return <AdminSettings />;
             default: return <SystemDashboard />;
         }
     };
@@ -41,7 +45,7 @@ const AdminPanel: React.FC = () => {
                     {menuItems.map(item => (
                         <div
                             key={item.id}
-                            onClick={() => setActiveTab(item.id as AdminTab)}
+                            onClick={() => navigate(`/admin/${item.id}`)}
                             className={`admin-menu-item ${activeTab === item.id ? 'active' : ''}`}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -54,8 +58,8 @@ const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
-            {/* 主内容区 */}
-            <div className="admin-content">
+            {/* 主内容区 - Removing padding for settings to allow edge-to-edge design */}
+            <div className="admin-content" style={{ padding: activeTab === 'settings' ? 0 : 40 }}>
                 {renderContent()}
             </div>
         </div>

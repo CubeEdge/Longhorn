@@ -31,8 +31,8 @@ const getVersionInfo = () => {
     const commitTimestamp = parseInt(execSync('git log -1 --format=%ct').toString().trim()) * 1000
     const commitTime = formatBeijingTime(new Date(commitTimestamp))
 
-    // Get version from root package.json
-    const pkgPath = resolve(__dirname, '../package.json')
+    // Get version from client package.json
+    const pkgPath = resolve(__dirname, 'package.json')
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
     const version = pkg.version || '0.0.0'
 

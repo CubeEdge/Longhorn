@@ -17,7 +17,8 @@ import {
   ClipboardList,
   MessageCircleQuestion,
   BookOpen,
-  Package
+  Package,
+  Settings
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -35,12 +36,17 @@ import RootDirectoryView from './components/RootDirectoryView';
 import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
-import { ContextPanel } from './components/ServiceRecords';
+// import { ContextPanel } from './components/ServiceRecords';
 import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import AppRail from './components/AppRail';
+// ... imports
 import TicketCreationModal from './components/Service/TicketCreationModal';
+import BokehContainer from './components/Bokeh/BokehContainer';
+
+
+
 import TicketAiWizard from './components/TicketAiWizard';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
@@ -95,6 +101,7 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
 
       {/* Global Ticket Creation Modal */}
       <TicketCreationModal />
+      <BokehContainer />
     </div>
   );
 };
@@ -146,8 +153,7 @@ const App: React.FC = () => {
           <Route path="/dealer-repairs" element={<Navigate to="/service/dealer-repairs" replace />} />
           <Route path="/dealer-repairs/*" element={<Navigate to="/service/dealer-repairs" replace />} />
 
-          {/* Context Query */}
-          <Route path="/service/context" element={<ContextPanel />} />
+          {/* Dealer Repairs (经销商维修单) - Layer 3 */}
 
           {/* Knowledge Base (placeholder) */}
           <Route path="/service/knowledge" element={<InquiryTicketListPage />} />
@@ -309,6 +315,17 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <BookOpen size={18} />
               <span>{t('sidebar.knowledge')}</span>
             </Link>
+
+            {role === 'Admin' && (
+              <>
+                <div style={{ marginTop: 'auto' }} />
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+                <Link to="/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''} `} onClick={onClose}>
+                  <Settings size={20} />
+                  <span>{t('admin.system_settings')}</span>
+                </Link>
+              </>
+            )}
           </>
         )}
 
@@ -356,6 +373,16 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <Trash2 size={20} />
               <span>{t('browser.recycle')}</span>
             </Link>
+
+            {role === 'Admin' && (
+              <>
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+                <Link to="/admin/dashboard" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
+                  <LayoutDashboard size={20} />
+                  <span>{t('admin.control_panel')}</span>
+                </Link>
+              </>
+            )}
           </>
         )}
 
@@ -730,6 +757,20 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
           }}>
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
+          </div>
+
+          {/* Version Display */}
+          <div className="hidden-mobile" style={{
+            color: '#10b981',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            background: 'rgba(16, 185, 129, 0.1)',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            marginRight: '12px',
+            border: '1px solid rgba(16, 185, 129, 0.2)'
+          }}>
+            v{import.meta.env.PACKAGE_VERSION || '1.1.10'}
           </div>
 
           {/* User Dropdown Menu */}

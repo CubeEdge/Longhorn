@@ -17,6 +17,7 @@ const inquiryTickets = require('./service/routes/inquiry-tickets');
 const rmaTickets = require('./service/routes/rma-tickets');
 const dealerRepairs = require('./service/routes/dealer-repairs');
 const products = require('./service/routes/products');
+const settings = require('./service/routes/settings');
 
 dotenv.config();
 
@@ -52,6 +53,19 @@ const aiService = new AIService(db);
 
 // Ensure tables exist
 db.exec(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        system_name TEXT DEFAULT 'Longhorn System',
+        ai_enabled BOOLEAN DEFAULT 1,
+        ai_work_mode BOOLEAN DEFAULT 0,
+        ai_allow_search BOOLEAN DEFAULT 0,
+        ai_provider TEXT DEFAULT 'DeepSeek',
+        ai_model_chat TEXT DEFAULT 'deepseek-chat',
+        ai_model_reasoner TEXT DEFAULT 'deepseek-reasoner',
+        ai_model_vision TEXT DEFAULT 'gemini-1.5-flash',
+        ai_temperature REAL DEFAULT 0.7,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE TABLE IF NOT EXISTS departments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
@@ -659,8 +673,22 @@ app.post('/api/ai/ticket_parse', authenticate, async (req, res) => {
     }
 });
 
+app.post('/api/ai/chat', authenticate, async (req, res) => {
+    try {
+        const { messages, context } = req.body;
+        if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Missing messages array' });
+
+        const reply = await aiService.chat(messages, context);
+        res.json({ success: true, data: reply });
+    } catch (err) {
+        console.error('[AI] Chat Error:', err);
+        res.status(500).json({ error: 'AI processing failed', details: err.message });
+    }
+});
+
 // Service Routes - Layer 1
 const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');
+app.use('/api/admin', settings(db, authenticate));
 app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate, serviceUpload));
 app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate, attachmentsDir, multer, serviceUpload));

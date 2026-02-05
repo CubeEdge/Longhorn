@@ -20,8 +20,27 @@ class AIService {
         }
 
         this.models = {
-            chat: process.env.AI_MODEL_CHAT || 'deepseek-chat',
-            reasoner: process.env.AI_MODEL_REASONER || 'deepseek-reasoner'
+        };
+    }
+
+    /**
+     * Helper: Fetch current system settings or default
+     */
+    _getSettings() {
+        try {
+            const row = this.db.prepare('SELECT * FROM system_settings LIMIT 1').get();
+            if (row) return row;
+        } catch (e) {
+            console.warn('[AIService] Failed to fetch settings, using defaults');
+        }
+        return {
+            ai_provider: 'DeepSeek',
+            ai_model_chat: process.env.AI_MODEL_CHAT || 'deepseek-chat',
+            ai_model_reasoner: process.env.AI_MODEL_REASONER || 'deepseek-reasoner',
+            ai_model_vision: 'gemini-1.5-flash',
+            ai_temperature: 0.7,
+            ai_work_mode: 0,
+            ai_allow_search: 0
         };
     }
 
@@ -31,9 +50,10 @@ class AIService {
      * @returns {string} Model name
      */
     _getModel(taskType) {
-        if (taskType === 'logic') return this.models.reasoner;
-        if (taskType === 'chat') return this.models.chat;
-        return this.models.chat; // Default
+        const settings = this._getSettings();
+        if (taskType === 'logic') return settings.ai_model_reasoner;
+        if (taskType === 'vision') return settings.ai_model_vision;
+        return settings.ai_model_chat; // Default
     }
 
     /**
@@ -66,6 +86,7 @@ class AIService {
         if (!this.client) throw new Error("AI Service not fully configured.");
         if (taskType === 'vision') throw new Error("Vision tasks not yet implemented.");
 
+        const settings = this._getSettings();
         const model = this._getModel(taskType);
 
         try {
@@ -75,6 +96,7 @@ class AIService {
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt }
                 ],
+                temperature: settings.ai_temperature || 0.7,
                 stream: false,
             });
 
@@ -111,7 +133,7 @@ Output raw JSON only, no markdown formatting blocks.`;
 
         // Ticket parsing is a 'logic' heavy task? Actually 'chat' model (V3) is usually good enough for extraction and cheaper/faster. 
         // But if complex reasoning is needed we could use reasoner. Let's stick to 'chat' for standard extraction to save query time.
-        const model = this.models.chat;
+        const model = this._getModel('chat');
 
         try {
             const completion = await this.client.chat.completions.create({
@@ -131,6 +153,63 @@ Output raw JSON only, no markdown formatting blocks.`;
             return JSON.parse(content);
         } catch (error) {
             console.error('[AIService] Ticket parsing failed:', error);
+            throw error;
+        }
+    }
+    /**
+     * Chat method for Bokeh Assistant (History Aware).
+     * @param {Array} messages - Array of {role, content} objects
+     * @param {Object} context - Context object (page, title, etc.)
+     */
+    async chat(messages, context = {}) {
+        const settings = this._getSettings();
+
+        // Policy Check: Work Mode Only
+        if (settings.ai_work_mode) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.role === 'user') {
+                // Simple keyword check or just add instruction to system prompt
+                // For robustness, we will inject a strict system instruction.
+            }
+        }
+
+        const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
+You have access to the Kinefinity Service Database.
+Current Context:
+- Page: ${context.path || 'Unknown'}
+- Title: ${context.title || 'Unknown'}
+- Strict Work Mode: ${settings.ai_work_mode ? 'ENABLED (Refuse casual chat, only answer work-related questions)' : 'DISABLED'}
+- Web Search: ${settings.ai_allow_search ? 'ENABLED' : 'DISABLED'}
+
+Guidelines:
+- Be helpful, concise, and professional.
+- If Strict Work Mode is ON, politely refuse to answer questions about movies, jokes, or general trivia unrelated to Kinefinity/Filmmaking.
+- Your persona: "Ethereal, Calm, Responsive". Use "we" when referring to Kinefinity support.
+`;
+
+        const model = this._getModel('chat');
+
+        // Prepend system prompt
+        const fullMessages = [
+            { role: "system", content: systemPrompt },
+            ...messages
+        ];
+
+        try {
+            const completion = await this.client.chat.completions.create({
+                model: model,
+                messages: fullMessages,
+                temperature: settings.ai_temperature || 0.7,
+            });
+
+            const result = completion.choices[0].message.content;
+            const usage = completion.usage;
+
+            this._logUsage(model, 'bokeh_chat', usage);
+
+            return result;
+        } catch (error) {
+            console.error('[AIService] Chat failed:', error);
             throw error;
         }
     }
