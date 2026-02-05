@@ -1,8 +1,8 @@
 # 产品服务闭环系统 - 需求文档 (PRD)
 
-**版本**: 0.9.0 (Draft)
+**版本**: 0.9.1
 **状态**: 待确认
-**最后更新**: 2026-02-03
+**最后更新**: 2026-02-06
 
 ---
 
@@ -1366,11 +1366,15 @@ Bokeh开场白：
 2. 引导式Troubleshooting：逐步询问 → 排查树引导 → 解决方案
 3. 传统文档搜索：关键词搜索+分类浏览
 
-**AI服务商推荐**：
-- 国内优先：DeepSeek/智谱GLM-4-Air (￥10-30/月)
-- 国外优先：Groq(Llama 3)免费 + OpenAI GPT-4o-mini备用
-- 向量检索：SQLite+sqlite-vec / ChromaDB
-- Embedding：智谱Embedding-2(免费) / BGE-M3(本地)
+**AI服务商支持**：
+- **DeepSeek**：首选性价比方案，支持 Chat 及 Reasoner 推理模型。
+- **Gemini (Google)**：首选多模态方案，支持 Flash/Pro 最新版模型。
+- **OpenAI**：通用备选方案。
+**基础设施**：
+- **模型路由**：代码层实现 Chat/Reasoner/Vision 任务分类，由管理中心动态路由至不同服务商。
+- **网络代理**：支持集成 HTTPS 代理，确保国内/海外服务器的 API 通讯稳定性。
+- **向量检索**：SQLite+sqlite-vec / ChromaDB
+- **Embedding**：智谱Embedding-2 / BGE-M3 (本地)
 
 **AI应用场景**：
 - 知识库+工单联合查询：带引用索引[KB-XXX]/[工单#XXX]
@@ -1385,7 +1389,37 @@ Bokeh开场白：
 - Phase 2: 高频问题/相似工单/补货建议/批次预警/自动起草
 - Phase 3: 分配建议/更新建议/自然语言查询/情绪识别/异常检测/多语言
 
-#### 2.2.3 公告与培训 (Announcements)
+#### 2.2.3 智能管理中心 (Intelligence Center)
+
+> **系统的 AI 神经中枢**：管理 AI 服务商、模型路由及运行参数，为全系统的智能功能提供底层支撑。
+
+**功能入口**：`/admin/intelligence`
+
+##### 2.2.3.1 多服务商集成与调度
+
+系统支持主流大模型（LLM）服务商的接驳与统一管理，确保服务的冗余与高可用性。
+
+| 服务商 | 适用场景 | 配置项 |
+|-----|------|----------|
+| **DeepSeek** | 核心推理、高性价比对话 | API Key, Base URL |
+| **Gemini (Google)** | 多模态 (Vision)、逻辑推理 | API Key, Base URL, Proxy |
+| **OpenAI** | 综合能力、通用任务 | API Key, Base URL |
+
+##### 2.2.3.2 任务导向的模型路由
+
+系统将 AI 任务抽象为三个核心能力，可独立配置关联的具体模型，实现“任务-模型”的最佳匹配：
+
+1.  **对话模型 (Chat Model)**：用于常规问答、工单摘要、回复润色。
+2.  **推理模型 (Reasoner Model)**：用于复杂故障诊断、逻辑推理（如 DeepSeek-Reasoner, Gemini-Pro-Latest）。
+3.  **视觉模型 (Vision Model)**：用于 OCR 识别 SN 码、分析故障图片。
+
+##### 2.2.3.3 运行控制与弹性
+
+- **网络适应性**：支持自定义 Base URL 和 HTTPS 代理设置，解决跨境 API 连接限制。
+- **参数精调**：支持对各服务商独立设置 Temperature、Max Tokens、Top P 等生成参数。
+- **国际化管理**：管理后台全面支持中、英、德、日四种语言。
+
+#### 2.2.4 公告与培训 (Announcements)
 
 **功能入口**：`/tech-hub/announcements`
 

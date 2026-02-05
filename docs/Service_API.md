@@ -1,9 +1,9 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.6.0 (Draft)
+**版本**: 0.7.0 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-03
-**关联PRD**: Service_PRD.md v0.9.0
+**最后更新**: 2026-02-06
+**关联PRD**: Service_PRD.md v0.9.1
 **关联场景**: Service_UserScenarios.md v0.6.0
 
 > **重要更新（2026-02-03）**：
@@ -12,6 +12,9 @@
 > - 新增Phase 7 VoC管理API（Bug/Wishlist/原声）
 > - AI智能问答统一命名为"Bokeh"
 > - 更新需求决策记录关联至PRD第4章
+> - **v0.7.0 更新（2026-02-06）**：
+>   - 新增 Section 19: 智能中心与系统看板 API (配置管理、性能监控、AI 使用统计)
+>   - 同步 PRD v0.9.1 中关于多服务商调度与任务路由的架构设计
 
 ---
 
@@ -3149,6 +3152,124 @@
 - 物流API对接（自动追踪）
 - 信用额度管理
 - 多语言支持（i18n）
+
+---
+
+## 19. 智能中心与系统看板 API 🧠
+
+> 管理全系统 AI 服务商、模型路由参数以及服务器运行状态监控。
+> 基准路径: `/api/admin`
+
+### 19.1 获取系统配置与服务商
+
+**GET** `/api/admin/settings`
+
+**权限**: Admin
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "id": 1,
+      "system_name": "Longhorn System",
+      "ai_enabled": true,
+      "ai_work_mode": false,
+      "ai_allow_search": false,
+      "updated_at": "2026-02-06T10:00:00Z"
+    },
+    "providers": [
+      {
+        "name": "DeepSeek",
+        "base_url": "https://api.deepseek.com",
+        "chat_model": "deepseek-chat",
+        "reasoner_model": "deepseek-reasoner",
+        "vision_model": "deepseek-chat",
+        "is_active": true,
+        "temperature": 0.7
+      }
+    ]
+  }
+}
+```
+
+### 19.2 更新系统配置与服务商
+
+**POST** `/api/admin/settings`
+
+**权限**: Admin
+
+**Request Body**:
+```json
+{
+  "settings": {
+    "system_name": "KineCore Service",
+    "ai_enabled": true,
+    "ai_work_mode": true
+  },
+  "providers": [
+    {
+      "name": "Gemini",
+      "api_key": "sk-...",
+      "base_url": "...",
+      "chat_model": "gemini-1.5-flash",
+      "is_active": true
+    }
+  ]
+}
+```
+
+### 19.3 删除服务商
+
+**POST** `/api/admin/providers/delete`
+
+**权限**: Admin
+
+> 注意：仅支持删除 `is_active = 0` 的非激活服务商。
+
+**Request**: `{ "name": "GEMINI_OLD" }`
+
+### 19.4 系统运行状态 (Health Check)
+
+**GET** `/api/admin/stats/system`
+
+**权限**: Admin
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "uptime": 123456,
+    "cpu_load": 0.45,
+    "mem_used": 4294967296,
+    "mem_total": 17179869184,
+    "platform": "darwin 23.0.0"
+  }
+}
+```
+
+### 19.5 AI 使用统计
+
+**GET** `/api/admin/stats/ai`
+
+**权限**: Admin
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "daily_usage": [
+      { "date": "2026-02-01", "tokens": 15000 },
+      { "date": "2026-02-02", "tokens": 22000 }
+    ],
+    "total_tokens": 37000,
+    "estimated_cost_usd": "0.0074"
+  }
+}
+```
 
 ---
 

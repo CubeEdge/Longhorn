@@ -2,7 +2,7 @@
 
 > **文档定位**：Kinefinity Service 系统完整数据库设计  
 > **维护者**：研发部  
-> **最后更新**：2026-02-03  
+> **最后更新**：2026-02-06  
 > **参考来源**：A02-产品返修记录.xlsx、EAGLE知识库.xlsx、Knowledge base_Edge.xlsx、固件Knowledge Base.xlsx
 
 ---
@@ -917,11 +917,61 @@ UNIQUE KEY (year_month, product_id, issue_category, severity, region, dealer_id)
 
 ---
 
-## 13. 更新记录
+## 13. 系统管理与 AI 配置 (Admin & AI)
+
+### 13.1 系统全局设置 (system_settings)
+
+```sql
+system_settings (系统配置)
+├── id: INT PRIMARY KEY
+├── system_name: TEXT -- 系统名称
+├── ai_enabled: BOOLEAN -- 是否启用 AI
+├── ai_work_mode: BOOLEAN -- 是否为自动模式 (0=手动确认, 1=自动推送)
+├── ai_allow_search: BOOLEAN -- 是否允许联网搜索
+├── ai_provider: TEXT -- 当前活跃服务商名称
+└── updated_at: TIMESTAMP
+```
+
+### 13.2 AI 服务商配置 (ai_providers)
+
+```sql
+ai_providers (AI 服务商)
+├── id: INT PRIMARY KEY
+├── name: TEXT UNIQUE -- 服务商名称 (DeepSeek, Gemini, OpenAI)
+├── api_key: TEXT -- API 密钥 (加密存储/脱敏)
+├── base_url: TEXT -- 代理或私有部署地址
+├── chat_model: TEXT -- 默认对话模型
+├── reasoner_model: TEXT -- 推理模型
+├── vision_model: TEXT -- 视觉模型
+├── allow_search: BOOLEAN -- 联网搜索开关
+├── temperature: REAL -- 温度参数 (0-2.0)
+├── max_tokens: INT -- 最大生成长度
+├── top_p: REAL -- 核采样参数
+├── is_active: BOOLEAN -- 是否为当前活跃
+└── updated_at: TIMESTAMP
+```
+
+### 13.3 AI 使用日志 (ai_usage_logs)
+
+```sql
+ai_usage_logs (AI 使用审计)
+├── id: INT PRIMARY KEY
+├── model: TEXT -- 使用的模型名称
+├── task_type: TEXT -- 任务类型 (Chat, Reasoner, Vision, Diagnosis)
+├── prompt_tokens: INT -- 输入 Token
+├── completion_tokens: INT -- 输出 Token
+├── total_tokens: INT -- 总 Token
+└── created_at: TIMESTAMP
+```
+
+---
+
+## 14. 更新记录
 
 | 日期 | 版本 | 修改内容 | 修改人 | 备注 |
 |-----|------|---------|-------|------|
 | 2026-02-03 | v1.0 | 初始版本，从PRD中迁移 | - | 完整数据模型设计 |
+| 2026-02-06 | v1.1 | 新增 AI 配置与系统管理相关表定义 | - | 对应 PRD v0.9.1 |
 
 ---
 
