@@ -1,8 +1,7 @@
 # Service 数据模型设计
 
-> **文档定位**：Kinefinity Service 系统完整数据库设计  
-> **维护者**：研发部  
-> **最后更新**：2026-02-06  
+**版本**: 0.7.0
+**最后更新**: 2026-02-06
 > **参考来源**：A02-产品返修记录.xlsx、EAGLE知识库.xlsx、Knowledge base_Edge.xlsx、固件Knowledge Base.xlsx
 
 ---
