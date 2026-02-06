@@ -13,6 +13,7 @@
 3. **主题色与风格**：主题色锁定为 **Kine Yellow** (#FFD700)。Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。
 5. **多语言交互**：所有回复、任务、文档均使用中文。严禁硬编码文字，确保支持 简中、英、德、日 四国语言。
 8. **Remote Ops (远程执行)**：所有远程命令必须强制使用 `ssh -t mini "/bin/zsh -l -c '...命令...'"` 格式执行，以确保登录 Shell 正确加载环境变量（node, pm2, sqlite3 等）。
+9. **Documentation Versioning (文档版本号管理)**：凡对系统核心文档（PRD、API、UserScenarios、DataModel 等）进行内容更新，必须同步升级其内部版本号并刷新“最后更新”日期，以确保文档的可追溯性和一致性。
 ## 1. 基础设施 (Infrastructure)
 
 *   **服务器**: Mac mini (M1 Chip) - 视频转码主要依赖 CPU (ffmpeg)。
