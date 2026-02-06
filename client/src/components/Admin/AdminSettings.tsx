@@ -33,8 +33,8 @@ interface AdminSettingsProps {
 
 const PREDEFINED_MODELS: Record<string, { chat: string[], reasoner: string[], vision: string[] }> = {
     'DeepSeek': {
-        chat: ['deepseek-chat'],
-        reasoner: ['deepseek-reasoner'],
+        chat: ['deepseek-chat', 'deepseek-reasoner'],
+        reasoner: ['deepseek-reasoner', 'deepseek-chat'],
         vision: ['deepseek-chat']
     },
     'Gemini': {
