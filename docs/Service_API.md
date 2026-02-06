@@ -2638,7 +2638,7 @@
   "success": true,
   "data": {
     "session_id": "bokeh_session_001",
-    "answer": "根据历史记录，MAVO Edge 8K 录制中断通常有以下原因：\n1. SSD 写入速度不足\n2. 高温保护触发\n3. 电池电量不足\n\n建议排查步骤...",
+    "answer": "根据历史工单 [K2602-0001]，MAVO Edge 8K 录制中断通常有以下原因：\n1. SSD 写入速度不足\n2. 高温保护触发\n3. 电池电量不足\n\n建议排查步骤...",
     "references": [
       {
         "type": "knowledge",

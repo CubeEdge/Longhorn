@@ -744,9 +744,49 @@ ai_suggestions (AI建议记录)
 
 ---
 
-## 10. 产品进化池
+## 10. AI 检索索引 (Search Index)
 
-### 10.1 Bug流 (product_bugs)
+### 10.1 工单索引表 (ticket_search_index)
+
+```sql
+ticket_search_index (工单检索源数据 - SQLite)
+├── id: INTEGER PRIMARY KEY
+├── ticket_type: TEXT -- 'inquiry', 'rma', 'dealer_repair'
+├── ticket_id: INTEGER -- 关联原始工单ID
+├── ticket_number: TEXT -- 工单编号
+├── title: TEXT -- 摘要/描述
+├── description: TEXT -- 沟通详细记录
+├── resolution: TEXT -- 最终解决方案
+├── tags: TEXT -- JSON标签
+├── product_model: TEXT -- 产品型号
+├── serial_number: TEXT -- SN
+├── category: TEXT -- 故障分类
+├── status: TEXT -- 状态
+├── dealer_id: INTEGER -- 权限过滤: 经销商ID
+├── customer_id: INTEGER -- 权限过滤: 客户ID
+├── visibility: TEXT -- 'internal' | 'dealer'
+└── closed_at: TEXT -- 结案时间
+```
+
+### 10.2 FTS5 虚拟表 (ticket_search_fts)
+
+```sql
+ticket_search_fts (全文检索表)
+USING fts5(
+  title, 
+  description, 
+  resolution, 
+  tags, 
+  content='ticket_search_index', 
+  content_rowid='id'
+)
+```
+
+---
+
+## 11. 产品进化池
+
+### 11.1 Bug流 (product_bugs)
 
 ```sql
 product_bugs (Bug流)
