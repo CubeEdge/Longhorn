@@ -696,18 +696,20 @@ app.post('/api/ai/ticket_parse', authenticate, async (req, res) => {
     }
 });
 
+
 app.post('/api/ai/chat', authenticate, async (req, res) => {
     try {
         const { messages, context } = req.body;
         if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Missing messages array' });
 
-        const reply = await aiService.chat(messages, context);
+        const reply = await aiService.chat(messages, context, req.user);  // Pass user for ticket search permission
         res.json({ success: true, data: reply });
     } catch (err) {
         console.error('[AI] Chat Error:', err);
         res.status(500).json({ error: 'AI processing failed', details: err.message });
     }
 });
+
 
 // Service Routes - Layer 1
 const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');

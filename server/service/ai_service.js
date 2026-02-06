@@ -202,11 +202,12 @@ Output raw JSON only, no markdown formatting blocks.`;
         }
     }
     /**
-     * Chat method for Bokeh Assistant (History Aware).
+     * Chat method for Bokeh Assistant (History Aware + Ticket Search).
      * @param {Array} messages - Array of {role, content} objects
      * @param {Object} context - Context object (page, title, etc.)
+     * @param {Object} user - User object with role and dealer_id for permission filtering
      */
-    async chat(messages, context = {}) {
+    async chat(messages, context = {}, user = null) {
         const provider = this._getActiveProvider();
         const client = this._getClient(provider);
         if (!client) throw new Error("Active AI Provider has no API Key configured.");
@@ -218,6 +219,35 @@ Output raw JSON only, no markdown formatting blocks.`;
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && lastMsg.role === 'user') {
                 // Instruction is handled by system prompt
+            }
+        }
+
+        // Extract last user message for ticket search
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+
+        // Detect if user query needs ticket search (keywords-based heuristic)
+        const needsTicketSearch = this._detectTicketSearchIntent(lastUserMessage);
+
+        let ticketContext = '';
+        if (needsTicketSearch && this.db) {
+            try {
+                const tickets = await this._searchRelatedTickets(lastUserMessage, user);
+                if (tickets && tickets.length > 0) {
+                    ticketContext = '\n\n## 相关历史工单参考\n';
+                    tickets.forEach((t, i) => {
+                        ticketContext += `${i + 1}. **[${t.ticket_number}]** (${t.ticket_type})\n`;
+                        ticketContext += `   标题: ${t.title}\n`;
+                        if (t.customer_name) ticketContext += `   客户: ${t.customer_name}\n`;
+                        if (t.product_model) ticketContext += `   产品: ${t.product_model}\n`;
+                        if (t.resolution) {
+                            ticketContext += `   解决方案: ${t.resolution.substring(0, 150)}${t.resolution.length > 150 ? '...' : ''}\n`;
+                        }
+                        ticketContext += `\n`;
+                    });
+                    ticketContext += '请在回答中引用工单编号,格式为[工单编号|工单ID|类型],例如[K2602-0001|123|inquiry]。\n';
+                }
+            } catch (err) {
+                console.warn('[AIService] Ticket search failed:', err.message);
             }
         }
 
@@ -233,7 +263,8 @@ Guidelines:
 - Be helpful, concise, and professional.
 - If Strict Work Mode is ON, politely refuse to answer questions about movies, jokes, or general trivia unrelated to Kinefinity/Filmmaking.
 - Your persona: "Ethereal, Calm, Responsive". Use "we" when referring to Kinefinity support.
-`;
+- When historical tickets are provided, cite them using their ticket numbers (e.g., [K2602-0001]).
+${ticketContext}`;
 
         const model = this._getModel('chat');
 
@@ -263,6 +294,84 @@ Guidelines:
             throw error;
         }
     }
+
+    /**
+     * Detect if user query needs ticket search (keyword-based heuristic)
+     * @param {string} query - User query
+     * @returns {boolean}
+     */
+    _detectTicketSearchIntent(query) {
+        const keywords = [
+            '问题', '故障', '死机', '无法', '不能', '错误', '异常',
+            'issue', 'problem', 'error', 'crash', 'fail', 'not working',
+            '如何解决', '怎么办', '解决方案', 'how to fix', 'solution',
+            '历史', '以前', '案例', 'history', 'previous', 'case'
+        ];
+        const lowerQuery = query.toLowerCase();
+        return keywords.some(kw => lowerQuery.includes(kw));
+    }
+
+    /**
+     * Search related tickets based on user query
+     * @param {string} query - User query
+     * @param {Object} user - User object with role and dealer_id
+     * @returns {Promise<Array>} Array of ticket results
+     */
+    async _searchRelatedTickets(query, user) {
+        if (!this.db) return [];
+
+        // Build WHERE clause based on user role
+        let whereConditions = ['tsi.closed_at IS NOT NULL'];
+        let params = { query, limit: 3 }; // Top 3 tickets
+
+        // Permission Filter
+        if (user && user.department === 'Dealer' && user.dealer_id) {
+            whereConditions.push('tsi.dealer_id = @dealer_id');
+            params.dealer_id = user.dealer_id;
+        }
+
+        const whereClause = whereConditions.join(' AND ');
+
+        // FTS5 Search Query
+        const searchQuery = `
+            SELECT 
+                tsi.ticket_number,
+                tsi.ticket_type,
+                tsi.ticket_id,
+                tsi.title,
+                tsi.resolution,
+                tsi.product_model,
+                tsi.customer_id,
+                fts.rank
+            FROM ticket_search_index tsi
+            INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
+            WHERE fts MATCH @query
+              AND ${whereClause}
+            ORDER BY fts.rank
+            LIMIT @limit
+        `;
+
+        try {
+            const results = this.db.prepare(searchQuery).all(params);
+
+            // Enrich with customer names
+            return results.map(r => {
+                let customer_name = null;
+                if (r.customer_id) {
+                    const customer = this.db.prepare('SELECT customer_name FROM customers WHERE id = ?').get(r.customer_id);
+                    customer_name = customer?.customer_name;
+                }
+                return {
+                    ...r,
+                    customer_name
+                };
+            });
+        } catch (err) {
+            console.error('[AIService] Ticket search query failed:', err);
+            return [];
+        }
+    }
 }
 
 module.exports = AIService;
+

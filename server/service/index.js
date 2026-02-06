@@ -93,6 +93,14 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/dealer-inventory', dealerInventoryRoutes);
     app.use('/api/v1/proforma-invoices', proformaInvoiceRoutes);
 
+    // Phase 6: Bokeh AI Routes
+    const AIService = require('./ai_service');
+    const aiService = new AIService(db);
+    const bokehRoutes = require('./routes/bokeh')(db, authenticate, aiService);
+    app.use('/api/v1/bokeh', bokehRoutes);
+    app.use('/api/v1/internal/tickets', bokehRoutes); // Internal ticket indexing APIs
+
+
     console.log('[Service] Module initialized with routes:');
     console.log('  - /api/v1/auth');
     console.log('  - /api/v1/issues (legacy)');
@@ -111,6 +119,8 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/logistics');
     console.log('  - /api/v1/dealer-inventory');
     console.log('  - /api/v1/proforma-invoices');
+    console.log('  - /api/v1/bokeh (Bokeh AI工单检索)');
+    console.log('  - /api/v1/internal/tickets (工单索引化)');
 
     return {
         generateRmaNumber: (productCode, channelCode) => generateRmaNumber(db, productCode, channelCode),
