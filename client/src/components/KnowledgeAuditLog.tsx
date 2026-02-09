@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Search, RefreshCw, FileText, Activity } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -89,7 +88,10 @@ export default function KnowledgeAuditLog() {
                 textAlign: 'center',
                 color: '#666'
             }}>
-                <Activity size={64} color="#999" style={{ margin: '0 auto 24px' }} />
+                <div style={{
+                    fontSize: '48px',
+                    marginBottom: '16px'
+                }}>🔒</div>
                 <h2 style={{ fontSize: '24px', marginBottom: '12px', color: '#fff' }}>
                     仅管理员可访问
                 </h2>
@@ -177,48 +179,48 @@ export default function KnowledgeAuditLog() {
             {/* Header */}
             <div style={{
                 marginBottom: '32px',
-                paddingBottom: '24px',
-                borderBottom: '1px solid rgba(255,215,0,0.15)'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '28px' }}>📊</div>
                         <h1 style={{
-                            fontSize: '32px',
-                            fontWeight: 700,
-                            marginBottom: '8px',
-                            color: '#FFD700'
+                            fontSize: '28px',
+                            fontWeight: 600,
+                            color: '#fff'
                         }}>
-                            📊 知识库审计日志
+                            知识库审计日志
                         </h1>
-                        <p style={{ color: '#999', fontSize: '15px' }}>
-                            追踪所有知识库写操作，包括创建、更新、删除和导入
-                        </p>
                     </div>
-                    <button
-                        onClick={() => { loadLogs(); loadStats(); }}
-                        style={{
-                            padding: '10px 20px',
-                            background: 'rgba(255,215,0,0.1)',
-                            border: '1px solid rgba(255,215,0,0.3)',
-                            borderRadius: '8px',
-                            color: '#FFD700',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,215,0,0.2)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                        }}
-                    >
-                        <RefreshCw size={16} />
-                        刷新
-                    </button>
+                    <p style={{ color: '#999', fontSize: '14px', paddingLeft: '40px' }}>
+                        追踪所有知识库写操作，包括创建、更新、删除和导入
+                    </p>
                 </div>
+                <button
+                    onClick={() => { loadLogs(); loadStats(); }}
+                    style={{
+                        padding: '8px 16px',
+                        background: 'rgba(255,215,0,0.1)',
+                        border: '1px solid rgba(255,215,0,0.3)',
+                        borderRadius: '8px',
+                        color: '#FFD700',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,215,0,0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                    }}
+                >
+                    刷新
+                </button>
             </div>
 
             {/* Statistics Cards */}
@@ -268,6 +270,7 @@ export default function KnowledgeAuditLog() {
             {/* Filters */}
             <div style={{
                 background: 'rgba(255,255,255,0.02)',
+                backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: '12px',
                 padding: '24px',
@@ -275,38 +278,34 @@ export default function KnowledgeAuditLog() {
             }}>
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '16px'
+                    gridTemplateColumns: '1fr 200px 200px 140px',
+                    gap: '12px',
+                    alignItems: 'end'
                 }}>
                     {/* 搜索 */}
                     <div>
                         <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px' }}>
                             搜索文章标题
                         </label>
-                        <div style={{ position: 'relative' }}>
-                            <Search size={16} style={{
-                                position: 'absolute',
-                                left: '12px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                color: '#666'
-                            }} />
-                            <input
-                                type="text"
-                                value={filters.search}
-                                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                                placeholder="输入文章标题..."
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px 10px 38px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '13px'
-                                }}
-                            />
-                        </div>
+                        <input
+                            type="text"
+                            value={filters.search}
+                            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                            placeholder="输入文章标题..."
+                            style={{
+                                width: '100%',
+                                padding: '9px 12px',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontSize: '13px',
+                                outline: 'none',
+                                transition: 'border-color 0.2s'
+                            }}
+                            onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                        />
                     </div>
 
                     {/* 操作类型 */}
@@ -319,12 +318,14 @@ export default function KnowledgeAuditLog() {
                             onChange={(e) => setFilters({ ...filters, operation: e.target.value })}
                             style={{
                                 width: '100%',
-                                padding: '10px 12px',
+                                padding: '9px 12px',
                                 background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
-                                fontSize: '13px'
+                                fontSize: '13px',
+                                outline: 'none',
+                                cursor: 'pointer'
                             }}
                         >
                             <option value="">全部</option>
@@ -347,47 +348,56 @@ export default function KnowledgeAuditLog() {
                             onChange={(e) => setFilters({ ...filters, product_line: e.target.value })}
                             style={{
                                 width: '100%',
-                                padding: '10px 12px',
+                                padding: '9px 12px',
                                 background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
-                                fontSize: '13px'
+                                fontSize: '13px',
+                                outline: 'none',
+                                cursor: 'pointer'
                             }}
                         >
                             <option value="">全部</option>
-                            <option value="A">A类：在售电影摄影机</option>
-                            <option value="B">B类：历史机型</option>
-                            <option value="C">C类：电子寻像器</option>
-                            <option value="D">D类：通用配件</option>
+                            <option value="Cinema">Cinema</option>
+                            <option value="Cinema 5 Axis">Cinema 5 Axis</option>
+                            <option value="Accessories">Accessories</option>
                         </select>
                     </div>
 
                     {/* 清空过滤 */}
-                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                        <button
-                            onClick={() => setFilters({
-                                operation: '',
-                                user_id: '',
-                                product_line: '',
-                                start_date: '',
-                                end_date: '',
-                                search: ''
-                            })}
-                            style={{
-                                padding: '10px 20px',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '8px',
-                                color: '#999',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                width: '100%'
-                            }}
-                        >
-                            清空过滤
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setFilters({
+                            operation: '',
+                            user_id: '',
+                            product_line: '',
+                            start_date: '',
+                            end_date: '',
+                            search: ''
+                        })}
+                        style={{
+                            padding: '9px 16px',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px',
+                            color: '#999',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            e.currentTarget.style.color = '#fff';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.color = '#999';
+                        }}
+                    >
+                        清空过滤
+                    </button>
                 </div>
             </div>
 
@@ -400,12 +410,16 @@ export default function KnowledgeAuditLog() {
             }}>
                 {loading ? (
                     <div style={{ padding: '80px', textAlign: 'center', color: '#666' }}>
-                        <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite' }} />
+                        <div style={{ 
+                            fontSize: '32px', 
+                            animation: 'spin 1s linear infinite',
+                            display: 'inline-block'
+                        }}>⌛</div>
                         <div style={{ marginTop: '16px' }}>加载中...</div>
                     </div>
                 ) : logs.length === 0 ? (
                     <div style={{ padding: '80px', textAlign: 'center', color: '#666' }}>
-                        <FileText size={48} style={{ marginBottom: '16px' }} />
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
                         <div>暂无审计日志</div>
                     </div>
                 ) : (
