@@ -17,6 +17,7 @@ import {
   ClipboardList,
   MessageCircleQuestion,
   BookOpen,
+  Book,
   Package,
   Settings
 } from 'lucide-react';
@@ -40,6 +41,8 @@ import { DailyWordBadge } from './components/DailyWord';
 import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
+import KnowledgeGenerator from './components/KnowledgeGenerator';
+import { KinefinityWiki } from './components/KinefinityWiki';
 import AppRail from './components/AppRail';
 // ... imports
 import TicketCreationModal from './components/Service/TicketCreationModal';
@@ -155,8 +158,13 @@ const App: React.FC = () => {
 
           {/* Dealer Repairs (经销商维修单) - Layer 3 */}
 
-          {/* Knowledge Base (placeholder) */}
-          <Route path="/service/knowledge" element={<InquiryTicketListPage />} />
+          {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
+          <Route path="/service/knowledge" element={
+            ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
+          } />
+          <Route path="/knowledge" element={<Navigate to="/service/knowledge" replace />} />
+          <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />
+          <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
 
           {/* Parts Management (placeholder) */}
           <Route path="/service/parts" element={<InquiryTicketListPage />} />
@@ -311,9 +319,18 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
 
-            <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''} `} onClick={onClose}>
-              <BookOpen size={18} />
-              <span>{t('sidebar.knowledge')}</span>
+            {/* Knowledge Base Import - Internal Staff Only */}
+            {['Admin', 'Lead', 'Editor'].includes(role) && (
+              <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''} `} onClick={onClose}>
+                <BookOpen size={18} />
+                <span>{t('sidebar.knowledge')}</span>
+              </Link>
+            )}
+
+            {/* Kinefinity WIKI - All Users */}
+            <Link to="/tech-hub/wiki" className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `} onClick={onClose}>
+              <Book size={18} />
+              <span>Kinefinity WIKI</span>
             </Link>
 
             {role === 'Admin' && (

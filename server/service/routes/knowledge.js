@@ -5,6 +5,46 @@
  */
 
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const pdf = require('pdf-parse');
+const axios = require('axios');
+const cheerio = require('cheerio');
+const TurndownService = require('turndown');
+const { gfm } = require('turndown-plugin-gfm');
+const crypto = require('crypto');
+const { execSync } = require('child_process');
+
+// Configure multer for PDF uploads
+const upload = multer({
+    dest: '/tmp/knowledge_uploads',
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF files are allowed'));
+        }
+    }
+});
+
+// Configure multer for DOCX uploads
+const docxUpload = multer({
+    dest: '/tmp/knowledge_uploads',
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword'
+        ];
+        if (allowedMimes.includes(file.mimetype) || file.originalname.endsWith('.docx') || file.originalname.endsWith('.doc')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only DOCX/DOC files are allowed'));
+        }
+    }
+});
 
 module.exports = function(db, authenticate) {
     const router = express.Router();
@@ -77,7 +117,7 @@ module.exports = function(db, authenticate) {
                 SELECT 
                     ka.id, ka.title, ka.slug, ka.summary,
                     ka.category, ka.subcategory, ka.tags,
-                    ka.product_line, ka.visibility,
+                    ka.product_line, ka.product_models, ka.visibility,
                     ka.view_count, ka.helpful_count, ka.not_helpful_count,
                     ka.published_at, ka.created_at,
                     u.username as author_name
@@ -262,6 +302,524 @@ module.exports = function(db, authenticate) {
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/import/pdf
+     * Import knowledge from PDF file
+     */
+    router.post('/import/pdf', authenticate, upload.single('pdf'), async (req, res) => {
+        try {
+            if (req.user.user_type !== 'Employee') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '只有内部员工可以导入知识' }
+                });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_FILE', message: '请上传PDF文件' }
+                });
+            }
+
+            const {
+                title_prefix,
+                category = 'Manual',
+                product_line = 'Cinema',
+                product_models,
+                visibility = 'Dealer',
+                tags
+            } = req.body;
+
+            // Parse PDF
+            const dataBuffer = fs.readFileSync(req.file.path);
+            const pdfData = await pdf(dataBuffer);
+
+            console.log(`[Knowledge Import] PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} chars`);
+
+            // Extract images from PDF
+            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            if (!fs.existsSync(imagesDir)) {
+                fs.mkdirSync(imagesDir, { recursive: true });
+            }
+            
+            console.log('[Knowledge Import] Extracting images...');
+            const images = await extractPDFImages(req.file.path, imagesDir);
+            console.log(`[Knowledge Import] Extracted ${images.length} images`);
+
+            // Split content into sections (simple version - by page breaks or size)
+            let sections = splitPDFContent(pdfData.text, title_prefix || req.file.originalname);
+            
+            // Insert image references into sections
+            if (images.length > 0) {
+                sections = insertImageReferences(sections, images);
+            }
+
+            console.log(`[Knowledge Import] Split into ${sections.length} sections`);
+
+            const productModelsArray = product_models ? JSON.parse(product_models) : [];
+            const tagsArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+            // Insert articles
+            const pdfFilename = req.file.originalname;
+            const insertStmt = db.prepare(`
+                INSERT INTO knowledge_articles (
+                    title, slug, summary, content, category,
+                    product_line, product_models, tags, visibility, status,
+                    source_type, source_reference,
+                    created_by, created_at, updated_at, published_at
+                ) VALUES (
+                    @title, @slug, @summary, @content, @category,
+                    @product_line, @product_models, @tags, @visibility, 'Published',
+                    'PDF', @source_reference,
+                    @created_by, datetime('now'), datetime('now'), datetime('now')
+                )
+            `);
+
+            const checkDuplicateStmt = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?');
+
+            let imported_count = 0;
+            let skipped_count = 0;
+            let failed_count = 0;
+            const article_ids = [];
+
+            for (const section of sections) {
+                try {
+                    const slug = generateSlug(section.title);
+
+                    // Check duplicate
+                    const existing = checkDuplicateStmt.get(slug);
+                    if (existing) {
+                        skipped_count++;
+                        continue;
+                    }
+
+                    const result = insertStmt.run({
+                        title: section.title,
+                        slug,
+                        summary: section.content.substring(0, 200).trim(),
+                        content: section.content,
+                        category,
+                        product_line,
+                        product_models: JSON.stringify(productModelsArray),
+                        tags: JSON.stringify([...tagsArray, product_line, category]),
+                        visibility,
+                        source_reference: pdfFilename,
+                        created_by: req.user.id
+                    });
+
+                    article_ids.push(result.lastInsertRowid);
+                    imported_count++;
+                } catch (err) {
+                    console.error(`[Knowledge Import] Failed to insert section: ${section.title}`, err);
+                    failed_count++;
+                }
+            }
+
+            // Cleanup uploaded file
+            fs.unlinkSync(req.file.path);
+
+            res.json({
+                success: true,
+                data: {
+                    imported_count,
+                    skipped_count,
+                    failed_count,
+                    article_ids
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Import] Error:', err);
+            // Cleanup uploaded file on error
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            res.status(500).json({
+                success: false,
+                error: { code: 'IMPORT_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/import/docx
+     * Import knowledge from DOCX file using python-docx workflow
+     * 支持两种方式：
+     * 1. 直接上传：multipart/form-data with 'docx' file
+     * 2. 分块上传后合并：form-data with 'mergedFilePath'
+     */
+    router.post('/import/docx', authenticate, docxUpload.single('docx'), async (req, res) => {
+        try {
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead' && req.user.role !== 'Editor') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '只有内部员工可以导入知识' }
+                });
+            }
+
+            // 支持两种方式：1. 直接上传 2. 分块合并后的文件
+            let docxPath;
+            let originalFilename;
+            let fileSize;
+            
+            if (req.body.mergedFilePath) {
+                // 分块上传后合并的文件
+                const DISK_A = path.join(__dirname, '../../data');
+                docxPath = path.join(DISK_A, req.body.mergedFilePath);
+                
+                if (!fs.existsSync(docxPath)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: { code: 'FILE_NOT_FOUND', message: '合并的文件不存在' }
+                    });
+                }
+                
+                originalFilename = path.basename(docxPath);
+                fileSize = fs.statSync(docxPath).size;
+                console.log(`[DOCX Import] Using merged file: ${docxPath}`);
+            } else if (req.file) {
+                // 直接上传的文件
+                docxPath = req.file.path;
+                originalFilename = req.file.originalname;
+                fileSize = req.file.size;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_FILE', message: '请上传DOCX文件' }
+                });
+            }
+
+            const {
+                title_prefix,
+                category = 'Manual',
+                product_line = 'A',
+                product_models,
+                visibility = 'Public',
+                tags
+            } = req.body;
+
+            console.log(`[DOCX Import] Starting import: ${originalFilename}`);
+            console.log(`[DOCX Import] Product line: ${product_line}, Models: ${product_models}`);
+
+            const timestamp = Date.now();
+            const tempDir = `/tmp/docx_import_${timestamp}`;
+            const mdPath = path.join(tempDir, 'output.md');
+            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            
+            // 创建临时目录
+            fs.mkdirSync(tempDir, { recursive: true });
+            if (!fs.existsSync(imagesDir)) {
+                fs.mkdirSync(imagesDir, { recursive: true });
+            }
+
+            // 步骤1: 调用Python脚本转换DOCX→MD
+            console.log('[DOCX Import] Step 1: Converting DOCX to Markdown...');
+            const convertScript = path.join(__dirname, '../../scripts/docx_to_markdown.py');
+            
+            let stats = { image_count: 0, table_count: 0, heading_count: 0 };
+            try {
+                // 使用绝对路径python3，并设置环境变量
+                const convertOutput = execSync(
+                    `/usr/bin/python3 "${convertScript}" "${docxPath}" "${mdPath}" "${imagesDir}"`,
+                    { 
+                        encoding: 'utf-8', 
+                        maxBuffer: 10 * 1024 * 1024,
+                        env: { 
+                            ...process.env, 
+                            PYTHONPATH: '/Users/admin/Library/Python/3.9/lib/python/site-packages',
+                            PATH: process.env.PATH + ':/usr/bin:/usr/local/bin'
+                        }
+                    }
+                );
+                console.log('[DOCX Import] Conversion output:', convertOutput);
+                
+                // 解析转换统计数据
+                const imageMatch = convertOutput.match(/图片数[:|：]\s*(\d+)/);
+                const tableMatch = convertOutput.match(/表格数[:|：]\s*(\d+)/);
+                const headingMatch = convertOutput.match(/标题数[:|：]\s*(\d+)/);
+                
+                stats = {
+                    image_count: imageMatch ? parseInt(imageMatch[1]) : 0,
+                    table_count: tableMatch ? parseInt(tableMatch[1]) : 0,
+                    heading_count: headingMatch ? parseInt(headingMatch[1]) : 0
+                };
+                
+                console.log('[DOCX Import] Statistics:', stats);
+                
+            } catch (convertErr) {
+                console.error('[DOCX Import] Conversion failed:', convertErr.message);
+                throw new Error(`DOCX转换失败: ${convertErr.message}`);
+            }
+
+            // 步骤2: 读取Markdown内容
+            if (!fs.existsSync(mdPath)) {
+                throw new Error('Markdown文件生成失败');
+            }
+            
+            const mdContent = fs.readFileSync(mdPath, 'utf-8');
+            console.log(`[DOCX Import] Step 2: Markdown generated (${mdContent.length} chars)`);
+
+            // 步骤3: 按章节分割
+            console.log('[DOCX Import] Step 3: Splitting into chapters...');
+            const chapters = splitMarkdownIntoChapters(mdContent, title_prefix || req.file.originalname);
+            console.log(`[DOCX Import] Found ${chapters.length} chapters`);
+
+            if (chapters.length === 0) {
+                throw new Error('未找到任何章节，请检查文档结构');
+            }
+
+            // 步骤4: 导入到数据库
+            console.log('[DOCX Import] Step 4: Importing to database...');
+            const productModelsArray = product_models ? JSON.parse(product_models) : [];
+            const tagsArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+            const insertStmt = db.prepare(`
+                INSERT INTO knowledge_articles (
+                    title, slug, summary, content, category,
+                    product_line, product_models, tags, visibility, status,
+                    source_type, source_reference,
+                    created_by, created_at, updated_at, published_at
+                ) VALUES (
+                    @title, @slug, @summary, @content, @category,
+                    @product_line, @product_models, @tags, @visibility, 'Published',
+                    'Manual', @source_reference,
+                    @created_by, datetime('now'), datetime('now'), datetime('now')
+                )
+            `);
+
+            const checkDuplicateStmt = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?');
+
+            let imported_count = 0;
+            let skipped_count = 0;
+            let failed_count = 0;
+            const article_ids = [];
+
+            for (const chapter of chapters) {
+                try {
+                    const slug = generateSlug(chapter.title);
+
+                    // 检查重复
+                    const existing = checkDuplicateStmt.get(slug);
+                    if (existing) {
+                        console.log(`[DOCX Import] Skipped duplicate: ${chapter.title}`);
+                        skipped_count++;
+                        continue;
+                    }
+
+                    // 生成摘要（移除Markdown图片语法）
+                    const summaryText = chapter.content
+                        .replace(/!\[.*?\]\(.*?\)/g, '') // 移除图片
+                        .replace(/\n+/g, ' ') // 合并换行
+                        .trim()
+                        .substring(0, 200);
+
+                    const result = insertStmt.run({
+                        title: chapter.title,
+                        slug,
+                        summary: summaryText,
+                        content: chapter.content,
+                        category,
+                        product_line,
+                        product_models: JSON.stringify(productModelsArray),
+                        tags: JSON.stringify([...tagsArray, product_line, category]),
+                        visibility,
+                        source_reference: originalFilename,
+                        created_by: req.user.id
+                    });
+
+                    article_ids.push(result.lastInsertRowid);
+                    imported_count++;
+                    console.log(`[DOCX Import] Imported: ${chapter.title} (ID: ${result.lastInsertRowid})`);
+                } catch (err) {
+                    console.log(`[DOCX Import] Failed to insert: ${chapter.title}`, err);
+                    failed_count++;
+                }
+            }
+
+            // 清理临时文件
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            if (req.body.mergedFilePath && fs.existsSync(docxPath)) {
+                fs.unlinkSync(docxPath); // 删除合并后的文件
+            }
+            if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+
+            console.log(`[DOCX Import] Completed: ${imported_count} imported, ${skipped_count} skipped, ${failed_count} failed`);
+
+            res.json({
+                success: true,
+                data: {
+                    imported_count,
+                    skipped_count,
+                    failed_count,
+                    article_ids,
+                    chapter_count: chapters.length,
+                    image_count: stats.image_count,
+                    table_count: stats.table_count,
+                    total_size: `${(fileSize / 1024).toFixed(2)}KB`
+                }
+            });
+        } catch (err) {
+            console.error('[DOCX Import] Error:', err);
+            // 清理上传文件
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            res.status(500).json({
+                success: false,
+                error: { code: 'IMPORT_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/import/url
+     * Import knowledge from web page URL
+     */
+    router.post('/import/url', authenticate, async (req, res) => {
+        try {
+            if (req.user.user_type !== 'Employee') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '只有内部员工可以导入知识' }
+                });
+            }
+
+            const {
+                url,
+                title,
+                category = 'Application Note',
+                product_line,
+                product_models = [],
+                visibility = 'Public',
+                tags = []
+            } = req.body;
+
+            if (!url) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_URL', message: '请提供URL' }
+                });
+            }
+
+            console.log(`[Knowledge Import URL] Fetching: ${url}`);
+
+            // Fetch webpage
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml'
+                },
+                timeout: 30000
+            });
+
+            const html = response.data;
+            const $ = cheerio.load(html);
+
+            // Extract meaningful content
+            const extractedContent = extractWebContent($, url);
+
+            if (!extractedContent.content || extractedContent.content.length < 100) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_CONTENT', message: '无法提取有效内容' }
+                });
+            }
+            
+            // Download images from webpage
+            console.log('[Knowledge Import URL] Downloading images...');
+            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            if (!fs.existsSync(imagesDir)) {
+                fs.mkdirSync(imagesDir, { recursive: true });
+            }
+            
+            const downloadedImages = await downloadWebImages($, url, imagesDir);
+            console.log(`[Knowledge Import URL] Downloaded ${downloadedImages.length} images`);
+
+            // Convert HTML to Markdown
+            const turndownService = new TurndownService({
+                headingStyle: 'atx',
+                codeBlockStyle: 'fenced'
+            });
+            turndownService.use(gfm); // Support tables
+
+            let markdown = turndownService.turndown(extractedContent.content);
+            
+            // Replace image URLs with local paths
+            downloadedImages.forEach(img => {
+                markdown = markdown.replace(img.original, img.local);
+            });
+
+            // Generate article
+            const articleTitle = title || extractedContent.title || 'Web Import';
+            const slug = generateSlug(articleTitle);
+
+            // Check duplicate
+            const existing = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?').get(slug);
+            if (existing) {
+                return res.json({
+                    success: true,
+                    data: {
+                        imported_count: 0,
+                        skipped_count: 1,
+                        failed_count: 0,
+                        article_ids: [],
+                        message: '文章已存在'
+                    }
+                });
+            }
+
+            // Insert article
+            const insertResult = db.prepare(`
+                INSERT INTO knowledge_articles (
+                    title, slug, summary, content, category,
+                    product_line, product_models, tags, visibility, status,
+                    source_type, source_reference, source_url,
+                    created_by, created_at, updated_at, published_at
+                ) VALUES (
+                    @title, @slug, @summary, @content, @category,
+                    @product_line, @product_models, @tags, @visibility, 'Published',
+                    'URL', @source_reference, @source_url,
+                    @created_by, datetime('now'), datetime('now'), datetime('now')
+                )
+            `).run({
+                title: articleTitle,
+                slug,
+                summary: extractedContent.summary || markdown.substring(0, 200),
+                content: markdown,
+                category,
+                product_line: product_line || 'General',
+                product_models: JSON.stringify(product_models),
+                tags: JSON.stringify([...tags, 'Web Import', category]),
+                visibility,
+                source_reference: extractedContent.title || articleTitle,
+                source_url: url,
+                created_by: req.user.id
+            });
+
+            console.log(`[Knowledge Import URL] Success: ${articleTitle}`);
+
+            res.json({
+                success: true,
+                data: {
+                    imported_count: 1,
+                    skipped_count: 0,
+                    failed_count: 0,
+                    article_ids: [insertResult.lastInsertRowid]
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Import URL] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'IMPORT_ERROR', message: err.message }
             });
         }
     });
@@ -474,7 +1032,9 @@ module.exports = function(db, authenticate) {
 
     function formatArticleListItem(article) {
         let tags = [];
+        let productModels = [];
         try { tags = JSON.parse(article.tags || '[]'); } catch (e) {}
+        try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) {}
 
         return {
             id: article.id,
@@ -485,6 +1045,7 @@ module.exports = function(db, authenticate) {
             subcategory: article.subcategory,
             tags,
             product_line: article.product_line,
+            product_models: productModels,
             visibility: article.visibility,
             view_count: article.view_count,
             helpful_count: article.helpful_count,
@@ -526,6 +1087,475 @@ module.exports = function(db, authenticate) {
             created_at: article.created_at,
             updated_at: article.updated_at
         };
+    }
+
+    /**
+     * Download images from web page
+     * Returns array of { original, local }
+     * Images are automatically converted to WebP format
+     */
+    async function downloadWebImages($, baseUrl, outputDir) {
+        const downloadedImages = [];
+        const images = $('img');
+        
+        for (let i = 0; i < images.length; i++) {
+            try {
+                const $img = $(images[i]);
+                let src = $img.attr('src');
+                
+                if (!src) continue;
+                
+                // Convert relative URL to absolute
+                if (!src.startsWith('http')) {
+                    const base = new URL(baseUrl);
+                    if (src.startsWith('/')) {
+                        src = `${base.origin}${src}`;
+                    } else {
+                        src = `${base.origin}/${src}`;
+                    }
+                }
+                
+                // Skip data URLs and very small images
+                if (src.startsWith('data:')) continue;
+                
+                // Download image
+                const response = await axios.get(src, {
+                    responseType: 'arraybuffer',
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                    }
+                });
+                
+                const buffer = Buffer.from(response.data);
+                
+                // Skip small images (< 1KB, likely icons)
+                if (buffer.length < 1024) continue;
+                
+                // Generate filename (WebP format)
+                const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 12);
+                const filename = `web_${hash}.webp`;
+                const filepath = path.join(outputDir, filename);
+                
+                // Convert to WebP using Python script
+                const tempPngPath = filepath.replace('.webp', '.png');
+                fs.writeFileSync(tempPngPath, buffer);
+                
+                try {
+                    execSync(`python3 -c "
+import sys
+from PIL import Image
+img = Image.open('${tempPngPath}')
+if img.mode in ('RGBA', 'LA', 'P'):
+    bg = Image.new('RGB', img.size, (255,255,255))
+    if img.mode == 'P': img = img.convert('RGBA')
+    if img.mode in ('RGBA', 'LA'): bg.paste(img, mask=img.split()[-1])
+    img = bg
+elif img.mode != 'RGB':
+    img = img.convert('RGB')
+img.save('${filepath}', 'WEBP', quality=85, method=6)
+"
+`, { encoding: 'utf8', timeout: 5000 });
+                    
+                    // Delete temp PNG
+                    fs.unlinkSync(tempPngPath);
+                } catch (convertErr) {
+                    console.log(`[Web Images] Failed to convert to WebP, keeping PNG: ${convertErr.message}`);
+                    // Keep PNG if conversion fails
+                    fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
+                }
+                
+                const localPath = `/data/knowledge_images/${filename}`;
+                downloadedImages.push({
+                    original: src,
+                    local: localPath
+                });
+                
+                console.log(`[Web Images] ✓ Downloaded: ${filename}`);
+            } catch (err) {
+                // Skip images that fail to download
+                console.log(`[Web Images] ⚠ Failed to download image: ${err.message}`);
+            }
+        }
+        
+        return downloadedImages;
+    }
+
+    /**
+     * Extract meaningful content from web page
+     * Intelligently detects article body, removes nav/ads/footer
+     */
+    function extractWebContent($, url) {
+        // Remove unwanted elements
+        $('script, style, nav, header, footer, .nav, .menu, .sidebar, .ad, .advertisement, .comments').remove();
+
+        let title = '';
+        let content = '';
+        let summary = '';
+
+        // Try to extract title
+        title = $('h1').first().text().trim() || 
+                $('title').text().trim() || 
+                $('meta[property="og:title"]').attr('content') || 
+                '';
+
+        // Try to extract meta description as summary
+        summary = $('meta[name="description"]').attr('content') || 
+                  $('meta[property="og:description"]').attr('content') || 
+                  '';
+
+        // Try to find main content area (prioritized selectors)
+        const contentSelectors = [
+            'article',
+            'main',
+            '[role="main"]',
+            '.article-content',
+            '.post-content',
+            '.entry-content',
+            '.content',
+            '#content',
+            '.main-content'
+        ];
+
+        let $contentArea = null;
+        for (const selector of contentSelectors) {
+            $contentArea = $(selector).first();
+            if ($contentArea.length > 0 && $contentArea.text().trim().length > 200) {
+                break;
+            }
+        }
+
+        // Fallback: use body if no specific content area found
+        if (!$contentArea || $contentArea.length === 0) {
+            $contentArea = $('body');
+        }
+
+        // Convert relative image URLs to absolute
+        $contentArea.find('img').each((i, elem) => {
+            const $img = $(elem);
+            let src = $img.attr('src');
+            if (src && !src.startsWith('http')) {
+                const baseUrl = new URL(url);
+                if (src.startsWith('/')) {
+                    src = `${baseUrl.origin}${src}`;
+                } else {
+                    src = `${baseUrl.origin}/${src}`;
+                }
+                $img.attr('src', src);
+            }
+        });
+
+        content = $contentArea.html() || '';
+
+        return {
+            title: title.substring(0, 200),
+            summary: summary.substring(0, 500),
+            content
+        };
+    }
+
+    /**
+     * Split Markdown content into chapters based on headings
+     * Supports: # Heading1, ## Heading2, numbered sections (1., 1.1, etc.)
+     */
+    function splitMarkdownIntoChapters(markdown, titlePrefix) {
+        const chapters = [];
+        const lines = markdown.split('\n');
+        
+        let currentChapter = null;
+        let currentContent = [];
+        
+        // 章节标题模式：# 标题 或 1. 标题 或 1.1 标题
+        const chapterPattern = /^(#{1,2})\s+(.+)$|^(\d+(?:\.\d+)*)[\.\s]+(.+)$/;
+        
+        for (const line of lines) {
+            const match = line.match(chapterPattern);
+            
+            if (match) {
+                // 保存上一章
+                if (currentChapter && currentContent.length > 0) {
+                    currentChapter.content = currentContent.join('\n').trim();
+                    if (currentChapter.content.length > 100) {
+                        chapters.push(currentChapter);
+                    }
+                }
+                
+                // 开始新章
+                let chapterTitle;
+                if (match[1]) {
+                    // Markdown标题
+                    chapterTitle = match[2].trim();
+                } else {
+                    // 数字编号标题
+                    chapterTitle = match[4].trim();
+                }
+                
+                // 添加前缀
+                const fullTitle = titlePrefix ? `${titlePrefix}: ${chapterTitle}` : chapterTitle;
+                
+                currentChapter = {
+                    title: fullTitle,
+                    content: ''
+                };
+                currentContent = [];
+            } else {
+                // 添加到当前章节
+                if (currentChapter) {
+                    currentContent.push(line);
+                }
+            }
+        }
+        
+        // 保存最后一章
+        if (currentChapter && currentContent.length > 0) {
+            currentChapter.content = currentContent.join('\n').trim();
+            if (currentChapter.content.length > 100) {
+                chapters.push(currentChapter);
+            }
+        }
+        
+        // 如果没有找到章节，将整个文档作为一章
+        if (chapters.length === 0 && markdown.trim().length > 100) {
+            chapters.push({
+                title: titlePrefix || 'Untitled Document',
+                content: markdown.trim()
+            });
+        }
+        
+        return chapters;
+    }
+
+    /**
+     * Split PDF content into sections with intelligent chapter detection
+     * Supports: Chapter titles, Markdown headers, numbered sections
+     */
+    function splitPDFContent(text, titlePrefix) {
+        const sections = [];
+        
+        // Enhanced chapter detection patterns (ordered by priority)
+        const chapterPatterns = [
+            // Chinese chapter patterns
+            { regex: /^第[一二三四五六七八九十百千]+章[\s:：](.+)$/m, priority: 1 },
+            { regex: /^第\s*\d+\s*章[\s:：](.+)$/m, priority: 1 },
+            
+            // Numbered sections (1., 1.1, etc.)
+            { regex: /^(\d+\.\d+\.?\d*)\s+(.+)$/m, priority: 2 },
+            { regex: /^(\d+\.)\s+(.+)$/m, priority: 2 },
+            
+            // Markdown-style headers
+            { regex: /^#{1,3}\s+(.+)$/m, priority: 1 },
+            
+            // All caps titles
+            { regex: /^([A-Z][A-Z\s]{2,})$/m, priority: 3 },
+            
+            // Chinese numbered items
+            { regex: /^[一二三四五六七八九十]+[、.]\s*(.+)$/m, priority: 2 }
+        ];
+        
+        const lines = text.split('\n');
+        let currentTitle = '';
+        let currentContent = [];
+        let sectionIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            let isChapterStart = false;
+            let detectedTitle = '';
+            let matchPriority = 999;
+            
+            // Try each pattern
+            for (const pattern of chapterPatterns) {
+                const match = line.match(pattern.regex);
+                if (match && pattern.priority <= matchPriority) {
+                    isChapterStart = true;
+                    matchPriority = pattern.priority;
+                    
+                    // Extract title
+                    if (match[2]) {
+                        detectedTitle = match[2].trim();
+                    } else if (match[1]) {
+                        detectedTitle = match[1].trim();
+                    } else {
+                        detectedTitle = line;
+                    }
+                    
+                    // Validate title
+                    if (detectedTitle.length < 2 || /^[\d\.\s]+$/.test(detectedTitle)) {
+                        isChapterStart = false;
+                    }
+                }
+            }
+            
+            // Additional heuristic: detect potential headers
+            if (!isChapterStart && currentContent.length > 50) {
+                if (line.length > 3 && line.length < 80 && 
+                    !line.match(/[。！？；,，]$/) &&
+                    (line[0] === line[0].toUpperCase() || /^[一-龥]/.test(line))) {
+                    
+                    // Look ahead
+                    let nextLinesAreContent = false;
+                    for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+                        const nextLine = lines[j].trim();
+                        if (nextLine.length > 40) {
+                            nextLinesAreContent = true;
+                            break;
+                        }
+                    }
+                    
+                    if (nextLinesAreContent) {
+                        isChapterStart = true;
+                        detectedTitle = line;
+                    }
+                }
+            }
+            
+            // Save section
+            if (isChapterStart && currentContent.length > 30) {
+                if (currentTitle) {
+                    const content = currentContent.join('\n').trim();
+                    if (content.length > 100) {
+                        sections.push({
+                            title: currentTitle,
+                            content: content
+                        });
+                        sectionIndex++;
+                    }
+                }
+                currentTitle = detectedTitle;
+                currentContent = [line];
+            } else {
+                currentContent.push(line);
+            }
+        }
+        
+        // Save last section
+        if (currentTitle && currentContent.length > 30) {
+            const content = currentContent.join('\n').trim();
+            if (content.length > 100) {
+                sections.push({
+                    title: currentTitle,
+                    content: content
+                });
+            }
+        }
+        
+        // Fallback: semantic chunking if no chapters detected
+        if (sections.length === 0) {
+            const paragraphs = text.split(/\n\s*\n/);
+            let chunk = [];
+            let chunkIndex = 1;
+            const targetSize = 1500;
+            
+            for (const para of paragraphs) {
+                const trimmed = para.trim();
+                if (!trimmed || trimmed.length < 10) continue;
+                
+                chunk.push(trimmed);
+                const currentSize = chunk.join('\n\n').length;
+                
+                if (currentSize > targetSize) {
+                    const content = chunk.join('\n\n').trim();
+                    if (content.length > 100) {
+                        const firstLine = content.split('\n')[0];
+                        const title = firstLine.length < 60 && !firstLine.match(/[。！？]$/)
+                            ? `${titlePrefix}: ${firstLine}`
+                            : `${titlePrefix} - Part ${chunkIndex}`;
+                        
+                        sections.push({ title, content });
+                        chunkIndex++;
+                    }
+                    chunk = [];
+                }
+            }
+            
+            // Save last chunk
+            if (chunk.length > 0) {
+                const content = chunk.join('\n\n').trim();
+                if (content.length > 100) {
+                    const firstLine = content.split('\n')[0];
+                    const title = firstLine.length < 60
+                        ? `${titlePrefix}: ${firstLine}`
+                        : `${titlePrefix} - Part ${chunkIndex}`;
+                    sections.push({ title, content });
+                }
+            }
+        }
+        
+        return sections;
+    }
+
+    /**
+     * Extract images from PDF file using Python PyMuPDF
+     * Returns array of { filename, page, path }
+     */
+    async function extractPDFImages(pdfPath, outputDir) {
+        try {
+            const scriptPath = path.join(__dirname, '../../scripts/extract_pdf_images.py');
+            
+            // Call Python script
+            const result = execSync(
+                `python3 "${scriptPath}" "${pdfPath}" "${outputDir}"`,
+                { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
+            );
+            
+            // Parse JSON output
+            const data = JSON.parse(result);
+            
+            if (data.success && data.images) {
+                console.log(`[PDF Images] ✅ Extracted ${data.images.length} images`);
+                return data.images;
+            }
+            
+            return [];
+        } catch (err) {
+            console.error('[PDF Images] Extraction error:', err.message);
+            return [];
+        }
+    }
+
+    /**
+     * Insert image references into content at appropriate positions
+     * Tries to match images to sections by page number
+     */
+    function insertImageReferences(sections, images) {
+        if (!images || images.length === 0) return sections;
+        
+        // Group images by page
+        const imagesByPage = {};
+        images.forEach(img => {
+            if (!imagesByPage[img.page]) {
+                imagesByPage[img.page] = [];
+            }
+            imagesByPage[img.page].push(img);
+        });
+        
+        // Insert images into sections
+        // Note: This is a simple heuristic - assumes sections are roughly sequential by page
+        const pagesPerSection = Math.ceil(Object.keys(imagesByPage).length / sections.length);
+        
+        sections.forEach((section, idx) => {
+            const startPage = idx * pagesPerSection + 1;
+            const endPage = (idx + 1) * pagesPerSection;
+            
+            let sectionImages = [];
+            for (let page = startPage; page <= endPage; page++) {
+                if (imagesByPage[page]) {
+                    sectionImages = sectionImages.concat(imagesByPage[page]);
+                }
+            }
+            
+            if (sectionImages.length > 0) {
+                // Append images at the end of section content
+                section.content += '\n\n---\n\n**相关图片**：\n\n';
+                sectionImages.forEach((img, i) => {
+                    section.content += `![图 ${i + 1}](${img.path})\n\n`;
+                });
+            }
+        });
+        
+        return sections;
     }
 
     return router;

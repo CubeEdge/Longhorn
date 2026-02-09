@@ -38,10 +38,16 @@ class AIService {
             const row = this.db.prepare('SELECT * FROM system_settings LIMIT 1').get();
             if (row) {
                 row.ai_work_mode = Boolean(row.ai_work_mode);
+                // Parse ai_data_sources JSON array
+                try {
+                    row.ai_data_sources = row.ai_data_sources ? JSON.parse(row.ai_data_sources) : ['tickets', 'knowledge'];
+                } catch (e) {
+                    row.ai_data_sources = ['tickets', 'knowledge'];
+                }
                 return row;
             }
         } catch (e) { }
-        return { ai_work_mode: false };
+        return { ai_work_mode: false, ai_data_sources: ['tickets', 'knowledge'] };
     }
 
     /**
@@ -202,7 +208,7 @@ Output raw JSON only, no markdown formatting blocks.`;
         }
     }
     /**
-     * Chat method for Bokeh Assistant (History Aware + Ticket Search).
+     * Chat method for Bokeh Assistant (History Aware + Ticket Search + Knowledge Search).
      * @param {Array} messages - Array of {role, content} objects
      * @param {Object} context - Context object (page, title, etc.)
      * @param {Object} user - User object with role and dealer_id for permission filtering
@@ -213,6 +219,7 @@ Output raw JSON only, no markdown formatting blocks.`;
         if (!client) throw new Error("Active AI Provider has no API Key configured.");
 
         const settings = this._getSystemSettings();
+        const dataSources = settings.ai_data_sources || ['tickets', 'knowledge'];
 
         // Policy Check: Work Mode Only
         if (settings.ai_work_mode) {
@@ -222,18 +229,20 @@ Output raw JSON only, no markdown formatting blocks.`;
             }
         }
 
-        // Extract last user message for ticket search
+        // Extract last user message for searches
         const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
 
-        // Detect if user query needs ticket search (keywords-based heuristic)
-        const needsTicketSearch = this._detectTicketSearchIntent(lastUserMessage);
+        // Detect if user query needs search (keywords-based heuristic)
+        const needsSearch = this._detectTicketSearchIntent(lastUserMessage);
 
-        let ticketContext = '';
-        if (needsTicketSearch && this.db) {
+        let contextSections = [];
+
+        // Search Tickets if enabled
+        if (needsSearch && dataSources.includes('tickets') && this.db) {
             try {
                 const tickets = await this._searchRelatedTickets(lastUserMessage, user);
                 if (tickets && tickets.length > 0) {
-                    ticketContext = '\n\n## 相关历史工单参考\n';
+                    let ticketContext = '\n\n## 相关历史工单参考\n';
                     tickets.forEach((t, i) => {
                         ticketContext += `${i + 1}. **[${t.ticket_number}]** (${t.ticket_type})\n`;
                         ticketContext += `   标题: ${t.title}\n`;
@@ -245,11 +254,39 @@ Output raw JSON only, no markdown formatting blocks.`;
                         ticketContext += `\n`;
                     });
                     ticketContext += '请在回答中引用工单编号,格式为[工单编号|工单ID|类型],例如[K2602-0001|123|inquiry]。\n';
+                    contextSections.push(ticketContext);
                 }
             } catch (err) {
                 console.warn('[AIService] Ticket search failed:', err.message);
             }
         }
+
+        // Search Knowledge Base if enabled
+        if (needsSearch && dataSources.includes('knowledge') && this.db) {
+            try {
+                const articles = await this._searchRelatedKnowledge(lastUserMessage, user);
+                if (articles && articles.length > 0) {
+                    let knowledgeContext = '\n\n## 相关知识库文章参考\n';
+                    articles.forEach((a, i) => {
+                        knowledgeContext += `${i + 1}. **${a.title}** (${a.category})\n`;
+                        if (a.product_line) knowledgeContext += `   产品线: ${a.product_line}\n`;
+                        if (a.summary) knowledgeContext += `   摘要: ${a.summary}\n`;
+                        if (a.content) {
+                            knowledgeContext += `   内容摘录: ${a.content}${a.content.length >= 300 ? '...' : ''}\n`;
+                        }
+                        if (a.source_reference) knowledgeContext += `   来源: ${a.source_reference}\n`;
+                        knowledgeContext += `   链接: /tech-hub/wiki/${a.slug}\n`;
+                        knowledgeContext += `\n`;
+                    });
+                    knowledgeContext += '请在回答中引用知识库文章标题和链接。\n';
+                    contextSections.push(knowledgeContext);
+                }
+            } catch (err) {
+                console.warn('[AIService] Knowledge search failed:', err.message);
+            }
+        }
+
+        const enhancedContext = contextSections.join('');
 
         const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
 You have access to the Kinefinity Service Database.
@@ -258,13 +295,15 @@ Current Context:
 - Title: ${context.title || 'Unknown'}
 - Strict Work Mode: ${settings.ai_work_mode ? 'ENABLED (Refuse casual chat, only answer work-related questions)' : 'DISABLED'}
 - Web Search: ${provider.allow_search ? 'ENABLED' : 'DISABLED'}
+- Active Data Sources: ${dataSources.join(', ')}
 
 Guidelines:
 - Be helpful, concise, and professional.
 - If Strict Work Mode is ON, politely refuse to answer questions about movies, jokes, or general trivia unrelated to Kinefinity/Filmmaking.
 - Your persona: "Ethereal, Calm, Responsive". Use "we" when referring to Kinefinity support.
 - When historical tickets are provided, cite them using their ticket numbers (e.g., [K2602-0001]).
-${ticketContext}`;
+- When knowledge articles are provided, cite them with titles and provide links (e.g., "根据[MAVO Edge 6K: 1.1 端口说明](/tech-hub/wiki/mavo-edge-6k-1-1-端口说明)...").
+${enhancedContext}`;
 
         const model = this._getModel('chat');
 
@@ -368,6 +407,78 @@ ${ticketContext}`;
             });
         } catch (err) {
             console.error('[AIService] Ticket search query failed:', err);
+            return [];
+        }
+    }
+
+    /**
+     * Search related knowledge articles based on user query
+     * @param {string} query - User query
+     * @param {Object} user - User object with role and department
+     * @returns {Promise<Array>} Array of knowledge article results
+     */
+    async _searchRelatedKnowledge(query, user) {
+        if (!this.db) return [];
+
+        // Build WHERE clause based on user visibility
+        let whereConditions = ["ka.status = 'published'"];
+        let params = { query, limit: 3 }; // Top 3 articles
+
+        // Visibility Filter based on user role
+        if (user) {
+            if (user.department === 'Dealer') {
+                // Dealers can see Public and Dealer visibility
+                whereConditions.push("(ka.visibility = 'Public' OR ka.visibility = 'Dealer')");
+            } else if (['Admin', 'Lead', 'Editor', 'Support'].includes(user.role)) {
+                // Internal staff can see all including Internal
+                // No additional filter needed
+            } else {
+                // Others only see Public
+                whereConditions.push("ka.visibility = 'Public'");
+            }
+        } else {
+            // Unauthenticated users only see Public
+            whereConditions.push("ka.visibility = 'Public'");
+        }
+
+        const whereClause = whereConditions.join(' AND ');
+
+        // FTS5 Search Query for knowledge base
+        const searchQuery = `
+            SELECT 
+                ka.id,
+                ka.title,
+                ka.slug,
+                ka.summary,
+                ka.content,
+                ka.category,
+                ka.product_line,
+                ka.visibility,
+                ka.source_reference,
+                fts.rank
+            FROM knowledge_articles ka
+            INNER JOIN knowledge_fts fts ON ka.id = fts.rowid
+            WHERE fts MATCH @query
+              AND ${whereClause}
+            ORDER BY fts.rank
+            LIMIT @limit
+        `;
+
+        try {
+            const results = this.db.prepare(searchQuery).all(params);
+            return results.map(r => ({
+                id: r.id,
+                title: r.title,
+                slug: r.slug,
+                summary: r.summary,
+                content: r.content?.substring(0, 300), // Truncate content
+                category: r.category,
+                product_line: r.product_line,
+                source_reference: r.source_reference,
+                relevance_score: r.rank
+            }));
+        } catch (err) {
+            console.error('[AIService] Knowledge search query failed:', err);
             return [];
         }
     }

@@ -23,6 +23,7 @@ interface SystemSettings {
     system_name: string;
     ai_enabled: boolean;
     ai_work_mode: boolean;
+    ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
 }
 
 type AdminTab = 'general' | 'intelligence' | 'health';
@@ -327,6 +328,54 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
                             <div className="setting-card-mini">
                                 <span style={{ fontSize: '0.8rem' }}>{t('admin.work_mode')}</span>
                                 <Switch checked={settings.ai_work_mode} onChange={v => setSettings({ ...settings, ai_work_mode: v })} />
+                            </div>
+                            
+                            {/* Data Sources Selection */}
+                            <div style={{ marginTop: 12, paddingLeft: 8 }}>
+                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>Bokeh 数据源</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.ai_data_sources?.includes('tickets') ?? true}
+                                            onChange={(e) => {
+                                                const sources = settings.ai_data_sources || [];
+                                                if (e.target.checked) {
+                                                    setSettings({ ...settings, ai_data_sources: [...sources, 'tickets'] });
+                                                } else {
+                                                    setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'tickets') });
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        工单历史
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.ai_data_sources?.includes('knowledge') ?? true}
+                                            onChange={(e) => {
+                                                const sources = settings.ai_data_sources || [];
+                                                if (e.target.checked) {
+                                                    setSettings({ ...settings, ai_data_sources: [...sources, 'knowledge'] });
+                                                } else {
+                                                    setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'knowledge') });
+                                                }
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        Kinefinity 知识库
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', opacity: 0.5 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.ai_data_sources?.includes('web_search') ?? false}
+                                            disabled
+                                            style={{ cursor: 'not-allowed' }}
+                                        />
+                                        实时网络搜索 (待开放)
+                                    </label>
+                                </div>
                             </div>
                         </div>
 

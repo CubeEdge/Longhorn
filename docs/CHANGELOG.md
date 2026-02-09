@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] - 2026-02-07
+### Added (Knowledge Base)
+- **DOCX Import Pipeline**: 新增知识库DOCX→MD完整导入流程，支持MAVO Edge 6K操作手册导入（73章节、9表格、39图片）。
+  - **转换器**: `server/scripts/docx_to_markdown.py` - 使用`python-docx`直接读取DOCX结构，完整保留表格和层级。
+  - **图片优化**: 自动提取并转WebP格式（质量85，压缩率80%+）。
+  - **导入器**: `server/scripts/import_from_markdown.py` - 按标题分割章节，保留Markdown格式。
+
+### Fixed (WIKI Navigation)
+- **双重嵌套问题**: 修复WIKI导航树"操作手册"节点双重嵌套，确保四级结构正确（产品线→产品型号→分类→章节→文章）。
+- **章节识别**: 优化`parseChapterNumber`正则，支持"1."和"1.1"两种格式，准确率100%。
+- **图片显示**: 同步39张WebP图片到远程服务器`/data/knowledge_images/`，修复图片无法加载问题。
+- **摘要生成**: 修正Markdown图片语法移除逻辑，避免摘要中出现"Image(/path)"纯文本。
+
+### Changed (Infrastructure)
+- **运维规范**: 明确远程执行必须使用`ssh -t mini "/bin/zsh -l -c '...'"` 格式，避免`killall node`杀掉PM2 daemon。
+- **访问地址**: 统一使用Cloudflare Tunnel地址`https://opware.kineraw.com`，而非直接IP访问。
+
+---
+
 ## [13.4.1] - 2026-01-22
 ### Emergency Fix
 - **Database Schema Compatibility**: Fixed a critical server crash when authenticating users. The server previously expected a `department_name` column in the `users` table, which did not exist in the production database. The query was rewritten to use a `LEFT JOIN` with the `departments` table, ensuring stability without requiring risky schema migrations.

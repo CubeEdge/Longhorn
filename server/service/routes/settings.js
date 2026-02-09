@@ -28,6 +28,12 @@ module.exports = (db, authenticate) => {
                 settings.ai_enabled = Boolean(settings.ai_enabled);
                 settings.ai_work_mode = Boolean(settings.ai_work_mode);
                 settings.ai_allow_search = Boolean(settings.ai_allow_search);
+                // Parse ai_data_sources JSON
+                try {
+                    settings.ai_data_sources = settings.ai_data_sources ? JSON.parse(settings.ai_data_sources) : ['tickets', 'knowledge'];
+                } catch (e) {
+                    settings.ai_data_sources = ['tickets', 'knowledge'];
+                }
             }
 
             providers.forEach(p => {
@@ -38,7 +44,7 @@ module.exports = (db, authenticate) => {
             res.json({
                 success: true,
                 data: {
-                    settings: settings || { system_name: 'Longhorn System', ai_enabled: 1 },
+                    settings: settings || { system_name: 'Longhorn System', ai_enabled: 1, ai_data_sources: ['tickets', 'knowledge'] },
                     providers
                 }
             });
@@ -56,10 +62,17 @@ module.exports = (db, authenticate) => {
             // 1. Update general system settings
             const existing = db.prepare('SELECT id FROM system_settings LIMIT 1').get();
             if (existing && settings) {
+                // Parse ai_data_sources if it's an array
+                let dataSources = settings.ai_data_sources;
+                if (Array.isArray(dataSources)) {
+                    dataSources = JSON.stringify(dataSources);
+                }
+                
                 db.prepare(`
                     UPDATE system_settings SET 
                         ai_enabled = @ai_enabled,
                         ai_work_mode = @ai_work_mode,
+                        ai_data_sources = @ai_data_sources,
                         system_name = @system_name,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
@@ -67,7 +80,8 @@ module.exports = (db, authenticate) => {
                     id: existing.id,
                     system_name: settings.system_name,
                     ai_enabled: settings.ai_enabled ? 1 : 0,
-                    ai_work_mode: settings.ai_work_mode ? 1 : 0
+                    ai_work_mode: settings.ai_work_mode ? 1 : 0,
+                    ai_data_sources: dataSources
                 });
             }
 

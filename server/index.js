@@ -18,6 +18,7 @@ const rmaTickets = require('./service/routes/rma-tickets');
 const dealerRepairs = require('./service/routes/dealer-repairs');
 const products = require('./service/routes/products');
 const settings = require('./service/routes/settings');
+const knowledgeRoutes = require('./service/routes/knowledge');
 
 dotenv.config();
 
@@ -60,6 +61,7 @@ db.exec(`
         ai_work_mode BOOLEAN DEFAULT 0,
         ai_allow_search BOOLEAN DEFAULT 0,
         ai_provider TEXT DEFAULT 'DeepSeek',
+        ai_data_sources TEXT DEFAULT '["tickets","knowledge"]',  -- JSON array: ["tickets", "knowledge", "web_search"]
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -530,12 +532,13 @@ const authenticate = (req, res, next) => {
             }
 
             // Reload user from DB to ensure latest role/department info
+            // Use both integer and float comparison for backward compatibility
             const user = db.prepare(`
                 SELECT u.id, u.username, u.role, u.department_id, d.name as department_name 
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
-                WHERE u.id = ?
-            `).get(decoded.id);
+                WHERE u.id = ? OR u.id = CAST(? AS REAL)
+            `).get(decoded.id, decoded.id);
 
             if (!user) {
                 return res.sendStatus(401);
@@ -718,6 +721,7 @@ app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate, serviceUploa
 app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate, attachmentsDir, multer, serviceUpload));
 app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate, serviceUpload));
+app.use('/api/v1/knowledge', knowledgeRoutes(db, authenticate, multer, aiService));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
@@ -3498,6 +3502,12 @@ app.use(express.static(path.join(__dirname, '../client/dist'), {
     maxAge: '0',  // Disabled for now to force cache refresh
     etag: true,
     lastModified: true
+}));
+
+// Serve knowledge base images
+app.use('/data/knowledge_images', express.static(path.join(__dirname, 'data/knowledge_images'), {
+    maxAge: '1d',  // Cache for 1 day
+    etag: true
 }));
 
 // Fallback to SPA for any non-API routes - Using a general middleware to bypass path-to-regexp version issues

@@ -1,19 +1,21 @@
 # System Context (系统全景图)
 
-> **最后更新/Last Updated**: 2026-02-06
+> **最后更新/Last Updated**: 2026-02-07 v11.3.14
 > **核心作用**: 本文档定义了 Longhorn 项目的"世界观"，包括硬件设施、部署架构、核心代码逻辑与已知限制。
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 
 ## 0. 核心开发规则 (Critical Rules)
-8. **Remote Ops (远程执行)**：所有远程命令必须强制使用 `ssh -t mini "/bin/zsh -l -c '...命令...'"` 格式执行，以确保登录 Shell 正确加载环境变量（node, pm2, sqlite3 等）。
-1. **Deployment**：必须关闭 `longhorn-watcher` 自动同步，统一使用 `./scripts/deploy.sh` 进行全部署。
-2. **Ghost UI Prevention (构建完整性)**：远程构建必须强制使用登录 Shell (`zsh -l`)。部署前**必须物理删除**旧 `dist` 目录且严禁忽略构建报错。
-6. **构建产物校验**：凡修改前端源码（`.tsx`, `.ts`, `.css`），部署时**必须**执行 `npm run build` 并通过 `ls dist/index.html` 验证产物生成，确保护理修改后生产环境不加载旧产物或空目录。
-7. **Verification Proof (交付必验)**：每次构建后必须立即核对退出码及产物时间戳，并使用 `grep` 验证关键代码已进入生产混淆包，确保 TypeScript 零报错且产物非旧版缓存，严禁未经验证即请求用户刷新。
-4. **版本管理**：版本号在 `client/package.json` 中维护。每次修改后**自动递增**最后一位，并在用户菜单中以**绿色**显示。
-3. **主题色与风格**：主题色锁定为 **Kine Yellow** (#FFD700)。Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。
-5. **多语言交互**：所有回复、任务、文档均使用中文。严禁硬编码文字，确保支持 简中、英、德、日 四国语言。
-9. **Documentation Versioning (文档版本号管理)**：凡对系统核心文档（PRD、API、UserScenarios、DataModel 等）进行内容更新，必须同步升级其内部版本号并刷新“最后更新”日期，以确保文档的可追溯性和一致性。
+1. **远程服务器** 是利用 Cloudflare Tunnel 穿透的，没有固定IP。
+2. **Remote Ops (远程执行)**：所有远程命令必须强制使用 `ssh -t mini "/bin/zsh -l -c '...命令...'"` 格式执行，以确保登录 Shell 正确加载环境变量（node, pm2, sqlite3 等）。
+3. **Deployment**：必须关闭 `longhorn-watcher` 自动同步，统一使用 `./scripts/deploy.sh` 进行全部署。
+4. **构建完整性**：远程构建必须强制使用登录 Shell (`zsh -l`)。部署前**必须物理删除**旧 `dist` 目录且严禁忽略构建报错。
+5. **构建产物校验**：凡修改前端源码（`.tsx`, `.ts`, `.css`），部署时**必须**执行 `npm run build` 并通过 `ls dist/index.html` 验证产物生成，确保护理修改后生产环境不加载旧产物或空目录。
+6. **Verification Proof (交付必验)**：每次构建后必须立即核对退出码及产物时间戳，并使用 `grep` 验证关键代码已进入生产混淆包，确保 TypeScript 零报错且产物非旧版缓存，严禁未经验证即请求用户刷新。
+7. **命令行确认**对于只读操作（如curl -I检查HTTP状态、ls、cat、grep等）不需要和我确认，直接运行就可以。
+7. **版本管理**：版本号在 `client/package.json` 中维护。每次修改后**自动递增**最后一位，并在用户菜单中以**绿色**显示。
+8. **主题色与风格**：主题色锁定为 **Kine Yellow** (#FFD700)。Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。
+9. **多语言交互**：所有回复、任务、文档均使用中文。严禁硬编码文字，确保支持 简中、英、德、日 四国语言。
+10. **Documentation Versioning (文档版本号管理)**：凡对系统核心文档（PRD、API、UserScenarios、DataModel 等）进行内容更新，必须同步升级其内部版本号并刷新“最后更新”日期，以确保文档的可追溯性和一致性。
 
 ## 1. 基础设施 (Infrastructure)
 

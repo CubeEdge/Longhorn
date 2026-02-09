@@ -11,6 +11,8 @@ server/data/.recycle/*
 server/data/.thumbnails/
 server/data/uploads/
 server/data/cache/
+server/data/knowledge_images/
+server/data/issue_attachments/
 !server/data/DiskA/.gitkeep
 !server/data/DiskB/.gitkeep
 !server/data/.recycle/.gitkeep
