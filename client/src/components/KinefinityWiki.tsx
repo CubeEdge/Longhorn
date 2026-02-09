@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, Menu, X, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -57,7 +57,7 @@ export const KinefinityWiki: React.FC = () => {
         return saved ? new Set(JSON.parse(saved)) : new Set(['a-camera']);
     });
     const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
-    const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [tocVisible, setTocVisible] = useState(false); // 目录可见性
     const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([]);
     const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
 
@@ -249,24 +249,21 @@ export const KinefinityWiki: React.FC = () => {
             { label: 'WIKI', articleSlug: undefined }
         ];
 
-        // 添加产品线
         const lineLabels: Record<string, string> = {
-            'A': 'A类：在售电影摄影机',
-            'B': 'B类：历史机型',
-            'C': 'C类：电子寻像器',
-            'D': 'D类：通用配件'
+            'A': 'A类',
+            'B': 'B类',
+            'C': 'C类',
+            'D': 'D类'
         };
         if (article.product_line && lineLabels[article.product_line]) {
             crumbs.push({ label: lineLabels[article.product_line] });
         }
 
-        // 添加产品型号
         if (article.product_models && article.product_models.length > 0) {
             const model = Array.isArray(article.product_models) ? article.product_models[0] : article.product_models;
             crumbs.push({ label: model });
         }
 
-        // 添加分类
         if (article.category) {
             const categoryLabels: Record<string, string> = {
                 'Manual': '操作手册',
@@ -276,7 +273,6 @@ export const KinefinityWiki: React.FC = () => {
             crumbs.push({ label: categoryLabels[article.category] || article.category });
         }
 
-        // 添加当前文章
         crumbs.push({ label: article.title, articleSlug: article.slug });
 
         setBreadcrumbPath(crumbs);
@@ -309,7 +305,7 @@ export const KinefinityWiki: React.FC = () => {
 
     const handleArticleClick = async (article: KnowledgeArticle) => {
         // 保存当前路径到历史
-        if (location.pathname) {
+        if (location.pathname && location.pathname !== `/tech-hub/wiki/${article.slug}`) {
             setNavigationHistory(prev => [...prev, location.pathname]);
         }
 
@@ -318,13 +314,16 @@ export const KinefinityWiki: React.FC = () => {
         await loadArticleDetail(article);
         buildBreadcrumb(article);
         
-        // 移动端自动隐藏侧边栏
-        if (window.innerWidth < 768) {
-            setSidebarVisible(false);
-        }
+        // 关闭TOC
+        setTocVisible(false);
     };
 
     const handleHomeClick = () => {
+        // 保存当前路径到历史
+        if (location.pathname && location.pathname !== '/tech-hub/wiki') {
+            setNavigationHistory(prev => [...prev, location.pathname]);
+        }
+        
         setSelectedArticle(null);
         setBreadcrumbPath([]);
         navigate('/tech-hub/wiki');
@@ -484,139 +483,17 @@ export const KinefinityWiki: React.FC = () => {
             overflow: 'hidden',
             position: 'relative'
         }}>
-            {/* Sidebar Overlay (mobile) */}
-            {sidebarVisible && (
-                <div 
-                    onClick={() => setSidebarVisible(false)}
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0,0,0,0.6)',
-                        backdropFilter: 'blur(4px)',
-                        zIndex: 998,
-                        transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                />
-            )}
-
-            {/* Left Sidebar */}
-            <div style={{
-                width: '280px',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(0,0,0,0.6)',
-                backdropFilter: 'blur(20px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                position: sidebarVisible ? 'fixed' : 'relative',
-                left: 0,
-                top: 60,
-                bottom: 0,
-                zIndex: 999,
-                transform: window.innerWidth < 768 && !sidebarVisible ? 'translateX(-100%)' : 'translateX(0)',
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}>
-                {/* Header */}
-                <div style={{ 
-                    padding: '20px',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <BookOpen size={22} color="#FFD700" />
-                            <h1 style={{ 
-                                fontSize: '18px', 
-                                fontWeight: 700, 
-                                color: '#fff',
-                                margin: 0
-                            }}>
-                                Kinefinity WIKI
-                            </h1>
-                        </div>
-                        <button
-                            onClick={() => setSidebarVisible(false)}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: '4px',
-                                display: window.innerWidth < 768 ? 'block' : 'none'
-                            }}
-                        >
-                            <X size={20} color="#999" />
-                        </button>
-                    </div>
-                    <p style={{ 
-                        color: '#999', 
-                        fontSize: '12px',
-                        margin: 0
-                    }}>
-                        技术百科·产品知识库
-                    </p>
-                </div>
-
-                {/* Search */}
-                <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ 
-                            position: 'absolute', 
-                            left: '12px', 
-                            top: '50%', 
-                            transform: 'translateY(-50%)',
-                            color: '#666'
-                        }} />
-                        <input
-                            type="text"
-                            placeholder="搜索知识库..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '10px 12px 10px 38px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '10px',
-                                color: '#fff',
-                                fontSize: '13px',
-                                outline: 'none',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                            }}
-                            onFocus={(e) => {
-                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            }}
-                            onBlur={(e) => {
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                            }}
-                        />
-                    </div>
-                </div>
-
-                {/* Tree Navigation */}
-                <div style={{ 
-                    flex: 1, 
-                    overflowY: 'auto', 
-                    padding: '12px 8px',
-                }}>
-                    {tree.map(node => renderTreeNode(node))}
-                </div>
-            </div>
-
-            {/* Right Content Area */}
+            {/* Main Content Area - 全屏 */}
             <div style={{ 
                 flex: 1, 
                 overflow: 'auto',
-                background: '#000'
+                background: '#000',
+                position: 'relative'
             }}>
                 {selectedArticle ? (
                     // Article View
-                    <div style={{ maxWidth: '880px', margin: '0 auto', padding: '40px 32px' }}>
-                        {/* Top Bar with Breadcrumb and Sidebar Toggle */}
+                    <div style={{ maxWidth: '880px', margin: '0 auto', padding: '32px 40px' }}>
+                        {/* Top Bar with Breadcrumb and TOC Toggle */}
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -625,60 +502,28 @@ export const KinefinityWiki: React.FC = () => {
                             paddingBottom: '20px',
                             borderBottom: '1px solid rgba(255,255,255,0.06)'
                         }}>
-                            {/* Sidebar Toggle Button */}
+                            {/* Back Button - 始终显示 */}
                             <button
-                                onClick={() => setSidebarVisible(!sidebarVisible)}
+                                onClick={handleBackClick}
                                 style={{
                                     background: 'rgba(255,255,255,0.05)',
                                     border: '1px solid rgba(255,255,255,0.08)',
                                     borderRadius: '10px',
-                                    padding: '8px 12px',
+                                    padding: '8px',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    color: '#FFD700',
-                                    fontSize: '13px',
-                                    fontWeight: 500,
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
                                 }}
                             >
-                                <Menu size={16} />
-                                <span>目录</span>
+                                <ChevronLeft size={20} color="#999" />
                             </button>
-
-                            {/* Back Button */}
-                            {navigationHistory.length > 0 && (
-                                <button
-                                    onClick={handleBackClick}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '10px',
-                                        padding: '8px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                    }}
-                                >
-                                    <ChevronLeft size={20} color="#999" />
-                                </button>
-                            )}
 
                             {/* Breadcrumb */}
                             <div style={{ 
@@ -722,6 +567,34 @@ export const KinefinityWiki: React.FC = () => {
                                     );
                                 })}
                             </div>
+
+                            {/* TOC Toggle Button - 右上角圆形按钮 */}
+                            <button
+                                onClick={() => setTocVisible(!tocVisible)}
+                                style={{
+                                    background: tocVisible ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                    border: tocVisible ? '1px solid rgba(255,215,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '50%',
+                                    width: '40px',
+                                    height: '40px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    flexShrink: 0
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = tocVisible ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                            >
+                                <List size={20} color={tocVisible ? '#FFD700' : '#999'} />
+                            </button>
                         </div>
 
                         {/* Article Header */}
@@ -882,38 +755,6 @@ export const KinefinityWiki: React.FC = () => {
                         padding: '80px 32px',
                         textAlign: 'center'
                     }}>
-                        {/* Sidebar Toggle for Welcome Page */}
-                        <div style={{ marginBottom: '40px' }}>
-                            <button
-                                onClick={() => setSidebarVisible(true)}
-                                style={{
-                                    background: 'rgba(255,215,0,0.1)',
-                                    border: '1px solid rgba(255,215,0,0.3)',
-                                    borderRadius: '12px',
-                                    padding: '12px 24px',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: '#FFD700',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                <Menu size={18} />
-                                <span>浏览目录</span>
-                            </button>
-                        </div>
-
                         <BookOpen size={64} color="#FFD700" style={{ marginBottom: '24px' }} />
                         <h1 style={{ 
                             fontSize: '36px', 
@@ -930,7 +771,7 @@ export const KinefinityWiki: React.FC = () => {
                             lineHeight: '1.6'
                         }}>
                             这里汇集了 Kinefinity 全系列产品的技术文档、故障排查指南和常见问题解答。<br />
-                            点击上方"浏览目录"按钮开始探索。
+                            点击右上角目录按钮开始探索。
                         </p>
 
                         <div style={{ 
@@ -954,6 +795,7 @@ export const KinefinityWiki: React.FC = () => {
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     cursor: 'pointer'
                                 }}
+                                onClick={() => setTocVisible(true)}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                                     e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
@@ -975,9 +817,178 @@ export const KinefinityWiki: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+
+                        {/* 主页也显示TOC按钮 */}
+                        <button
+                            onClick={() => setTocVisible(true)}
+                            style={{
+                                position: 'fixed',
+                                top: '80px',
+                                right: '40px',
+                                background: 'rgba(255,215,0,0.1)',
+                                border: '1px solid rgba(255,215,0,0.3)',
+                                borderRadius: '50%',
+                                width: '48px',
+                                height: '48px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '0 4px 12px rgba(255,215,0,0.2)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,215,0,0.2)';
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                                e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                        >
+                            <List size={24} color="#FFD700" />
+                        </button>
                     </div>
                 )}
             </div>
+
+            {/* Right Sidebar - TOC Panel (从右侧滑出) */}
+            {tocVisible && (
+                <>
+                    {/* Overlay */}
+                    <div 
+                        onClick={() => setTocVisible(false)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            backdropFilter: 'blur(4px)',
+                            zIndex: 998,
+                            animation: 'fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                    />
+
+                    {/* TOC Panel */}
+                    <div style={{
+                        position: 'fixed',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: '320px',
+                        background: 'rgba(0,0,0,0.95)',
+                        backdropFilter: 'blur(20px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                        borderLeft: '1px solid rgba(255,255,255,0.06)',
+                        zIndex: 999,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
+                    }}>
+                        {/* Header */}
+                        <div style={{ 
+                            padding: '20px',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <BookOpen size={22} color="#FFD700" />
+                                <h2 style={{ 
+                                    fontSize: '18px', 
+                                    fontWeight: 700, 
+                                    color: '#fff',
+                                    margin: 0
+                                }}>
+                                    目录
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setTocVisible(false)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                            >
+                                <X size={20} color="#999" />
+                            </button>
+                        </div>
+
+                        {/* Search */}
+                        <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={16} style={{ 
+                                    position: 'absolute', 
+                                    left: '12px', 
+                                    top: '50%', 
+                                    transform: 'translateY(-50%)',
+                                    color: '#666'
+                                }} />
+                                <input
+                                    type="text"
+                                    placeholder="搜索..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px 10px 38px',
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '10px',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        outline: 'none',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Tree Navigation */}
+                        <div style={{ 
+                            flex: 1, 
+                            overflowY: 'auto', 
+                            padding: '12px 8px',
+                        }}>
+                            {tree.map(node => renderTreeNode(node))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); }
+                    to { transform: translateX(0); }
+                }
+            `}</style>
         </div>
     );
 };
