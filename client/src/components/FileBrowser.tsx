@@ -355,6 +355,41 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
         let uploadedBytes = 0;
         let isCancelled = false;
 
+        // 生成稳定的uploadId（基于文件特征）
+        const generateUploadId = (file: File) => {
+            const fileHash = `${file.name}-${file.size}-${file.lastModified}`;
+            try {
+                // 尝试使用btoa，如果失败则使用简单hash
+                return btoa(encodeURIComponent(fileHash)).replace(/[/+=]/g, '').substring(0, 32);
+            } catch (e) {
+                // Fallback: 使用简单的字符串hash
+                let hash = 0;
+                for (let i = 0; i < fileHash.length; i++) {
+                    const char = fileHash.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(36) + Date.now().toString(36);
+            }
+        };
+
+        // 检查已存在的chunks
+        const checkExistingChunks = async (uploadId: string, totalChunks: number): Promise<number[]> => {
+            try {
+                const response = await axios.post(`${uploadBaseUrl}/api/upload/check-chunks`, {
+                    uploadId,
+                    totalChunks
+                }, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal
+                });
+                return response.data.existingChunks || [];
+            } catch (err) {
+                console.warn('[Upload] Failed to check existing chunks:', err);
+                return [];
+            }
+        };
+
         try {
             for (const file of files) {
                 if (controller.signal.aborted) {
@@ -363,13 +398,28 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                 }
 
                 const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                const uploadId = generateUploadId(file); // 使用稳定的uploadId
 
-                // Upload each chunk
+                // 检查已存在的chunks（断点续传）
+                const existingChunks = await checkExistingChunks(uploadId, totalChunks);
+                console.log(`[Upload] ${file.name}: Found ${existingChunks.length}/${totalChunks} existing chunks`);
+
+                // 计算已上传的字节数
+                let fileUploadedBytes = existingChunks.length * CHUNK_SIZE;
+                if (fileUploadedBytes > file.size) fileUploadedBytes = file.size;
+                uploadedBytes += fileUploadedBytes;
+
+                // Upload each chunk (跳过已存在的)
                 for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                     if (controller.signal.aborted) {
                         isCancelled = true;
                         break;
+                    }
+
+                    // 跳过已存在的chunk
+                    if (existingChunks.includes(chunkIndex)) {
+                        console.log(`[Upload] Skipping existing chunk ${chunkIndex + 1}/${totalChunks} for ${file.name}`);
+                        continue;
                     }
 
                     const start = chunkIndex * CHUNK_SIZE;

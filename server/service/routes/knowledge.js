@@ -594,8 +594,32 @@ module.exports = function(db, authenticate) {
 
             // 步骤3: 按章节分割
             console.log('[DOCX Import] Step 3: Splitting into chapters...');
-            const chapters = splitMarkdownIntoChapters(mdContent, title_prefix || req.file.originalname);
+            const productModelsArray = product_models ? JSON.parse(product_models) : [];
+            const userSelectedModel = productModelsArray.length > 0 ? productModelsArray[0] : null;
+            const chapters = splitMarkdownIntoChapters(mdContent, userSelectedModel, title_prefix);
             console.log(`[DOCX Import] Found ${chapters.length} chapters`);
+            
+            // 检测文档标题与用户选择是否一致
+            let titleMismatch = null;
+            if (chapters.length > 0 && userSelectedModel) {
+                const firstChapterTitle = chapters[0].title.toLowerCase();
+                const selectedModelLower = userSelectedModel.toLowerCase();
+                
+                // 检查是否包含其他产品型号关键词
+                const allModels = ['edge 6k', 'edge 8k', 'mark2 lf', 'mark2 s35', 'mavo lf', 'mavo s35', 'terra 4k', 'terra 6k'];
+                const detectedModels = allModels.filter(model => 
+                    firstChapterTitle.includes(model) && !selectedModelLower.includes(model)
+                );
+                
+                if (detectedModels.length > 0) {
+                    titleMismatch = {
+                        selected: userSelectedModel,
+                        detected: detectedModels[0],
+                        firstTitle: chapters[0].title
+                    };
+                    console.log('[DOCX Import] ⚠️  Title mismatch detected:', titleMismatch);
+                }
+            }
 
             if (chapters.length === 0) {
                 throw new Error('未找到任何章节，请检查文档结构');
@@ -603,7 +627,6 @@ module.exports = function(db, authenticate) {
 
             // 步骤4: 导入到数据库
             console.log('[DOCX Import] Step 4: Importing to database...');
-            const productModelsArray = product_models ? JSON.parse(product_models) : [];
             const tagsArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
             const insertStmt = db.prepare(`
@@ -615,7 +638,7 @@ module.exports = function(db, authenticate) {
                 ) VALUES (
                     @title, @slug, @summary, @content, @category,
                     @product_line, @product_models, @tags, @visibility, 'Published',
-                    'Manual', @source_reference,
+                    'DOCX', @source_reference,
                     @created_by, datetime('now'), datetime('now'), datetime('now')
                 )
             `);
@@ -682,6 +705,26 @@ module.exports = function(db, authenticate) {
 
             console.log(`[DOCX Import] Completed: ${imported_count} imported, ${skipped_count} skipped, ${failed_count} failed`);
 
+            // 如果检测到标题不匹配,在响应中包含警告
+            const responseData = {
+                success: true,
+                data: {
+                    imported_count,
+                    skipped_count,
+                    failed_count,
+                    article_ids,
+                    stats
+                }
+            };
+            
+            if (titleMismatch) {
+                responseData.warning = {
+                    type: 'title_mismatch',
+                    message: `文档标题中检测到"${titleMismatch.detected}",但您选择的是"${titleMismatch.selected}"`,
+                    details: titleMismatch
+                };
+            }
+
             // 记录批量导入审计日志
             if (logAudit && generateBatchId && imported_count > 0) {
                 const batchId = generateBatchId();
@@ -702,7 +745,7 @@ module.exports = function(db, authenticate) {
                             product_line,
                             product_models: productModelsArray,
                             new_status: 'Published',
-                            source_type: 'Manual',
+                            source_type: 'DOCX',
                             source_reference: originalFilename,
                             batch_id: batchId,
                             user_id: req.user.id,
@@ -713,19 +756,7 @@ module.exports = function(db, authenticate) {
                 }
             }
 
-            res.json({
-                success: true,
-                data: {
-                    imported_count,
-                    skipped_count,
-                    failed_count,
-                    article_ids,
-                    chapter_count: chapters.length,
-                    image_count: stats.image_count,
-                    table_count: stats.table_count,
-                    total_size: `${(fileSize / 1024).toFixed(2)}KB`
-                }
-            });
+            res.json(responseData);
         } catch (err) {
             console.error('[DOCX Import] Error:', err);
             // 清理上传文件
@@ -1351,21 +1382,27 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
 
     /**
      * Split Markdown content into chapters based on headings
+     * @param {string} markdown - Markdown内容
+     * @param {string} userSelectedModel - 用户选择的产品型号(优先)
+     * @param {string} customPrefix - 用户自定义标题前缀(可选)
      * Supports: # Heading1, ## Heading2, numbered sections (1., 1.1, etc.)
      */
-    function splitMarkdownIntoChapters(markdown, titlePrefix) {
+    function splitMarkdownIntoChapters(markdown, userSelectedModel, customPrefix) {
         const chapters = [];
         const lines = markdown.split('\n');
-        
+            
+        // 确定标题前缀：优先使用用户选择的产品型号
+        const titlePrefix = customPrefix || userSelectedModel || null;
+            
         let currentChapter = null;
         let currentContent = [];
-        
+            
         // 章节标题模式：# 标题 或 1. 标题 或 1.1 标题
-        const chapterPattern = /^(#{1,2})\s+(.+)$|^(\d+(?:\.\d+)*)[\.\s]+(.+)$/;
-        
+        const chapterPattern = /^(#{1,2})\s+(.+)$|^(\d+(?:\.\d+)*)[.\s]+(.+)$/;
+            
         for (const line of lines) {
             const match = line.match(chapterPattern);
-            
+                
             if (match) {
                 // 保存上一章
                 if (currentChapter && currentContent.length > 0) {
@@ -1374,7 +1411,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                         chapters.push(currentChapter);
                     }
                 }
-                
+                    
                 // 开始新章
                 let chapterTitle;
                 if (match[1]) {
@@ -1384,10 +1421,14 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                     // 数字编号标题
                     chapterTitle = match[4].trim();
                 }
-                
-                // 添加前缀
-                const fullTitle = titlePrefix ? `${titlePrefix}: ${chapterTitle}` : chapterTitle;
-                
+                    
+                // 清理章节标题中可能存在的产品型号前缀
+                // 例如: "MAVO Edge 6K: 1. 基本说明" -> "1. 基本说明"
+                const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
+                    
+                // 添加用户选择的产品型号前缀
+                const fullTitle = titlePrefix ? `${titlePrefix}: ${cleanedTitle}` : cleanedTitle;
+                    
                 currentChapter = {
                     title: fullTitle,
                     content: ''
@@ -1400,7 +1441,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 }
             }
         }
-        
+            
         // 保存最后一章
         if (currentChapter && currentContent.length > 0) {
             currentChapter.content = currentContent.join('\n').trim();
@@ -1408,7 +1449,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 chapters.push(currentChapter);
             }
         }
-        
+            
         // 如果没有找到章节，将整个文档作为一章
         if (chapters.length === 0 && markdown.trim().length > 100) {
             chapters.push({
@@ -1416,7 +1457,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 content: markdown.trim()
             });
         }
-        
+            
         return chapters;
     }
 

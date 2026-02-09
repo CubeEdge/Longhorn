@@ -43,6 +43,12 @@ interface BreadcrumbItem {
     articleSlug?: string;
 }
 
+interface RecentArticle {
+    slug: string;
+    title: string;
+    timestamp: number;
+}
+
 export const KinefinityWiki: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -60,6 +66,10 @@ export const KinefinityWiki: React.FC = () => {
     const [tocVisible, setTocVisible] = useState(false); // 目录可见性
     const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([]);
     const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
+    const [recentArticles, setRecentArticles] = useState<RecentArticle[]>(() => {
+        const saved = localStorage.getItem('wiki-recent-articles');
+        return saved ? JSON.parse(saved) : [];
+    });
     const tocPanelRef = React.useRef<HTMLDivElement>(null);
 
     // Build tree structure from articles
@@ -309,6 +319,19 @@ export const KinefinityWiki: React.FC = () => {
         if (location.pathname && location.pathname !== `/tech-hub/wiki/${article.slug}`) {
             setNavigationHistory(prev => [...prev, location.pathname]);
         }
+
+        // 更新最近浏览历史
+        const newRecent: RecentArticle = {
+            slug: article.slug,
+            title: article.title,
+            timestamp: Date.now()
+        };
+        const updatedRecent = [
+            newRecent,
+            ...recentArticles.filter(r => r.slug !== article.slug)
+        ].slice(0, 5); // 只保留最近5条
+        setRecentArticles(updatedRecent);
+        localStorage.setItem('wiki-recent-articles', JSON.stringify(updatedRecent));
 
         navigate(`/tech-hub/wiki/${article.slug}`);
         localStorage.setItem('wiki-last-article', article.slug);
@@ -863,21 +886,21 @@ export const KinefinityWiki: React.FC = () => {
                         <div style={{ 
                             display: 'grid', 
                             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-                            gap: '20px',
+                            gap: '16px',
                             marginTop: '48px',
                             textAlign: 'left'
                         }}>
                             {[
-                                { title: 'A类：在售电影摄影机', desc: 'MAVO Edge系列、Mark2等现役机型的完整技术文档和使用指南', emoji: '🎥' },
-                                { title: 'B类：历史机型', desc: 'MAVO LF、Terra、MAVO S35等经典机型的存档文档', emoji: '📼' },
-                                { title: 'C类：电子寻像器', desc: 'Eagle系列监视器的使用指南和兼容性信息', emoji: '🔍' },
-                                { title: 'D类：通用配件', desc: 'GripBAT、Magic Arm等跨代配件的使用说明', emoji: '🔧' }
+                                { title: 'A类：在售电影摄影机', desc: 'MAVO Edge系列、Mark2等现役机型的完整技术文档和使用指南' },
+                                { title: 'B类：历史机型', desc: 'MAVO LF、Terra、MAVO S35等经典机型的存档文档' },
+                                { title: 'C类：电子寻像器', desc: 'Eagle系列监视器的使用指南和兼容性信息' },
+                                { title: 'D类：通用配件', desc: 'GripBAT、Magic Arm等跨代配件的使用说明' }
                             ].map((item, idx) => (
                                 <div key={idx} style={{
                                     background: 'rgba(255,255,255,0.02)',
                                     border: '1px solid rgba(255,255,255,0.06)',
-                                    borderRadius: '16px',
-                                    padding: '24px',
+                                    borderRadius: '12px',
+                                    padding: '20px',
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     cursor: 'pointer'
                                 }}
@@ -885,7 +908,7 @@ export const KinefinityWiki: React.FC = () => {
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                                     e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
@@ -893,8 +916,7 @@ export const KinefinityWiki: React.FC = () => {
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }}
                                 >
-                                    <div style={{ fontSize: '32px', marginBottom: '12px' }}>{item.emoji}</div>
-                                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
+                                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
                                         {item.title}
                                     </h3>
                                     <p style={{ fontSize: '13px', color: '#999', lineHeight: '1.6', margin: 0 }}>
@@ -903,6 +925,89 @@ export const KinefinityWiki: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+
+                        {/* 最近浏览 */}
+                        {recentArticles.length > 0 && (
+                            <div style={{ marginTop: '48px' }}>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    marginBottom: '20px'
+                                }}>
+                                    <ChevronLeft size={20} color="#FFD700" />
+                                    <h3 style={{ 
+                                        fontSize: '18px', 
+                                        fontWeight: 600, 
+                                        color: '#FFD700',
+                                        margin: 0
+                                    }}>
+                                        最近浏览
+                                    </h3>
+                                </div>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    gap: '12px'
+                                }}>
+                                    {recentArticles.map((recent) => {
+                                        const article = articles.find(a => a.slug === recent.slug);
+                                        if (!article) return null;
+                                        
+                                        return (
+                                            <div
+                                                key={recent.slug}
+                                                onClick={() => handleArticleClick(article)}
+                                                style={{
+                                                    background: 'rgba(255,215,0,0.05)',
+                                                    border: '1px solid rgba(255,215,0,0.15)',
+                                                    borderRadius: '10px',
+                                                    padding: '16px 20px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)';
+                                                    e.currentTarget.style.transform = 'translateX(0)';
+                                                }}
+                                            >
+                                                <ChevronRight size={16} color="#FFD700" style={{ flexShrink: 0 }} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ 
+                                                        fontSize: '14px', 
+                                                        fontWeight: 500,
+                                                        color: '#FFD700',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {article.title}
+                                                    </div>
+                                                    {article.product_models && article.product_models.length > 0 && (
+                                                        <div style={{ 
+                                                            fontSize: '12px', 
+                                                            color: '#999',
+                                                            marginTop: '4px'
+                                                        }}>
+                                                            {Array.isArray(article.product_models) ? article.product_models[0] : article.product_models}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* 主页也显示TOC按钮 */}
                         <button

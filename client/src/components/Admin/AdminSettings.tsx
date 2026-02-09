@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import KnowledgeAuditLog from '../KnowledgeAuditLog';
 
 interface AIProvider {
     name: string;
@@ -26,10 +27,11 @@ interface SystemSettings {
     ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
 }
 
-type AdminTab = 'general' | 'intelligence' | 'health';
+type AdminTab = 'general' | 'intelligence' | 'health' | 'audit';
 
 interface AdminSettingsProps {
     initialTab?: AdminTab;
+    moduleType?: 'service' | 'files';
 }
 
 const PREDEFINED_MODELS: Record<string, { chat: string[], reasoner: string[], vision: string[] }> = {
@@ -85,11 +87,23 @@ const FIELD_TO_MODEL_KEY: Record<string, string> = {
     'vision_model': 'vision'
 };
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
+const LAST_TAB_KEY = 'service_settings_last_tab';
+
+const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 'files' }) => {
     const { token } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState<AdminTab>(initialTab || 'intelligence');
+    
+    // 路由前缀根据模块类型
+    const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
+    
+    // 从 localStorage读取上次访问的tab
+    const getLastTab = (): AdminTab => {
+        const saved = localStorage.getItem(LAST_TAB_KEY);
+        return (saved as AdminTab) || 'general';
+    };
+    
+    const [activeTab, setActiveTab] = useState<AdminTab>(initialTab || getLastTab());
     const [settings, setSettings] = useState<SystemSettings | null>(null);
     const [providers, setProviders] = useState<AIProvider[]>([]);
     const [activeProviderIndex, setActiveProviderIndex] = useState(0);
@@ -103,10 +117,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
     }, [initialTab]);
 
     const handleTabChange = (tabId: string) => {
-        setActiveTab(tabId as any);
+        const newTab = tabId as AdminTab;
+        setActiveTab(newTab);
+        // 保存到localStorage
+        localStorage.setItem(LAST_TAB_KEY, newTab);
         // Sync with route for persistence
         const routeId = tabId === 'general' ? 'settings' : tabId;
-        navigate(`/admin/${routeId}`);
+        navigate(`${routePrefix}/${routeId}`);
     };
 
     const fetchData = async () => {
@@ -251,7 +268,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
                     {[
                         { id: 'general', label: t('admin.settings_general'), icon: Server },
                         { id: 'intelligence', label: t('admin.intelligence_center'), icon: Bot },
-                        { id: 'health', label: t('admin.system_health'), icon: Activity }
+                        { id: 'health', label: t('admin.system_health'), icon: Activity },
+                        { id: 'audit', label: '审计日志', icon: FileText }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -271,20 +289,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
                 </div>
 
                 <div style={{ display: 'flex', gap: 12 }}>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            background: '#FFD700', color: 'black',
-                            border: 'none', padding: '8px 20px', borderRadius: 8,
-                            fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-                            opacity: saving ? 0.7 : 1
-                        }}
-                    >
-                        {saving ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
-                        {t('common.save_all_changes')}
-                    </button>
+                    {activeTab !== 'audit' && (
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                background: '#FFD700', color: 'black',
+                                border: 'none', padding: '8px 20px', borderRadius: 8,
+                                fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
+                                opacity: saving ? 0.7 : 1
+                            }}
+                        >
+                            {saving ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
+                            {t('common.save_all_changes')}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -519,6 +539,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab }) => {
                             <label>System Name</label>
                             <input type="text" className="text-input" value={settings.system_name} onChange={e => setSettings({ ...settings, system_name: e.target.value })} />
                         </div>
+                    </div>
+                )}
+
+                {/* === AUDIT TAB === */}
+                {activeTab === 'audit' && (
+                    <div style={{ padding: '24px', background: 'transparent' }}>
+                        <KnowledgeAuditLog />
                     </div>
                 )}
             </div>

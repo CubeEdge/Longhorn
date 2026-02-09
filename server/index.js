@@ -1220,6 +1220,40 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
     }
 });
 
+// Chunked Upload - Check existing chunks (for resume)
+app.post('/api/upload/check-chunks', authenticate, async (req, res) => {
+    try {
+        const { uploadId, totalChunks } = req.body;
+
+        if (!uploadId || !totalChunks) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        const chunkDir = path.join(DISK_A, '.chunks', uploadId);
+        const existingChunks = [];
+
+        if (fs.existsSync(chunkDir)) {
+            for (let i = 0; i < parseInt(totalChunks); i++) {
+                const chunkPath = path.join(chunkDir, `${i}`);
+                if (fs.existsSync(chunkPath)) {
+                    existingChunks.push(i);
+                }
+            }
+        }
+
+        console.log(`[Check Chunks] Upload ${uploadId}: ${existingChunks.length}/${totalChunks} chunks exist`);
+        res.json({ 
+            success: true, 
+            existingChunks,
+            totalChunks: parseInt(totalChunks),
+            uploadId 
+        });
+    } catch (err) {
+        console.error('[Check Chunks] Error:', err);
+        res.status(500).json({ error: 'Failed to check chunks' });
+    }
+});
+
 // Chunked Upload - Receive individual chunks
 app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (req, res) => {
     try {
@@ -1292,7 +1326,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
             writeStream.on('error', reject);
         });
 
-        // Clean up chunk directory
+        // Clean up chunk directory ONLY after successful merge
         fs.removeSync(chunkDir);
 
         // Update database
@@ -1307,7 +1341,8 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         res.json({ success: true, path: normalizedPath });
     } catch (err) {
         console.error('[Merge] Error:', err);
-        res.status(500).json({ error: 'Failed to merge chunks' });
+        // DO NOT delete chunk directory on error - allow resume
+        res.status(500).json({ error: 'Failed to merge chunks', canRetry: true });
     }
 });
 
@@ -3445,9 +3480,48 @@ async function cleanupRecycleBin() {
     }
 }
 
+// Cleanup orphaned upload chunks (24 hours old)
+async function cleanupOrphanedChunks() {
+    console.log('🧹 Running orphaned chunks cleanup...');
+    const chunksDir = path.join(DISK_A, '.chunks');
+    
+    if (!fs.existsSync(chunksDir)) {
+        return;
+    }
+
+    try {
+        const uploadDirs = await fs.readdir(chunksDir);
+        const twentyFourHoursAgo = Date.now() - 24 * 3600 * 1000;
+        let cleanedCount = 0;
+
+        for (const uploadId of uploadDirs) {
+            const uploadDir = path.join(chunksDir, uploadId);
+            try {
+                const stats = await fs.stat(uploadDir);
+                // Delete if older than 24 hours
+                if (stats.mtimeMs < twentyFourHoursAgo) {
+                    await fs.remove(uploadDir);
+                    cleanedCount++;
+                    console.log(`🗑️ Cleaned orphaned chunks: ${uploadId}`);
+                }
+            } catch (e) {
+                console.error(`❌ Failed to cleanup chunks ${uploadId}:`, e);
+            }
+        }
+
+        if (cleanedCount > 0) {
+            console.log(`✅ Cleaned ${cleanedCount} orphaned upload(s)`);
+        }
+    } catch (err) {
+        console.error('[Chunk Cleanup] Error:', err);
+    }
+}
+
 // Automatic cleanup
 cleanupRecycleBin();
+cleanupOrphanedChunks();
 setInterval(cleanupRecycleBin, 24 * 3600 * 1000); // Daily
+setInterval(cleanupOrphanedChunks, 6 * 3600 * 1000); // Every 6 hours
 
 // Serve share collection view page
 app.get('/share-collection/:token', (req, res) => {

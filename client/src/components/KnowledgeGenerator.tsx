@@ -63,6 +63,11 @@ export default function KnowledgeGenerator() {
     const [uploadSpeed, setUploadSpeed] = useState<string>('');
     const [uploadedSize, setUploadedSize] = useState<number>(0);
     const [totalFileSize, setTotalFileSize] = useState<number>(0);
+    const [warningDialog, setWarningDialog] = useState<{
+        visible: boolean;
+        message: string;
+        details?: any;
+    }>({ visible: false, message: '' });
 
     const categories = [
         { value: 'FAQ', label: 'FAQ - 常见问题' },
@@ -214,8 +219,16 @@ export default function KnowledgeGenerator() {
                     setProgress(null);
                     return;
                 }
+                
+                // 验证产品型号必填
+                if (!productModels || productModels.length === 0) {
+                    setError('请选择产品型号');
+                    setLoading(false);
+                    setProgress(null);
+                    return;
+                }
 
-                // 步骤1: 上传文件（分块上传）
+                // 步骤1: 上传文件（分块上传 + 断点续传）
                 setProgress(prev => prev ? {
                     ...prev,
                     currentStep: 'upload',
@@ -224,7 +237,26 @@ export default function KnowledgeGenerator() {
 
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
                 const totalChunks = Math.ceil(docxFile.size / CHUNK_SIZE);
-                const uploadId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                
+                // 生成稳定的uploadId（基于文件名和大小，确保重试时ID相同）
+                // 使用更安全的方式处理中文文件名
+                const fileHash = `${docxFile.name}-${docxFile.size}-${docxFile.lastModified}`;
+                let uploadId = '';
+                try {
+                    // 尝试使用btoa，如果失败则使用简单hash
+                    uploadId = btoa(encodeURIComponent(fileHash)).replace(/[/+=]/g, '').substring(0, 32);
+                } catch (e) {
+                    // Fallback: 使用简单的字符串hash
+                    let hash = 0;
+                    for (let i = 0; i < fileHash.length; i++) {
+                        const char = fileHash.charCodeAt(i);
+                        hash = ((hash << 5) - hash) + char;
+                        hash = hash & hash; // Convert to 32bit integer
+                    }
+                    uploadId = Math.abs(hash).toString(36) + Date.now().toString(36);
+                }
+                
+                console.log(`[Upload] Starting upload: ${docxFile.name}, uploadId: ${uploadId}, chunks: ${totalChunks}`);
                 
                 // 设置文件总大小
                 setTotalFileSize(docxFile.size);
@@ -232,10 +264,47 @@ export default function KnowledgeGenerator() {
                 let lastLoaded = 0;
                 let lastTime = Date.now();
 
-                // Upload each chunk
+                // 检查已存在的chunks（断点续传）
+                let existingChunks: number[] = [];
+                try {
+                    const checkResponse = await fetch(`${API_BASE_URL}/api/upload/check-chunks`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ uploadId, totalChunks }),
+                        signal: controller.signal
+                    });
+                    
+                    if (checkResponse.ok) {
+                        const checkData = await checkResponse.json();
+                        existingChunks = checkData.existingChunks || [];
+                        console.log(`[Upload] Found ${existingChunks.length}/${totalChunks} existing chunks`);
+                        
+                        // 计算已上传的字节数
+                        uploadedBytes = existingChunks.length * CHUNK_SIZE;
+                        if (uploadedBytes > docxFile.size) uploadedBytes = docxFile.size;
+                        setUploadedSize(uploadedBytes);
+                        lastLoaded = uploadedBytes;
+                    }
+                } catch (err) {
+                    console.warn('[Upload] Failed to check existing chunks, will upload all:', err);
+                }
+
+                // Upload each chunk (跳过已存在的)
                 for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                     if (controller.signal.aborted) {
                         throw new Error('Upload cancelled');
+                    }
+
+                    // 跳过已存在的chunk
+                    if (existingChunks.includes(chunkIndex)) {
+                        console.log(`[Upload] Skipping existing chunk ${chunkIndex + 1}/${totalChunks}`);
+                        const start = chunkIndex * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, docxFile.size);
+                        uploadedBytes = Math.max(uploadedBytes, end);
+                        continue;
                     }
 
                     const start = chunkIndex * CHUNK_SIZE;
@@ -292,7 +361,14 @@ export default function KnowledgeGenerator() {
                             if (xhr.status >= 200 && xhr.status < 300) {
                                 resolve();
                             } else {
-                                reject(new Error(`Chunk upload failed: ${xhr.status}`));
+                                let errorMsg = `Chunk upload failed: ${xhr.status}`;
+                                try {
+                                    const response = JSON.parse(xhr.responseText);
+                                    if (response.error) errorMsg += ` - ${response.error}`;
+                                } catch (e) {
+                                    if (xhr.responseText) errorMsg += ` - ${xhr.responseText.substring(0, 100)}`;
+                                }
+                                reject(new Error(errorMsg));
                             }
                         });
 
@@ -365,6 +441,13 @@ export default function KnowledgeGenerator() {
                     setLoading(false);
                     return;
                 }
+                
+                // 验证产品型号必填
+                if (!productModels || productModels.length === 0) {
+                    setError('请选择产品型号');
+                    setLoading(false);
+                    return;
+                }
 
                 response = await fetch(`${API_BASE_URL}/api/v1/knowledge/import/url`, {
                     method: 'POST',
@@ -386,6 +469,13 @@ export default function KnowledgeGenerator() {
                 // text mode
                 if (!textInput || !title) {
                     setError('请输入标题和内容');
+                    setLoading(false);
+                    return;
+                }
+                
+                // 验证产品型号必填
+                if (!productModels || productModels.length === 0) {
+                    setError('请选择产品型号');
                     setLoading(false);
                     return;
                 }
@@ -433,6 +523,15 @@ export default function KnowledgeGenerator() {
             if (!response.ok || !data.success) {
                 console.error('[Import] API error:', data.error);
                 throw new Error(data.error?.message || '导入失败');
+            }
+
+            // 检查是否有警告
+            if (data.warning && data.warning.type === 'title_mismatch') {
+                setWarningDialog({
+                    visible: true,
+                    message: data.warning.message,
+                    details: data.warning.details
+                });
             }
 
             // 标记所有步骤完成
@@ -874,8 +973,21 @@ export default function KnowledgeGenerator() {
                         {/* Product Models */}
                         {productModelOptions[productLine].length > 0 && (
                             <div>
-                                <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                    产品型号 (可多选)
+                                <label style={{ 
+                                    display: 'block', 
+                                    fontSize: '13px', 
+                                    color: '#999', 
+                                    marginBottom: '8px', 
+                                    fontWeight: 500 
+                                }}>
+                                    产品型号 *
+                                    <span style={{ 
+                                        color: '#ff6b6b', 
+                                        marginLeft: '4px',
+                                        fontSize: '12px'
+                                    }}>
+                                        (必选)
+                                    </span>
                                 </label>
                                 <div style={{
                                     display: 'flex',
@@ -1194,18 +1306,107 @@ export default function KnowledgeGenerator() {
                 </div>
             )}
 
-            {/* Error Message */}
+            {/* macOS26 风格错误对话框 */}
             {error && (
                 <div style={{
-                    marginTop: '16px',
-                    padding: '12px 16px',
-                    background: 'rgba(255,68,68,0.1)',
-                    border: '1px solid rgba(255,68,68,0.3)',
-                    borderRadius: '6px',
-                    color: '#ff4444',
-                    fontSize: '14px'
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    animation: 'fadeIn 0.2s ease-out'
                 }}>
-                    ❌ {error}
+                    <div style={{
+                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                        border: '1px solid rgba(255,68,68,0.3)',
+                        borderRadius: '16px',
+                        padding: '32px',
+                        maxWidth: '450px',
+                        width: '90%',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                        animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                        {/* 图标 */}
+                        <div style={{
+                            width: '64px',
+                            height: '64px',
+                            margin: '0 auto 24px',
+                            background: 'rgba(255,68,68,0.1)',
+                            border: '2px solid rgba(255,68,68,0.3)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '32px'
+                        }}>
+                            ❌
+                        </div>
+
+                        {/* 标题 */}
+                        <h3 style={{
+                            fontSize: '20px',
+                            fontWeight: 600,
+                            color: '#ff6b6b',
+                            textAlign: 'center',
+                            marginBottom: '16px'
+                        }}>
+                            操作失败
+                        </h3>
+
+                        {/* 消息 */}
+                        <div style={{
+                            background: 'rgba(255,68,68,0.05)',
+                            border: '1px solid rgba(255,68,68,0.15)',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            marginBottom: '24px'
+                        }}>
+                            <p style={{
+                                fontSize: '14px',
+                                color: '#ccc',
+                                lineHeight: '1.6',
+                                textAlign: 'center',
+                                margin: 0
+                            }}>
+                                {error}
+                            </p>
+                        </div>
+
+                        {/* 按钮 */}
+                        <button
+                            onClick={() => setError('')}
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: '#fff',
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 4px 12px rgba(255,68,68,0.3)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,68,68,0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,68,68,0.3)';
+                            }}
+                        >
+                            我知道了
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -1262,6 +1463,157 @@ export default function KnowledgeGenerator() {
                     </button>
                 </div>
             )}
+
+            {/* macOS26 风格警告对话框 */}
+            {warningDialog.visible && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    animation: 'fadeIn 0.2s ease-out'
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                        border: '1px solid rgba(255,215,0,0.2)',
+                        borderRadius: '16px',
+                        padding: '32px',
+                        maxWidth: '500px',
+                        width: '90%',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                        animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}>
+                        {/* 图标 */}
+                        <div style={{
+                            width: '64px',
+                            height: '64px',
+                            margin: '0 auto 24px',
+                            background: 'rgba(255,215,0,0.1)',
+                            border: '2px solid rgba(255,215,0,0.3)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '32px'
+                        }}>
+                            ⚠️
+                        </div>
+
+                        {/* 标题 */}
+                        <h3 style={{
+                            fontSize: '20px',
+                            fontWeight: 600,
+                            color: '#FFD700',
+                            textAlign: 'center',
+                            marginBottom: '16px'
+                        }}>
+                            产品型号不匹配
+                        </h3>
+
+                        {/* 消息 */}
+                        <div style={{
+                            background: 'rgba(255,215,0,0.05)',
+                            border: '1px solid rgba(255,215,0,0.15)',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            marginBottom: '24px'
+                        }}>
+                            <p style={{
+                                fontSize: '14px',
+                                color: '#ccc',
+                                lineHeight: '1.6',
+                                marginBottom: '12px',
+                                textAlign: 'center'
+                            }}>
+                                {warningDialog.message}
+                            </p>
+                            {warningDialog.details && (
+                                <div style={{
+                                    fontSize: '13px',
+                                    color: '#999',
+                                    marginTop: '12px',
+                                    paddingTop: '12px',
+                                    borderTop: '1px solid rgba(255,255,255,0.05)'
+                                }}>
+                                    <div style={{ marginBottom: '6px' }}>
+                                        <span style={{ color: '#666' }}>文档内容：</span>
+                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{warningDialog.details.detected}</span>
+                                    </div>
+                                    <div>
+                                        <span style={{ color: '#666' }}>您的选择：</span>
+                                        <span style={{ color: '#0f0', fontWeight: 500 }}>{warningDialog.details.selected}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 按钮 */}
+                        <button
+                            onClick={() => setWarningDialog({ visible: false, message: '' })}
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: '#000',
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 4px 12px rgba(255,215,0,0.3)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,215,0,0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)';
+                            }}
+                        >
+                            我知道了
+                        </button>
+
+                        <p style={{
+                            fontSize: '12px',
+                            color: '#666',
+                            textAlign: 'center',
+                            marginTop: '16px',
+                            lineHeight: '1.5'
+                        }}>
+                            系统已按您选择的产品型号导入，<br/>
+                            如有错误请删除后重新导入
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
+{/* 动画 CSS */}
+<style>{`
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`}</style>

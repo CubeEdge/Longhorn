@@ -170,11 +170,8 @@ export default function KnowledgeAuditLog() {
 
     return (
         <div style={{
-            padding: '32px',
             maxWidth: '1600px',
-            margin: '0 auto',
-            background: '#000',
-            minHeight: '100vh'
+            margin: '0 auto'
         }}>
             {/* Header */}
             <div style={{
@@ -184,17 +181,15 @@ export default function KnowledgeAuditLog() {
                 alignItems: 'flex-start'
             }}>
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                        <div style={{ fontSize: '28px' }}>📊</div>
-                        <h1 style={{
-                            fontSize: '28px',
-                            fontWeight: 600,
-                            color: '#fff'
-                        }}>
-                            知识库审计日志
-                        </h1>
-                    </div>
-                    <p style={{ color: '#999', fontSize: '14px', paddingLeft: '40px' }}>
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: 600,
+                        color: '#fff',
+                        marginBottom: '8px'
+                    }}>
+                        知识库审计日志
+                    </h1>
+                    <p style={{ color: '#999', fontSize: '14px' }}>
                         追踪所有知识库写操作，包括创建、更新、删除和导入
                     </p>
                 </div>
@@ -279,12 +274,18 @@ export default function KnowledgeAuditLog() {
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 200px 200px 140px',
-                    gap: '12px',
-                    alignItems: 'end'
+                    gap: '16px',
+                    alignItems: 'start'
                 }}>
                     {/* 搜索 */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ 
+                            fontSize: '13px', 
+                            color: '#999', 
+                            marginBottom: '8px',
+                            height: '18px',
+                            lineHeight: '18px'
+                        }}>
                             搜索文章标题
                         </label>
                         <input
@@ -294,14 +295,16 @@ export default function KnowledgeAuditLog() {
                             placeholder="输入文章标题..."
                             style={{
                                 width: '100%',
-                                padding: '9px 12px',
+                                height: '36px',
+                                padding: '0 12px',
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
                                 fontSize: '13px',
                                 outline: 'none',
-                                transition: 'border-color 0.2s'
+                                transition: 'border-color 0.2s',
+                                boxSizing: 'border-box'
                             }}
                             onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'}
                             onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
@@ -309,8 +312,14 @@ export default function KnowledgeAuditLog() {
                     </div>
 
                     {/* 操作类型 */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ 
+                            fontSize: '13px', 
+                            color: '#999', 
+                            marginBottom: '8px',
+                            height: '18px',
+                            lineHeight: '18px'
+                        }}>
                             操作类型
                         </label>
                         <select
@@ -318,14 +327,16 @@ export default function KnowledgeAuditLog() {
                             onChange={(e) => setFilters({ ...filters, operation: e.target.value })}
                             style={{
                                 width: '100%',
-                                padding: '9px 12px',
+                                height: '36px',
+                                padding: '0 12px',
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
                                 fontSize: '13px',
                                 outline: 'none',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                boxSizing: 'border-box'
                             }}
                         >
                             <option value="">全部</option>
@@ -339,8 +350,14 @@ export default function KnowledgeAuditLog() {
                     </div>
 
                     {/* 产品线 */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ 
+                            fontSize: '13px', 
+                            color: '#999', 
+                            marginBottom: '8px',
+                            height: '18px',
+                            lineHeight: '18px'
+                        }}>
                             产品线
                         </label>
                         <select
@@ -348,14 +365,16 @@ export default function KnowledgeAuditLog() {
                             onChange={(e) => setFilters({ ...filters, product_line: e.target.value })}
                             style={{
                                 width: '100%',
-                                padding: '9px 12px',
+                                height: '36px',
+                                padding: '0 12px',
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 color: '#fff',
                                 fontSize: '13px',
                                 outline: 'none',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                boxSizing: 'border-box'
                             }}
                         >
                             <option value="">全部</option>
@@ -366,38 +385,44 @@ export default function KnowledgeAuditLog() {
                     </div>
 
                     {/* 清空过滤 */}
-                    <button
-                        onClick={() => setFilters({
-                            operation: '',
-                            user_id: '',
-                            product_line: '',
-                            start_date: '',
-                            end_date: '',
-                            search: ''
-                        })}
-                        style={{
-                            padding: '9px 16px',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            color: '#999',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            transition: 'all 0.2s',
-                            whiteSpace: 'nowrap'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                            e.currentTarget.style.color = '#fff';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                            e.currentTarget.style.color = '#999';
-                        }}
-                    >
-                        清空过滤
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ height: '18px', marginBottom: '8px' }}></div>
+                        <button
+                            onClick={() => setFilters({
+                                operation: '',
+                                user_id: '',
+                                product_line: '',
+                                start_date: '',
+                                end_date: '',
+                                search: ''
+                            })}
+                            style={{
+                                width: '100%',
+                                height: '36px',
+                                padding: '0 16px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                color: '#999',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
+                                boxSizing: 'border-box'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.color = '#999';
+                            }}
+                        >
+                            清空过滤
+                        </button>
+                    </div>
                 </div>
             </div>
 

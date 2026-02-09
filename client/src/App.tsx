@@ -173,6 +173,9 @@ const App: React.FC = () => {
           {/* Parts Management (placeholder) */}
           <Route path="/service/parts" element={<InquiryTicketListPage />} />
 
+          {/* Service Admin Settings */}
+          <Route path="/service/admin/*" element={user?.role === 'Admin' ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
+
           {/* Legacy Service Routes - Redirects */}
           <Route path="/service/records" element={<Navigate to="/service/inquiry-tickets" replace />} />
           <Route path="/service/records/*" element={<Navigate to="/service/inquiry-tickets" replace />} />
@@ -201,7 +204,8 @@ const App: React.FC = () => {
           {/* ==================== ADMIN ROUTES ==================== */}
           <Route path="/root" element={user?.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
           <Route path="/members" element={user?.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
-          <Route path="/admin/*" element={user?.role === 'Admin' ? <AdminPanel /> : <Navigate to="/" />} />
+          {/* Files Admin - Using /admin/* */}
+          <Route path="/admin/*" element={user?.role === 'Admin' ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
           <Route path="/department-dashboard" element={user?.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
           {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
@@ -341,7 +345,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <>
                 <div style={{ marginTop: 'auto' }} />
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-                <Link to="/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/admin/settings') ? 'active' : ''} `} onClick={onClose}>
+                <Link to="/service/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''} `} onClick={onClose}>
                   <Settings size={18} />
                   <span>{t('sidebar.service_admin')}</span>
                 </Link>
