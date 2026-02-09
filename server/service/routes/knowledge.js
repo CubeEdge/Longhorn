@@ -48,6 +48,16 @@ const docxUpload = multer({
 
 module.exports = function(db, authenticate) {
     const router = express.Router();
+    
+    // 审计日志函数（从 knowledge_audit 路由注入）
+    let logAudit = null;
+    let generateBatchId = null;
+    
+    // 设置审计日志函数（由 service/index.js 调用）
+    router.setAuditLogger = (logFn, batchIdFn) => {
+        logAudit = logFn;
+        generateBatchId = batchIdFn;
+    };
 
     /**
      * GET /api/v1/knowledge
@@ -281,6 +291,25 @@ module.exports = function(db, authenticate) {
                 status, status === 'Published' ? new Date().toISOString() : null,
                 req.user.id
             );
+
+            // 记录审计日志
+            if (logAudit) {
+                logAudit({
+                    operation: 'create',
+                    operation_detail: status === 'Published' ? '创建并发布' : '创建草稿',
+                    article_id: result.lastInsertRowid,
+                    article_title: title,
+                    article_slug: finalSlug,
+                    category,
+                    product_line,
+                    product_models,
+                    new_status: status,
+                    source_type: 'Text',
+                    user_id: req.user.id,
+                    user_name: req.user.username,
+                    user_role: req.user.role
+                });
+            }
 
             res.status(201).json({
                 success: true,
@@ -653,6 +682,37 @@ module.exports = function(db, authenticate) {
 
             console.log(`[DOCX Import] Completed: ${imported_count} imported, ${skipped_count} skipped, ${failed_count} failed`);
 
+            // 记录批量导入审计日志
+            if (logAudit && generateBatchId && imported_count > 0) {
+                const batchId = generateBatchId();
+                const productModelsArray = product_models ? JSON.parse(product_models) : [];
+                
+                // 为每篇成功导入的文章记录日志
+                for (let i = 0; i < Math.min(article_ids.length, chapters.length); i++) {
+                    const articleId = article_ids[i];
+                    const chapter = chapters.find((c, idx) => idx === i);
+                    if (chapter) {
+                        logAudit({
+                            operation: 'import',
+                            operation_detail: `DOCX导入 - 批次${batchId.substring(0,8)}`,
+                            article_id: articleId,
+                            article_title: chapter.title,
+                            article_slug: generateSlug(chapter.title),
+                            category,
+                            product_line,
+                            product_models: productModelsArray,
+                            new_status: 'Published',
+                            source_type: 'Manual',
+                            source_reference: originalFilename,
+                            batch_id: batchId,
+                            user_id: req.user.id,
+                            user_name: req.user.username,
+                            user_role: req.user.role
+                        });
+                    }
+                }
+            }
+
             res.json({
                 success: true,
                 data: {
@@ -889,6 +949,41 @@ module.exports = function(db, authenticate) {
             params.push(req.user.id, req.params.id);
 
             db.prepare(`UPDATE knowledge_articles SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+            // 记录审计日志
+            if (logAudit) {
+                const old_status = article.status;
+                const new_status = req.body.status !== undefined ? req.body.status : article.status;
+                
+                // 构建更改摘要
+                const changedFields = [];
+                if (req.body.title) changedFields.push('标题');
+                if (req.body.content) changedFields.push('内容');
+                if (req.body.category) changedFields.push('分类');
+                if (req.body.product_line) changedFields.push('产品线');
+                if (req.body.visibility) changedFields.push('可见性');
+                if (req.body.status) changedFields.push('状态');
+                
+                logAudit({
+                    operation: 'update',
+                    operation_detail: req.body.change_summary || `修改: ${changedFields.join(', ')}`,
+                    article_id: article.id,
+                    article_title: req.body.title || article.title,
+                    article_slug: req.body.slug || article.slug,
+                    category: req.body.category || article.category,
+                    product_line: req.body.product_line || article.product_line,
+                    product_models: req.body.product_models ? req.body.product_models : JSON.parse(article.product_models || '[]'),
+                    changes_summary: JSON.stringify({
+                        fields: changedFields,
+                        note: req.body.change_summary
+                    }),
+                    old_status,
+                    new_status,
+                    user_id: req.user.id,
+                    user_name: req.user.username,
+                    user_role: req.user.role
+                });
+            }
 
             res.json({
                 success: true,
