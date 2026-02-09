@@ -1,12 +1,12 @@
 # System Context (系统全景图)
 
-> **最后更新/Last Updated**: 2026-02-07 v11.3.14
+> **最后更新/Last Updated**: 2026-02-07 v11.3.18
 > **核心作用**: 本文档定义了 Longhorn 项目的"世界观"，包括硬件设施、部署架构、核心代码逻辑与已知限制。
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 
 ## 0. 核心开发规则 (Critical Rules)
 1. **远程服务器** 是利用 Cloudflare Tunnel 穿透的，没有固定IP。
-2. **Remote Ops (远程执行)**：所有远程命令必须强制使用 `ssh -t mini "/bin/zsh -l -c '...命令...'"` 格式执行，以确保登录 Shell 正确加载环境变量（node, pm2, sqlite3 等）。
+2. **Remote Ops (远程执行)**：所有远程命令必须使用 `ssh mini "cd /Users/admin/Documents/server/Longhorn/server && <命令>"` 格式执行，SSH别名 `mini` 已通过 Cloudflare tunnel 配置，数据库路径为 `/Users/admin/Documents/server/Longhorn/server/longhorn.db`，执行迁移用 `sqlite3 longhorn.db < migrations/xxx.sql`。
 3. **Deployment**：必须关闭 `longhorn-watcher` 自动同步，统一使用 `./scripts/deploy.sh` 进行全部署。
 4. **构建完整性**：远程构建必须强制使用登录 Shell (`zsh -l`)。部署前**必须物理删除**旧 `dist` 目录且严禁忽略构建报错。
 5. **构建产物校验**：凡修改前端源码（`.tsx`, `.ts`, `.css`），部署时**必须**执行 `npm run build` 并通过 `ls dist/index.html` 验证产物生成，确保护理修改后生产环境不加载旧产物或空目录。
