@@ -4,8 +4,8 @@
  * 追踪所有知识库写操作
  */
 
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, RefreshCw, Calendar, User, FileText, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, RefreshCw, FileText, Activity } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
