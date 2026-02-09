@@ -42,6 +42,7 @@ import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import KnowledgeGenerator from './components/KnowledgeGenerator';
+import KnowledgeAuditLog from './components/KnowledgeAuditLog';
 import { KinefinityWiki } from './components/KinefinityWiki';
 import AppRail from './components/AppRail';
 // ... imports
@@ -161,6 +162,9 @@ const App: React.FC = () => {
           {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
           <Route path="/service/knowledge" element={
             ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
+          } />
+          <Route path="/service/knowledge/audit" element={
+            user?.role === 'Admin' ? <KnowledgeAuditLog /> : <Navigate to="/" />
           } />
           <Route path="/knowledge" element={<Navigate to="/service/knowledge" replace />} />
           <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />

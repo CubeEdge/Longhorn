@@ -53,6 +53,7 @@ function initService(app, db, options = {}) {
     // Phase 3: Knowledge base
     const knowledgeRoutes = require('./routes/knowledge')(db, authenticate);
     const compatibilityRoutes = require('./routes/compatibility')(db, authenticate);
+    const knowledgeAuditRoutes = require('./routes/knowledge_audit')(db, authenticate);
 
     // Phase 4: Repair management
     const partsRoutes = require('./routes/parts')(db, authenticate);
@@ -84,6 +85,11 @@ function initService(app, db, options = {}) {
     // Phase 3 routes
     app.use('/api/v1/knowledge', knowledgeRoutes);
     app.use('/api/v1/compatibility', compatibilityRoutes);
+    app.use('/api/v1/knowledge/audit', knowledgeAuditRoutes); // 审计日志
+
+    // 将审计日志函数挂载到 knowledgeRoutes 以便其他路由使用
+    knowledgeRoutes.logAudit = knowledgeAuditRoutes.logAudit;
+    knowledgeRoutes.generateBatchId = knowledgeAuditRoutes.generateBatchId;
 
     // Phase 4 routes
     app.use('/api/v1/parts', partsRoutes);
@@ -114,6 +120,7 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/dealer-repairs (新: 经销商维修单)');
     console.log('  - /api/v1/export');
     console.log('  - /api/v1/knowledge');
+    console.log('  - /api/v1/knowledge/audit (新: 知识库审计日志)');
     console.log('  - /api/v1/compatibility');
     console.log('  - /api/v1/parts');
     console.log('  - /api/v1/logistics');
