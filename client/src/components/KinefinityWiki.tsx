@@ -60,6 +60,7 @@ export const KinefinityWiki: React.FC = () => {
     const [tocVisible, setTocVisible] = useState(false); // 目录可见性
     const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([]);
     const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
+    const tocPanelRef = React.useRef<HTMLDivElement>(null);
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -318,6 +319,45 @@ export const KinefinityWiki: React.FC = () => {
         setTocVisible(false);
     };
 
+    // 打开TOC时自动展开并滚动到当前文章位置
+    const openTocAtCurrentArticle = () => {
+        setTocVisible(true);
+        
+        if (selectedArticle) {
+            // 展开到当前文章的所有父节点
+            const newExpanded = new Set(expandedNodes);
+            
+            // 找到文章所属的节点路径
+            const line = selectedArticle.product_line;
+            const model = Array.isArray(selectedArticle.product_models) ? selectedArticle.product_models[0] : selectedArticle.product_models;
+            
+            // 展开产品线节点
+            newExpanded.add(`${line.toLowerCase()}-camera`);
+            newExpanded.add(`${line.toLowerCase()}-${model?.replace(/\s+/g, '-').toLowerCase()}`);
+            
+            // 展开分类节点（操作手册等）
+            const modelId = `${line.toLowerCase()}-${model?.replace(/\s+/g, '-').toLowerCase()}`;
+            newExpanded.add(`${modelId}-manual`);
+            
+            // 如果是章节文章，展开章节
+            const match = selectedArticle.title.match(/:\s*(\d+)(?:\.(\d+))?/);
+            if (match) {
+                const chapter = parseInt(match[1]);
+                newExpanded.add(`${modelId}-manual-chapter-${chapter}`);
+            }
+            
+            setExpandedNodes(newExpanded);
+            
+            // 延迟滚动以确保DOM已更新
+            setTimeout(() => {
+                const articleElement = document.querySelector(`[data-article-id="${selectedArticle.id}"]`);
+                if (articleElement && tocPanelRef.current) {
+                    articleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+        }
+    };
+
     const handleHomeClick = () => {
         // 保存当前路径到历史
         if (location.pathname && location.pathname !== '/tech-hub/wiki') {
@@ -420,6 +460,7 @@ export const KinefinityWiki: React.FC = () => {
                         {node.articles!.map(article => (
                             <div
                                 key={article.id}
+                                data-article-id={article.id}
                                 onClick={() => handleArticleClick(article)}
                                 style={{
                                     padding: '8px 12px',
@@ -570,7 +611,7 @@ export const KinefinityWiki: React.FC = () => {
 
                             {/* TOC Toggle Button - 右上角圆形按钮 */}
                             <button
-                                onClick={() => setTocVisible(!tocVisible)}
+                                onClick={openTocAtCurrentArticle}
                                 style={{
                                     background: tocVisible ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
                                     border: tocVisible ? '1px solid rgba(255,215,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
@@ -687,12 +728,48 @@ export const KinefinityWiki: React.FC = () => {
                         <div style={{ 
                             marginTop: '48px',
                             paddingTop: '32px',
-                            borderTop: '1px solid rgba(255,255,255,0.06)',
-                            textAlign: 'center'
+                            borderTop: '1px solid rgba(255,255,255,0.06)'
                         }}>
-                            <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
-                                这篇文章对您有帮助吗？
-                            </div>
+                            {/* 知识来源 */}
+                            {(selectedArticle.source_type || selectedArticle.source_reference) && (
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    borderRadius: '12px',
+                                    padding: '16px 20px',
+                                    marginBottom: '32px',
+                                    fontSize: '13px',
+                                    color: '#999'
+                                }}>
+                                    <div style={{ fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
+                                        📚 知识来源
+                                    </div>
+                                    {selectedArticle.source_type && (
+                                        <div style={{ marginBottom: '4px' }}>
+                                            <span style={{ color: '#666' }}>类型：</span>
+                                            <span style={{ color: '#aaa' }}>{selectedArticle.source_type === 'docx' ? 'Word文档' : selectedArticle.source_type === 'pdf' ? 'PDF文档' : selectedArticle.source_type === 'url' ? '网页' : '文本输入'}</span>
+                                        </div>
+                                    )}
+                                    {selectedArticle.source_reference && (
+                                        <div>
+                                            <span style={{ color: '#666' }}>文档：</span>
+                                            <span style={{ color: '#aaa' }}>{selectedArticle.source_reference}</span>
+                                        </div>
+                                    )}
+                                    {selectedArticle.source_url && (
+                                        <div style={{ marginTop: '4px' }}>
+                                            <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#FFD700', textDecoration: 'none', fontSize: '12px' }}>
+                                                🔗 查看原文
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
+                                    这篇文章对您有帮助吗？
+                                </div>
                             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                                 <button style={{
                                     padding: '10px 24px',
@@ -745,6 +822,7 @@ export const KinefinityWiki: React.FC = () => {
                                     <span>需要改进 ({selectedArticle.not_helpful_count})</span>
                                 </button>
                             </div>
+                            </div>
                         </div>
                     </div>
                 ) : (
@@ -772,6 +850,14 @@ export const KinefinityWiki: React.FC = () => {
                         }}>
                             这里汇集了 Kinefinity 全系列产品的技术文档、故障排查指南和常见问题解答。<br />
                             点击右上角目录按钮开始探索。
+                            {navigationHistory.length > 0 && (
+                                <>
+                                    <br />
+                                    <span style={{ color: '#FFD700', fontSize: '14px' }}>
+                                        ← 点击左上角返回按钮可返回上一页
+                                    </span>
+                                </>
+                            )}
                         </p>
 
                         <div style={{ 
@@ -872,7 +958,7 @@ export const KinefinityWiki: React.FC = () => {
                     />
 
                     {/* TOC Panel */}
-                    <div style={{
+                    <div ref={tocPanelRef} style={{
                         position: 'fixed',
                         right: 0,
                         top: 0,
