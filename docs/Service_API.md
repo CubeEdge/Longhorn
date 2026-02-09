@@ -1616,6 +1616,83 @@
 
 ## 10. 知识库 API
 
+### 10.0 知识库审计日志
+
+**GET** `/api/v1/knowledge/audit`
+
+**权限**: Admin only
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| page, page_size | int | 分页 |
+| operation | string | 操作类型: create/update/delete/import/publish/archive |
+| product_line | string | 产品线筛选 |
+| category | string | 分类筛选 |
+| user_id | int | 操作人筛选 |
+| article_title | string | 文章标题搜索 |
+| start_date, end_date | date | 时间范围筛选 |
+| batch_id | string | 批量操作ID筛选 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "operation": "import",
+      "operation_detail": "DOCX导入 - 批次a7b8c9d1",
+      "article_id": 456,
+      "article_title": "MAVO Edge 6K操作说明书: 3.1 基本操作",
+      "article_slug": "mavo-edge-6k-manual-3-1-basic-operation",
+      "category": "Manual",
+      "product_line": "Cinema",
+      "product_models": ["MAVO Edge 6K"],
+      "changes_summary": null,
+      "old_status": null,
+      "new_status": "Published",
+      "source_type": "Manual",
+      "source_reference": "MAVO Edge 6K操作说明书(KineOS8.0)_C34-102-8016_2024.12.19_v0.11_convert.docx",
+      "batch_id": "a7b8c9d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d",
+      "user_id": 1,
+      "user_name": "刘玖龙",
+      "user_role": "Admin",
+      "created_at": "2026-02-06T12:30:00Z"
+    },
+    {
+      "id": 122,
+      "operation": "update",
+      "operation_detail": "修改: 内容, 分类",
+      "article_id": 455,
+      "article_title": "Edge 8K高温环境使用建议",
+      "article_slug": "edge-8k-high-temperature-usage",
+      "category": "FAQ",
+      "product_line": "Cinema",
+      "product_models": ["MAVO Edge 8K"],
+      "changes_summary": "{\"fields\":[\"内容\",\"分类\"],\"note\":\"更新高温使用建议\"}",
+      "old_status": "Published",
+      "new_status": "Published",
+      "source_type": null,
+      "source_reference": null,
+      "batch_id": null,
+      "user_id": 2,
+      "user_name": "编辑员李",
+      "user_role": "Editor",
+      "created_at": "2026-02-06T14:20:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "page_size": 50,
+    "total": 156
+  }
+}
+```
+
+---
+
 ### 10.1 创建知识条目
 
 **POST** `/api/v1/knowledge`
@@ -1760,9 +1837,148 @@
 }
 ```
 
+### 10.8 知识库审计日志 API
+
+**功能说明**: 为Admin提供知识库写操作的完整审计追踪，包括创建、更新、删除、批量导入等所有修改操作的记录。
+
+**权限要求**: 仅Admin角色可访问
+
+#### 10.8.1 获取审计日志列表
+
+**GET** `/api/v1/knowledge/audit`
+
+**权限**: Admin
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认50 |
+| operation | string | 操作类型筛选：create/update/delete/import/publish/archive |
+| product_line | string | 产品线筛选：Cinema/Cinema 5 Axis/Accessories |
+| search | string | 搜索文章标题、操作人姓名 |
+| start_date | string | 开始日期（ISO 8601） |
+| end_date | string | 结束日期（ISO 8601） |
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "operation": "import",
+      "operation_detail": "DOCX导入 - 批次a1b2c3d4",
+      "article_id": 157,
+      "article_title": "MAVO Edge 6K操作说明书: 1. 产品概述",
+      "article_slug": "mavo-edge-6k-manual-chapter-1",
+      "category": "Manual",
+      "product_line": "Cinema",
+      "product_models": ["MAVO Edge 6K"],
+      "changes_summary": null,
+      "old_status": null,
+      "new_status": "Published",
+      "source_type": "Manual",
+      "source_reference": "MAVO Edge 6K操作说明书(KineOS8.0)_C34-102-8016_2024.12.19_v0.11_convert.docx",
+      "batch_id": "a1b2c3d4e5f67890",
+      "user_id": 1,
+      "user_name": "admin",
+      "user_role": "Admin",
+      "created_at": "2026-02-06T15:30:00Z"
+    },
+    {
+      "id": 2,
+      "operation": "update",
+      "operation_detail": "修改: 内容, 状态",
+      "article_id": 157,
+      "article_title": "MAVO Edge 6K操作说明书: 1. 产品概述（修订版）",
+      "article_slug": "mavo-edge-6k-manual-chapter-1",
+      "category": "Manual",
+      "product_line": "Cinema",
+      "product_models": ["MAVO Edge 6K"],
+      "changes_summary": "{\"fields\":[\"内容\",\"状态\"],\"note\":\"更新产品规格参数\"}",
+      "old_status": "Published",
+      "new_status": "Published",
+      "source_type": null,
+      "source_reference": null,
+      "batch_id": null,
+      "user_id": 2,
+      "user_name": "editor_li",
+      "user_role": "Editor",
+      "created_at": "2026-02-06T16:45:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "page_size": 50,
+    "total": 156
+  }
+}
+```
+
+#### 10.8.2 获取审计统计信息
+
+**GET** `/api/v1/knowledge/audit/stats`
+
+**权限**: Admin
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "total_operations": 156,
+    "unique_users": 3,
+    "batch_imports": 2,
+    "operations_by_type": {
+      "create": 12,
+      "update": 8,
+      "delete": 0,
+      "import": 136,
+      "publish": 0,
+      "archive": 0
+    },
+    "recent_activity": [
+      {
+        "date": "2026-02-06",
+        "count": 145
+      },
+      {
+        "date": "2026-02-05",
+        "count": 11
+      }
+    ]
+  }
+}
+```
+
+#### 10.8.3 审计日志记录规则
+
+**自动记录的操作**:
+
+| 操作类型 | 触发时机 | 记录内容 |
+|---------|---------|----------|
+| **create** | POST `/api/v1/knowledge` 成功 | 文章基本信息、状态、创建人 |
+| **update** | PATCH `/api/v1/knowledge/:id` 成功 | 修改字段列表、状态变化、修改人 |
+| **delete** | DELETE `/api/v1/knowledge/:id` 成功 | 文章快照、删除人 |
+| **import** | POST `/api/v1/knowledge/import/docx` 成功 | 批次ID、源文件、导入数量 |
+| **publish** | 状态从Draft变为Published | 状态变化、发布人 |
+| **archive** | 状态变为Archived | 状态变化、归档人 |
+
+**批量操作追踪**:
+- 所有批量导入操作（DOCX/PDF）使用统一的`batch_id`关联
+- `batch_id`格式：16字符UUID片段（如`a1b2c3d4e5f67890`）
+- 可通过`batch_id`筛选查看同一批次的所有文章
+
+**日志保留策略**:
+- 永久保留所有审计日志
+- 建议按季度归档历史数据
+- 支持按日期范围导出CSV/Excel
+
 ---
 
-## 10.8 VoC管理 API (Voice of Customer - Phase 7)
+## 10.9 VoC管理 API (Voice of Customer - Phase 7)
 
 > Phase 7引入：客户反馈→产品改进的闭环管理
 
