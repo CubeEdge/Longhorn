@@ -4,6 +4,44 @@
 
 ---
 
+## 会话: 2026-02-11 (UI Refinements & Dealer API Fix)
+
+### 任务: 客户档案 UI 优化与经销商列表修复
+- **状态**: ✅ 已完成
+- **背景**:
+    - 用户反馈经销商列表为空，原因为后台 API 过滤逻辑错误。
+    - 列表页状态（分页/筛选）在进入详情页后丢失，需实现状态持久化。
+    - UI 需微调以符合新的视觉规范（Low-key Kine Button）。
+
+- **变更内容**:
+    - **API (Backend)**:
+        - 修复 `server/index.js` 中 `GET /api/v1/customers` 的 SQL 拼接逻辑，确保 `account_type='Dealer'` 时正确过滤。
+    - **Frontend (Store)**:
+        - 新增 `useRouteMemoryStore.ts` (Zustand) 用于存储路由查询参数。
+        - 更新 `InquiryTicketDetailPage`, `RMATicketDetailPage`, `DealerRepairDetailPage` 使用 `getRoute()` 实现智能回退。
+    - **Styles**:
+        - `index.css`: 新增 `.btn-kine-lowkey`, `.tab-active-lowkey`。
+        - `CustomerManagement.tsx`: 应用样式，并将 Tab 名称中文化。
+
+- **技术决策**:
+    > **决策**: 使用 **Zustand** 实现简单的路由记忆存储。
+    > - **原因**: 相比复杂的 URL 状态同步库，Zustand 轻量且足以处理这种“列表 ->详情 -> 返回”的单一层级状态恢复需求。
+    > - **实现**: `setRoute(path, query)` 在离开列表时调用，`getRoute(path)` 在返回时调用。
+
+- **验证**:
+    - ✅ 经销商列表正确加载（8条记录）。
+    - ✅ 详情页返回按钮能够恢复之前的搜索词和页码。
+    - ✅ UI 样式符合“低调奢华”的要求。
+
+- **文件修改清单**:
+    - `server/index.js` (API Fix)
+    - `client/src/store/useRouteMemoryStore.ts` (New Store)
+    - `client/src/index.css` (Style Update)
+    - `client/src/components/CustomerManagement.tsx` (UI Update)
+    - `client/src/components/*/*TicketDetailPage.tsx` (Nav Logic)
+
+---
+
 ## 会话: 2026-02-10 (Files Module Refactoring & Backup System)
 
 ### 任务: Files 路由模块化拆分与数据库自动备份系统实现

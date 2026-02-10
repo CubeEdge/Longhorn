@@ -4,6 +4,35 @@
 
 ---
 
+### 2026-02-11 00:45 - UI Refinements & Dealer API Fix (Customer Management)
+**User Prompt**:
+1. 优化客户档案 UI：Dealer Tab 中文“经销商”，End-User Tab 中文“终端客户”。
+2. UI 样式微调：使用 "Low-key Kine Button" (透明金) 和 "Gray/Glass" Tab 选中态。
+3. 增加 Service Tier: "VVIP"。
+4. 修复：从工单详情页返回列表时丢失状态（分页/筛选）。
+5. 修复：经销商列表为空（后端 API 过滤逻辑错误）。
+6. 同步部署到远程服务器。
+
+**Action**:
+1. **Frontend (UI & Store)**:
+   - **Styles**: 在 `index.css` 中定义 `.btn-kine-lowkey` (透明金边框) 和 `.tab-active-lowkey` (灰色玻璃态)。
+   - **CustomerManagement**: 应用新样式到 "Add/Save" 按钮和 Tab 切换器。
+   - **Navigation Persistence**: 创建 `useRouteMemoryStore` (Zustand)，在 `Inquiry/RMA/Dealer` 详情页的返回按钮中使用 `getRoute()` 恢复列表状态。
+2. **Backend (API Fix)**:
+   - **`GET /api/v1/customers`**: 修复了 `account_type='Dealer'` 时的过滤逻辑（之前代码跳过了 SQL 拼接），清理了冗余代码。
+   - **Verification**: 确认数据库中已有 8 条 Dealer 数据，修复后列表正常显示。
+3. **Deployment**:
+   - 更新客户端版本至 `11.3.32`。
+   - 执行脚本自动提取经销商数据（实际无需，因 `customers` 表已有数据）。
+   - 包含完整的构建和分发流程。
+
+**Result**:
+- 客户档案界面更加精致，符合 Kine 低调奢华的设计语言。
+- 解决了列表页状态丢失的痛点，提升了操作效率。
+- 修复了 Dealer 列表无法显示的关键 Bug，无需额外数据迁移。
+
+**Status**: Completed
+
 ### 2026-02-10 13:30 - Files 模块重构与备份系统增强 (Files Refactoring & Backup System)
 **User Prompt**:
 1. 将 `server/index.js` 中的文件管理路由和助手函数迁移到 `server/files/routes.js`。
