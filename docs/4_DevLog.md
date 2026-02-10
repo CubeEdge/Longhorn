@@ -4,6 +4,54 @@
 
 ---
 
+## 会话: 2026-02-10 (Files Module Refactoring & Backup System)
+
+### 任务: Files 路由模块化拆分与数据库自动备份系统实现
+- **状态**: ✅ 已完成
+- **背景**: 
+    - `server/index.js` 文件过大（>2500行），包含大量文件管理逻辑，维护困难。
+    - 系统缺乏自动备份机制，存在数据丢失风险。
+    - 需要支持动态配置备份频率和保留策略。
+
+- **变更内容**:
+    - **Backend (Router Refactoring)**:
+        - **新模块**: `server/files/routes.js`
+        - **功能**: 完整封装了 `list`, `upload`, `rename`, `copy`, `move`, `delete` 以及批量操作。
+        - **权限**: 迁移并优化了 `resolvePath`, `hasPermission` 和 `checkInternalUser` 中间件。
+        - **解耦**: `server/index.js` 成功精简，通过 `app.use('/api', filesRouter)` 挂载，保持前端 API 路径稳定性。
+
+    - **Backend (System Backup Service)**:
+        - **新服务**: `server/service/backup_service.js` (BackupService 类)
+        - **SQLite Hot Backup**: 使用 `db.backup(destination)` 实现“在线热备份”，确保备份时数据库可读写，无锁表风险。
+        - **自动调度**: 集成 `node-schedule`，支持通过数据库配置 `backup_frequency` (分钟) 动态调整频率。
+        - **自愈与重载**: 提供 `reload()` 方法，当管理员修改设置时，服务无需重启即可应用新策略。
+        - **策略性清理**: 自动扫描 `DiskA/.backups/db` 目录，删除超过 `backup_retention_days` 的旧备份文件。
+
+    - **Database & Settings**:
+        - **Schema**: 向 `system_settings` 表新增 3 个字段：`backup_enabled`, `backup_frequency`, `backup_retention_days`。
+        - **Migration**: 在 `index.js` 启动逻辑中添加 `TRY-ALTER` 机制，确保不同环境下的 Schema 自动对齐。
+        - **API**: 更新 `/api/admin/settings` 使其支持备份策略的读取与保存，新增 `/api/admin/backup/now` 手动触发接口。
+
+- **技术决策**:
+    > **决策**: 采用 **SQLite Online Backup API**。
+    > - **原因**: 相比简单的文件复制 (fs.copy)，`db.backup()` 能够保证在备份过程中即使有写入操作，备份文件依然具备一致性，且不会阻塞主进程。
+    > - **实现**: `backupService.trigger()` -> `db.backup(destPath)` -> `fs.removeOldBackups()`。
+
+- **验证**:
+    - ✅ `server/index.js` 代码量显著减少，逻辑清晰。
+    - ✅ 模拟手动修改设置，确认 `BackupService` 热重载生效。
+    - ✅ 调用手动备份接口，确认 `DiskA/.backups/db` 成功生成备份文件，格式为 `longhorn-YYYY-MM-DD-HH-mm-ss.db`。
+    - ✅ 自动清理逻辑验证：手动将保留天数设为 0，确认旧文件被正确移除。
+
+- **文件修改清单**:
+    - `server/files/routes.js` (新增，文件管理模块)
+    - `server/service/backup_service.js` (新增，备份核心逻辑)
+    - `server/index.js` (精简，集成备份服务，添加数据库迁移)
+    - `server/service/routes/settings.js` (更新，支持备份配置及触发)
+    - `docs/` 系列文档 (同步更新)
+
+---
+
 ## 会话: 2026-02-07 (Knowledge Base DOCX Import)
 
 ### 任务: 知识库DOCX→MD导入功能完整实现

@@ -4,6 +4,31 @@
 
 ---
 
+### 2026-02-10 13:30 - Files 模块重构与备份系统增强 (Files Refactoring & Backup System)
+**User Prompt**:
+1. 将 `server/index.js` 中的文件管理路由和助手函数迁移到 `server/files/routes.js`。
+2. 实现可配置的数据库备份服务，关联系统设置并支持手动触发。
+
+**Action**:
+1. **模块重构**:
+   - 成功将文件管理核心逻辑 (List/Upload/Rename/Copy/Move/Delete) 拆分为独立模块 `server/files/routes.js`。
+   - 精简了 `server/index.js`，移除了超过 500 行的冗余代码。
+   - 保持了原有的 API 兼容性，确保前端调用无感知。
+2. **备份系统增强**:
+   - 创建了 `server/service/backup_service.js`，基于 `node-schedule` 实现定时备份。
+   - 集成了 `system_settings` 数据库配置 (`backup_enabled`, `backup_frequency`, `backup_retention_days`)。
+   - 实现了备份文件的自动清理（Retention Policy）和手动触发接口 (`POST /api/admin/backup/now`)。
+   - 在 `server/index.js` 中添加了数据库迁移逻辑，自动补全缺失的设置列。
+3. **文档同步 (Workflow: /finalize_task)**:
+   - 更新了 `Service_API.md`, `Service_PRD.md`, `Service_UserScenarios.md` 至最新版本。
+   - 同步了 `Backlog.md` 和 `DevLog.md`。
+
+**Result**:
+- 系统架构更加模块化，核心入口文件显著压缩。
+- 提供了稳定、可配置的数据库备份方案，增强了系统安全性。
+
+**Status**: Completed
+
 ### 2026-02-02 22:15 - Service Seeding & Creation Fixes
 **User Prompt**:
 1. "创新服务，创建工单，现在无法使用..." (Creation broken).

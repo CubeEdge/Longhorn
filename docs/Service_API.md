@@ -1,12 +1,14 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.8.0 (Draft)
+**版本**: 0.9.0 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-06
-**关联PRD**: Service_PRD.md v0.10.0
-**关联场景**: Service_UserScenarios.md v0.6.0
+**最后更新**: 2026-02-10
+**关联PRD**: Service_PRD.md v0.11.0
+**关联场景**: Service_UserScenarios.md v0.7.0
 
-> **重要更新（2026-02-06）**：
+> **重要更新（2026-02-10）**：
+> - 拆分 Files 模块：核心文件操作路由迁移至独立模块，`server/index.js` 已精简。
+> - 增强系统备份：支持通过数据库配置自动备份策略，新增手动触发 API。
 > - **v0.8.0 更新**：
 >   - 新增 Section 17/18: Bokeh 工单搜索与索引管理 API
 >   - 集成各工单详情弹窗所需的端点。
@@ -3389,7 +3391,10 @@
       "ai_enabled": true,
       "ai_work_mode": false,
       "ai_allow_search": false,
-      "updated_at": "2026-02-06T10:00:00Z"
+      "backup_enabled": true,
+      "backup_frequency": 1440,
+      "backup_retention_days": 7,
+      "updated_at": "2026-02-10T10:00:00Z"
     },
     "providers": [
       {
@@ -3418,7 +3423,10 @@
   "settings": {
     "system_name": "KineCore Service",
     "ai_enabled": true,
-    "ai_work_mode": true
+    "ai_work_mode": true,
+    "backup_enabled": true,
+    "backup_frequency": 180,
+    "backup_retention_days": 14
   },
   "providers": [
     {
@@ -3432,7 +3440,21 @@
 }
 ```
 
-### 19.3 删除服务商
+### 19.3 立即触发手动备份
+
+**POST** `/api/admin/backup/now`
+
+**权限**: Admin
+
+**Response**:
+```json
+{
+  "success": true,
+  "path": "DiskA/.backups/db/longhorn-2026-02-10-13-31-00.db"
+}
+```
+
+### 19.4 删除服务商
 
 **POST** `/api/admin/providers/delete`
 
