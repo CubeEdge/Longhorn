@@ -57,6 +57,15 @@
 
 ## ✅ 已完成 (历史记录)
 
+### [Arch] Files 模块重构与系统备份增强 (2026-02-10)
+- **状态**: ✅ 已完成
+- **内容**:
+  - **模块重构**: 将 `server/index.js` 中的文件操作逻辑迁移至 `server/files/routes.js`，实现代码解耦。
+  - **备份系统**: 实现支持数据库配置的自动备份服务 `BackupService`。
+  - **热备份**: 采用 SQLite Online Backup 机制，支持在系统运行期间进行安全备份。
+  - **策略管理**: 支持前端通过 API 调整备份频率和保留天数。
+  - **手动触发**: 提供 `POST /api/admin/backup/now` 接口。
+
 ### [Feature] Service Module: Robust Creation & Smart List (2026-02-03)
 - **状态**: ✅ 已完成
 - **内容**:

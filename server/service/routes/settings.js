@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const checkDiskSpace = require('check-disk-space').default;
 
-module.exports = (db, authenticate) => {
+module.exports = (db, authenticate, backupService) => {
     const router = express.Router();
 
     // Middleware: Admin Only
@@ -34,6 +34,11 @@ module.exports = (db, authenticate) => {
                 } catch (e) {
                     settings.ai_data_sources = ['tickets', 'knowledge'];
                 }
+
+                // Normalize Backup Settings
+                settings.backup_enabled = Boolean(settings.backup_enabled);
+                settings.backup_frequency = parseInt(settings.backup_frequency) || 1440;
+                settings.backup_retention_days = parseInt(settings.backup_retention_days) || 7;
             }
 
             providers.forEach(p => {
@@ -67,13 +72,17 @@ module.exports = (db, authenticate) => {
                 if (Array.isArray(dataSources)) {
                     dataSources = JSON.stringify(dataSources);
                 }
-                
+
                 db.prepare(`
                     UPDATE system_settings SET 
                         ai_enabled = @ai_enabled,
                         ai_work_mode = @ai_work_mode,
                         ai_data_sources = @ai_data_sources,
+
                         system_name = @system_name,
+                        backup_enabled = @backup_enabled,
+                        backup_frequency = @backup_frequency,
+                        backup_retention_days = @backup_retention_days,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
                 `).run({
@@ -81,8 +90,14 @@ module.exports = (db, authenticate) => {
                     system_name: settings.system_name,
                     ai_enabled: settings.ai_enabled ? 1 : 0,
                     ai_work_mode: settings.ai_work_mode ? 1 : 0,
-                    ai_data_sources: dataSources
+                    ai_data_sources: dataSources,
+                    backup_enabled: settings.backup_enabled ? 1 : 0,
+                    backup_frequency: parseInt(settings.backup_frequency) || 1440,
+                    backup_retention_days: parseInt(settings.backup_retention_days) || 7
                 });
+
+                // Reload Backup Service
+                if (backupService) backupService.reload();
             }
 
             // 2. Update/Insert Providers
@@ -124,6 +139,22 @@ module.exports = (db, authenticate) => {
             res.json({ success: true, message: 'Settings and providers updated' });
         } catch (err) {
             console.error('[Settings] Update Error:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // POST /api/admin/backup/now
+    router.post('/backup/now', async (req, res) => {
+        try {
+            if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
+
+            const result = await backupService.trigger();
+            if (result.success) {
+                res.json({ success: true, path: result.path });
+            } else {
+                res.status(500).json({ error: result.error });
+            }
+        } catch (err) {
             res.status(500).json({ error: err.message });
         }
     });

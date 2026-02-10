@@ -87,9 +87,7 @@ const InquiryTicketListPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
 
-    const [page, setPage] = useState(1);
     const [pageSize] = useState(50);
-
 
     // Scope Filters
     const timeScope = searchParams.get('time_scope') || '7d';
@@ -97,6 +95,8 @@ const InquiryTicketListPage: React.FC = () => {
     const searchTerm = searchParams.get('keyword') || '';
     const statusFilter = searchParams.get('status') || 'all';
     const viewModeParam = searchParams.get('view') || 'list';
+    const pageParam = searchParams.get('page');
+    const page = pageParam ? parseInt(pageParam) : 1;
 
     // Local States
     const [viewMode, setViewMode] = useState<'list' | 'card'>(viewModeParam as 'list' | 'card'); // 'list' is Grouped, 'card' is Flat List
@@ -154,8 +154,15 @@ const InquiryTicketListPage: React.FC = () => {
 
     const updateFilter = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
+        // Reset page to 1 when filter changes, unless page is explicitly set in newParams
+        if (!newParams.page) {
+            newParams.page = '1';
+        }
         setSearchParams({ ...current, ...newParams });
-        setPage(1);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        updateFilter({ page: newPage.toString() });
     };
 
 
@@ -700,7 +707,7 @@ const InquiryTicketListPage: React.FC = () => {
                 totalPages > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '20px', paddingBottom: '24px' }}>
                         <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
                             disabled={page === 1}
                             className="btn btn-secondary btn-sm"
                         >
@@ -710,7 +717,7 @@ const InquiryTicketListPage: React.FC = () => {
                             {page} / {totalPages}
                         </span>
                         <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                             disabled={page === totalPages}
                             className="btn btn-secondary btn-sm"
                         >

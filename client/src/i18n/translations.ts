@@ -237,6 +237,7 @@ export const translations = {
         'user.username': '用户名',
         'user.department': '所属部门',
         'user.role': '角色',
+        'user.type': '账号类型',
         'user.personal_space': '个人空间',
         'user.actions': '操作',
         'user.view_space': '查看空间',
@@ -247,6 +248,7 @@ export const translations = {
         'user.create_account': '创建新账号',
         'user.initial_password': '初始密码',
         'user.create_now': '立即创建',
+        'user.select_dealer': '关联经销商',
 
         // Label
         'label.name': '名称',
@@ -715,6 +717,9 @@ export const translations = {
         'sidebar.context': '上下文查询',
         'sidebar.knowledge': '知识库',
         'sidebar.parts': '配件管理',
+        'sidebar.archives_customers': '客户档案',
+        'common.add_new': '新增',
+        'common.confirm_delete': '确认删除',
 
         // Inquiry Tickets (咨询工单)
         'inquiry_ticket.title': '咨询工单',

@@ -4,6 +4,7 @@ import { ArrowLeft, Edit2, Save, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 
 interface Attachment {
@@ -69,6 +70,7 @@ const statusColors: Record<string, string> = {
 const DealerRepairDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const getRoute = useRouteMemoryStore(state => state.getRoute);
     const { token } = useAuthStore();
     const { t } = useLanguage();
 
@@ -187,7 +189,7 @@ const DealerRepairDetailPage: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', padding: 0 }}>
+                                <button onClick={() => navigate(getRoute('/service/dealer-repairs'))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', padding: 0 }}>
                                     <ArrowLeft size={24} />
                                 </button>
                                 <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
@@ -235,7 +237,7 @@ const DealerRepairDetailPage: React.FC = () => {
                                     </button>
                                 </>
                             ) : (
-                                <button onClick={() => setIsEditing(true)} className="btn btn-secondary">
+                                <button onClick={() => setIsEditing(true)} className="btn-kine-lowkey">
                                     <Edit2 size={16} />
                                     <span style={{ marginLeft: '6px' }}>编辑</span>
                                 </button>

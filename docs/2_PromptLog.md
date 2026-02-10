@@ -4,6 +4,60 @@
 
 ---
 
+### 2026-02-11 00:45 - UI Refinements & Dealer API Fix (Customer Management)
+**User Prompt**:
+1. 优化客户档案 UI：Dealer Tab 中文“经销商”，End-User Tab 中文“终端客户”。
+2. UI 样式微调：使用 "Low-key Kine Button" (透明金) 和 "Gray/Glass" Tab 选中态。
+3. 增加 Service Tier: "VVIP"。
+4. 修复：从工单详情页返回列表时丢失状态（分页/筛选）。
+5. 修复：经销商列表为空（后端 API 过滤逻辑错误）。
+6. 同步部署到远程服务器。
+
+**Action**:
+1. **Frontend (UI & Store)**:
+   - **Styles**: 在 `index.css` 中定义 `.btn-kine-lowkey` (透明金边框) 和 `.tab-active-lowkey` (灰色玻璃态)。
+   - **CustomerManagement**: 应用新样式到 "Add/Save" 按钮和 Tab 切换器。
+   - **Navigation Persistence**: 创建 `useRouteMemoryStore` (Zustand)，在 `Inquiry/RMA/Dealer` 详情页的返回按钮中使用 `getRoute()` 恢复列表状态。
+2. **Backend (API Fix)**:
+   - **`GET /api/v1/customers`**: 修复了 `account_type='Dealer'` 时的过滤逻辑（之前代码跳过了 SQL 拼接），清理了冗余代码。
+   - **Verification**: 确认数据库中已有 8 条 Dealer 数据，修复后列表正常显示。
+3. **Deployment**:
+   - 更新客户端版本至 `11.3.32`。
+   - 执行脚本自动提取经销商数据（实际无需，因 `customers` 表已有数据）。
+   - 包含完整的构建和分发流程。
+
+**Result**:
+- 客户档案界面更加精致，符合 Kine 低调奢华的设计语言。
+- 解决了列表页状态丢失的痛点，提升了操作效率。
+- 修复了 Dealer 列表无法显示的关键 Bug，无需额外数据迁移。
+
+**Status**: Completed
+
+### 2026-02-10 13:30 - Files 模块重构与备份系统增强 (Files Refactoring & Backup System)
+**User Prompt**:
+1. 将 `server/index.js` 中的文件管理路由和助手函数迁移到 `server/files/routes.js`。
+2. 实现可配置的数据库备份服务，关联系统设置并支持手动触发。
+
+**Action**:
+1. **模块重构**:
+   - 成功将文件管理核心逻辑 (List/Upload/Rename/Copy/Move/Delete) 拆分为独立模块 `server/files/routes.js`。
+   - 精简了 `server/index.js`，移除了超过 500 行的冗余代码。
+   - 保持了原有的 API 兼容性，确保前端调用无感知。
+2. **备份系统增强**:
+   - 创建了 `server/service/backup_service.js`，基于 `node-schedule` 实现定时备份。
+   - 集成了 `system_settings` 数据库配置 (`backup_enabled`, `backup_frequency`, `backup_retention_days`)。
+   - 实现了备份文件的自动清理（Retention Policy）和手动触发接口 (`POST /api/admin/backup/now`)。
+   - 在 `server/index.js` 中添加了数据库迁移逻辑，自动补全缺失的设置列。
+3. **文档同步 (Workflow: /finalize_task)**:
+   - 更新了 `Service_API.md`, `Service_PRD.md`, `Service_UserScenarios.md` 至最新版本。
+   - 同步了 `Backlog.md` 和 `DevLog.md`。
+
+**Result**:
+- 系统架构更加模块化，核心入口文件显著压缩。
+- 提供了稳定、可配置的数据库备份方案，增强了系统安全性。
+
+**Status**: Completed
+
 ### 2026-02-02 22:15 - Service Seeding & Creation Fixes
 **User Prompt**:
 1. "创新服务，创建工单，现在无法使用..." (Creation broken).

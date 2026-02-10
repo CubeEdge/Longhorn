@@ -10,5 +10,9 @@
         "cluster-start": "mkdir -p logs && pm2 start ecosystem.config.js",
         "cluster-stop": "pm2 delete longhorn",
         "cluster-status": "pm2 list && pm2 monit"
+    },
+    "dependencies": {
+        "better-sqlite3": "^12.6.2",
+        "check-disk-space": "^3.4.0"
     }
 }

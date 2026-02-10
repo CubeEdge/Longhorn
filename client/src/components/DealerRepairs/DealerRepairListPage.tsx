@@ -39,7 +39,6 @@ const DealerRepairListPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
 
-    const [page, setPage] = useState(1);
     const [pageSize] = useState(20);
 
     // Filters
@@ -48,6 +47,8 @@ const DealerRepairListPage: React.FC = () => {
     const statusFilter = searchParams.get('status') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
     const viewModeParam = searchParams.get('view') || 'list';
+    const pageParam = searchParams.get('page');
+    const page = pageParam ? parseInt(pageParam) : 1;
 
     // Local States
     const [viewMode, setViewMode] = useState<'list' | 'card'>(viewModeParam as 'list' | 'card');
@@ -101,8 +102,14 @@ const DealerRepairListPage: React.FC = () => {
 
     const updateFilter = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
+        if (!newParams.page) {
+            newParams.page = '1';
+        }
         setSearchParams({ ...current, ...newParams });
-        setPage(1);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        updateFilter({ page: newPage.toString() });
     };
 
     const applyCustomDate = () => {
@@ -441,9 +448,9 @@ const DealerRepairListPage: React.FC = () => {
             {/* Pagination */}
             {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '24px', paddingBottom: '24px' }}>
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-secondary btn-sm"><ChevronLeft size={16} /></button>
+                    <button onClick={() => handlePageChange(Math.max(1, page - 1))} disabled={page === 1} className="btn btn-secondary btn-sm"><ChevronLeft size={16} /></button>
                     <span style={{ fontSize: '0.875rem' }}>{page} / {totalPages}</span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-secondary btn-sm"><ChevronRight size={16} /></button>
+                    <button onClick={() => handlePageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="btn btn-secondary btn-sm"><ChevronRight size={16} /></button>
                 </div>
             )}
         </div>

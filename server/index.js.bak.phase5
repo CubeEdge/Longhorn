@@ -11,7 +11,6 @@ const multer = require('multer');
 const archiver = require('archiver');
 const sharp = require('sharp');
 const AIService = require('./service/ai_service');
-const BackupService = require('./service/backup_service');
 
 // Service Ticket Routes
 const inquiryTickets = require('./service/routes/inquiry-tickets');
@@ -28,19 +27,15 @@ const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
 const DISK_A = path.resolve(__dirname, process.env.DISK_A || 'data/DiskA');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
+
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads');
 const BACKUP_DIR = path.join(DISK_A, '.backups', 'db');
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
+// Multer Setup
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
-const chunkUpload = multer({ 
-    dest: path.join(DISK_A, '.chunks'),
-    limits: {
-        fileSize: 6 * 1024 * 1024 // 6MB per chunk (5MB + buffer)
-    }
-});
-const filesRoutes = require('./files/routes');
+const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
 const serviceUpload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
@@ -57,11 +52,62 @@ const serviceUpload = multer({
 // Database Initialization
 const db = new Database(DB_PATH, { verbose: console.log });
 db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = WAL');
 const aiService = new AIService(db);
-const backupService = new BackupService(db, DISK_A);
-backupService.init();
 
-// Database Backup Scheduler (Legacy removed, using service)
+// Database Backup Scheduler
+function scheduleDatabaseBackup() {
+    fs.ensureDirSync(BACKUP_DIR);
+    console.log('[Backup] Backup service initialized. Destination:', BACKUP_DIR);
+
+    const performBackup = () => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupPath = path.join(BACKUP_DIR, `longhorn-${timestamp}.db`);
+        console.log(`[Backup] Starting backup to ${backupPath}...`);
+
+        db.backup(backupPath)
+            .then(() => {
+                console.log(`[Backup] Success: ${backupPath}`);
+                cleanOldBackups();
+            })
+            .catch((err) => {
+                console.error('[Backup] Failed:', err);
+            });
+    };
+
+    const cleanOldBackups = () => {
+        const retentionDays = 7;
+        const now = Date.now();
+        const retentionMs = retentionDays * 24 * 60 * 60 * 1000;
+
+        fs.readdir(BACKUP_DIR, (err, files) => {
+            if (err) return;
+            files.forEach(file => {
+                if (!file.endsWith('.db')) return;
+                const filePath = path.join(BACKUP_DIR, file);
+                fs.stat(filePath, (err, stats) => {
+                    if (err) return;
+                    if (now - stats.mtimeMs > retentionMs) {
+                        fs.unlink(filePath, () => console.log(`[Backup] Pruned old backup: ${file}`));
+                    }
+                });
+            });
+        });
+    };
+
+    // Check timer every minute
+    setInterval(() => {
+        const now = new Date();
+        // Run at 03:00 AM
+        if (now.getHours() === 3 && now.getMinutes() === 0) {
+            performBackup();
+        }
+    }, 60000);
+}
+
+scheduleDatabaseBackup();
+
+// Ensure tables exist
 db.exec(`
     CREATE TABLE IF NOT EXISTS system_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,16 +146,18 @@ db.exec(`
     -- Ensure one system settings row exists
     INSERT OR IGNORE INTO system_settings (id, system_name) VALUES (1, 'Longhorn System');
 
-
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        code TEXT UNIQUE
+    );
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT,
         role TEXT,
-        user_type TEXT DEFAULT 'Internal', -- 'Internal', 'Dealer', 'Customer'
         department_id INTEGER,
         department_name TEXT,
-        dealer_id INTEGER, -- Link to dealers table when user_type is 'Dealer'
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(department_id) REFERENCES departments(id)
     );
@@ -287,12 +335,6 @@ db.exec(`
 
 // Migration to add topic column (Safe fail if exists)
 try { db.prepare("ALTER TABLE vocabulary ADD COLUMN topic TEXT").run(); } catch (e) { }
-
-// Migration for Backup Settings
-try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
-try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_frequency INTEGER DEFAULT 1440").run(); } catch (e) { }
-try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_retention_days INTEGER DEFAULT 7").run(); } catch (e) { }
-// try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_path TEXT").run(); } catch (e) { }
 
 // Auto-Seeding: DISABLED to prevent loading incorrect vocabulary data
 // The seed file contains incorrect format data that needs to be cleaned
@@ -514,9 +556,16 @@ function resolvePath(requestPath) {
     if (segments.length > 0) {
         let firstSegment = segments[0];
 
-        // Try mapping Chinese -> Code
+        // 1. Try mapping Chinese Name -> Code (e.g. "市场部" -> "MS")
         if (NAME_TO_CODE[firstSegment]) {
             firstSegment = NAME_TO_CODE[firstSegment];
+        }
+        // 2. Try mapping "Name (Code)" -> Code (e.g. "市场部 (MS)" -> "MS")
+        else {
+            const match = firstSegment.match(/\((.+)\)$/);
+            if (match && VALID_DEPT_CODES.includes(match[1].toUpperCase())) {
+                firstSegment = match[1];
+            }
         }
 
         const firstSegmentUpper = firstSegment.toUpperCase();
@@ -546,12 +595,19 @@ const authenticate = (req, res, next) => {
 
             // Reload user from DB to ensure latest role/department info
             // Use both integer and float comparison for backward compatibility
-            const user = db.prepare(`
-                SELECT u.id, u.username, u.role, u.department_id, d.name as department_name 
-                FROM users u
-                LEFT JOIN departments d ON u.department_id = d.id
-                WHERE u.id = ? OR u.id = CAST(? AS REAL)
-            `).get(decoded.id, decoded.id);
+            let user;
+            try {
+                // Simplified query to avoid SQLITE_ERROR
+                user = db.prepare(`
+                    SELECT u.id, u.username, u.role, u.department_id, d.name as department_name 
+                    FROM users u
+                    LEFT JOIN departments d ON u.department_id = d.id
+                    WHERE u.id = ?
+                `).get(decoded.id);
+            } catch (authErr) {
+                console.error('[AUTH DB ERROR]', authErr.message, 'Decoded:', decoded);
+                return res.sendStatus(401);
+            }
 
             if (!user) {
                 return res.sendStatus(401);
@@ -1255,11 +1311,11 @@ app.post('/api/upload/check-chunks', authenticate, async (req, res) => {
         }
 
         console.log(`[Check Chunks] Upload ${uploadId}: ${existingChunks.length}/${totalChunks} chunks exist`);
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             existingChunks,
             totalChunks: parseInt(totalChunks),
-            uploadId 
+            uploadId
         });
     } catch (err) {
         console.error('[Check Chunks] Error:', err);
@@ -1270,7 +1326,7 @@ app.post('/api/upload/check-chunks', authenticate, async (req, res) => {
 // Chunked Upload - Receive individual chunks
 app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (req, res) => {
     try {
-        const { uploadId, fileName, chunkIndex, totalChunks } = req.body;
+        const { uploadId, fileName, chunkIndex, totalChunks, path: uploadPath } = req.body;
 
         if (!uploadId || !fileName || chunkIndex === undefined || !totalChunks) {
             return res.status(400).json({ error: 'Missing required chunk metadata' });
@@ -1280,15 +1336,15 @@ app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (
         const chunkDir = path.join(DISK_A, '.chunks', uploadId);
         fs.ensureDirSync(chunkDir);
 
-        // Move uploaded chunk to its proper location (sync for speed)
+        // Move uploaded chunk to its proper location
         const chunkPath = path.join(chunkDir, `${chunkIndex}`);
-        fs.renameSync(req.file.path, chunkPath);
+        fs.moveSync(req.file.path, chunkPath, { overwrite: true });
 
-        console.log(`[Chunk] ✓ Chunk ${parseInt(chunkIndex) + 1}/${totalChunks} saved for ${fileName}`);
+        console.log(`[Chunk] Received chunk ${parseInt(chunkIndex) + 1}/${totalChunks} for ${fileName} (upload: ${uploadId})`);
         res.json({ success: true, chunkIndex: parseInt(chunkIndex) });
     } catch (err) {
         console.error('[Chunk] Error:', err);
-        res.status(500).json({ error: 'Failed to save chunk', details: err.message });
+        res.status(500).json({ error: 'Failed to save chunk' });
     }
 });
 
@@ -1296,47 +1352,25 @@ app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (
 app.post('/api/upload/merge', authenticate, async (req, res) => {
     try {
         const { uploadId, fileName, totalChunks, path: uploadPath } = req.body;
-        
-        console.log('[Merge] Request received:', {
-            uploadId,
-            fileName,
-            totalChunks,
-            uploadPath,
-            user: req.user.username,
-            role: req.user.role
-        });
 
         if (!uploadId || !fileName || !totalChunks) {
-            console.error('[Merge] Missing metadata');
             return res.status(400).json({ error: 'Missing required merge metadata' });
         }
 
         let subPath = resolvePath(uploadPath || '');
-        console.log('[Merge] Resolved path:', subPath);
-        
         if (!subPath || subPath === '') {
             subPath = `Members/${req.user.username}`;
-            console.log('[Merge] Using default personal path:', subPath);
         }
         if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
             subPath = `Members/${req.user.username}`;
-            console.log('[Merge] Redirected to personal path:', subPath);
         }
 
-        console.log('[Merge] Checking permissions for path:', subPath);
-        const hasFull = hasPermission(req.user, subPath, 'Full');
-        const hasContrib = hasPermission(req.user, subPath, 'Contributor');
-        console.log('[Merge] Permission check result:', { hasFull, hasContrib, isAdmin: req.user.role === 'Admin' });
-        
-        if (!hasFull && !hasContrib) {
-            console.error('[Merge] Permission denied for user', req.user.username, 'on path', subPath);
+        if (!hasPermission(req.user, subPath, 'Full') && !hasPermission(req.user, subPath, 'Contributor')) {
             return res.status(403).json({ error: 'No write permission for this folder' });
         }
 
         const chunkDir = path.join(DISK_A, '.chunks', uploadId);
         const targetDir = path.join(DISK_A, subPath);
-        console.log('[Merge] Directories:', { chunkDir, targetDir });
-        
         fs.ensureDirSync(targetDir);
 
         const finalPath = path.join(targetDir, fileName);
@@ -1346,7 +1380,6 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         for (let i = 0; i < parseInt(totalChunks); i++) {
             const chunkPath = path.join(chunkDir, `${i}`);
             if (!fs.existsSync(chunkPath)) {
-                console.error('[Merge] Missing chunk:', i);
                 writeStream.destroy();
                 return res.status(400).json({ error: `Missing chunk ${i}` });
             }
@@ -1368,19 +1401,17 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         // Update database
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
-        
         db.prepare(`
             INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
             VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
         `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
 
-        console.log(`[Merge] ✓ Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
+        console.log(`[Merge] Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
         res.json({ success: true, path: normalizedPath });
     } catch (err) {
         console.error('[Merge] Error:', err);
-        console.error('[Merge] Stack:', err.stack);
         // DO NOT delete chunk directory on error - allow resume
-        res.status(500).json({ error: 'Failed to merge chunks', canRetry: true, details: err.message });
+        res.status(500).json({ error: 'Failed to merge chunks', canRetry: true });
     }
 });
 
@@ -1751,7 +1782,7 @@ app.post('/api/files/access', authenticate, (req, res) => {
             `).run(filePath, userId, username);
         }
 
-        // Also update file_stats accessed_count
+        // Also update file_stats access_count
         db.prepare(`
             UPDATE file_stats 
             SET accessed_count = accessed_count + 1
@@ -1782,10 +1813,10 @@ app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
 app.get('/api/files/recent', authenticate, async (req, res) => {
     try {
         const rows = db.prepare(`
-            SELECT s.path, s.accessed_count, u.username as uploader, 
+            SELECT s.path, s.access_count, u.username as uploader, 
                    (SELECT last_access FROM access_logs WHERE path = s.path ORDER BY last_access DESC LIMIT 1) as last_time
             FROM file_stats s
-            LEFT JOIN users u ON s.uploaded_by = u.id
+            LEFT JOIN users u ON s.uploader_id = u.id
             ORDER BY last_time DESC NULLS LAST
             LIMIT 50
         `).all();
@@ -2004,9 +2035,9 @@ app.get('/api/starred', authenticate, (req, res) => {
             } catch (e) { console.error('Stat error', e); }
 
             const dbStats = db.prepare(`
-                SELECT s.accessed_count, u.username as uploader 
+                SELECT s.access_count, u.username as uploader 
                 FROM file_stats s 
-                LEFT JOIN users u ON s.uploaded_by = u.id 
+                LEFT JOIN users u ON s.uploader_id = u.id 
                 WHERE s.path = ?
             `).get(item.file_path);
 
@@ -2019,7 +2050,7 @@ app.get('/api/starred', authenticate, (req, res) => {
                 mtime: stats.mtime,
                 isDirectory: stats.isDirectory,
                 starredAt: item.starred_at,
-                access_count: dbStats ? dbStats.accessed_count : 0,
+                access_count: dbStats ? dbStats.access_count : 0,
                 uploader: dbStats ? dbStats.uploader : 'unknown'
             };
         });
@@ -2168,7 +2199,7 @@ app.get('/api/shares', authenticate, (req, res) => {
                    u.username as uploader_name
             FROM share_links sl
             LEFT JOIN file_stats fs ON sl.file_path = fs.path
-            LEFT JOIN users u ON fs.uploaded_by = u.id
+            LEFT JOIN users u ON fs.uploader_id = u.id
             WHERE sl.user_id = ?
             ORDER BY sl.created_at DESC
         `).all(req.user.id);
@@ -2260,7 +2291,7 @@ app.get('/api/department/stats', authenticate, (req, res) => {
         const storageByMember = db.prepare(`
             SELECT u.username, COUNT(f.path) as fileCount, SUM(f.size) as size
             FROM file_stats f
-            JOIN users u ON f.uploader_id = u.id
+            JOIN users u ON f.uploaded_by = u.id
             WHERE f.path LIKE ?
             GROUP BY u.username
             ORDER BY size DESC
@@ -2271,7 +2302,7 @@ app.get('/api/department/stats', authenticate, (req, res) => {
         const recentActivity = db.prepare(`
             SELECT u.username as user, 'uploaded' as action, f.path as file, f.uploaded_at as time
             FROM file_stats f
-            JOIN users u ON f.uploader_id = u.id
+            JOIN users u ON f.uploaded_by = u.id
             WHERE f.path LIKE ?
             ORDER BY f.uploaded_at DESC
             LIMIT 10
@@ -2312,7 +2343,7 @@ app.get('/api/department/members', authenticate, (req, res) => {
             const usage = db.prepare(`
                 SELECT COUNT(*) as count, SUM(size) as size 
                 FROM file_stats 
-                WHERE uploader_id = ?
+                WHERE uploaded_by = ?
             `).get(m.id);
             return {
                 ...m,
@@ -2697,8 +2728,8 @@ app.get('/api/files/stats', authenticate, (req, res) => {
     if (!filePath) return res.status(400).json({ error: 'Path required' });
 
     // Check permission (Full or Owner)
-    const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(filePath);
-    const isOwner = fileStat && fileStat.uploader_id === req.user.id;
+    const fileStat = db.prepare('SELECT uploaded_by FROM file_stats WHERE path = ?').get(filePath);
+    const isOwner = fileStat && fileStat.uploaded_by === req.user.id;
 
     if (!isOwner && !hasPermission(req.user, filePath, 'Full')) {
         return res.status(403).json({ error: 'Permission denied' });
@@ -2785,12 +2816,14 @@ app.get('/api/files', authenticate, async (req, res) => {
         const userStarredCount = db.prepare('SELECT COUNT(*) as count FROM starred_files WHERE user_id = ?').get(req.user.id)?.count || 0;
 
         // Simple hash for ETag
-        const etag = 'W/"' + require('crypto').createHash('md5').update(etagData + '|starred:' + userStarredCount).digest('hex') + '"';
+        // FORCE REFRESH DEBUG: Add random salt to ETag to prevent 304 while debugging
+        const etag = 'W/"' + require('crypto').createHash('md5').update(etagData + '|starred:' + userStarredCount + '|' + Date.now()).digest('hex') + '"';
 
         // Check If-None-Match
-        if (req.headers['if-none-match'] === etag) {
-            return res.status(304).end();
-        }
+        // DISABLED FOR DEBUGGING
+        // if (req.headers['if-none-match'] === etag) {
+        //     return res.status(304).end();
+        // }
 
         res.setHeader('ETag', etag);
 
@@ -2819,26 +2852,27 @@ app.get('/api/files', authenticate, async (req, res) => {
             const placeholders = uniqueVariants.map(() => '?').join(',');
 
             let dbStats = db.prepare(`
-                SELECT s.access_count, u.username as uploader 
-                FROM file_stats s 
-                LEFT JOIN users u ON s.uploader_id = u.id 
-                WHERE s.path IN (${placeholders})
-            `).get(...uniqueVariants);
+                    SELECT s.accessed_count as access_count, u.username as uploader 
+                    FROM file_stats s 
+                    LEFT JOIN users u ON s.uploaded_by = u.id 
+                    WHERE s.path IN (${placeholders})
+                `).get(...uniqueVariants);
 
             if (!dbStats) {
                 // Fuzzy fallback: Match by file name suffix
                 dbStats = db.prepare(`
-                    SELECT s.access_count, u.username as uploader 
-                    FROM file_stats s 
-                    LEFT JOIN users u ON s.uploader_id = u.id 
-                    WHERE s.path LIKE ? ESCAPE '\\'
-                    LIMIT 1
-                `).get(`%/${item.name}`);
+                        SELECT s.accessed_count as access_count, u.username as uploader 
+                        FROM file_stats s 
+                        LEFT JOIN users u ON s.uploaded_by = u.id 
+                        WHERE s.path LIKE ? ESCAPE '\\'
+                        LIMIT 1
+                    `).get(`%/${item.name}`);
             }
+
 
             // Explicit Debug for Uploader Issue
             if (dbStats && dbStats.uploader === null) {
-                console.log(`[Debug] Uploader IS NULL for path: ${itemPath} (uploader_id might be missing/invalid)`);
+                // console.log(`[Debug] Uploader IS NULL for path: ${itemPath} (uploader_id might be missing/invalid)`);
             } else if (dbStats) {
                 // console.log(`[Debug] Uploader found: ${dbStats.uploader} for ${itemPath}`);
             }
@@ -2846,12 +2880,12 @@ app.get('/api/files', authenticate, async (req, res) => {
 
             // Debug logging for unknown uploader
             if (!dbStats) {
-                const verifyStart = db.prepare('SELECT count(*) as c FROM file_stats WHERE path = ?').get(itemPath);
-                console.log(`[Debug] Unknown Uploader: Path="${itemPath}" | DB_Count=${verifyStart ? verifyStart.c : 'err'}`);
+                // const verifyStart = db.prepare('SELECT count(*) as c FROM file_stats WHERE path = ?').get(itemPath);
+                // console.log(`[Debug] Unknown Uploader: Path="${itemPath}" | DB_Count=${verifyStart ? verifyStart.c : 'err'}`);
             }
 
             if (!dbStats && (itemPath.includes('运营部') || itemPath.includes('市场部'))) {
-                console.log(`[Debug] Query MISS: "${itemPath}" | Hex: ${Buffer.from(itemPath).toString('hex')}`);
+                // console.log(`[Debug] Query MISS: "${itemPath}" | Hex: ${Buffer.from(itemPath).toString('hex')}`);
             }
 
             // Calculate folder size if directory
@@ -2865,16 +2899,6 @@ app.get('/api/files', authenticate, async (req, res) => {
             `).get(req.user.id, itemPath, `%/${item.name}`, item.name);
             const isStarred = starredRecord ? true : false;
 
-            // 🐛 Debug log - will be removed after fix confirmed
-            if (isStarred) {
-                console.log(`⭐ [Starred] Match: user=${req.user.id}, file="${item.name}"`);
-            }
-            // Log first file of each request to verify user ID
-            if (items.indexOf(item) === 0) {
-                const userStarred = db.prepare('SELECT file_path FROM starred_files WHERE user_id = ?').all(req.user.id);
-                console.log(`📋 [Starred Check] User=${req.user.id}, Starred count=${userStarred.length}, First file path="${itemPath}"`);
-            }
-
             return {
                 name: item.name,
                 isDirectory: item.isDirectory(),
@@ -2886,8 +2910,11 @@ app.get('/api/files', authenticate, async (req, res) => {
                 starred: isStarred
             };
         });
+
+        console.log(`[FILES] Returning ${result.length} items. UserCanWrite=${canWrite}. ETag=${etag}`);
         res.json({ items: result, userCanWrite: canWrite });
     } catch (err) {
+        console.error('[API ERROR] /api/files failed:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -2897,11 +2924,11 @@ app.post('/api/files/hit', authenticate, (req, res) => {
     try {
         // Global count
         db.prepare(`
-            INSERT INTO file_stats(path, access_count, last_access)
+            INSERT INTO file_stats(path, accessed_count, last_accessed)
     VALUES(?, 1, CURRENT_TIMESTAMP)
             ON CONFLICT(path) DO UPDATE SET
-    access_count = access_count + 1,
-                    last_access = CURRENT_TIMESTAMP
+    accessed_count = accessed_count + 1,
+                    last_accessed = CURRENT_TIMESTAMP
                         `).run(itemPath);
 
         // Per-user log
@@ -2934,7 +2961,7 @@ app.post('/api/folders', authenticate, async (req, res) => {
     try {
         await fs.ensureDir(fullPath);
         // Track folder creator
-        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploader_id) VALUES (?, ?)').run(targetPath.normalize('NFC'), req.user.id);
+        db.prepare('INSERT OR REPLACE INTO file_stats (path, uploaded_by) VALUES (?, ?)').run(targetPath.normalize('NFC'), req.user.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -3148,8 +3175,8 @@ app.post('/api/files/rename', authenticate, async (req, res) => {
 
     // For Contributor, check ownership
     if (!hasPermission(req.user, filePath, 'Full')) {
-        const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(filePath);
-        if (!fileStat || fileStat.uploader_id !== req.user.id) {
+        const fileStat = db.prepare('SELECT uploaded_by FROM file_stats WHERE path = ?').get(filePath);
+        if (!fileStat || fileStat.uploaded_by !== req.user.id) {
             return res.status(403).json({ error: 'You can only rename files you uploaded' });
         }
     }
@@ -3235,7 +3262,7 @@ app.post('/api/files/copy', authenticate, async (req, res) => {
 
         if (sourceStat) {
             db.prepare(`
-                INSERT OR REPLACE INTO file_stats (path, access_count, uploader_id, last_accessed, size)
+                INSERT OR REPLACE INTO file_stats (path, accessed_count, uploaded_by, last_accessed, size)
                 VALUES (?, 0, ?, datetime('now'), ?)
             `).run(newPath, req.user.id, sourceStat.size);
         }
@@ -3269,8 +3296,8 @@ app.post('/api/files/bulk-move', authenticate, async (req, res) => {
             }
             // 2. Contributor permission + Ownership check
             else if (hasPermission(req.user, subPath, 'Contributor')) {
-                const fileStat = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(subPath);
-                if (fileStat && fileStat.uploader_id === req.user.id) {
+                const fileStat = db.prepare('SELECT uploaded_by FROM file_stats WHERE path = ?').get(subPath);
+                if (fileStat && fileStat.uploaded_by === req.user.id) {
                     canMove = true;
                 }
             }
@@ -3522,7 +3549,7 @@ async function cleanupRecycleBin() {
 async function cleanupOrphanedChunks() {
     console.log('🧹 Running orphaned chunks cleanup...');
     const chunksDir = path.join(DISK_A, '.chunks');
-    
+
     if (!fs.existsSync(chunksDir)) {
         return;
     }
@@ -3619,6 +3646,12 @@ app.use(express.static(path.join(__dirname, '../client/dist'), {
 // Serve knowledge base images
 app.use('/data/knowledge_images', express.static(path.join(__dirname, 'data/knowledge_images'), {
     maxAge: '1d',  // Cache for 1 day
+    etag: true
+}));
+
+// Serve service uploads from DiskA
+app.use('/uploads/service', express.static(SERVICE_UPLOADS_DIR, {
+    maxAge: '1d',
     etag: true
 }));
 

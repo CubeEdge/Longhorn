@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useConfirm } from '../../store/useConfirm';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 
 interface Attachment {
@@ -58,6 +59,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const confirm = useConfirm();
+    const getRoute = useRouteMemoryStore(state => state.getRoute);
 
     const [ticket, setTicket] = useState<InquiryTicket | null>(null);
     const [loading, setLoading] = useState(true);
@@ -180,7 +182,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                         backdropFilter: 'blur(20px)'
                     }}>
                         <button
-                            onClick={() => navigate('/service/inquiry-tickets')}
+                            onClick={() => navigate(getRoute('/service/inquiry-tickets'))}
                             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
                             <ArrowLeft size={18} />
@@ -245,16 +247,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => setIsEditing(true)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            background: '#fff',
-                                            border: 'none',
-                                            color: '#000',
-                                            padding: '8px 24px',
-                                            borderRadius: '8px',
-                                            fontWeight: 600,
-                                            cursor: 'pointer'
-                                        }}
+                                        className="btn-kine-lowkey"
                                     >
                                         <Edit2 size={16} />
                                         编辑

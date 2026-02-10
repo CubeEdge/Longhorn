@@ -26,12 +26,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
 
     // Memory logic
     const [activeTab, setActiveTab] = React.useState<AdminTab>(() => {
+        // 1. Priority: Check URL path first
+        if (['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit'].includes(pathSegment)) {
+            return pathSegment as AdminTab;
+        }
+
+        // 2. Fallback: Check memory
         const storageKey = moduleType === 'service' ? 'longhorn_service_admin_tab' : 'longhorn_admin_active_tab';
         const remembered = localStorage.getItem(storageKey) as AdminTab;
         if (remembered && ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit'].includes(remembered)) {
             return remembered;
         }
-        return (['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit'].includes(pathSegment) ? pathSegment as AdminTab : 'dashboard');
+
+        // 3. Default
+        return 'dashboard';
     });
 
     React.useEffect(() => {
@@ -68,8 +76,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
             case 'intelligence':
             case 'health':
             case 'audit':
-                return <AdminSettings 
-                    initialTab={activeTab === 'settings' ? 'general' : activeTab === 'intelligence' ? 'intelligence' : activeTab === 'health' ? 'health' : 'audit'} 
+                return <AdminSettings
+                    initialTab={activeTab === 'settings' ? 'general' : activeTab === 'intelligence' ? 'intelligence' : activeTab === 'health' ? 'health' : 'audit'}
                     moduleType={moduleType}
                 />;
             default: return <SystemDashboard />;

@@ -19,7 +19,8 @@ import {
   BookOpen,
   Book,
   Package,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -41,6 +42,7 @@ import { DailyWordBadge } from './components/DailyWord';
 import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
+import CustomerManagement from './components/CustomerManagement';
 import KnowledgeGenerator from './components/KnowledgeGenerator';
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
 import { KinefinityWiki } from './components/KinefinityWiki';
@@ -58,6 +60,7 @@ import type { ModuleType } from './hooks/useNavigationState';
 import ShareCollectionPage from './components/ShareCollectionPage';
 import Toast from './components/Toast';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { useRouteMemoryStore } from './store/useRouteMemoryStore';
 
 // Main Layout Component for authenticated users
 // Main Layout Component for authenticated users
@@ -159,6 +162,9 @@ const App: React.FC = () => {
 
           {/* Dealer Repairs (经销商维修单) - Layer 3 */}
 
+          {/* Customer Archives (客户档案) - Section 2.3 */}
+          <Route path="/service/customers" element={<CustomerManagement />} />
+
           {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
           <Route path="/service/knowledge" element={
             ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
@@ -252,6 +258,12 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
   const { t } = useLanguage();
+  const { saveRoute, getRoute } = useRouteMemoryStore();
+
+  // Save route on change
+  React.useEffect(() => {
+    saveRoute(location.pathname + location.search);
+  }, [location.pathname, location.search, saveRoute]);
 
   React.useEffect(() => {
     const fetchDepts = async () => {
@@ -314,18 +326,27 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {currentModule === 'service' && (
           <>
-            <Link to="/service/inquiry-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''} `} onClick={onClose}>
+            <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''} `} onClick={onClose}>
               <MessageCircleQuestion size={18} />
               <span>{t('sidebar.inquiry_tickets')}</span>
             </Link>
-            <Link to="/service/rma-tickets" className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''} `} onClick={onClose}>
+            <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''} `} onClick={onClose}>
               <ClipboardList size={18} />
               <span>{t('sidebar.rma_tickets')}</span>
             </Link>
-            <Link to="/service/dealer-repairs" className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''} `} onClick={onClose}>
+            <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''} `} onClick={onClose}>
               <Package size={18} />
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
+
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+
+            <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''} `} onClick={onClose}>
+              <Users size={18} />
+              <span>{t('sidebar.archives_customers') || 'Customer Archives'}</span>
+            </Link>
+
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
             {/* Knowledge Base Import - Internal Staff Only */}
             {['Admin', 'Lead', 'Editor'].includes(role) && (
@@ -557,9 +578,21 @@ const ServiceTopBarStats: React.FC = () => {
   const displayStats = stats || { total: '-', by_status: {} };
 
   const handleFilter = (status: string) => {
+    const newParams = new URLSearchParams(searchParams);
+
+    // Update status
+    if (status === 'all') {
+      newParams.delete('status');
+    } else {
+      newParams.set('status', status);
+    }
+
+    // Reset page to 1 when changing filters
+    newParams.set('page', '1');
+
     navigate({
       pathname: location.pathname,
-      search: `? status = ${status} `
+      search: `?${newParams.toString()}`
     });
   };
 
