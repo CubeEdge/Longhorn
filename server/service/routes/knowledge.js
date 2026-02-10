@@ -497,10 +497,13 @@ module.exports = function(db, authenticate) {
             
             if (req.body.mergedFilePath) {
                 // 分块上传后合并的文件
-                const DISK_A = path.join(__dirname, '../../data');
+                const DISK_A = path.resolve(__dirname, '../../data/DiskA');
                 docxPath = path.join(DISK_A, req.body.mergedFilePath);
                 
+                console.log('[DOCX Import] Merged file path:', docxPath);
+                
                 if (!fs.existsSync(docxPath)) {
+                    console.error('[DOCX Import] File not found at:', docxPath);
                     return res.status(400).json({
                         success: false,
                         error: { code: 'FILE_NOT_FOUND', message: '合并的文件不存在' }

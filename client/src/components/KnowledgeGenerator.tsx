@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -319,71 +320,48 @@ export default function KnowledgeGenerator() {
                     chunkFormData.append('totalChunks', totalChunks.toString());
                     chunkFormData.append('path', 'knowledge_uploads'); // 临时目录
 
-                    // 使用XMLHttpRequest上传每个块以获取真实进度
-                    await new Promise<void>((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        
-                        xhr.upload.addEventListener('progress', (e) => {
-                            if (e.lengthComputable) {
-                                const chunkUploaded = e.loaded;
-                                const currentTotal = uploadedBytes + chunkUploaded;
-                                const percentComplete = Math.round((currentTotal / docxFile.size) * 100);
-                                setUploadedSize(currentTotal);
-                                
-                                // 计算上传速度
-                                const currentTime = Date.now();
-                                const timeDiff = (currentTime - lastTime) / 1000;
-                                const loadedDiff = currentTotal - lastLoaded;
-                                
-                                if (timeDiff > 0.5) {
-                                    const speed = loadedDiff / timeDiff;
-                                    if (speed >= 1024 * 1024) {
-                                        setUploadSpeed(`${(speed / (1024 * 1024)).toFixed(1)} MB/s`);
-                                    } else if (speed >= 1024) {
-                                        setUploadSpeed(`${(speed / 1024).toFixed(0)} KB/s`);
-                                    } else {
-                                        setUploadSpeed(`${speed.toFixed(0)} B/s`);
-                                    }
-                                    lastLoaded = currentTotal;
-                                    lastTime = currentTime;
+                    // 使用axios上传（和FileBrowser一样）
+                    console.log(`[Upload] Uploading chunk ${chunkIndex + 1}/${totalChunks}...`);
+                    await axios.post(`${API_BASE_URL}/api/upload/chunk`, chunkFormData, {
+                        headers: { 
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'multipart/form-data'
+                        },
+                        signal: controller.signal,
+                        onUploadProgress: (progressEvent) => {
+                            const chunkUploaded = progressEvent.loaded || 0;
+                            const currentTotal = uploadedBytes + chunkUploaded;
+                            const percentComplete = Math.round((currentTotal / docxFile.size) * 100);
+                            setUploadedSize(currentTotal);
+                            
+                            // 计算上传速度
+                            const currentTime = Date.now();
+                            const timeDiff = (currentTime - lastTime) / 1000;
+                            const loadedDiff = currentTotal - lastLoaded;
+                            
+                            if (timeDiff > 0.5) {
+                                const speed = loadedDiff / timeDiff;
+                                if (speed >= 1024 * 1024) {
+                                    setUploadSpeed(`${(speed / (1024 * 1024)).toFixed(1)} MB/s`);
+                                } else if (speed >= 1024) {
+                                    setUploadSpeed(`${(speed / 1024).toFixed(0)} KB/s`);
+                                } else {
+                                    setUploadSpeed(`${speed.toFixed(0)} B/s`);
                                 }
-                                
-                                setProgress(prev => prev ? {
-                                    ...prev,
-                                    steps: prev.steps.map(s => 
-                                        s.id === 'upload' ? { ...s, progress: Math.min(percentComplete, 99) } : s
-                                    )
-                                } : null);
+                                lastLoaded = currentTotal;
+                                lastTime = currentTime;
                             }
-                        });
-
-                        xhr.addEventListener('load', () => {
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve();
-                            } else {
-                                let errorMsg = `Chunk upload failed: ${xhr.status}`;
-                                try {
-                                    const response = JSON.parse(xhr.responseText);
-                                    if (response.error) errorMsg += ` - ${response.error}`;
-                                } catch (e) {
-                                    if (xhr.responseText) errorMsg += ` - ${xhr.responseText.substring(0, 100)}`;
-                                }
-                                reject(new Error(errorMsg));
-                            }
-                        });
-
-                        xhr.addEventListener('error', () => reject(new Error('Network error')));
-                        xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-
-                        xhr.open('POST', `${API_BASE_URL}/api/upload/chunk`);
-                        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                        xhr.send(chunkFormData);
-
-                        controller.signal.addEventListener('abort', () => {
-                            xhr.abort();
-                        });
+                            
+                            setProgress(prev => prev ? {
+                                ...prev,
+                                steps: prev.steps.map(s => 
+                                    s.id === 'upload' ? { ...s, progress: Math.min(percentComplete, 99) } : s
+                                )
+                            } : null);
+                        }
                     });
 
+                    console.log(`[Upload] Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`);
                     uploadedBytes += (end - start);
                 }
 
@@ -398,7 +376,7 @@ export default function KnowledgeGenerator() {
                         uploadId,
                         fileName: docxFile.name,
                         totalChunks,
-                        path: 'knowledge_uploads'
+                        path: '.temp'  // Use .temp directory in user's Members folder (has write permission)
                     }),
                     signal: controller.signal
                 });

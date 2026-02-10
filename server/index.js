@@ -32,7 +32,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
 // Multer Setup
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
-const chunkUpload = multer({ dest: path.join(DISK_A, '.chunks') });
+const chunkUpload = multer({ 
+    dest: path.join(DISK_A, '.chunks'),
+    limits: {
+        fileSize: 6 * 1024 * 1024 // 6MB per chunk (5MB + buffer)
+    }
+});
 const serviceUpload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
@@ -1196,8 +1201,8 @@ app.post('/api/upload', authenticate, upload.array('files'), (req, res) => {
 
     try {
         const insertStmt = db.prepare(`
-            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploader_id, access_count, last_access)
-            VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
+            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
+            VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
         `);
 
         // Use transaction for better performance
@@ -1257,7 +1262,7 @@ app.post('/api/upload/check-chunks', authenticate, async (req, res) => {
 // Chunked Upload - Receive individual chunks
 app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (req, res) => {
     try {
-        const { uploadId, fileName, chunkIndex, totalChunks, path: uploadPath } = req.body;
+        const { uploadId, fileName, chunkIndex, totalChunks } = req.body;
 
         if (!uploadId || !fileName || chunkIndex === undefined || !totalChunks) {
             return res.status(400).json({ error: 'Missing required chunk metadata' });
@@ -1267,15 +1272,15 @@ app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (
         const chunkDir = path.join(DISK_A, '.chunks', uploadId);
         fs.ensureDirSync(chunkDir);
 
-        // Move uploaded chunk to its proper location
+        // Move uploaded chunk to its proper location (sync for speed)
         const chunkPath = path.join(chunkDir, `${chunkIndex}`);
-        fs.moveSync(req.file.path, chunkPath, { overwrite: true });
+        fs.renameSync(req.file.path, chunkPath);
 
-        console.log(`[Chunk] Received chunk ${parseInt(chunkIndex) + 1}/${totalChunks} for ${fileName} (upload: ${uploadId})`);
+        console.log(`[Chunk] ✓ Chunk ${parseInt(chunkIndex) + 1}/${totalChunks} saved for ${fileName}`);
         res.json({ success: true, chunkIndex: parseInt(chunkIndex) });
     } catch (err) {
         console.error('[Chunk] Error:', err);
-        res.status(500).json({ error: 'Failed to save chunk' });
+        res.status(500).json({ error: 'Failed to save chunk', details: err.message });
     }
 });
 
@@ -1283,25 +1288,47 @@ app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (
 app.post('/api/upload/merge', authenticate, async (req, res) => {
     try {
         const { uploadId, fileName, totalChunks, path: uploadPath } = req.body;
+        
+        console.log('[Merge] Request received:', {
+            uploadId,
+            fileName,
+            totalChunks,
+            uploadPath,
+            user: req.user.username,
+            role: req.user.role
+        });
 
         if (!uploadId || !fileName || !totalChunks) {
+            console.error('[Merge] Missing metadata');
             return res.status(400).json({ error: 'Missing required merge metadata' });
         }
 
         let subPath = resolvePath(uploadPath || '');
+        console.log('[Merge] Resolved path:', subPath);
+        
         if (!subPath || subPath === '') {
             subPath = `Members/${req.user.username}`;
+            console.log('[Merge] Using default personal path:', subPath);
         }
         if (subPath.toLowerCase() === 'members' && req.user.role !== 'Admin') {
             subPath = `Members/${req.user.username}`;
+            console.log('[Merge] Redirected to personal path:', subPath);
         }
 
-        if (!hasPermission(req.user, subPath, 'Full') && !hasPermission(req.user, subPath, 'Contributor')) {
+        console.log('[Merge] Checking permissions for path:', subPath);
+        const hasFull = hasPermission(req.user, subPath, 'Full');
+        const hasContrib = hasPermission(req.user, subPath, 'Contributor');
+        console.log('[Merge] Permission check result:', { hasFull, hasContrib, isAdmin: req.user.role === 'Admin' });
+        
+        if (!hasFull && !hasContrib) {
+            console.error('[Merge] Permission denied for user', req.user.username, 'on path', subPath);
             return res.status(403).json({ error: 'No write permission for this folder' });
         }
 
         const chunkDir = path.join(DISK_A, '.chunks', uploadId);
         const targetDir = path.join(DISK_A, subPath);
+        console.log('[Merge] Directories:', { chunkDir, targetDir });
+        
         fs.ensureDirSync(targetDir);
 
         const finalPath = path.join(targetDir, fileName);
@@ -1311,6 +1338,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         for (let i = 0; i < parseInt(totalChunks); i++) {
             const chunkPath = path.join(chunkDir, `${i}`);
             if (!fs.existsSync(chunkPath)) {
+                console.error('[Merge] Missing chunk:', i);
                 writeStream.destroy();
                 return res.status(400).json({ error: `Missing chunk ${i}` });
             }
@@ -1332,17 +1360,19 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         // Update database
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
+        
         db.prepare(`
-            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploader_id, access_count, last_access)
-            VALUES (?, ?, ?, COALESCE((SELECT access_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_access FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
+            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
+            VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
         `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
 
-        console.log(`[Merge] Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
+        console.log(`[Merge] ✓ Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
         res.json({ success: true, path: normalizedPath });
     } catch (err) {
         console.error('[Merge] Error:', err);
+        console.error('[Merge] Stack:', err.stack);
         // DO NOT delete chunk directory on error - allow resume
-        res.status(500).json({ error: 'Failed to merge chunks', canRetry: true });
+        res.status(500).json({ error: 'Failed to merge chunks', canRetry: true, details: err.message });
     }
 });
 
@@ -1655,8 +1685,8 @@ app.get('/api/admin/stats', authenticate, isAdmin, async (req, res) => {
                 COUNT(DISTINCT s.path) as fileCount,
                 COALESCE(SUM(s.size), 0) as totalSize
             FROM users u
-            LEFT JOIN file_stats s ON u.id = s.uploader_id
-            WHERE s.uploader_id IS NOT NULL
+            LEFT JOIN file_stats s ON u.id = s.uploaded_by
+            WHERE s.uploaded_by IS NOT NULL
             GROUP BY u.id, u.username
             ORDER BY totalSize DESC
             LIMIT 5
@@ -1713,10 +1743,10 @@ app.post('/api/files/access', authenticate, (req, res) => {
             `).run(filePath, userId, username);
         }
 
-        // Also update file_stats access_count
+        // Also update file_stats accessed_count
         db.prepare(`
             UPDATE file_stats 
-            SET access_count = access_count + 1
+            SET accessed_count = accessed_count + 1
             WHERE path = ?
         `).run(filePath);
 
@@ -1744,10 +1774,10 @@ app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
 app.get('/api/files/recent', authenticate, async (req, res) => {
     try {
         const rows = db.prepare(`
-            SELECT s.path, s.access_count, u.username as uploader, 
+            SELECT s.path, s.accessed_count, u.username as uploader, 
                    (SELECT last_access FROM access_logs WHERE path = s.path ORDER BY last_access DESC LIMIT 1) as last_time
             FROM file_stats s
-            LEFT JOIN users u ON s.uploader_id = u.id
+            LEFT JOIN users u ON s.uploaded_by = u.id
             ORDER BY last_time DESC NULLS LAST
             LIMIT 50
         `).all();
@@ -1966,9 +1996,9 @@ app.get('/api/starred', authenticate, (req, res) => {
             } catch (e) { console.error('Stat error', e); }
 
             const dbStats = db.prepare(`
-                SELECT s.access_count, u.username as uploader 
+                SELECT s.accessed_count, u.username as uploader 
                 FROM file_stats s 
-                LEFT JOIN users u ON s.uploader_id = u.id 
+                LEFT JOIN users u ON s.uploaded_by = u.id 
                 WHERE s.path = ?
             `).get(item.file_path);
 
@@ -1981,7 +2011,7 @@ app.get('/api/starred', authenticate, (req, res) => {
                 mtime: stats.mtime,
                 isDirectory: stats.isDirectory,
                 starredAt: item.starred_at,
-                access_count: dbStats ? dbStats.access_count : 0,
+                access_count: dbStats ? dbStats.accessed_count : 0,
                 uploader: dbStats ? dbStats.uploader : 'unknown'
             };
         });
@@ -2065,8 +2095,8 @@ app.get('/api/user/stats', authenticate, (req, res) => {
                         // Get relative path from DISK_A
                         const relativePath = path.relative(DISK_A, fullPath);
                         // Check if this file was uploaded by current user
-                        const fileInfo = db.prepare('SELECT uploader_id FROM file_stats WHERE path = ?').get(relativePath);
-                        if (fileInfo && fileInfo.uploader_id === user.id) {
+                        const fileInfo = db.prepare('SELECT uploaded_by FROM file_stats WHERE path = ?').get(relativePath);
+                        if (fileInfo && fileInfo.uploaded_by === user.id) {
                             uploadCount++;
                             storageUsed += stats.size;
                         }
@@ -2130,7 +2160,7 @@ app.get('/api/shares', authenticate, (req, res) => {
                    u.username as uploader_name
             FROM share_links sl
             LEFT JOIN file_stats fs ON sl.file_path = fs.path
-            LEFT JOIN users u ON fs.uploader_id = u.id
+            LEFT JOIN users u ON fs.uploaded_by = u.id
             WHERE sl.user_id = ?
             ORDER BY sl.created_at DESC
         `).all(req.user.id);
