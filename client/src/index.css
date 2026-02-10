@@ -5,17 +5,17 @@
   --bg-main: #000000;
   --bg-sidebar: #1C1C1E;
   --bg-content: #000000;
-  
+
   /* Kine Yellow Theme */
   --accent-blue: #FFD200;
   --accent-hover: #E6BD00;
   --accent-subtle: rgba(255, 210, 0, 0.15);
-  
+
   /* Text Colors */
   --text-main: #FFFFFF;
   --text-secondary: #9CA3AF;
   --text-tertiary: #6B7280;
-  
+
   /* macOS 26 Glassmorphism */
   --glass-bg: rgba(28, 28, 30, 0.75);
   --glass-bg-light: rgba(255, 255, 255, 0.08);
@@ -26,23 +26,23 @@
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
   --glass-shadow-accent: 0 8px 32px rgba(255, 210, 0, 0.15);
-  
+
   /* Border Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-2xl: 24px;
-  
+
   /* Transitions */
   --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  
+
   /* Layout */
   --sidebar-width: 220px;
   --topnav-height: 52px;
-  
+
   /* Legacy Shadows (for compatibility) */
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.7);
@@ -452,6 +452,38 @@ body {
 .btn-glass:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--accent-blue);
+}
+
+/* Low-key Kine Button (Transparent Gold) */
+.btn-kine-lowkey {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  color: #FFD700;
+  font-weight: 600;
+  padding: 0 16px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.btn-kine-lowkey:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #FFD700;
+  transform: translateY(-1px);
+}
+
+/* Low-key Tab Active (Gray Background) */
+.tab-active-lowkey {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border: none !important;
 }
 
 /* Form Controls */
@@ -1451,13 +1483,11 @@ select.form-control option {
 /* Glass Divider */
 .glass-divider {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--glass-border) 20%,
-    var(--glass-border) 80%,
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      var(--glass-border) 20%,
+      var(--glass-border) 80%,
+      transparent);
   margin: 16px 0;
 }
 
@@ -1544,12 +1574,10 @@ select.form-control option {
   content: '';
   position: absolute;
   inset: -1px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 210, 0, 0.3),
-    transparent 50%,
-    rgba(255, 210, 0, 0.1)
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 210, 0, 0.3),
+      transparent 50%,
+      rgba(255, 210, 0, 0.1));
   border-radius: inherit;
   z-index: -1;
   opacity: 0;

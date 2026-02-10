@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText } from 'lucide-react';
+import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import KnowledgeAuditLog from '../KnowledgeAuditLog';
@@ -25,9 +25,12 @@ interface SystemSettings {
     ai_enabled: boolean;
     ai_work_mode: boolean;
     ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
+    backup_enabled: boolean;
+    backup_frequency: number;
+    backup_retention_days: number;
 }
 
-type AdminTab = 'general' | 'intelligence' | 'health' | 'audit';
+type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup';
 
 interface AdminSettingsProps {
     initialTab?: AdminTab;
@@ -93,16 +96,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const { token } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useLanguage();
-    
+
     // 路由前缀根据模块类型
     const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
-    
+
     // 从 localStorage读取上次访问的tab
     const getLastTab = (): AdminTab => {
         const saved = localStorage.getItem(LAST_TAB_KEY);
         return (saved as AdminTab) || 'general';
     };
-    
+
     const [activeTab, setActiveTab] = useState<AdminTab>(initialTab || getLastTab());
     const [settings, setSettings] = useState<SystemSettings | null>(null);
     const [providers, setProviders] = useState<AIProvider[]>([]);
@@ -110,7 +113,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [backingUp, setBackingUp] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
+    const [backupResult, setBackupResult] = useState<{ success: boolean, message: string, path?: string } | null>(null);
 
     useEffect(() => {
         if (initialTab) setActiveTab(initialTab);
@@ -211,6 +216,33 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         }
     };
 
+    const handleManualBackup = async () => {
+        setBackingUp(true);
+        try {
+            const res = await axios.post('/api/admin/backup/now', {}, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.data.success) {
+                setBackupResult({
+                    success: true,
+                    message: '数据库备份成功完成。',
+                    path: res.data.path
+                });
+            } else {
+                setBackupResult({
+                    success: false,
+                    message: '备份失败: ' + res.data.error
+                });
+            }
+        } catch (err) {
+            console.error('Backup failed:', err);
+            setBackupResult({
+                success: false,
+                message: '备份请求失败，请检查控制台。'
+            });
+        } finally {
+            setBackingUp(false);
+        }
+    };
+
     const setProviderActive = (index: number) => {
         const newProviders = providers.map((p, i) => ({
             ...p,
@@ -269,6 +301,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                         { id: 'general', label: t('admin.settings_general'), icon: Server },
                         { id: 'intelligence', label: t('admin.intelligence_center'), icon: Bot },
                         { id: 'health', label: t('admin.system_health'), icon: Activity },
+                        { id: 'backup', label: '备份管理', icon: Database },
                         { id: 'audit', label: '审计日志', icon: FileText }
                     ].map(tab => (
                         <button
@@ -295,10 +328,25 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             disabled={saving}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
-                                background: '#FFD700', color: 'black',
-                                border: 'none', padding: '8px 20px', borderRadius: 8,
+                                background: 'transparent', color: '#FFD700',
+                                border: '1px solid rgba(255, 210, 0, 0.4)',
+                                padding: '8px 20px', borderRadius: 10,
                                 fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-                                opacity: saving ? 0.7 : 1
+                                opacity: saving ? 0.7 : 1,
+                                transition: 'all 0.2s',
+                                backdropFilter: 'blur(10px)'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!saving) {
+                                    e.currentTarget.style.background = 'rgba(255, 210, 0, 0.1)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!saving) {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
+                                }
                             }}
                         >
                             {saving ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
@@ -349,7 +397,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 <span style={{ fontSize: '0.8rem' }}>{t('admin.work_mode')}</span>
                                 <Switch checked={settings.ai_work_mode} onChange={v => setSettings({ ...settings, ai_work_mode: v })} />
                             </div>
-                            
+
                             {/* Data Sources Selection */}
                             <div style={{ marginTop: 12, paddingLeft: 8 }}>
                                 <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>Bokeh 数据源</div>
@@ -523,11 +571,151 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 {/* === HEALTH TAB === */}
                 {activeTab === 'health' && stats && (
                     <div style={{ padding: 32 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
                             <StatCard label="Uptime" value={`${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m`} icon={<Activity color="#10b981" />} />
                             <StatCard label="CPU Load (1m)" value={`${stats.cpu_load.toFixed(2)}`} subtext="Target: < 4.0" icon={<Cpu color="#3b82f6" />} />
                             <StatCard label="Memory Usage" value={`${(stats.mem_used / 1024 / 1024 / 1024).toFixed(2)} GB`} subtext={`Total: ${(stats.mem_total / 1024 / 1024 / 1024).toFixed(2)} GB`} icon={<Database color="#f59e0b" />} />
                             <StatCard label="Platform" value={stats.platform} icon={<Server color="#8b5cf6" />} />
+                        </div>
+                    </div>
+                )}
+
+                {/* === BACKUP TAB === */}
+                {activeTab === 'backup' && settings && (
+                    <div style={{ padding: 32 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+                            {/* Policy Settings */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                <div className="setting-card">
+                                    <div style={{ flex: 1 }}>
+                                        <div className="setting-label">启用自动备份</div>
+                                        <div className="setting-desc">系统将按照指定频率自动备份数据库文件 (SQLite Hot Backup)。</div>
+                                    </div>
+                                    <Switch checked={settings.backup_enabled} onChange={v => setSettings({ ...settings, backup_enabled: v })} />
+                                </div>
+
+                                <div className="setting-field">
+                                    <label>备份频率 (分钟)</label>
+                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                        <input
+                                            type="number"
+                                            className="text-input"
+                                            value={settings.backup_frequency}
+                                            onChange={e => setSettings({ ...settings, backup_frequency: parseInt(e.target.value) || 1440 })}
+                                        />
+                                        <span style={{ fontSize: '0.9rem', opacity: 0.5 }}>
+                                            (当前: {Math.floor(settings.backup_frequency / 60)}小时 {settings.backup_frequency % 60}分钟)
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                        {[60, 180, 360, 720, 1440].map(mins => (
+                                            <button
+                                                key={mins}
+                                                onClick={() => setSettings({ ...settings, backup_frequency: mins })}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: 8,
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: settings.backup_frequency === mins ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                                    color: settings.backup_frequency === mins ? '#FFD700' : 'rgba(255,255,255,0.5)',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.8rem',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {mins / 60}h
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="setting-field">
+                                    <label>保留策略 (天数)</label>
+                                    <input
+                                        type="number"
+                                        className="text-input"
+                                        value={settings.backup_retention_days}
+                                        onChange={e => setSettings({ ...settings, backup_retention_days: parseInt(e.target.value) || 7 })}
+                                    />
+                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
+                                        超过此时间的旧备份文件将被自动清理以节省空间。
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Actions & Status */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: 28, borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)' }}>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <Database size={22} color="#FFD700" />
+                                        手动操作
+                                    </h3>
+                                    <div style={{ marginBottom: 24, fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                                        立即触发一次完整数据库备份。备份文件将存储在远程服务器的 <code>/Disks/DiskA/.backups/db/</code> 目录下。
+                                    </div>
+                                    <button
+                                        onClick={handleManualBackup}
+                                        disabled={backingUp}
+                                        style={{
+                                            width: '100%',
+                                            padding: '16px',
+                                            borderRadius: 14,
+                                            background: 'transparent',
+                                            color: '#FFD700',
+                                            border: '1px solid rgba(255, 210, 0, 0.4)',
+                                            fontWeight: 700,
+                                            cursor: backingUp ? 'wait' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            backdropFilter: 'blur(10px)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!backingUp) {
+                                                e.currentTarget.style.background = 'rgba(255, 210, 0, 0.08)';
+                                                e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
+                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!backingUp) {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                            }
+                                        }}
+                                    >
+                                        {backingUp ? <RefreshCcw className="animate-spin" size={20} /> : <Save size={20} />}
+                                        {backingUp ? '正在执行热备份...' : '立即备份 (Backup Now)'}
+                                    </button>
+                                </div>
+
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    padding: 28,
+                                    borderRadius: 20,
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <Database size={22} color="#FFD700" />
+                                        备份机制说明
+                                    </h3>
+                                    <ul style={{ paddingLeft: 0, listStyle: 'none', fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <li style={{ display: 'flex', gap: 10 }}>
+                                            <span style={{ color: '#FFD700' }}>•</span>
+                                            <span>使用 SQLite Online Backup API，支持运行中热备份，无须停机。</span>
+                                        </li>
+                                        <li style={{ display: 'flex', gap: 10 }}>
+                                            <span style={{ color: '#FFD700' }}>•</span>
+                                            <span>生成的备份文件将自动同步至 <b>DiskA</b> 高可靠存储区域。</span>
+                                        </li>
+                                        <li style={{ display: 'flex', gap: 10 }}>
+                                            <span style={{ color: '#FFD700' }}>•</span>
+                                            <span>建议开启自动备份，并将保留天数设置为 7 天及以上。</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -547,6 +735,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     <div style={{ padding: '24px', background: 'transparent' }}>
                         <KnowledgeAuditLog />
                     </div>
+                )}
+
+                {/* === MODALS === */}
+                {backupResult && (
+                    <BackupResultModal
+                        result={backupResult}
+                        onClose={() => setBackupResult(null)}
+                    />
                 )}
             </div>
 
@@ -612,37 +808,119 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     color: rgba(255,255,255,0.6);
                 }
                 .active-toggle-btn.active {
-                    background: #10b981;
-                    color: white;
-                    border-color: #10b981;
+                    background: #FFD700;
+                    color: black;
+                    border-color: #FFD700;
+                    font-weight: 700;
                 }
 
-                .setting-card { display: flex; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; }
+                .setting-card { 
+                    display: flex; 
+                    align-items: center; 
+                    background: rgba(255,255,255,0.02); 
+                    border: 1px solid rgba(255,255,255,0.06); 
+                    padding: 20px; 
+                    border-radius: 16px; 
+                    backdrop-filter: blur(10px);
+                }
                 .setting-card-mini { display: flex; align-items: center; justify-content: space-between; padding: 8px; opacity: 0.7; }
                 .setting-label { font-weight: 600; color: white; margin-bottom: 2px; }
                 .setting-desc { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
-                .setting-field { margin-bottom: 0px; }
-                .setting-field label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
-                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+                .setting-field { margin-bottom: 12px; }
+                .setting-field label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
+                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
                 .text-input:focus { border-color: #FFD700; }
                 .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
             `}</style>
-        </div >
+        </div>
     );
 };
 
 const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
-    <div onClick={() => onChange(!checked)} style={{ width: 40, height: 22, background: checked ? '#10b981' : 'rgba(255,255,255,0.2)', borderRadius: 11, position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}>
-        <div style={{ width: 18, height: 18, background: 'white', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 20 : 2, transition: 'left 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+    <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? '#FFD700' : 'rgba(255,255,255,0.15)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+        <div style={{ width: 20, height: 20, background: checked ? 'black' : 'white', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
     </div>
 );
 
 const StatCard: React.FC<{ label: string, value: string, subtext?: string, icon: React.ReactNode }> = ({ label, value, subtext, icon }) => (
-    <div style={{ background: 'rgba(255,255,255,0.05)', padding: 20, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.8 }}>{icon}<span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.6)' }}>{label}</span></div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>{value}</div>
-        {subtext && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{subtext}</div>}
+    <div style={{ background: 'rgba(255,255,255,0.02)', padding: 24, borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, opacity: 0.8 }}>{icon}<span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{label}</span></div>
+        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>{value}</div>
+        {subtext && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>{subtext}</div>}
     </div>
 );
+
+const BackupResultModal: React.FC<{ result: { success: boolean, message: string, path?: string }, onClose: () => void }> = ({ result, onClose }) => {
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(20px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+                animation: 'fadeIn 0.2s ease-out'
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width: 480, background: 'rgba(28,28,30,0.95)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 24, padding: 32, boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                    textAlign: 'center'
+                }}
+            >
+                <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+                    <div style={{
+                        width: 64, height: 64, borderRadius: '50%',
+                        background: result.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        {result.success ? <CheckCircle size={32} color="#10b981" /> : <X size={32} color="#ef4444" />}
+                    </div>
+                </div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16, color: 'white' }}>
+                    {result.success ? '备份成功' : '操作失败'}
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 24 }}>
+                    {result.message}
+                </p>
+                {result.path && (
+                    <div style={{
+                        background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 12,
+                        fontSize: '0.85rem', color: '#FFD700', fontFamily: 'monospace',
+                        wordBreak: 'break-all', marginBottom: 32, border: '1px solid rgba(255,215,0,0.1)'
+                    }}>
+                        {result.path}
+                    </div>
+                )}
+                <button
+                    onClick={onClose}
+                    style={{
+                        width: '100%',
+                        padding: '14px',
+                        height: 'auto',
+                        borderRadius: 12,
+                        background: 'transparent',
+                        border: '1px solid rgba(255, 210, 0, 0.4)',
+                        color: '#FFD700',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 210, 0, 0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
+                    }}
+                >
+                    关闭窗口
+                </button>
+            </div>
+        </div>
+    );
+};
 
 export default AdminSettings;

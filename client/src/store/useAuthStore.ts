@@ -3,7 +3,7 @@ import { create } from 'zustand';
 interface User {
     id: number;
     username: string;
-    role: 'Admin' | 'Lead' | 'Member';
+    role: 'Admin' | 'Lead' | 'Member' | 'Dealer';
     department_name?: string;
 }
 

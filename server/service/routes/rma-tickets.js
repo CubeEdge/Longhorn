@@ -342,13 +342,13 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                     a.username as assigned_name,
                     s.username as submitter_name,
                     p.model_name as product_name,
-                    d.name as dealer_name,
+                    d.customer_name as dealer_name,
                     inq.ticket_number as inquiry_ticket_number
                 FROM rma_tickets t
                 LEFT JOIN users a ON t.assigned_to = a.id
                 LEFT JOIN users s ON t.submitted_by = s.id
                 LEFT JOIN products p ON t.product_id = p.id
-                LEFT JOIN dealers d ON t.dealer_id = d.id
+                LEFT JOIN customers d ON t.dealer_id = d.id
                 LEFT JOIN inquiry_tickets inq ON t.inquiry_ticket_id = inq.id
                 WHERE t.id = ?
             `).get(req.params.id);

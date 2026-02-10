@@ -144,6 +144,8 @@ const UserManagement: React.FC = () => {
     const [editUsername, setEditUsername] = useState('');
     const [editRole, setEditRole] = useState('');
     const [editDeptId, setEditDeptId] = useState<string | number>('');
+    const [editUserType, setEditUserType] = useState('Internal');
+    const [editDealerId, setEditDealerId] = useState<string | number>('');
     const [newPassword, setNewPassword] = useState('');
 
     // Auth and folders
@@ -156,6 +158,22 @@ const UserManagement: React.FC = () => {
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('Member');
     const [deptId, setDeptId] = useState('');
+    const [userType, setUserType] = useState('Internal');
+    const [dealerId, setDealerId] = useState('');
+
+    // Dealers Data
+    const [dealers, setDealers] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Fetch Dealers
+        axios.get('/api/v1/customers?account_type=Dealer&page_size=100', { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => {
+                if (res.data.success) {
+                    setDealers(res.data.data.list || []);
+                }
+            })
+            .catch(err => console.error('Failed to fetch dealers', err));
+    }, [token]);
 
     // Permission Grant Form state
     const [isGranting, setIsGranting] = useState(false);
@@ -167,23 +185,25 @@ const UserManagement: React.FC = () => {
     const [browserPath, setBrowserPath] = useState('');
     const [expiryPreset, setExpiryPreset] = useState(t('user.expiry_7days'));
 
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [usersRes, departmentsRes] = await Promise.all([
+                axios.get('/api/admin/users', {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            setUsers(usersRes.data);
+            setDepartments(departmentsRes.data);
+        } catch (err) {
+            console.error('Failed to fetch user data', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [usersRes, departmentsRes] = await Promise.all([
-                    axios.get('/api/admin/users', {
-                        headers: { Authorization: `Bearer ${token}` }
-                    }),
-                    axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } })
-                ]);
-                setUsers(usersRes.data);
-                setDepartments(departmentsRes.data);
-            } catch (err) {
-                console.error('Failed to fetch user data', err);
-            } finally {
-                setLoading(false);
-            }
-        };
         if (token) fetchData();
     }, [token]);
 
@@ -210,22 +230,7 @@ const UserManagement: React.FC = () => {
         }
     };
 
-    const fetchData = async () => {
-        try {
-            const [usersRes, deptsRes] = await Promise.all([
-                axios.get('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/admin/departments', { headers: { Authorization: `Bearer ${token}` } })
-            ]);
-            setUsers(usersRes.data);
-            setDepartments(deptsRes.data);
-        } catch (err) {
-            console.error('Failed to fetch data', err);
-        }
-    };
 
-    useEffect(() => {
-        if (token) fetchData();
-    }, [token]);
 
     const handleUserClick = (user: any) => {
         setSelectedUser(user);
@@ -233,6 +238,8 @@ const UserManagement: React.FC = () => {
         setEditUsername(user.username);
         setEditRole(user.role);
         setEditDeptId(user.department_id || '');
+        setEditUserType(user.user_type || 'Internal');
+        setEditDealerId(user.dealer_id || '');
         setNewPassword('');
         fetchPermissions(user.id);
     };
@@ -243,6 +250,8 @@ const UserManagement: React.FC = () => {
                 username: editUsername,
                 role: editRole,
                 department_id: editDeptId ? parseInt(editDeptId.toString()) : null,
+                user_type: editUserType,
+                dealer_id: editDealerId ? parseInt(editDealerId.toString()) : null,
                 password: newPassword || undefined
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -251,7 +260,7 @@ const UserManagement: React.FC = () => {
             setNewPassword('');
             fetchData();
             // Refresh local selectedUser view
-            const updatedUser = { ...selectedUser, username: editUsername, role: editRole, department_id: editDeptId };
+            const updatedUser = { ...selectedUser, username: editUsername, role: editRole, department_id: editDeptId, user_type: editUserType, dealer_id: editDealerId };
             setSelectedUser(updatedUser);
         } catch (err) {
             showToast(`${t('error.update_failed_detail', { error: (err as any).response?.data?.error || (err as any).message })}`, 'error');
@@ -301,13 +310,17 @@ const UserManagement: React.FC = () => {
                 username,
                 password,
                 role,
-                department_id: deptId ? parseInt(deptId) : null
+                department_id: deptId ? parseInt(deptId) : null,
+                user_type: userType,
+                dealer_id: dealerId ? parseInt(dealerId) : null
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setIsCreating(false);
             setUsername('');
             setPassword('');
+            setUserType('Internal');
+            setDealerId('');
             fetchData();
         } catch (err) {
             showToast(t('user.create_failed'), 'error');
@@ -374,6 +387,7 @@ const UserManagement: React.FC = () => {
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.username')}</th>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.department')}</th>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.role')}</th>
+                            <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.type')}</th>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.personal_space')}</th>
                         </tr>
                     </thead>
@@ -402,6 +416,18 @@ const UserManagement: React.FC = () => {
                                         {u.role === 'Lead' && t('user.role_lead')}
                                         {u.role === 'Member' && t('user.role_member')}
                                     </div>
+                                </td>
+                                <td style={{ padding: '16px 24px' }}>
+                                    <span style={{
+                                        fontSize: '0.8rem',
+                                        padding: '4px 10px',
+                                        borderRadius: 6,
+                                        background: u.user_type === 'Internal' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 210, 0, 0.1)',
+                                        color: u.user_type === 'Internal' ? '#00ff88' : '#ffd200',
+                                        border: u.user_type === 'Internal' ? '1px solid rgba(0, 255, 136, 0.2)' : '1px solid rgba(255, 210, 0, 0.2)'
+                                    }}>
+                                        {u.user_type || 'Internal'}
+                                    </span>
                                 </td>
                                 <td style={{ padding: '16px 24px' }}>
                                     <button
@@ -452,14 +478,32 @@ const UserManagement: React.FC = () => {
                                             <option value="Admin">{t('user.role_admin')}</option>
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.type')}</label>
+                                        <select className="form-control" value={userType} onChange={e => setUserType(e.target.value)}>
+                                            <option value="Internal">Internal</option>
+                                            <option value="Dealer">Dealer</option>
+                                            <option value="Customer">Customer</option>
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {userType === 'Dealer' && (
+                                    <div>
+                                        <label className="hint" style={{ fontSize: '0.75rem', marginBottom: 4, display: 'block' }}>{t('user.select_dealer')}</label>
+                                        <select className="form-control" value={dealerId} onChange={e => setDealerId(e.target.value)}>
+                                            <option value="">{t('user.unassigned')}</option>
+                                            {dealers.map(d => <option key={d.id} value={d.id}>{d.customer_name} ({d.contact_person || 'No Contact'})</option>)}
+                                        </select>
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                                     <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{t('user.create_now')}</button>
                                     <button type="button" className="btn-glass" onClick={() => setIsCreating(false)} style={{ flex: 1, justifyContent: 'center' }}>{t('common.cancel')}</button>
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </div >
                 )
             }
 
@@ -524,6 +568,24 @@ const UserManagement: React.FC = () => {
                                                     <option value="Admin">{t('user.role_admin')}</option>
                                                 </select>
                                             </div>
+                                            <div>
+                                                <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.type')}</label>
+                                                <select className="form-control" value={editUserType} onChange={e => setEditUserType(e.target.value)} style={{ marginTop: 6 }}>
+                                                    <option value="Internal">Internal</option>
+                                                    <option value="Dealer">Dealer</option>
+                                                    <option value="Customer">Customer</option>
+                                                </select>
+                                            </div>
+
+                                            {editUserType === 'Dealer' && (
+                                                <div>
+                                                    <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.select_dealer')}</label>
+                                                    <select className="form-control" value={editDealerId} onChange={e => setEditDealerId(e.target.value)} style={{ marginTop: 6 }}>
+                                                        <option value="">{t('user.unassigned')}</option>
+                                                        {dealers.map(d => <option key={d.id} value={d.id}>{d.customer_name}</option>)}
+                                                    </select>
+                                                </div>
+                                            )}
                                             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 16 }}>
                                                 <label className="hint" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>{t('user.reset_password')}</label>
                                                 <div style={{ position: 'relative', marginTop: 6 }}>
@@ -579,7 +641,7 @@ const UserManagement: React.FC = () => {
                                                             {p.access_type === 'Full' ? t('user.full_control') : t('user.read_only')}
                                                         </span>
                                                         <span>•</span>
-                                                        <span>{p.expires_at ? `{t('user.expires_on')}: ${format(new Date(p.expires_at), 'yyyy-MM-dd')}` : t('user.expiry_forever')}</span>
+                                                        <span>{p.expires_at ? `${t('user.expires_on')}: ${format(new Date(p.expires_at), 'yyyy-MM-dd')}` : t('user.expiry_forever')}</span>
                                                     </div>
                                                 </div>
                                                 <button onClick={() => handleRevokePermission(p.id)} style={{ background: 'rgba(255,59,48,0.1)', border: 'none', color: '#ff3b30', cursor: 'pointer', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}>

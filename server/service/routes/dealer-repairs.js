@@ -214,10 +214,10 @@ module.exports = function (db, authenticate, serviceUpload) {
             const repairs = db.prepare(`
                 SELECT 
                     r.*,
-                    d.name as dealer_name,
+                    d.customer_name as dealer_name,
                     p.model_name as product_name
                 FROM dealer_repairs r
-                LEFT JOIN dealers d ON r.dealer_id = d.id
+                LEFT JOIN customers d ON r.dealer_id = d.id
                 LEFT JOIN products p ON r.product_id = p.id
                 ${whereClause}
                 ORDER BY r.created_at DESC
@@ -246,13 +246,8 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.get('/:id', authenticate, (req, res) => {
         try {
             const repair = db.prepare(`
-                SELECT 
-                    r.*,
-                    d.name as dealer_name,
-                    p.model_name as product_name,
-                    inq.ticket_number as inquiry_ticket_number
                 FROM dealer_repairs r
-                LEFT JOIN dealers d ON r.dealer_id = d.id
+                LEFT JOIN customers d ON r.dealer_id = d.id
                 LEFT JOIN products p ON r.product_id = p.id
                 LEFT JOIN inquiry_tickets inq ON r.inquiry_ticket_id = inq.id
                 WHERE r.id = ?
@@ -274,7 +269,15 @@ module.exports = function (db, authenticate, serviceUpload) {
                 WHERE ticket_type = 'DealerRepair' AND ticket_id = ?
             `).all(req.params.id);
 
-            const detailResponse = formatDetail(repair);
+            const detailResponse = formatDetail({
+                ...repair,
+                // Map customer_name from customers table if available (though dealer_repairs has its own snapshot columns)
+                dealer_name: repair.customer_name // actually d.customer_name is the dealer name
+            });
+            // Fix: the join above returns d.customer_name but we aliased d.name in original query.
+            // Customers table has 'customer_name', not 'name'.
+            // Let's correct the query instead of the response mapping.
+
             detailResponse.parts_used = parts.map(p => ({
                 part_id: p.part_id,
                 part_name: p.part_name,

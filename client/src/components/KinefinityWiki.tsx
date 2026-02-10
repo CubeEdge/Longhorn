@@ -81,7 +81,7 @@ export const KinefinityWiki: React.FC = () => {
             'D': ['GripBAT系列', 'Magic Arm', 'Dark Tower', 'KineBAT', '线缆配件']
         };
 
-        const categoryTemplates: Record<string, Array<{id: string, label: string}>> = {
+        const categoryTemplates: Record<string, Array<{ id: string, label: string }>> = {
             'A': [{ id: 'manual', label: '操作手册' }],
             'B': [{ id: 'manual', label: '操作手册' }],
             'C': [{ id: 'manual', label: '操作手册' }],
@@ -132,8 +132,8 @@ export const KinefinityWiki: React.FC = () => {
                     } else {
                         node.articles = sections;
                         const chapterArticle = sections.find(s => parseChapterNumber(s.title).section === null);
-                        const chapterTitle = chapterArticle 
-                            ? parseChapterNumber(chapterArticle.title).cleanTitle 
+                        const chapterTitle = chapterArticle
+                            ? parseChapterNumber(chapterArticle.title).cleanTitle
                             : parseChapterNumber(sections[0].title).cleanTitle;
                         node.label = `第${chapterNum}章：${chapterTitle}`;
                     }
@@ -153,7 +153,7 @@ export const KinefinityWiki: React.FC = () => {
         tree.forEach(productLineNode => {
             const line = productLineNode.product_line!;
             const models = productModels[line as keyof typeof productModels] || [];
-            
+
             models.forEach(model => {
                 const modelNode: CategoryNode = {
                     id: `${line.toLowerCase()}-${model.replace(/\s+/g, '-').toLowerCase()}`,
@@ -177,7 +177,7 @@ export const KinefinityWiki: React.FC = () => {
                         }
                         return matchesLine && matchesCategory && matchesModel;
                     });
-                
+
                     if (categoryArticles.length === 0) return;
 
                     if (template.id === 'manual') {
@@ -243,7 +243,7 @@ export const KinefinityWiki: React.FC = () => {
     const fetchArticles = async () => {
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const res = await axios.get('/api/v1/knowledge', { 
+            const res = await axios.get('/api/v1/knowledge', {
                 headers,
                 params: { page_size: 1000 }
             });
@@ -337,7 +337,7 @@ export const KinefinityWiki: React.FC = () => {
         localStorage.setItem('wiki-last-article', article.slug);
         await loadArticleDetail(article);
         buildBreadcrumb(article);
-        
+
         // 关闭TOC
         setTocVisible(false);
     };
@@ -345,32 +345,32 @@ export const KinefinityWiki: React.FC = () => {
     // 打开TOC时自动展开并滚动到当前文章位置
     const openTocAtCurrentArticle = () => {
         setTocVisible(true);
-        
+
         if (selectedArticle) {
             // 展开到当前文章的所有父节点
             const newExpanded = new Set(expandedNodes);
-            
+
             // 找到文章所属的节点路径
             const line = selectedArticle.product_line;
             const model = Array.isArray(selectedArticle.product_models) ? selectedArticle.product_models[0] : selectedArticle.product_models;
-            
+
             // 展开产品线节点
             newExpanded.add(`${line.toLowerCase()}-camera`);
             newExpanded.add(`${line.toLowerCase()}-${model?.replace(/\s+/g, '-').toLowerCase()}`);
-            
+
             // 展开分类节点（操作手册等）
             const modelId = `${line.toLowerCase()}-${model?.replace(/\s+/g, '-').toLowerCase()}`;
             newExpanded.add(`${modelId}-manual`);
-            
+
             // 如果是章节文章，展开章节
             const match = selectedArticle.title.match(/:\s*(\d+)(?:\.(\d+))?/);
             if (match) {
                 const chapter = parseInt(match[1]);
                 newExpanded.add(`${modelId}-manual-chapter-${chapter}`);
             }
-            
+
             setExpandedNodes(newExpanded);
-            
+
             // 延迟滚动以确保DOM已更新
             setTimeout(() => {
                 const articleElement = document.querySelector(`[data-article-id="${selectedArticle.id}"]`);
@@ -386,7 +386,7 @@ export const KinefinityWiki: React.FC = () => {
         if (location.pathname && location.pathname !== '/tech-hub/wiki') {
             setNavigationHistory(prev => [...prev, location.pathname]);
         }
-        
+
         setSelectedArticle(null);
         setBreadcrumbPath([]);
         navigate('/tech-hub/wiki');
@@ -447,11 +447,11 @@ export const KinefinityWiki: React.FC = () => {
                     }}
                 >
                     {isClickable && (
-                        isExpanded ? 
-                            <ChevronDown size={18} color="#FFD700" style={{ transition: 'transform 0.2s' }} /> : 
+                        isExpanded ?
+                            <ChevronDown size={18} color="#FFD700" style={{ transition: 'transform 0.2s' }} /> :
                             <ChevronRight size={18} color="#999" style={{ transition: 'transform 0.2s' }} />
                     )}
-                    <span style={{ 
+                    <span style={{
                         fontSize: level === 0 ? '15px' : '14px',
                         fontWeight: level === 0 ? 600 : 400,
                         color: level === 0 ? '#fff' : '#ccc',
@@ -460,8 +460,8 @@ export const KinefinityWiki: React.FC = () => {
                         {node.label}
                     </span>
                     {hasArticles && node.articles && (
-                        <span style={{ 
-                            fontSize: '11px', 
+                        <span style={{
+                            fontSize: '11px',
                             color: '#999',
                             background: 'rgba(255,255,255,0.05)',
                             padding: '2px 8px',
@@ -505,8 +505,8 @@ export const KinefinityWiki: React.FC = () => {
                                     }
                                 }}
                             >
-                                <div style={{ 
-                                    fontSize: '13px', 
+                                <div style={{
+                                    fontSize: '13px',
                                     color: selectedArticle?.id === article.id ? '#FFD700' : '#aaa',
                                     lineHeight: '1.5'
                                 }}>
@@ -524,10 +524,10 @@ export const KinefinityWiki: React.FC = () => {
 
     if (loading) {
         return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
                 height: 'calc(100vh - 60px)',
                 background: '#000'
             }}>
@@ -540,16 +540,16 @@ export const KinefinityWiki: React.FC = () => {
     }
 
     return (
-        <div style={{ 
-            display: 'flex', 
-            height: 'calc(100vh - 60px)', 
+        <div style={{
+            display: 'flex',
+            height: 'calc(100vh - 60px)',
             background: '#000',
             overflow: 'hidden',
             position: 'relative'
         }}>
             {/* Main Content Area - 全屏 */}
-            <div style={{ 
-                flex: 1, 
+            <div style={{
+                flex: 1,
                 overflow: 'auto',
                 background: '#000',
                 position: 'relative'
@@ -590,9 +590,9 @@ export const KinefinityWiki: React.FC = () => {
                             </button>
 
                             {/* Breadcrumb */}
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
                                 gap: '8px',
                                 flex: 1,
                                 fontSize: '13px',
@@ -603,7 +603,7 @@ export const KinefinityWiki: React.FC = () => {
                                 {breadcrumbPath.map((crumb, index) => {
                                     const isLast = index === breadcrumbPath.length - 1;
                                     const isClickable = index < breadcrumbPath.length - 1;
-                                    
+
                                     return (
                                         <React.Fragment key={index}>
                                             {index > 0 && <ChevronRight size={14} color="#444" />}
@@ -662,9 +662,9 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
 
                         {/* Article Header */}
-                        <h1 style={{ 
-                            fontSize: '32px', 
-                            fontWeight: 700, 
+                        <h1 style={{
+                            fontSize: '32px',
+                            fontWeight: 700,
                             color: '#fff',
                             marginBottom: '12px',
                             lineHeight: '1.3'
@@ -674,7 +674,7 @@ export const KinefinityWiki: React.FC = () => {
 
                         {/* Article Summary */}
                         {selectedArticle.summary && (
-                            <div style={{ 
+                            <div style={{
                                 background: 'rgba(255,215,0,0.06)',
                                 border: '1px solid rgba(255,215,0,0.15)',
                                 borderRadius: '12px',
@@ -689,8 +689,8 @@ export const KinefinityWiki: React.FC = () => {
                         )}
 
                         {/* Article Content */}
-                        <div className="markdown-content" style={{ 
-                            fontSize: '15px', 
+                        <div className="markdown-content" style={{
+                            fontSize: '15px',
                             lineHeight: '1.8',
                             color: '#ccc'
                         }}>
@@ -698,20 +698,20 @@ export const KinefinityWiki: React.FC = () => {
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeRaw]}
                                 components={{
-                                    h1: ({node, ...props}) => <h1 style={{fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '32px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px'}} {...props} />,
-                                    h2: ({node, ...props}) => <h2 style={{fontSize: '24px', fontWeight: 600, color: '#fff', marginTop: '28px', marginBottom: '14px'}} {...props} />,
-                                    h3: ({node, ...props}) => <h3 style={{fontSize: '20px', fontWeight: 600, color: '#FFD700', marginTop: '24px', marginBottom: '12px'}} {...props} />,
-                                    h4: ({node, ...props}) => <h4 style={{fontSize: '17px', fontWeight: 500, color: '#FFD700', marginTop: '20px', marginBottom: '10px'}} {...props} />,
-                                    p: ({node, ...props}) => <p style={{marginBottom: '16px', lineHeight: '1.8'}} {...props} />,
-                                    ul: ({node, ...props}) => <ul style={{marginLeft: '20px', marginBottom: '16px', listStyleType: 'disc'}} {...props} />,
-                                    ol: ({node, ...props}) => <ol style={{marginLeft: '20px', marginBottom: '16px'}} {...props} />,
-                                    li: ({node, ...props}) => <li style={{marginBottom: '8px', lineHeight: '1.6'}} {...props} />,
-                                    code: ({node, inline, ...props}: any) => inline 
-                                        ? <code style={{background: 'rgba(255,215,0,0.1)', padding: '2px 6px', borderRadius: '6px', fontSize: '13px', color: '#FFD700'}} {...props} />
-                                        : <code style={{display: 'block', background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px', overflow: 'auto', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.08)'}} {...props} />,
-                                    img: ({node, ...props}) => (
-                                        <img 
-                                            {...props} 
+                                    h1: ({ node, ...props }: any) => <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '32px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }} {...props} />,
+                                    h2: ({ node, ...props }: any) => <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#fff', marginTop: '28px', marginBottom: '14px' }} {...props} />,
+                                    h3: ({ node, ...props }: any) => <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#FFD700', marginTop: '24px', marginBottom: '12px' }} {...props} />,
+                                    h4: ({ node, ...props }: any) => <h4 style={{ fontSize: '17px', fontWeight: 500, color: '#FFD700', marginTop: '20px', marginBottom: '10px' }} {...props} />,
+                                    p: ({ node, ...props }: any) => <p style={{ marginBottom: '16px', lineHeight: '1.8' }} {...props} />,
+                                    ul: ({ node, ...props }: any) => <ul style={{ marginLeft: '20px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
+                                    ol: ({ node, ...props }: any) => <ol style={{ marginLeft: '20px', marginBottom: '16px' }} {...props} />,
+                                    li: ({ node, ...props }: any) => <li style={{ marginBottom: '8px', lineHeight: '1.6' }} {...props} />,
+                                    code: ({ node, inline, ...props }: any) => inline
+                                        ? <code style={{ background: 'rgba(255,215,0,0.1)', padding: '2px 6px', borderRadius: '6px', fontSize: '13px', color: '#FFD700' }} {...props} />
+                                        : <code style={{ display: 'block', background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px', overflow: 'auto', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.08)' }} {...props} />,
+                                    img: ({ node, ...props }: any) => (
+                                        <img
+                                            {...props}
                                             style={{
                                                 maxWidth: '100%',
                                                 height: 'auto',
@@ -719,17 +719,17 @@ export const KinefinityWiki: React.FC = () => {
                                                 marginTop: '20px',
                                                 marginBottom: '20px',
                                                 border: '1px solid rgba(255,255,255,0.08)'
-                                            }} 
+                                            }}
                                         />
                                     ),
-                                    table: ({node, ...props}) => (
-                                        <div style={{overflowX: 'auto', marginBottom: '20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)'}}>
-                                            <table style={{width: '100%', borderCollapse: 'collapse'}} {...props} />
+                                    table: ({ node, ...props }: any) => (
+                                        <div style={{ overflowX: 'auto', marginBottom: '20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse' }} {...props} />
                                         </div>
                                     ),
-                                    th: ({node, ...props}) => <th style={{padding: '12px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left', fontWeight: 600, fontSize: '13px'}} {...props} />,
-                                    td: ({node, ...props}) => <td style={{padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px'}} {...props} />,
-                                    blockquote: ({node, ...props}) => (
+                                    th: ({ node, ...props }: any) => <th style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left', fontWeight: 600, fontSize: '13px' }} {...props} />,
+                                    td: ({ node, ...props }: any) => <td style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }} {...props} />,
+                                    blockquote: ({ node, ...props }: any) => (
                                         <blockquote style={{
                                             borderLeft: '3px solid #FFD700',
                                             paddingLeft: '20px',
@@ -739,8 +739,8 @@ export const KinefinityWiki: React.FC = () => {
                                             fontStyle: 'italic'
                                         }} {...props} />
                                     ),
-                                    a: ({node, ...props}) => <a style={{color: '#FFD700', textDecoration: 'none', borderBottom: '1px solid rgba(255,215,0,0.3)'}} {...props} />,
-                                    hr: ({node, ...props}) => <hr style={{border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '32px', marginBottom: '32px'}} {...props} />,
+                                    a: ({ node, ...props }: any) => <a style={{ color: '#FFD700', textDecoration: 'none', borderBottom: '1px solid rgba(255,215,0,0.3)' }} {...props} />,
+                                    hr: ({ node, ...props }: any) => <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '32px', marginBottom: '32px' }} {...props} />,
                                 }}
                             >
                                 {selectedArticle.content || '暂无内容'}
@@ -748,7 +748,7 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
 
                         {/* Feedback Section */}
-                        <div style={{ 
+                        <div style={{
                             marginTop: '48px',
                             paddingTop: '32px',
                             borderTop: '1px solid rgba(255,255,255,0.06)'
@@ -793,80 +793,80 @@ export const KinefinityWiki: React.FC = () => {
                                 <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
                                     这篇文章对您有帮助吗？
                                 </div>
-                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                                <button style={{
-                                    padding: '10px 24px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '10px',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(16,185,129,0.1)';
-                                    e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                }}
-                                >
-                                    <ThumbsUp size={16} />
-                                    <span>有帮助 ({selectedArticle.helpful_count})</span>
-                                </button>
-                                <button style={{
-                                    padding: '10px 24px',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '10px',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
-                                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                }}
-                                >
-                                    <ThumbsDown size={16} />
-                                    <span>需要改进 ({selectedArticle.not_helpful_count})</span>
-                                </button>
-                            </div>
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                    <button style={{
+                                        padding: '10px 24px',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '10px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        fontSize: '13px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(16,185,129,0.1)';
+                                            e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                        }}
+                                    >
+                                        <ThumbsUp size={16} />
+                                        <span>有帮助 ({selectedArticle.helpful_count})</span>
+                                    </button>
+                                    <button style={{
+                                        padding: '10px 24px',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '10px',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                        fontSize: '13px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
+                                            e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                        }}
+                                    >
+                                        <ThumbsDown size={16} />
+                                        <span>需要改进 ({selectedArticle.not_helpful_count})</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 ) : (
                     // Welcome View
-                    <div style={{ 
-                        maxWidth: '800px', 
-                        margin: '0 auto', 
+                    <div style={{
+                        maxWidth: '800px',
+                        margin: '0 auto',
                         padding: '80px 32px',
                         textAlign: 'center'
                     }}>
                         <BookOpen size={64} color="#FFD700" style={{ marginBottom: '24px' }} />
-                        <h1 style={{ 
-                            fontSize: '36px', 
-                            fontWeight: 700, 
+                        <h1 style={{
+                            fontSize: '36px',
+                            fontWeight: 700,
                             color: '#fff',
                             marginBottom: '16px'
                         }}>
                             欢迎使用 Kinefinity WIKI
                         </h1>
-                        <p style={{ 
-                            fontSize: '16px', 
+                        <p style={{
+                            fontSize: '16px',
                             color: '#999',
                             marginBottom: '48px',
                             lineHeight: '1.6'
@@ -883,9 +883,9 @@ export const KinefinityWiki: React.FC = () => {
                             )}
                         </p>
 
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
                             gap: '16px',
                             marginTop: '48px',
                             textAlign: 'left'
@@ -904,17 +904,17 @@ export const KinefinityWiki: React.FC = () => {
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     cursor: 'pointer'
                                 }}
-                                onClick={() => setTocVisible(true)}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
+                                    onClick={() => setTocVisible(true)}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
                                 >
                                     <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
                                         {item.title}
@@ -929,31 +929,31 @@ export const KinefinityWiki: React.FC = () => {
                         {/* 最近浏览 */}
                         {recentArticles.length > 0 && (
                             <div style={{ marginTop: '48px' }}>
-                                <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     gap: '8px',
                                     marginBottom: '20px'
                                 }}>
                                     <ChevronLeft size={20} color="#FFD700" />
-                                    <h3 style={{ 
-                                        fontSize: '18px', 
-                                        fontWeight: 600, 
+                                    <h3 style={{
+                                        fontSize: '18px',
+                                        fontWeight: 600,
                                         color: '#FFD700',
                                         margin: 0
                                     }}>
                                         最近浏览
                                     </h3>
                                 </div>
-                                <div style={{ 
-                                    display: 'flex', 
+                                <div style={{
+                                    display: 'flex',
                                     flexDirection: 'column',
                                     gap: '12px'
                                 }}>
                                     {recentArticles.map((recent) => {
                                         const article = articles.find(a => a.slug === recent.slug);
                                         if (!article) return null;
-                                        
+
                                         return (
                                             <div
                                                 key={recent.slug}
@@ -982,8 +982,8 @@ export const KinefinityWiki: React.FC = () => {
                                             >
                                                 <ChevronRight size={16} color="#FFD700" style={{ flexShrink: 0 }} />
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ 
-                                                        fontSize: '14px', 
+                                                    <div style={{
+                                                        fontSize: '14px',
                                                         fontWeight: 500,
                                                         color: '#FFD700',
                                                         overflow: 'hidden',
@@ -993,8 +993,8 @@ export const KinefinityWiki: React.FC = () => {
                                                         {article.title}
                                                     </div>
                                                     {article.product_models && article.product_models.length > 0 && (
-                                                        <div style={{ 
-                                                            fontSize: '12px', 
+                                                        <div style={{
+                                                            fontSize: '12px',
                                                             color: '#999',
                                                             marginTop: '4px'
                                                         }}>
@@ -1047,7 +1047,7 @@ export const KinefinityWiki: React.FC = () => {
             {tocVisible && (
                 <>
                     {/* Overlay */}
-                    <div 
+                    <div
                         onClick={() => setTocVisible(false)}
                         style={{
                             position: 'fixed',
@@ -1080,7 +1080,7 @@ export const KinefinityWiki: React.FC = () => {
                         boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
                     }}>
                         {/* Header */}
-                        <div style={{ 
+                        <div style={{
                             padding: '20px',
                             borderBottom: '1px solid rgba(255,255,255,0.06)',
                             display: 'flex',
@@ -1089,9 +1089,9 @@ export const KinefinityWiki: React.FC = () => {
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <BookOpen size={22} color="#FFD700" />
-                                <h2 style={{ 
-                                    fontSize: '18px', 
-                                    fontWeight: 700, 
+                                <h2 style={{
+                                    fontSize: '18px',
+                                    fontWeight: 700,
                                     color: '#fff',
                                     margin: 0
                                 }}>
@@ -1123,10 +1123,10 @@ export const KinefinityWiki: React.FC = () => {
                         {/* Search */}
                         <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                             <div style={{ position: 'relative' }}>
-                                <Search size={16} style={{ 
-                                    position: 'absolute', 
-                                    left: '12px', 
-                                    top: '50%', 
+                                <Search size={16} style={{
+                                    position: 'absolute',
+                                    left: '12px',
+                                    top: '50%',
                                     transform: 'translateY(-50%)',
                                     color: '#666'
                                 }} />
@@ -1159,9 +1159,9 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
 
                         {/* Tree Navigation */}
-                        <div style={{ 
-                            flex: 1, 
-                            overflowY: 'auto', 
+                        <div style={{
+                            flex: 1,
+                            overflowY: 'auto',
                             padding: '12px 8px',
                         }}>
                             {tree.map(node => renderTreeNode(node))}
