@@ -320,8 +320,8 @@ const DealerRepairDetailPage: React.FC = () => {
                                     <div className="ticket-info-value">{formatDate(repair.created_at)}</div>
                                 </div>
                                 <div className="ticket-info-item">
-                                    <div className="ticket-info-label">{t('dealer_repair.customer')}</div>
-                                    <div className="ticket-info-value">{repair.customer_name || '-'}</div>
+                                    <div className="ticket-info-label">{t('ticket.contact')}</div>
+                                    <div className="ticket-info-value">{repair.contact?.name || repair.customer_name || '-'}</div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.product')}</div>

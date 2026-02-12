@@ -1335,6 +1335,7 @@ export const translations = {
         'ticket.basic_info': '基本信息',
         'ticket.created_at': '创建时间',
         'ticket.handler': '处理人',
+        'ticket.contact': '客户联系人',
         'ticket.product': '产品型号',
         'ticket.serial_number': '序列号',
         'ticket.service_type': '服务类型',

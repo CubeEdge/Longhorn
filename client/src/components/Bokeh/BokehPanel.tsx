@@ -38,6 +38,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
     const [isDragging, setIsDragging] = useState(false);
     const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
     const panelRef = useRef<HTMLDivElement>(null);
+    
+    // Resize state
+    const [size, setSize] = useState({ width: 400, height: 600 });
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeStartRef = useRef({ x: 0, y: 0, width: 400, height: 600 });
 
     // Ticket detail dialog state
     const [ticketDetailOpen, setTicketDetailOpen] = useState(false);
@@ -94,6 +99,44 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
         };
     }, [isDragging]);
 
+    // Resize handlers
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsResizing(true);
+        resizeStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            width: size.width,
+            height: size.height
+        };
+    }, [size]);
+
+    useEffect(() => {
+        if (!isResizing) return;
+
+        const handleResizeMove = (e: MouseEvent) => {
+            const deltaX = e.clientX - resizeStartRef.current.x;
+            const deltaY = e.clientY - resizeStartRef.current.y;
+            
+            const newWidth = Math.max(320, Math.min(800, resizeStartRef.current.width + deltaX));
+            const newHeight = Math.max(400, Math.min(900, resizeStartRef.current.height + deltaY));
+            
+            setSize({ width: newWidth, height: newHeight });
+        };
+
+        const handleResizeEnd = () => {
+            setIsResizing(false);
+        };
+
+        document.addEventListener('mousemove', handleResizeMove);
+        document.addEventListener('mouseup', handleResizeEnd);
+        return () => {
+            document.removeEventListener('mousemove', handleResizeMove);
+            document.removeEventListener('mouseup', handleResizeEnd);
+        };
+    }, [isResizing]);
+
     const handleSend = () => {
         if (!input.trim()) return;
         onSendMessage(input);
@@ -135,8 +178,8 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     position: 'fixed',
                     bottom: '32px',
                     right: '32px',
-                    width: '400px',
-                    height: '600px',
+                    width: `${size.width}px`,
+                    height: `${size.height}px`,
                     maxHeight: 'calc(100vh - 64px)',
                     background: 'rgba(28, 28, 30, 0.85)',
                     backdropFilter: 'blur(20px)',
@@ -231,8 +274,8 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#00BFA5' : 'rgba(255,255,255,0.1)',
-                                color: msg.role === 'user' ? 'black' : 'white',
+                                background: msg.role === 'user' ? '#10B981' : 'rgba(255,255,255,0.1)',
+                                color: msg.role === 'user' ? 'white' : 'white',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
                                 borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
@@ -307,7 +350,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <button className="input-btn"><Paperclip size={18} /></button>
                             <button
                                 className="input-btn"
-                                style={{ background: input.trim() ? '#00BFA5' : 'rgba(255,255,255,0.1)', color: input.trim() ? 'black' : 'rgba(255,255,255,0.3)' }}
+                                style={{ background: input.trim() ? '#10B981' : 'rgba(255,255,255,0.1)', color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)' }}
                                 onClick={handleSend}
                             >
                                 <Send size={16} />
@@ -349,6 +392,28 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                  }
              `}</style>
             </motion.div>
+
+            {/* Resize Handle */}
+            <div
+                onMouseDown={handleResizeStart}
+                style={{
+                    position: 'fixed',
+                    bottom: `${32 + size.height - 16}px`,
+                    right: `${32 + size.width - 16}px`,
+                    width: '24px',
+                    height: '24px',
+                    cursor: 'se-resize',
+                    zIndex: 10000,
+                    opacity: 0.4,
+                    transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z" fill="white"/>
+                </svg>
+            </div>
 
             {/* Ticket Detail Dialog */}
             {selectedTicket && (

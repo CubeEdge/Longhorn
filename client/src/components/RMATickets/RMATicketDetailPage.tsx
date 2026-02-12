@@ -279,8 +279,8 @@ const RMATicketDetailPage: React.FC = () => {
                                     <div className="ticket-info-value">{formatDate(ticket.created_at)}</div>
                                 </div>
                                 <div className="ticket-info-item">
-                                    <div className="ticket-info-label">{t('ticket.reporter')}</div>
-                                    <div className="ticket-info-value">{ticket.reporter_name || '-'}</div>
+                                    <div className="ticket-info-label">{t('ticket.contact')}</div>
+                                    <div className="ticket-info-value">{ticket.contact?.name || ticket.reporter_name || '-'}</div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.product')}</div>

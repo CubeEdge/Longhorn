@@ -302,8 +302,8 @@ const InquiryTicketDetailPage: React.FC = () => {
                                     <div className="ticket-info-value">{new Date(ticket.created_at).toLocaleString()}</div>
                                 </div>
                                 <div className="ticket-info-item">
-                                    <div className="ticket-info-label">{t('ticket.handler')}</div>
-                                    <div className="ticket-info-value">{ticket.handler?.name || t('user.unassigned')}</div>
+                                    <div className="ticket-info-label">{t('ticket.contact')}</div>
+                                    <div className="ticket-info-value">{ticket.contact_name || ticket.customer_name || '-'}</div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.product')}</div>

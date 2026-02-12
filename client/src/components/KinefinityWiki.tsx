@@ -1023,10 +1023,10 @@ export const KinefinityWiki: React.FC = () => {
                                             onClick={() => setViewMode('draft')}
                                             style={{
                                                 padding: '6px 12px',
-                                                background: viewMode === 'draft' ? '#00BFA5' : 'transparent',
+                                                background: viewMode === 'draft' ? '#10B981' : 'transparent',
                                                 border: 'none',
                                                 borderRadius: '6px',
-                                                color: viewMode === 'draft' ? '#000' : '#888',
+                                                color: viewMode === 'draft' ? '#fff' : '#888',
                                                 fontSize: '12px',
                                                 fontWeight: viewMode === 'draft' ? 600 : 400,
                                                 cursor: 'pointer',
