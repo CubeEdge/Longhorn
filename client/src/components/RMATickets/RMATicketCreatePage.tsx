@@ -42,10 +42,21 @@ const RMATicketCreatePage: React.FC = () => {
             try {
                 const [productsRes, dealersRes] = await Promise.all([
                     axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get('/api/v1/dealers', { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get('/api/v1/accounts?account_type=DEALER&page_size=100', { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 if (productsRes.data.success) setProducts(productsRes.data.data || []);
-                if (dealersRes.data.success) setDealers(dealersRes.data.data || []);
+                if (dealersRes.data.success) {
+                    // 映射 accounts 数据到 dealers 格式
+                    const accountsData = Array.isArray(dealersRes.data.data) 
+                        ? dealersRes.data.data 
+                        : (dealersRes.data.data.list || []);
+                    setDealers(accountsData.map((acc: any) => ({
+                        id: acc.id,
+                        name: acc.name,
+                        code: acc.dealer_code,
+                        dealer_type: acc.dealer_level
+                    })));
+                }
             } catch (err) {
                 console.error('Failed to fetch data:', err);
             }

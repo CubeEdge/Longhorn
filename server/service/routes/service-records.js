@@ -119,7 +119,7 @@ module.exports = function (db, authenticate) {
                     h.username as handler_name,
                     c.username as created_by_name
                 FROM service_records sr
-                LEFT JOIN dealers d ON sr.dealer_id = d.id
+                LEFT JOIN accounts d ON sr.dealer_id = d.id
                 LEFT JOIN users h ON sr.handler_id = h.id
                 LEFT JOIN users c ON sr.created_by = c.id
                 ${whereClause}
@@ -245,11 +245,11 @@ module.exports = function (db, authenticate) {
             const record = db.prepare(`
                 SELECT 
                     sr.*,
-                    d.name as dealer_name, d.code as dealer_code,
+                    d.name as dealer_name, d.dealer_code as dealer_code,
                     h.username as handler_name,
                     c.username as created_by_name
                 FROM service_records sr
-                LEFT JOIN dealers d ON sr.dealer_id = d.id
+                LEFT JOIN accounts d ON sr.dealer_id = d.id
                 LEFT JOIN users h ON sr.handler_id = h.id
                 LEFT JOIN users c ON sr.created_by = c.id
                 WHERE sr.id = ?

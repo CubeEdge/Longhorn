@@ -1,18 +1,38 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.0 (Draft)
+**版本**: 0.11.2 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-11
-**关联PRD**: Service_PRD.md v0.11.0
+**最后更新**: 2026-02-12
+**关联PRD**: Service_PRD.md v0.12.5
 **关联场景**: Service_UserScenarios.md v0.7.0
 
-> **重要更新（2026-02-10）**：
+> **重要更新（2026-02-12）**：
+> - **v0.11.2 更新**：经销商工单查询修复
+>   - 修复问题：经销商详情页 Dashboard 统计显示 0000
+>   - 根因分析：前端同时使用 `dealer_id` 和 `keyword` 参数查询，但 `keyword` 匹配的是 `customer_name`（终端客户名称），而非经销商名称
+>   - 修复方案：移除 `keyword` 参数，仅使用 `dealer_id` 查询
+>   - 数据模型：
+>     - `account_id`: 关联终端客户（工单的实际服务对象）
+>     - `dealer_id`: 关联提交工单的经销商
+>     - `customer_name`: 终端客户名称（用于显示，不用于经销商查询）
+>
+> **重要更新（2026-02-11）**：
+> - **v0.11.1 更新**：账户数据模型完善
+>   - 新增 `dealer_level` 字段：经销商等级（tier1/tier2/tier3/Direct）
+>   - 区分 `service_tier`（终端客户服务等级）和 `dealer_level`（经销商等级）
+>   - 更新所有账户类型引用：CORPORATE → ORGANIZATION
+>
+> - **v0.11.0 更新**：客户档案架构调整
+>   - 账户类型更新：CORPORATE → ORGANIZATION
+>   - 所有账户类型（DEALER/ORGANIZATION/INDIVIDUAL）均支持多联系人
+>   - 新增客户类型转换 API：INDIVIDUAL → ORGANIZATION
+>   - 调整档案模块入口优先级：渠道和经销商为第一入口
+> - **v0.10.0 重大更新**：重构客户管理 API，引入"账户+联系人"双层架构
+>   - 新增 Section 5: 账户与联系人管理 API（替代原客户API）
+>   - 工单 API 更新：customer_id 拆分为 account_id + contact_id
+>   - 支持B2B场景：企业账户多联系人、人员离职交接等
 > - 拆分 Files 模块：核心文件操作路由迁移至独立模块，`server/index.js` 已精简。
 > - 增强系统备份：支持通过数据库配置自动备份策略，新增手动触发 API。
-> - **v0.8.0 更新**：
->   - 新增 Section 17/18: Bokeh 工单搜索与索引管理 API
->   - 集成各工单详情弹窗所需的端点。
->   - 同步 PRD v0.10.0 交互规范。
 
 ---
 
@@ -271,11 +291,11 @@
 ```json
 // Request
 {
-  // 客户信息 (可选)
-  "customer_name": "Max Mueller",  // 不填显示"匿名客户"
-  "customer_contact": "max@example.uk",
-  "customer_id": "cust_001",  // 关联已有客户
-  "dealer_id": "dealer_proav",  // 经销商ID
+  // 账户与联系人信息 (可选)
+  "account_id": "acc_001",      // 关联账户 (工单归属)
+  "contact_id": "con_001",      // 关联联系人 (具体对接人)
+  "reporter_name": "Mike Johnson",  // 报告人姓名 (冗余，便于显示)
+  "dealer_id": "acc_dealer_proav",  // 经销商账户ID
   
   // 产品信息 (建议填写)
   "product_id": "prod_edge8k",
@@ -294,9 +314,11 @@
 }
 
 // 字段说明补充：
-// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将工单归档到具体客户名下。
+// - account_id: 关联已有账户，工单归属到该账户名下，用于资产历史追溯。
+// - contact_id: 关联具体联系人，邮件/通知将发送给此联系人。如未指定，使用账户的主要联系人。
+// - reporter_name: 报告人姓名，用于快速显示，无需查询联系人表。
 // - dealer_id: 工单的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
-//   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
+//   市场部创建时可选择服务经销商，默认等于账户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
 
 // Response
 {
@@ -332,7 +354,8 @@
 | page_size | int | 每页数量，默认20 |
 | status | string | 状态筛选: 处理中/待客户反馈/已解决/自动关闭/已升级 |
 | service_type | string | 服务类型筛选 |
-| customer_id | string | 客户筛选 |
+| account_id | string | 账户筛选 |
+| contact_id | string | 联系人筛选 |
 | dealer_id | string | 经销商筛选 |
 | serial_number | string | 按SN筛选 |
 | handler_id | string | 处理人筛选 |
@@ -434,56 +457,84 @@
 
 > 支持按客户或按产品SN查询上下文信息，用于服务时快速了解背景
 
-### 4.0 客户账户数据模型（Account / Customer）
+### 4.0 账户数据模型（Account）
 
-上下文查询 API 使用统一的客户账户数据模型，所有对外主体（终端客户、机构大客户、经销商、内部/合作伙伴）均映射为 Customer 对象的一种。
+上下文查询 API 使用统一的账户数据模型，所有对外主体（终端客户、机构大客户、经销商、内部/合作伙伴）均映射为 Account 对象的一种。
 
-**Customer 对象核心字段**：
+**Account 对象核心字段**：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | string | 客户唯一ID |
-| name | string | 客户名称（个人姓名或公司名） |
-| contact | string | 主要联系方式（邮箱/电话等） |
-| account_type | string | 账户类型：DEALER / END_USER / CORPORATE / INTERNAL |
-| acquisition_channel | string | 获客/购买来源：DIRECT / CHANNEL |
-| parent_dealer_id | string/null | 关联经销商ID，仅当 acquisition_channel = CHANNEL 时必填，指向 account_type = DEALER 的账户 |
-| service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST |
+| id | string | 账户唯一ID |
+| account_number | string | 账户编号 (ACC-2026-0001) |
+| name | string | 账户名称（公司名或个人姓名） |
+| account_type | string | 账户类型：ORGANIZATION / INDIVIDUAL / DEALER / INTERNAL |
+| email | string | 主邮箱 |
+| phone | string | 主电话 |
+| parent_dealer_id | string/null | 销售归属经销商ID |
+| service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST（终端客户）|
+| dealer_level | string | 经销商等级：tier1/tier2/tier3/Direct（仅经销商）|
 | industry_tags | string[] | 行业标签列表，如 ["RENTAL_HOUSE", "PRODUCTION"] |
 
 > 说明：
-> - account_type 用于区分经销商、终端用户、机构大客户和内部/合作伙伴，支撑视图隔离和权限控制。
-> - acquisition_channel 表示客户/设备的长期获客渠道，与 RMA 中的 channel_code（本次工单来源）不同。
-> - parent_dealer_id 表示该客户的销售归属经销商，经销商视图下「名下客户」即通过此字段确定。
+> - account_type 用于区分企业客户、个人客户、经销商和内部/合作伙伴，支撑视图隔离和权限控制。
+> - parent_dealer_id 表示该账户的销售归属经销商，经销商视图下「名下客户」即通过此字段确定。
 > - service_tier 和 industry_tags 会被 AI 客户画像和统计报表复用。
 
-### 4.1 按客户查询上下文
+### 4.1 按账户查询上下文
 
-**GET** `/api/v1/context/by-customer`
+**GET** `/api/v1/context/by-account`
 
 **查询参数**:
 
 | 参数 | 类型 | 说明 |
 |-----|------|------|
-| customer_id | string | 客户ID |
-| customer_name | string | 客户姓名 (模糊匹配) |
-| customer_contact | string | 联系方式 |
+| account_id | string | 账户ID |
+| account_name | string | 账户名称 (模糊匹配) |
+| contact_email | string | 联系人邮箱 |
+| contact_phone | string | 联系人电话 |
 
 ```json
 // Response
 {
   "success": true,
   "data": {
-    "customer": {
-      "id": "cust_001",
-      "name": "Max Mueller",
-      "contact": "max@example.uk",
-      "account_type": "END_USER",
-      "acquisition_channel": "CHANNEL",
-      "parent_dealer_id": "dealer_proav",
+    "account": {
+      "id": "acc_001",
+      "account_number": "ACC-2026-0001",
+      "name": "CVP UK",
+      "account_type": "ORGANIZATION",
+      "email": "service@cvp.uk",
+      "phone": "+44-xxx-xxxx",
+      "parent_dealer_id": "acc_dealer_proav",
       "service_tier": "VIP",
+      "dealer_level": null,
       "industry_tags": ["RENTAL_HOUSE"]
     },
+    "primary_contact": {
+      "id": "con_001",
+      "name": "Mike Johnson",
+      "email": "mike@cvp.uk",
+      "phone": "+44-xxx-xxxx"
+    },
+    "all_contacts": [
+      {
+        "id": "con_001",
+        "name": "Mike Johnson",
+        "job_title": "维修主管",
+        "email": "mike@cvp.uk",
+        "status": "ACTIVE",
+        "is_primary": true
+      },
+      {
+        "id": "con_002",
+        "name": "Sarah Williams",
+        "job_title": "财务经理",
+        "email": "sarah@cvp.uk",
+        "status": "ACTIVE",
+        "is_primary": false
+      }
+    ],
     "devices": [
       {
         "product_id": "prod_edge8k",
@@ -532,7 +583,7 @@
 
 - 内部用户（市场部、生产部、研发、管理层）调用 `/context/by-customer` 时，可按权限查看任意客户的上下文信息，用于全局服务分析和质量追踪。
 - 经销商用户调用时，系统会自动限制：
-  - 仅允许查询 account_type ∈ {END_USER, CORPORATE} 且 parent_dealer_id = 当前经销商.id 的客户；
+  - 仅允许查询 account_type ∈ {ORGANIZATION, INDIVIDUAL} 且 parent_dealer_id = 当前经销商.id 的客户；
   - 即只能看到「自己名下客户」及其设备、服务历史，无法访问其他经销商的客户数据。
 - 这样设计的必要性：
   - 保护各经销商的客户数据安全，避免渠道之间互相窥视客户名单；
@@ -565,14 +616,16 @@
     },
     "ownership_history": [
       {
-        "customer_id": "cust_001",
-        "customer_name": "John Smith",
+        "account_id": "acc_001",
+        "account_name": "John Smith Photography",
+        "contact_name": "John Smith",
         "period": "2025-03-15 ~ 2025-12-01",
         "status": "已转让"
       },
       {
-        "customer_id": "cust_002",
-        "customer_name": "Max Mueller",
+        "account_id": "acc_002",
+        "account_name": "Max Mueller",
+        "contact_name": "Max Mueller",
         "period": "2025-12-01 ~ 至今",
         "status": "当前"
       }
@@ -583,7 +636,8 @@
         "id": "inq_089",
         "number": "K2502-0089",
         "summary": "参数设置咨询",
-        "customer_name": "John Smith",  // 显示当时的客户
+        "account_name": "John Smith Photography",
+        "contact_name": "John Smith",
         "status": "已解决",
         "date": "2025-06-15"
       },
@@ -592,7 +646,8 @@
         "id": "rma_156",
         "number": "RMA-C-2509-0156",
         "summary": "SDI模块更换",
-        "customer_name": "John Smith",
+        "account_name": "John Smith Photography",
+        "contact_name": "John Smith",
         "status": "已完成",
         "date": "2025-09-20"
       },
@@ -601,7 +656,8 @@
         "id": "inq_201",
         "number": "K2601-0201",
         "summary": "高帧率设置",
-        "customer_name": "Max Mueller",  // 转让后的新客户
+        "account_name": "Max Mueller",
+        "contact_name": "Max Mueller",
         "status": "已解决",
         "date": "2026-01-20"
       }
@@ -612,16 +668,24 @@
 
 ---
 
-## 5. 客户与经销商列表 API
+## 5. 账户与联系人管理 API
 
-> 提供客户列表和经销商列表视图，基于统一的客户账户模型进行过滤和权限控制。
+> 采用"账户(Account) + 联系人(Contact)"双层架构，区分法律/商业实体与具体自然人。
+> - 账户(Account)：公司、机构、个体户或个人（法律/商业实体）
+> - 联系人(Contact)：具体的自然人，负责对接沟通
+> 
+> **架构层级**：
+> - 渠道和经销商（DEALER）- 第一入口
+> - 客户档案（ORGANIZATION/INDIVIDUAL）- 第二入口
+> - 资产和物料 - 第三入口
 
-### 5.1 客户列表（Customers）
+### 5.1 账户列表（Accounts）
 
-**GET** `/api/v1/customers`
+**GET** `/api/v1/accounts`
 
 **说明**：
-- 返回 account_type ∈ {END_USER, CORPORATE} 的客户列表，用于市场部和经销商查看客户档案。
+- 返回账户列表，支持按账户类型筛选。
+- 经销商用户只能看到 `parent_dealer_id = 当前经销商.id` 的账户。
 
 **查询参数**：
 
@@ -629,19 +693,312 @@
 |------|------|------|
 | page | int | 页码，默认1 |
 | page_size | int | 每页数量，默认20 |
-| account_type | string | 账户类型筛选：END_USER / CORPORATE |
-| acquisition_channel | string | 获客渠道：DIRECT / CHANNEL |
-| parent_dealer_id | string | 销售归属经销商ID，用于筛选某经销商名下客户 |
-| service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST |
+| account_type | string | 账户类型筛选：DEALER / ORGANIZATION / INDIVIDUAL |
+| service_tier | string | 服务等级筛选：STANDARD / VIP / VVIP / BLACKLIST |
 | industry_tag | string | 行业标签筛选，如 RENTAL_HOUSE、PRODUCTION |
+| parent_dealer_id | string | 销售归属经销商ID |
 | keyword | string | 关键词搜索（名称、联系信息等） |
 
-**权限与视图规则**：
+**Response**：
 
-- 内部用户（市场部、管理层等）：可按上述条件查询所有客户。
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "acc_001",
+      "account_number": "ACC-2026-0001",
+      "name": "CVP UK",
+      "account_type": "ORGANIZATION",
+      "service_tier": "VIP",
+      "dealer_level": null,
+      "industry_tags": ["RENTAL_HOUSE"],
+      "primary_contact": {
+        "id": "con_001",
+        "name": "Mike Johnson",
+        "email": "mike@cvp.uk"
+      },
+      "contact_info": {
+        "email": "service@cvp.uk",
+        "phone": "+44-xxx-xxxx",
+        "country": "UK"
+      },
+      "device_count": 15,
+      "ticket_count": 23,
+      "created_at": "2026-01-15T10:30:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "page_size": 20,
+    "total": 156
+  }
+}
+```
+
+**权限与视图规则**：
+- 内部用户（市场部、管理层等）：可按上述条件查询所有账户。
 - 经销商用户：系统自动追加过滤条件 `parent_dealer_id = 当前经销商.id`，只能看到自己名下客户。
 
-### 5.2 经销商列表（Dealers）
+### 5.2 创建账户
+
+**POST** `/api/v1/accounts`
+
+**权限**: 市场部
+
+```json
+// Request
+{
+  "name": "CVP UK",
+  "account_type": "ORGANIZATION",
+  "email": "service@cvp.uk",
+  "phone": "+44-xxx-xxxx",
+  "country": "UK",
+  "city": "London",
+  "address": "...",
+  "service_tier": "VIP",
+  "industry_tags": ["RENTAL_HOUSE"],
+  "parent_dealer_id": "acc_dealer_proav",
+  "notes": "英国主要租赁公司"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "acc_001",
+    "account_number": "ACC-2026-0001",
+    "name": "CVP UK",
+    "account_type": "ORGANIZATION",
+    "service_tier": "VIP",
+    "dealer_level": null,
+    "created_at": "2026-02-11T10:30:00Z"
+  }
+}
+```
+
+### 5.3 获取账户详情
+
+**GET** `/api/v1/accounts/{id}`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "acc_001",
+    "account_number": "ACC-2026-0001",
+    "name": "CVP UK",
+    "account_type": "ORGANIZATION",
+    "dealer_level": null,
+    "contact_info": {
+      "email": "service@cvp.uk",
+      "phone": "+44-xxx-xxxx",
+      "country": "UK",
+      "city": "London",
+      "address": "..."
+    },
+    "business_info": {
+      "service_tier": "VIP",
+      "industry_tags": ["RENTAL_HOUSE"],
+      "credit_limit": 50000
+    },
+    "parent_dealer": {
+      "id": "acc_dealer_proav",
+      "name": "ProAV UK"
+    },
+    "contacts": [
+      {
+        "id": "con_001",
+        "name": "Mike Johnson",
+        "job_title": "维修主管",
+        "email": "mike@cvp.uk",
+        "phone": "+44-xxx-xxxx",
+        "status": "ACTIVE",
+        "is_primary": true
+      },
+      {
+        "id": "con_002",
+        "name": "Sarah Williams",
+        "job_title": "财务经理",
+        "email": "sarah@cvp.uk",
+        "phone": "+44-xxx-xxxx",
+        "status": "ACTIVE",
+        "is_primary": false
+      }
+    ],
+    "devices": [
+      {
+        "id": "dev_001",
+        "product_name": "MAVO Edge 8K",
+        "serial_number": "ME_207890",
+        "warranty_until": "2027-03-15",
+        "device_status": "ACTIVE"
+      }
+    ],
+    "service_history": {
+      "total_tickets": 23,
+      "open_tickets": 2,
+      "recent_tickets": [...]
+    },
+    "created_at": "2026-01-15T10:30:00Z",
+    "updated_at": "2026-02-01T14:20:00Z"
+  }
+}
+```
+
+### 5.4 更新账户
+
+**PATCH** `/api/v1/accounts/{id}`
+
+```json
+// Request
+{
+  "service_tier": "VVIP",
+  "credit_limit": 100000,
+  "notes": "升级为VVIP客户"
+}
+```
+
+### 5.5 联系人管理
+
+#### 5.5.1 获取账户下的联系人列表
+
+**GET** `/api/v1/accounts/{account_id}/contacts`
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "con_001",
+      "name": "Mike Johnson",
+      "job_title": "维修主管",
+      "email": "mike@cvp.uk",
+      "phone": "+44-xxx-xxxx",
+      "status": "ACTIVE",
+      "is_primary": true,
+      "created_at": "2026-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### 5.5.2 创建联系人
+
+**POST** `/api/v1/accounts/{account_id}/contacts`
+
+```json
+// Request
+{
+  "name": "Tom Brown",
+  "job_title": "维修主管",
+  "email": "tom@cvp.uk",
+  "phone": "+44-xxx-xxxx",
+  "language_preference": "en",
+  "communication_preference": "EMAIL",
+  "status": "ACTIVE",
+  "is_primary": true  // 设为新的主要联系人
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "con_003",
+    "account_id": "acc_001",
+    "name": "Tom Brown",
+    "job_title": "维修主管",
+    "email": "tom@cvp.uk",
+    "status": "ACTIVE",
+    "is_primary": true,
+    "created_at": "2026-02-11T10:30:00Z"
+  }
+}
+```
+
+#### 5.5.3 更新联系人
+
+**PATCH** `/api/v1/contacts/{id}`
+
+```json
+// Request - 人员离职
+{
+  "status": "INACTIVE",
+  "is_primary": false,
+  "notes": "2026-02-01 离职，工作交接给 Tom"
+}
+
+// Request - 设为主要联系人
+{
+  "is_primary": true
+}
+```
+
+#### 5.5.4 删除联系人
+
+**DELETE** `/api/v1/contacts/{id}`
+
+> 注意：只能删除没有关联工单的联系人。如果联系人已有工单记录，应将其状态设为 INACTIVE 而非删除。
+
+### 5.6 客户类型转换
+
+**POST** `/api/v1/accounts/{id}/convert-type`
+
+**说明**：
+- 将个人客户(INDIVIDUAL)升级为机构客户(ORGANIZATION)
+- 适用于个人客户发展为小型制作公司的场景
+- 转换后保留所有历史数据（工单、设备、联系人）
+
+**权限**: 仅管理员/市场部
+
+```json
+// Request
+{
+  "new_type": "ORGANIZATION",
+  "reason": "业务扩展，成立正式工作室",
+  "new_fields": {
+    "industry_tags": ["PRODUCTION"],
+    "address": "北京市朝阳区..."
+  }
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "acc_001",
+    "name": "王五工作室",
+    "account_type": "ORGANIZATION",
+    "previous_type": "INDIVIDUAL",
+    "converted_at": "2026-02-11T10:30:00Z",
+    "converted_by": "usr_market_001",
+    "contacts": [
+      {
+        "id": "con_001",
+        "name": "王五",
+        "status": "PRIMARY"
+      },
+      {
+        "id": "con_002",
+        "name": "李四",
+        "status": "ACTIVE"
+      }
+    ],
+    "message": "客户类型转换成功，已解锁机构客户专属字段"
+  }
+}
+```
+
+**转换规则**：
+- 仅支持 INDIVIDUAL → ORGANIZATION 单向转换
+- DEALER 不参与类型转换
+- 转换后原联系人自动迁移
+- 历史工单归属不变
+- 设备资产归属不变
+
+### 5.7 经销商列表（Dealers）
 
 **GET** `/api/v1/dealers`
 
@@ -655,7 +1012,7 @@
 | page | int | 页码，默认1 |
 | page_size | int | 每页数量，默认20 |
 | region | string | 区域筛选，如 Europe、US、APAC 等 |
-| level | string | 经销商级别（一级/二级/三级），对应 PRD 中的经销商分级字段 |
+| level | string | 经销商级别（一级/二级/三级） |
 | keyword | string | 关键词搜索（经销商名称、联系人等） |
 
 **权限规则**：
@@ -719,18 +1076,21 @@
   "is_warranty": true,
   
   // 关联人员
-  "reporter_name": "张先生",
-  "customer_id": "cust_001",
-  "dealer_id": "dealer_proav",
+  "reporter_name": "Mike Johnson",
+  "account_id": "acc_001",      // 关联账户 (工单归属)
+  "contact_id": "con_001",      // 关联联系人 (具体对接人)
+  "dealer_id": "acc_dealer_proav",  // 经销商账户ID
   
   // 关联咨询工单 (如从咨询工单升级)
   "inquiry_ticket_id": "inq_001"
 }
 
 // 字段说明补充：
-// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将 RMA 归档到具体客户名下。
+// - account_id: 关联已有账户，RMA归属到该账户名下，用于资产历史追溯。
+// - contact_id: 关联具体联系人，邮件/通知将发送给此联系人。如未指定，使用账户的主要联系人。
+// - reporter_name: 报告人姓名，用于快速显示。
 // - dealer_id: RMA 的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
-//   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
+//   市场部创建时可选择服务经销商，默认等于账户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
 // - 当 product_family = "C" (电子寻像器，如 Eagle/KineMON 等) 且 host_device_type = "THIRD_PARTY_CAMERA" 时，后台应将该RMA标记为「兼容性排查」类别，便于研发统计和分析。
 
 // Response
@@ -758,7 +1118,9 @@
 // Request
 {
   "channel_code": "D",
-  "dealer_id": "dealer_proav",
+  "account_id": "acc_001",
+  "contact_id": "con_001",
+  "dealer_id": "acc_dealer_proav",
   "devices": [
     {
       "product_id": "prod_edge8k",
@@ -919,9 +1281,20 @@
     "repair_content": "更换主板",  // 生产部填写
     "problem_analysis": "主板供电芯片虚焊",  // 生产部填写
     
-    "reporter_name": "张先生",
-    "customer": { "id": "cust_001", "name": "张先生", "company": "XX影视" },
-    "dealer": { "id": "dealer_proav", "name": "ProAV UK" },
+    "reporter_name": "Mike Johnson",
+    "account": {
+      "id": "acc_001",
+      "account_number": "ACC-2026-0001",
+      "name": "CVP UK",
+      "account_type": "CORPORATE"
+    },
+    "contact": {
+      "id": "con_001",
+      "name": "Mike Johnson",
+      "job_title": "维修主管",
+      "email": "mike@cvp.uk"
+    },
+    "dealer": { "id": "acc_dealer_proav", "name": "ProAV UK" },
     
     "submitted_by": { "id": "usr_001", "name": "Effy" },
     "assigned_to": { "id": "usr_002", "name": "陈高松" },
@@ -2008,9 +2381,11 @@
   "source": "issue",  // issue / email / social / survey / other
   "source_ref_id": "inq_089",  // 关联工单ID
   "reporter": {
-    "customer_id": "cust_001",
-    "customer_name": "张先生",
-    "customer_tier": "VIP"
+    "account_id": "acc_001",
+    "account_name": "CVP UK",
+    "contact_id": "con_001",
+    "contact_name": "Mike Johnson",
+    "account_tier": "VIP"
   },
   "affected_firmware": "8023",
   "reproducible": true,
@@ -2123,9 +2498,11 @@
       { "id": "prod_edge8k", "name": "MAVO Edge 8K" }
     ],
     "reporter": {
-      "customer_id": "cust_001",
-      "customer_name": "张先生",
-      "customer_tier": "VIP"
+      "account_id": "acc_001",
+      "account_name": "CVP UK",
+      "contact_id": "con_001",
+      "contact_name": "Mike Johnson",
+      "account_tier": "VIP"
     },
     "source": "issue",
     "source_ref": {
@@ -2141,8 +2518,8 @@
     "planned_release": "v8026",
     "votes": 5,
     "voters": [
-      { "customer_id": "cust_001", "name": "张先生", "voted_at": "2026-02-03" },
-      { "customer_id": "cust_015", "name": "王导演", "voted_at": "2026-02-04" }
+      { "account_id": "acc_001", "account_name": "CVP UK", "contact_name": "Mike Johnson", "voted_at": "2026-02-03" },
+      { "account_id": "acc_015", "account_name": "王导演工作室", "contact_name": "王导演", "voted_at": "2026-02-04" }
     ],
     "related_vocs": [
       { "id": "voc_012", "title": "ProRes编码偶现花屏", "similarity": 0.75 }
@@ -2244,7 +2621,7 @@
   "data": {
     "notifications_sent": 6,
     "recipients": [
-      { "customer_id": "cust_001", "name": "张先生", "method": "邮件" }
+      { "account_id": "acc_001", "account_name": "CVP UK", "contact_name": "Mike Johnson", "method": "邮件" }
     ]
   }
 }
@@ -2314,38 +2691,15 @@
 
 ---
 
-## 12. 客户 API
+## 12. 客户 API (已迁移至第5章账户与联系人管理)
 
-### 12.1 创建客户
-
-**POST** `/api/v1/customers`
-
-```json
-// Request
-{
-  "name": "张先生",
-  "company": "XX影视公司",
-  "contact_info": {
-    "phone": "13800138000",
-    "email": "zhang@example.com",
-    "wechat": "zhang_wx"
-  },
-  "customer_type": "终端客户",  // 终端客户/KOL/媒体
-  "customer_level": "普通",  // VIP/普通/新客户
-  "country": "中国",
-  "province": "广东",
-  "city": "深圳",
-  "dealer_id": null  // 关联经销商
-}
-```
-
-### 12.2 获取客户列表
-
-**GET** `/api/v1/customers`
-
-### 12.3 获取/更新客户详情
-
-**GET/PATCH** `/api/v1/customers/{id}`
+> **注意**：客户管理 API 已整合到第5章「账户与联系人管理 API」。
+> 
+> 旧端点 `/api/v1/customers` 已迁移至：
+> - `/api/v1/accounts` - 账户管理（企业/个人/经销商/内部）
+> - `/api/v1/accounts/{id}/contacts` - 联系人管理
+>
+> 请参考第5章获取完整的 API 文档。
 
 ---
 

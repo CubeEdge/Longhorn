@@ -1,48 +1,57 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-    User, Smartphone, Mail, Phone, Award, Package, X, MapPin, Building, Calendar, Info
+    User, Smartphone, Award, Package, X, MapPin, Building, Calendar, Info, ExternalLink
 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
 // import { useLanguage } from '../../i18n/useLanguage';
 
 interface CustomerContextSidebarProps {
     customerId?: number;
     customerName?: string;
+    accountId?: number;
+    accountName?: string;
     serialNumber?: string;
     dealerId?: number;
     onClose?: () => void;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
-    customerId, customerName, serialNumber, onClose
+    customerId, customerName, accountId, accountName, serialNumber, onClose
 }) => {
     // const { t } = useLanguage();
+    const { token } = useAuthStore();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'customer' | 'device'>('customer');
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchContext();
-    }, [customerId, customerName, serialNumber, activeTab]);
+    }, [customerId, customerName, accountId, accountName, serialNumber, activeTab]);
 
     const fetchContext = async () => {
         setLoading(true);
         try {
             let url = '';
             if (activeTab === 'customer') {
-                if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
+                // 优先使用新架构的 account_id
+                if (accountId) url = `/api/v1/context/by-account?account_id=${accountId}`;
+                else if (customerId) url = `/api/v1/context/by-customer?customer_id=${customerId}`;
+                else if (accountName) url = `/api/v1/context/by-account?account_name=${encodeURIComponent(accountName)}`;
                 else if (customerName) url = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
             } else {
                 if (serialNumber) url = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
             }
 
             if (!url) {
-                // Fallback to mock only if no ID/Name provided
                 setLoading(false);
                 return;
             }
 
-            // Fetch actual data
-            const res = await fetch(url);
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const json = await res.json();
 
             if (json.success) {
@@ -183,7 +192,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
             {/* Content */}
             <div style={contentStyle}>
-                {activeTab === 'customer' && data?.customer && (
+                {activeTab === 'customer' && data?.account && (
                     <div className="fade-in">
                         {/* Avatar / Identity */}
                         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -195,99 +204,135 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 fontSize: '2rem', fontWeight: 800, color: '#000',
                                 boxShadow: '0 8px 24px rgba(255, 210, 0, 0.2)'
                             }}>
-                                {data.customer.customer_name?.charAt(0) || 'C'}
+                                {data.account.name?.charAt(0) || 'A'}
                             </div>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                {data.customer.customer_name}
+                            <h2 
+                                style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                onClick={() => data.account?.id && navigate(`/service/customers/${data.account.id}?type=${data.account.account_type}`)}
+                            >
+                                {data.account.name}
+                                <ExternalLink size={14} style={{ opacity: 0.5 }} />
                             </h2>
                             <div style={{ fontSize: '0.85rem', color: '#888' }}>
-                                {data.customer.company_name}
+                                {data.account.account_type === 'DEALER' ? '经销商' : data.account.account_type === 'ORGANIZATION' ? '机构客户' : '个人客户'}
+                                {data.account.dealer_code && ` · ${data.account.dealer_code}`}
                             </div>
                         </div>
 
-                        {/* INSIGHTS from AI Profile */}
-                        {data.ai_profile && (
-                            <div style={{ ...cardStyle, marginBottom: '20px' }}>
-                                <div style={{
-                                    fontSize: '0.75rem', fontWeight: 800, color: '#666',
-                                    marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em'
-                                }}>
-                                    INSIGHTS
+                        {/* Customer Info Card - Clickable with hover effect */}
+                        {data.ai_profile && (data.ai_profile.tags?.length > 0 || data.ai_profile.ticket_count > 0) && (
+                            <div 
+                                style={{ 
+                                    ...cardStyle, 
+                                    marginBottom: '20px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                className="insight-card-hover"
+                                onClick={() => data.account?.id && navigate(`/service/customers/${data.account.id}?type=${data.account.account_type}`)}
+                            >
+                                {data.ai_profile.tags?.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: data.ai_profile.ticket_count > 0 ? '12px' : 0 }}>
+                                        {data.ai_profile.tags?.map((tag: string, i: number) => (
+                                            <span key={i} style={{
+                                                background: tag.includes('Verification') || tag.includes('Verified') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 210, 0, 0.1)',
+                                                color: tag.includes('Verification') || tag.includes('Verified') ? '#10b981' : '#FFD200',
+                                                padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500
+                                            }}>
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {/* Ticket Stats */}
+                                {data.ai_profile.ticket_count > 0 && (
+                                    <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                                        工单统计: 总计 <span style={{ color: '#FFD200', fontWeight: 600 }}>{data.ai_profile.ticket_count}</span>
+                                        {data.ai_profile.inquiry_count > 0 && ` (咨询 ${data.ai_profile.inquiry_count}`}
+                                        {data.ai_profile.rma_count > 0 && `, RMA ${data.ai_profile.rma_count}`}
+                                        {data.ai_profile.repair_count > 0 && `, 维修 ${data.ai_profile.repair_count}`}
+                                        {(data.ai_profile.inquiry_count > 0 || data.ai_profile.rma_count > 0 || data.ai_profile.repair_count > 0) && ')'}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Contacts List */}
+                        {data.contacts && data.contacts.length > 0 && (
+                            <>
+                                <div style={sectionTitleStyle}>
+                                    <User size={14} /> 联系人 ({data.contacts.length})
                                 </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-                                    <span style={{
-                                        background: 'rgba(255,255,255,0.1)', color: '#ddd',
-                                        padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem'
-                                    }}>
-                                        {data.ai_profile.activity_level} Activity
-                                    </span>
-                                    {data.ai_profile.tags?.map((tag: string, i: number) => (
-                                        <span key={i} style={{
-                                            background: tag.includes('Verification') || tag.includes('Verified') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 210, 0, 0.1)',
-                                            color: tag.includes('Verification') || tag.includes('Verified') ? '#10b981' : '#FFD200',
-                                            padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500
+                                <div style={{ ...cardStyle, padding: '12px' }}>
+                                    {data.contacts.slice(0, 3).map((contact: any, idx: number) => (
+                                        <div key={contact.id} style={{ 
+                                            marginBottom: idx < data.contacts.slice(0, 3).length - 1 ? '12px' : 0,
+                                            paddingBottom: idx < data.contacts.slice(0, 3).length - 1 ? '12px' : 0,
+                                            borderBottom: idx < data.contacts.slice(0, 3).length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
                                         }}>
-                                            {tag}
-                                        </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                <span style={{ fontWeight: 600, color: '#fff' }}>{contact.name}</span>
+                                                {contact.status === 'PRIMARY' && (
+                                                    <span style={{ 
+                                                        fontSize: '0.7rem', color: '#FFD200', 
+                                                        background: 'rgba(255, 210, 0, 0.15)',
+                                                        padding: '2px 6px', borderRadius: '4px'
+                                                    }}>主要</span>
+                                                )}
+                                                {contact.status === 'INACTIVE' && (
+                                                    <span style={{ 
+                                                        fontSize: '0.7rem', color: '#9ca3af', 
+                                                        background: 'rgba(156, 163, 175, 0.15)',
+                                                        padding: '2px 6px', borderRadius: '4px'
+                                                    }}>已离职</span>
+                                                )}
+                                            </div>
+                                            {(contact.job_title || contact.department) && (
+                                                <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '4px' }}>
+                                                    {contact.job_title}{contact.job_title && contact.department && ' · '}{contact.department}
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                                                {contact.email || contact.phone || '无联系方式'}
+                                            </div>
+                                        </div>
                                     ))}
+                                    {data.contacts.length > 3 && (
+                                        <div style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', marginTop: '8px' }}>
+                                            还有 {data.contacts.length - 3} 个联系人
+                                        </div>
+                                    )}
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: '#888', fontStyle: 'italic' }}>
-                                    {data.ai_profile.notes}
-                                </div>
-                            </div>
+                            </>
                         )}
 
-                        {/* Legacy Tier Badge (Use AI Profile tags instead if available, else fallback) */}
-                        {!data.ai_profile && (
-                            <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Award size={16} color="#FFD200" />
-                                    <span style={{ color: '#aaa', fontSize: '0.85rem' }}>服务等级</span>
+                        {/* Location Info */}
+                        {(data.account.city || data.account.country) && (
+                            <>
+                                <div style={sectionTitleStyle}>
+                                    <MapPin size={14} /> 地区
                                 </div>
-                                <span style={{
-                                    background: 'rgba(255, 210, 0, 0.15)',
-                                    color: '#FFD200',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 800,
-                                    letterSpacing: '0.05em'
-                                }}>
-                                    {data.customer.service_tier || 'STANDARD'}
-                                </span>
-                            </div>
+                                <div style={cardStyle}>
+                                    <div style={{ ...rowStyle, marginBottom: 0 }}>
+                                        <div style={textColStyle}>
+                                            {[data.account.city, data.account.country].filter(Boolean).join(', ')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
                         )}
 
-                        {/* Contact Info */}
-                        <div style={sectionTitleStyle}>
-                            <User size={14} /> 联系信息
-                        </div>
-                        <div style={cardStyle}>
-                            <div style={rowStyle}>
-                                <div style={iconColStyle}><Mail size={14} /></div>
-                                <div style={textColStyle}>{data.customer.email || 'N/A'}</div>
-                            </div>
-                            <div style={rowStyle}>
-                                <div style={iconColStyle}><Phone size={14} /></div>
-                                <div style={textColStyle}>{data.customer.phone || 'N/A'}</div>
-                            </div>
-                            <div style={{ ...rowStyle, marginBottom: 0 }}>
-                                <div style={iconColStyle}><MapPin size={14} /></div>
-                                <div style={textColStyle}>
-                                    {[data.customer.city, data.customer.country].filter(Boolean).join(', ') || 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Dealer Info */}
-                        {data.dealer && (
+                        {/* Parent Dealer Info */}
+                        {data.account.parent_dealer_name && (
                             <>
                                 <div style={sectionTitleStyle}>
                                     <Building size={14} /> 所属经销商
                                 </div>
                                 <div style={cardStyle}>
-                                    <div style={{ fontWeight: 600, marginBottom: '4px', color: '#fff' }}>{data.dealer.name}</div>
-                                    <div style={{ fontSize: '0.85rem', color: '#888' }}>{data.dealer.dealer_type}</div>
+                                    <div style={{ fontWeight: 600, marginBottom: '4px', color: '#fff' }}>{data.account.parent_dealer_name}</div>
+                                    {data.account.parent_dealer_code && (
+                                        <div style={{ fontSize: '0.85rem', color: '#888' }}>{data.account.parent_dealer_code}</div>
+                                    )}
                                 </div>
                             </>
                         )}

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, ArrowUpCircle, RotateCcw, Loader2, Paperclip, Film, FileText, Download, MessageSquare, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, ArrowUpCircle, RotateCcw, Loader2, Paperclip, Film, FileText, Download, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useConfirm } from '../../store/useConfirm';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
+import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -22,8 +23,15 @@ interface InquiryTicket {
     customer_name: string;
     customer_contact?: string;
     customer_id: number | null;
+    account_id?: number | null;
+    contact_id?: number | null;
     dealer_id: number | null;
     dealer_name: string | null;
+    dealer_code?: string | null;
+    dealer_contact_name?: string | null;
+    dealer_contact_title?: string | null;
+    contact_name?: string | null;
+    contact_job_title?: string | null;
     product: { id: number; name: string } | null;
     serial_number: string;
     product_family: string | null;
@@ -183,7 +191,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                     }}>
                         <button
                             onClick={() => navigate(getRoute('/service/inquiry-tickets'))}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '8px' }}
                         >
                             <ArrowLeft size={18} />
                         </button>
@@ -231,18 +239,10 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 <>
                                     <button
                                         onClick={handleUpgrade}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            background: 'transparent',
-                                            border: '1px solid rgba(255,255,255,0.15)',
-                                            color: 'var(--text-secondary)',
-                                            padding: '8px 16px',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            fontSize: '0.85rem'
-                                        }}
+                                        className="btn-glass"
+                                        style={{ height: '40px', fontSize: '0.85rem' }}
                                     >
-                                        <ArrowUpCircle size={16} color="#FFD200" />
+                                        <ArrowUpCircle size={16} />
                                         升级为 RMA
                                     </button>
                                     <button
@@ -288,122 +288,88 @@ const InquiryTicketDetailPage: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Content Body */}
+                    {/* Content Body - macOS26 Card Style */}
                     <div style={{ padding: '40px', maxWidth: '800px' }}>
 
-                        {/* Meta Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', marginBottom: '40px' }}>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                    创建时间
-                                </div>
-                                <div style={{ fontSize: '1rem', fontWeight: 500 }}>
-                                    {new Date(ticket.created_at).toLocaleString()}
-                                </div>
+                        {/* Info Card - 元信息卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Clock size={14} /> {t('ticket.basic_info')}
                             </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                    处理人
+                            <div className="ticket-info-grid">
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.created_at')}</div>
+                                    <div className="ticket-info-value">{new Date(ticket.created_at).toLocaleString()}</div>
                                 </div>
-                                <div style={{ fontSize: '1rem', fontWeight: 500 }}>
-                                    {ticket.handler?.name || t('user.unassigned')}
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.handler')}</div>
+                                    <div className="ticket-info-value">{ticket.handler?.name || t('user.unassigned')}</div>
                                 </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                    产品型号
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.product')}</div>
+                                    <div className="ticket-info-value">{ticket.product?.name || '-'}</div>
                                 </div>
-                                <div style={{ fontSize: '1rem', fontWeight: 500 }}>
-                                    {ticket.product?.name || '-'}
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                                    服务类型
-                                </div>
-                                <div style={{ fontSize: '1rem', fontWeight: 500 }}>
-                                    {ticket.service_type}
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.service_type')}</div>
+                                    <div className="ticket-info-value">{ticket.service_type}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Complaint / Summary */}
-                        <section style={{ marginBottom: '40px' }}>
-                            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', letterSpacing: '0.05em', marginBottom: '12px' }}>
-                                {ticket.service_type}
+                        {/* Problem Card - 问题描述卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <AlertCircle size={14} /> {t('ticket.problem_description')}
                             </div>
-                            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, lineHeight: '1.4', marginBottom: '24px', color: '#fff' }}>
-                                {ticket.problem_summary}
-                            </h2>
-
-                            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '24px' }}>
-                                <div style={{ fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>
-                                    问题描述
-                                </div>
-                                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                            <h2 className="ticket-section-title">{ticket.problem_summary}</h2>
+                            <div className="ticket-content-box">
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
                                     {ticket.problem_summary}
                                 </p>
                             </div>
-                        </section>
+                        </div>
 
-                        {/* Communication Log */}
-                        <section style={{ marginBottom: '40px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                                <MessageSquare size={18} color="var(--text-secondary)" />
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{t('inquiry_ticket.field.communication_log')}</h3>
+                        {/* Communication Card - 沟通记录卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <MessageSquare size={14} /> {t('inquiry_ticket.field.communication_log')}
                             </div>
                             {isEditing ? (
                                 <textarea
                                     value={communicationLog}
                                     onChange={e => setCommunicationLog(e.target.value)}
-                                    style={{
-                                        width: '100%', minHeight: '150px',
-                                        background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px',
-                                        padding: '16px',
-                                        color: '#fff',
-                                        fontSize: '0.95rem',
-                                        lineHeight: '1.6',
-                                        resize: 'vertical'
-                                    }}
+                                    className="ticket-textarea"
                                     placeholder={t('inquiry_ticket.placeholder.communication_log')}
                                 />
                             ) : (
-                                <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '0.95rem', paddingLeft: '26px' }}>
-                                    {ticket.communication_log?.replace(/\\n/g, '\n') || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('inquiry_ticket.no_communication')}</span>}
+                                <div className="ticket-content-box">
+                                    <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                        {ticket.communication_log?.replace(/\\n/g, '\n') || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('inquiry_ticket.no_communication')}</span>}
+                                    </p>
                                 </div>
                             )}
-                        </section>
+                        </div>
 
-                        {/* Resolution */}
-                        <section style={{ marginBottom: '40px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: ticket.status === 'Resolved' ? '#10b981' : 'inherit' }}>
-                                <CheckCircle size={18} />
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{t('inquiry_ticket.field.resolution')}</h3>
+                        {/* Resolution Card - 解决方案卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title" style={{ color: ticket.status === 'Resolved' ? '#10b981' : undefined }}>
+                                <CheckCircle size={14} /> {t('inquiry_ticket.field.resolution')}
                             </div>
                             {isEditing ? (
                                 <textarea
                                     value={resolution}
                                     onChange={e => setResolution(e.target.value)}
-                                    style={{
-                                        width: '100%', minHeight: '100px',
-                                        background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px',
-                                        padding: '16px',
-                                        color: '#fff',
-                                        fontSize: '0.95rem',
-                                        lineHeight: '1.6'
-                                    }}
+                                    className="ticket-textarea"
                                     placeholder={t('inquiry_ticket.placeholder.resolution')}
                                 />
                             ) : (
-                                <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '0.95rem', paddingLeft: '26px' }}>
-                                    {ticket.resolution || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('inquiry_ticket.no_resolution')}</span>}
+                                <div className="ticket-content-box">
+                                    <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                        {ticket.resolution || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('inquiry_ticket.no_resolution')}</span>}
+                                    </p>
                                 </div>
                             )}
-                        </section>
+                        </div>
 
                         {/* Attachments */}
                         {ticket.attachments && ticket.attachments.length > 0 && (
@@ -450,10 +416,23 @@ const InquiryTicketDetailPage: React.FC = () => {
 
                 {/* RIGHT COLUMN: Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {/* Dealer Info Card (if dealer exists) */}
+                    <div style={{ padding: '20px', paddingBottom: 0 }}>
+                        <DealerInfoCard
+                            dealerId={ticket.dealer_id}
+                            dealerName={ticket.dealer_name}
+                            dealerCode={ticket.dealer_code}
+                            contactName={ticket.dealer_contact_name}
+                            contactTitle={ticket.dealer_contact_title}
+                        />
+                    </div>
+                    
                     <CustomerContextSidebar
+                        accountId={ticket.account_id ?? undefined}
                         customerId={ticket.customer_id ?? undefined}
                         customerName={ticket.customer_name}
                         serialNumber={ticket.serial_number}
+                        dealerId={ticket.dealer_id ?? undefined}
                     />
                 </div>
             </div>

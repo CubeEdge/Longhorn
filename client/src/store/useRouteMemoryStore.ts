@@ -21,9 +21,14 @@ export const useRouteMemoryStore = create<RouteMemoryState>()(
             saveRoute: (path: string) => {
                 const matchedPrefix = MEMORIZED_PATHS.find(prefix => path.startsWith(prefix));
                 if (matchedPrefix) {
-                    set((state) => ({
-                        memory: { ...state.memory, [matchedPrefix]: path }
-                    }));
+                    // Only save list routes (with query params), not detail pages (e.g., /service/inquiry-tickets/5)
+                    const rest = path.slice(matchedPrefix.length);
+                    const isDetailPage = /^\/\d+(\?|$)/.test(rest);
+                    if (!isDetailPage) {
+                        set((state) => ({
+                            memory: { ...state.memory, [matchedPrefix]: path }
+                        }));
+                    }
                 }
             },
             getRoute: (defaultPath: string) => {

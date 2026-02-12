@@ -50,7 +50,10 @@ module.exports = function (db, authenticate, serviceUpload) {
         return {
             id: repair.id,
             ticket_number: repair.ticket_number,
-            dealer: repair.dealer_name ? { id: repair.dealer_id, name: repair.dealer_name } : null,
+            dealer: repair.dealer_id ? { id: repair.dealer_id, name: repair.dealer_name, code: repair.dealer_code } : null,
+            dealer_id: repair.dealer_id,
+            dealer_name: repair.dealer_name,
+            dealer_code: repair.dealer_code,
             customer_name: repair.customer_name,
             product: repair.product_name ? { id: repair.product_id, name: repair.product_name } : null,
             serial_number: repair.serial_number,
@@ -67,9 +70,30 @@ module.exports = function (db, authenticate, serviceUpload) {
             ticket_number: repair.ticket_number,
 
             // Dealer Info
-            dealer: repair.dealer_name ? { id: repair.dealer_id, name: repair.dealer_name } : null,
+            dealer: repair.dealer_id ? { id: repair.dealer_id, name: repair.dealer_name, code: repair.dealer_code } : null,
+            dealer_id: repair.dealer_id,
+            dealer_name: repair.dealer_name,
+            dealer_code: repair.dealer_code,
+            dealer_contact_name: repair.dealer_contact_name,
+            dealer_contact_title: repair.dealer_contact_title,
 
-            // Customer Info
+            // Account/Contact Info (新架构)
+            account_id: repair.account_id,
+            contact_id: repair.contact_id,
+            account: repair.account_id ? {
+                id: repair.account_id,
+                name: repair.account_name,
+                account_number: repair.account_number,
+                account_type: repair.account_type
+            } : null,
+            contact: repair.contact_id ? {
+                id: repair.contact_id,
+                name: repair.contact_name,
+                email: repair.contact_email,
+                job_title: repair.contact_job_title
+            } : null,
+
+            // Customer Info (向后兼容)
             customer_name: repair.customer_name,
             customer_contact: repair.customer_contact,
             customer_id: repair.customer_id,
@@ -154,6 +178,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 page = 1,
                 page_size = 20,
                 dealer_id,
+                customer_id,
                 product_id,
                 created_from,
                 created_to,
@@ -174,7 +199,11 @@ module.exports = function (db, authenticate, serviceUpload) {
             // Filter conditions
             if (dealer_id) {
                 conditions.push('r.dealer_id = ?');
-                params.push(dealer_id);
+                params.push(parseInt(dealer_id));
+            }
+            if (customer_id) {
+                conditions.push('r.customer_id = ?');
+                params.push(customer_id);
             }
             if (product_id) {
                 conditions.push('r.product_id = ?');
@@ -246,10 +275,30 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.get('/:id', authenticate, (req, res) => {
         try {
             const repair = db.prepare(`
+                SELECT 
+                    r.*,
+                    dlr.name as dealer_name,
+                    dlr.dealer_code as dealer_code,
+                    p.model_name as product_name,
+                    inq.ticket_number as inquiry_ticket_number,
+                    -- 账户信息
+                    acc.name as account_name,
+                    acc.account_number,
+                    acc.account_type,
+                    -- 客户联系人信息
+                    ct.name as contact_name,
+                    ct.email as contact_email,
+                    ct.job_title as contact_job_title,
+                    -- 经销商主要联系人
+                    dc.name as dealer_contact_name,
+                    dc.job_title as dealer_contact_title
                 FROM dealer_repairs r
-                LEFT JOIN customers d ON r.dealer_id = d.id
+                LEFT JOIN accounts dlr ON r.dealer_id = dlr.id
                 LEFT JOIN products p ON r.product_id = p.id
                 LEFT JOIN inquiry_tickets inq ON r.inquiry_ticket_id = inq.id
+                LEFT JOIN accounts acc ON r.account_id = acc.id
+                LEFT JOIN contacts ct ON r.contact_id = ct.id
+                LEFT JOIN contacts dc ON dc.account_id = r.dealer_id AND dc.status = 'PRIMARY'
                 WHERE r.id = ?
             `).get(req.params.id);
 
@@ -269,14 +318,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 WHERE ticket_type = 'DealerRepair' AND ticket_id = ?
             `).all(req.params.id);
 
-            const detailResponse = formatDetail({
-                ...repair,
-                // Map customer_name from customers table if available (though dealer_repairs has its own snapshot columns)
-                dealer_name: repair.customer_name // actually d.customer_name is the dealer name
-            });
-            // Fix: the join above returns d.customer_name but we aliased d.name in original query.
-            // Customers table has 'customer_name', not 'name'.
-            // Let's correct the query instead of the response mapping.
+            const detailResponse = formatDetail(repair);
 
             detailResponse.parts_used = parts.map(p => ({
                 part_id: p.part_id,

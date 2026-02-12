@@ -71,7 +71,7 @@ const customers = [
         channel: 'CHANNEL', dealer: 'ProAV UK', tags: ['CINEMATOGRAPHER', 'RENTAL_OWNER']
     },
     {
-        name: 'John Smith', contact: 'john@hollywood.com', type: 'CORPORATE', tier: 'VVIP',
+        name: 'John Smith', contact: 'john@hollywood.com', type: 'ORGANIZATION', tier: 'VVIP',
         channel: 'DIRECT', dealer: null, tags: ['PRODUCTION_HOUSE', 'NETFLIX_CERTIFIED']
     },
     {
@@ -87,11 +87,11 @@ const customers = [
         channel: 'CHANNEL', dealer: 'Gafpa Gear', tags: []
     },
     {
-        name: 'Global Rentals Inc.', contact: 'ops@globalrentals.com', type: 'CORPORATE', tier: 'VVIP',
+        name: 'Global Rentals Inc.', contact: 'ops@globalrentals.com', type: 'ORGANIZATION', tier: 'VVIP',
         channel: 'CHANNEL', dealer: '1SV', tags: ['RENTAL_HOUSE', 'BULK_BUYER']
     },
     {
-        name: 'Indie Filmmakers Co', contact: 'contact@indie.co', type: 'CORPORATE', tier: 'STANDARD',
+        name: 'Indie Filmmakers Co', contact: 'contact@indie.co', type: 'ORGANIZATION', tier: 'STANDARD',
         channel: 'CHANNEL', dealer: 'DP Gadget', tags: ['INDIE_FILM']
     },
     {
@@ -99,11 +99,11 @@ const customers = [
         channel: 'CHANNEL', dealer: 'DP Gadget', tags: []
     },
     {
-        name: 'Hans Zimmer (Studio)', contact: 'tech@hans.com', type: 'CORPORATE', tier: 'VVIP',
+        name: 'Hans Zimmer (Studio)', contact: 'tech@hans.com', type: 'ORGANIZATION', tier: 'VVIP',
         channel: 'DIRECT', dealer: null, tags: ['MUSIC_VIDEO', 'HIGH_PROFILE']
     },
     {
-        name: 'Test Lab Internal', contact: 'qa@kinefinity.com', type: 'INTERNAL', tier: 'STANDARD',
+        name: 'Test Lab Internal', contact: 'qa@kinefinity.com', type: 'ORGANIZATION', tier: 'STANDARD',
         channel: 'DIRECT', dealer: null, tags: ['QA', 'BETA_TESTER']
     },
     {

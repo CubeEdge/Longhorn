@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles } from 'lucide-react';
+import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles, GripHorizontal } from 'lucide-react';
 import { parseTicketReferences } from './TicketLink';
 import TicketDetailDialog from './TicketDetailDialog';
 
@@ -11,6 +11,14 @@ interface Message {
     timestamp: number;
 }
 
+interface WikiArticleContext {
+    type: 'wiki_article';
+    articleId: number;
+    articleTitle: string;
+    articleSlug: string;
+    hasDraft: boolean;
+}
+
 interface BokehPanelProps {
     isOpen: boolean;
     onClose: () => void;
@@ -18,11 +26,18 @@ interface BokehPanelProps {
     messages: Message[];
     onSendMessage: (text: string) => void;
     loading: boolean;
+    wikiContext?: WikiArticleContext | null;
 }
 
-const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, messages, onSendMessage, loading }) => {
+const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, messages, onSendMessage, loading, wikiContext }) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
+    
+    // Drag state
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+    const panelRef = useRef<HTMLDivElement>(null);
 
     // Ticket detail dialog state
     const [ticketDetailOpen, setTicketDetailOpen] = useState(false);
@@ -37,6 +52,47 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, isOpen]);
+
+    // Drag handlers
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button')) return; // Don't drag when clicking buttons
+        e.preventDefault();
+        setIsDragging(true);
+        dragStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            posX: position.x,
+            posY: position.y
+        };
+    }, [position]);
+
+    useEffect(() => {
+        if (!isDragging) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const deltaX = e.clientX - dragStartRef.current.x;
+            const deltaY = e.clientY - dragStartRef.current.y;
+            
+            // Calculate new position with bounds checking
+            const panelWidth = 400;
+            const panelHeight = 600;
+            const newX = Math.max(-window.innerWidth + panelWidth + 32, Math.min(window.innerWidth - 32, dragStartRef.current.posX + deltaX));
+            const newY = Math.max(-window.innerHeight + panelHeight + 32, Math.min(window.innerHeight - 64, dragStartRef.current.posY + deltaY));
+            
+            setPosition({ x: newX, y: newY });
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -65,9 +121,15 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
     return (
         <>
             <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                ref={panelRef}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ 
+                    opacity: 1, 
+                    scale: 1,
+                    x: position.x,
+                    y: position.y
+                }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 style={{
                     position: 'fixed',
@@ -84,17 +146,22 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: 9999,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    cursor: isDragging ? 'grabbing' : 'default'
                 }}
             >
-                {/* HEADER */}
-                <div style={{
+                {/* HEADER - Draggable */}
+                <div 
+                    onMouseDown={handleMouseDown}
+                    style={{
                     padding: '16px 20px',
                     borderBottom: '1px solid rgba(255,255,255,0.1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.03)'
+                    background: 'rgba(255,255,255,0.03)',
+                    cursor: 'grab',
+                    userSelect: 'none'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
@@ -105,6 +172,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             boxShadow: '0 0 10px rgba(142, 36, 170, 0.5)'
                         }} />
                         <span style={{ fontWeight: 600, color: 'white', fontSize: '14px' }}>Bokeh Assistant</span>
+                        <GripHorizontal size={14} style={{ opacity: 0.3, marginLeft: '4px' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button onClick={onMinimize} className="panel-btn"><Minimize2 size={16} /></button>
@@ -114,9 +182,33 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
 
                 {/* CHAT AREA */}
                 <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Context Banner - Show when viewing a Wiki article */}
+                    {messages.length === 0 && wikiContext && wikiContext.type === 'wiki_article' && (
+                        <div style={{
+                            background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(142, 36, 170, 0.1))',
+                            border: '1px solid rgba(255, 215, 0, 0.2)',
+                            borderRadius: '12px',
+                            padding: '14px 16px',
+                            marginBottom: '8px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <FileText size={14} color="#FFD700" />
+                                <span style={{ color: '#FFD700', fontWeight: 500, fontSize: '12px' }}>正在审阅文章</span>
+                            </div>
+                            <div style={{ color: 'white', fontSize: '13px', lineHeight: '1.4' }}>
+                                {wikiContext.articleTitle}
+                            </div>
+                            {wikiContext.hasDraft && (
+                                <div style={{ marginTop: '6px', fontSize: '11px', color: '#00BFA5' }}>
+                                    有待发布的Bokeh优化草稿
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Welcome Message */}
                     {messages.length === 0 && (
-                        <div style={{ textAlign: 'center', marginTop: '40px', opacity: 0.7 }}>
+                        <div style={{ textAlign: 'center', marginTop: wikiContext ? '20px' : '40px', opacity: 0.7 }}>
                             <div style={{
                                 width: '64px', height: '64px', margin: '0 auto 20px',
                                 borderRadius: '50%',
@@ -125,7 +217,9 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             }}>
                                 <Sparkles size={32} color="#00BFA5" />
                             </div>
-                            <p style={{ color: 'white', fontSize: '14px', marginBottom: '8px' }}>How can I help you today?</p>
+                            <p style={{ color: 'white', fontSize: '14px', marginBottom: '8px' }}>
+                                {wikiContext ? '有什么我可以帮您的？' : 'How can I help you today?'}
+                            </p>
                         </div>
                     )}
 
@@ -167,8 +261,17 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                 {/* QUICK ACTIONS */}
                 {messages.length === 0 && (
                     <div style={{ padding: '0 20px 20px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
-                        <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
-                        <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
+                        {wikiContext && wikiContext.type === 'wiki_article' ? (
+                            <>
+                                <QuickAction icon={<Sparkles size={14} />} label="重新优化文章" onClick={() => onSendMessage("请重新优化这篇文章，我想要的效果是：")} />
+                                <QuickAction icon={<FileText size={14} />} label="优化摘要" onClick={() => onSendMessage("请为这篇文章生成更好的摘要")} />
+                            </>
+                        ) : (
+                            <>
+                                <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
+                                <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -186,7 +289,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Type your question..."
+                            placeholder={wikiContext ? "输入您的修改意见或问题..." : "Type your question..."}
                             style={{
                                 flex: 1,
                                 background: 'transparent',

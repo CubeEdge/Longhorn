@@ -4,6 +4,41 @@
 
 ---
 
+### 2026-02-12 14:30 - 经销商 Dashboard 工单统计修复 (Dealer Dashboard Stats Fix)
+
+**User Prompt**:
+经销商详情页的 Service Dashboard 统计显示始终为 0000，尽管数据库中有关联的工单（如 DP Gadget 经销商有工单 K2602-0004）。
+
+**Action**:
+1. **问题诊断**:
+   - 使用浏览器调试发现 API 调用正常，但返回空数据
+   - 检查数据库确认工单存在：`dealer_id=6`, `account_id=46`, `customer_name="Singapore Media Corp"`
+   - 分析前端代码发现：查询时添加了 `keyword=DP%20Gadget` 参数
+
+2. **根因分析**:
+   - 前端代码使用 `customerName`（经销商名称 "DP Gadget"）作为 `keyword` 参数
+   - 但工单表中的 `customer_name` 字段存储的是终端客户名称（"Singapore Media Corp"）
+   - 导致 `keyword` 过滤后无匹配结果
+
+3. **修复方案**:
+   - **文件**: `client/src/components/CustomerDetailPage.tsx`
+   - **修改**: 移除 `nameQuery` 变量和 `keyword` 参数
+   - **逻辑**: 经销商工单查询仅使用 `dealer_id`，不再使用 `keyword` 过滤
+   - 清理未使用的 `customerName` 变量
+
+4. **部署验证**:
+   - 构建版本: 11.3.51 (index-BAowCHqW.js)
+   - API 验证: `dealer_id=6` 返回 咨询工单=1, RMA返厂=0, 经销商维修=1
+   - 页面验证: DP Gadget 经销商 Dashboard 正确显示统计
+
+**Result**:
+- 经销商 Dashboard 统计功能恢复正常
+- 明确了工单数据模型：`account_id` 关联终端客户，`dealer_id` 关联提交工单的经销商
+
+**Status**: Completed
+
+---
+
 ### 2026-02-11 00:45 - UI Refinements & Dealer API Fix (Customer Management)
 **User Prompt**:
 1. 优化客户档案 UI：Dealer Tab 中文“经销商”，End-User Tab 中文“终端客户”。

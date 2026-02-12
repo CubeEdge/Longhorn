@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Loader2, Sparkles, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import AccountContactSelector from '../AccountContactSelector';
 
 interface Product {
     id: number;
@@ -19,6 +20,14 @@ const InquiryTicketCreatePage: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
 
     // Form fields
+    // 新架构：账户-联系人选择
+    const [accountContact, setAccountContact] = useState<{
+        account_id?: number;
+        contact_id?: number;
+        reporter_name?: string;
+    }>({});
+    
+    // 向后兼容字段（当不使用新架构时）
     const [customerName, setCustomerName] = useState('');
     const [customerContact, setCustomerContact] = useState('');
     const [productId, setProductId] = useState<number | null>(null);
@@ -69,8 +78,13 @@ const InquiryTicketCreatePage: React.FC = () => {
                 const filled = new Set<string>();
                 const suggestions: {field: string, value: string, confidence?: string}[] = [];
 
-                // Customer Info
+                // Customer Info - 优先使用新架构
                 if (data.customer_name) {
+                    // 如果还没有选择账户，设置 reporter_name
+                    if (!accountContact.account_id) {
+                        setAccountContact(prev => ({ ...prev, reporter_name: data.customer_name }));
+                    }
+                    // 向后兼容
                     setCustomerName(data.customer_name);
                     filled.add('customer_name');
                     suggestions.push({field: 'Customer Name', value: data.customer_name});
@@ -161,9 +175,8 @@ const InquiryTicketCreatePage: React.FC = () => {
 
         setLoading(true);
         try {
-            const payload = {
-                customer_name: customerName,
-                customer_contact: customerContact,
+            // 构建 payload，优先使用新架构字段
+            const payload: any = {
                 product_id: productId,
                 serial_number: serialNumber,
                 service_type: serviceType,
@@ -171,6 +184,17 @@ const InquiryTicketCreatePage: React.FC = () => {
                 problem_summary: problemSummary,
                 communication_log: communicationLog
             };
+            
+            // 如果选择了账户，使用新架构字段
+            if (accountContact.account_id) {
+                payload.account_id = accountContact.account_id;
+                payload.contact_id = accountContact.contact_id;
+                payload.reporter_name = accountContact.reporter_name;
+            }
+            
+            // 向后兼容：也设置旧字段
+            payload.customer_name = customerName || accountContact.reporter_name;
+            payload.customer_contact = customerContact;
 
             const res = await axios.post('/api/v1/inquiry-tickets', payload, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -195,6 +219,15 @@ const InquiryTicketCreatePage: React.FC = () => {
                     <ArrowLeft size={18} />
                 </button>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{t('inquiry_ticket.create')}</h1>
+            </div>
+
+            {/* Account-Contact Selection (新架构) */}
+            <div style={{ marginBottom: '24px' }}>
+                <AccountContactSelector
+                    value={accountContact}
+                    onChange={setAccountContact}
+                    disabled={loading}
+                />
             </div>
 
             {/* AI Smart Assist Section */}

@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
+import { useLanguage } from '../../i18n/useLanguage';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
+import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -37,10 +38,21 @@ interface RMATicket {
     repair_content: string;
     problem_analysis: string;
     reporter_name: string;
+    // 新架构字段
+    account_id: number | null;
+    contact_id: number | null;
+    account: { id: number; name: string; account_type?: string } | null;
+    contact: { id: number; name: string; email?: string; job_title?: string } | null;
+    // 经销商信息
+    dealer: { id: number; name: string; code?: string } | null;
+    dealer_id: number | null;
+    dealer_name: string | null;
+    dealer_code: string | null;
+    dealer_contact_name?: string | null;
+    dealer_contact_title?: string | null;
+    // 向后兼容字段
     customer: { id: number; name: string } | null;
     customer_id: number | null;
-    dealer: { id: number; name: string } | null;
-    dealer_id: number | null;
     submitted_by: { id: number; name: string } | null;
     assigned_to: { id: number; name: string } | null;
     inquiry_ticket: { id: number; ticket_number: string } | null;
@@ -144,16 +156,9 @@ const RMATicketDetailPage: React.FC = () => {
     };
 
     const getStatusLabel = (s: string) => {
-        return t(`rma_ticket.status.${s.toLowerCase()}` as any) || s;
-    };
-
-    const getChannelLabel = (code: string) => {
-        const labels: Record<string, string> = {
-            D: t('rma_ticket.channel.dealer'),
-            C: t('rma_ticket.channel.customer'),
-            I: t('rma_ticket.channel.internal')
-        };
-        return labels[code] || code;
+        // Convert camelCase/PascalCase to snake_case for translation keys
+        const key = s.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+        return t(`rma_ticket.status.${key}` as any) || s;
     };
 
     const StatusIcon = ticket ? (statusConfig[ticket.status]?.icon || AlertCircle) : AlertCircle;
@@ -212,12 +217,6 @@ const RMATicketDetailPage: React.FC = () => {
                             {getStatusLabel(ticket.status)}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '12px' }}>
-                            <span>{formatDate(ticket.created_at)}</span>
-                            <span style={{ color: 'var(--glass-border)' }}>|</span>
-                            <span>{getChannelLabel(ticket.channel_code)}</span>
-                        </div>
-
                         <div style={{ flex: 1 }} />
 
                         {/* Actions */}
@@ -266,150 +265,123 @@ const RMATicketDetailPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Content Body */}
-                    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
-                        {/* Problem Description Hero */}
-                        <div style={{ marginBottom: '40px' }}>
-                            <h2 style={{
-                                fontSize: '1.5rem', fontWeight: 800, lineHeight: '1.3',
-                                color: '#fff', marginBottom: '24px', letterSpacing: '-0.01em'
-                            }}>
-                                {ticket.problem_description}
-                            </h2>
+                    {/* Content Body - macOS26 Card Style */}
+                    <div style={{ padding: '40px', maxWidth: '800px' }}>
 
-                            {/* Meta Grid */}
-                            <div style={{
-                                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px',
-                                background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px',
-                                border: '1px solid rgba(255,255,255,0.08)'
-                            }}>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Issue Type</div>
-                                    <div style={{ color: 'var(--text-main)', fontWeight: 500 }}>{ticket.issue_type}</div>
+                        {/* Info Card - 基本信息卡片 (第一个卡片) */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Clock size={14} /> {t('ticket.basic_info')}
+                            </div>
+                            <div className="ticket-info-grid">
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.created_at')}</div>
+                                    <div className="ticket-info-value">{formatDate(ticket.created_at)}</div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Severity</div>
-                                    <div style={{ color: ticket.severity === 1 ? '#ef4444' : 'var(--text-main)', fontWeight: 700 }}>P{ticket.severity}</div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.reporter')}</div>
+                                    <div className="ticket-info-value">{ticket.reporter_name || '-'}</div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Warranty</div>
-                                    <div style={{ color: ticket.is_warranty ? '#10b981' : 'var(--text-tertiary)', fontWeight: 500 }}>
-                                        {ticket.is_warranty ? 'Yes' : 'No'}
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.product')}</div>
+                                    <div className="ticket-info-value">{ticket.product?.name || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.serial_number')}</div>
+                                    <div className="ticket-info-value">{ticket.serial_number || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.issue_type')}</div>
+                                    <div className="ticket-info-value">{ticket.issue_type || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.severity')}</div>
+                                    <div className="ticket-info-value" style={{ color: ticket.severity === 1 ? '#ef4444' : undefined }}>P{ticket.severity}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.warranty')}</div>
+                                    <div className="ticket-info-value" style={{ color: ticket.is_warranty ? '#10b981' : undefined }}>
+                                        {ticket.is_warranty ? t('common.yes') : t('common.no')}
                                     </div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', fontWeight: 600 }}>Reporter</div>
-                                    <div style={{ color: 'var(--text-main)', fontWeight: 500 }}>{ticket.reporter_name}</div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.handler')}</div>
+                                    <div className="ticket-info-value">{ticket.assigned_to?.name || t('user.unassigned')}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gap: '32px' }}>
-                            {/* Customer Solution */}
-                            <div className="glass-panel" style={{
-                                padding: '24px',
-                                borderRadius: '16px',
-                                background: 'rgba(30, 30, 30, 0.6)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}>
-                                <h3 style={{
-                                    fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px',
-                                    display: 'flex', alignItems: 'center', gap: '8px', color: '#fff'
-                                }}>
-                                    <CheckCircle size={18} className="text-primary" />
-                                    {t('ticket.solution_for_customer' as any)}
-                                </h3>
-                                {isEditing ? (
-                                    <textarea
-                                        value={solutionForCustomer}
-                                        onChange={(e) => setSolutionForCustomer(e.target.value)}
-                                        placeholder="Enter solution visible to customer..."
-                                        style={{
-                                            width: '100%', minHeight: '120px', padding: '16px',
-                                            borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
-                                            border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
-                                            fontSize: '0.95rem', lineHeight: 1.6, resize: 'vertical'
-                                        }}
-                                    />
-                                ) : (
-                                    <div style={{
-                                        color: solutionForCustomer ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                                        whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: '0.95rem',
-                                        padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px'
-                                    }}>
-                                        {solutionForCustomer || 'No solution provided yet.'}
-                                    </div>
-                                )}
+                        {/* Problem Card - 问题描述卡片 (第二个卡片) */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <AlertCircle size={14} /> {t('ticket.problem_description')}
                             </div>
+                            <h2 className="ticket-section-title">{ticket.problem_description}</h2>
+                        </div>
 
-                            {/* Internal Tech Notes */}
-                            <div className="glass-panel" style={{
-                                padding: '24px',
-                                borderRadius: '16px',
-                                background: 'rgba(30, 30, 30, 0.4)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}>
-                                <h3 style={{
-                                    fontSize: '1rem', fontWeight: 600, marginBottom: '20px',
-                                    display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)'
-                                }}>
-                                    <Hammer size={16} />
-                                    Internal Tech Notes & Analysis
-                                </h3>
+                        {/* Customer Solution Card - 客户解决方案卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <CheckCircle size={14} /> {t('ticket.solution_for_customer')}
+                            </div>
+                            {isEditing ? (
+                                <textarea
+                                    value={solutionForCustomer}
+                                    onChange={(e) => setSolutionForCustomer(e.target.value)}
+                                    className="ticket-textarea"
+                                    placeholder={t('ticket.solution_placeholder')}
+                                />
+                            ) : (
+                                <div className="ticket-content-box">
+                                    <p style={{ color: solutionForCustomer ? 'var(--text-primary)' : 'var(--text-tertiary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                        {solutionForCustomer || t('ticket.no_solution_yet')}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                                            Problem Analysis
-                                        </label>
-                                        {isEditing ? (
-                                            <textarea
-                                                value={problemAnalysis}
-                                                onChange={(e) => setProblemAnalysis(e.target.value)}
-                                                placeholder="Internal analysis..."
-                                                style={{
-                                                    width: '100%', minHeight: '150px', padding: '12px',
-                                                    borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
-                                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
-                                                    fontSize: '0.9rem', resize: 'vertical'
-                                                }}
-                                            />
-                                        ) : (
-                                            <div style={{
-                                                fontSize: '0.9rem', color: 'var(--text-secondary)',
-                                                whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', minHeight: '60px'
-                                            }}>
+                        {/* Internal Tech Notes Card - 内部技术分析卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Hammer size={14} /> {t('ticket.internal_tech_notes')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                <div>
+                                    <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('ticket.problem_analysis')}</div>
+                                    {isEditing ? (
+                                        <textarea
+                                            value={problemAnalysis}
+                                            onChange={(e) => setProblemAnalysis(e.target.value)}
+                                            className="ticket-textarea"
+                                            style={{ minHeight: '100px' }}
+                                        />
+                                    ) : (
+                                        <div className="ticket-content-box" style={{ minHeight: '60px' }}>
+                                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
                                                 {problemAnalysis || '-'}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                                            Repair Actions
-                                        </label>
-                                        {isEditing ? (
-                                            <textarea
-                                                value={repairContent}
-                                                onChange={(e) => setRepairContent(e.target.value)}
-                                                placeholder="Repair steps taken..."
-                                                style={{
-                                                    width: '100%', minHeight: '150px', padding: '12px',
-                                                    borderRadius: '8px', background: 'rgba(0,0,0,0.3)',
-                                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff',
-                                                    fontSize: '0.9rem', resize: 'vertical'
-                                                }}
-                                            />
-                                        ) : (
-                                            <div style={{
-                                                fontSize: '0.9rem', color: 'var(--text-secondary)',
-                                                whiteSpace: 'pre-wrap', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', minHeight: '60px'
-                                            }}>
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('ticket.repair_actions')}</div>
+                                    {isEditing ? (
+                                        <textarea
+                                            value={repairContent}
+                                            onChange={(e) => setRepairContent(e.target.value)}
+                                            className="ticket-textarea"
+                                            style={{ minHeight: '100px' }}
+                                        />
+                                    ) : (
+                                        <div className="ticket-content-box" style={{ minHeight: '60px' }}>
+                                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
                                                 {repairContent || '-'}
-                                            </div>
-                                        )}
-                                    </div>
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        </div>
 
                             {/* Attachments */}
                             {ticket.attachments && ticket.attachments.length > 0 && (
@@ -443,19 +415,28 @@ const RMATicketDetailPage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-
-                        </div>
                     </div>
                 </div>
 
                 {/* RIGHT SIDEBAR: Customer Context */}
-                {/* RIGHT SIDEBAR: Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {/* Dealer Info Card (if dealer exists) */}
+                    <div style={{ padding: '20px', paddingBottom: 0 }}>
+                        <DealerInfoCard
+                            dealerId={ticket.dealer_id}
+                            dealerName={ticket.dealer_name}
+                            dealerCode={ticket.dealer_code}
+                            contactName={ticket.dealer_contact_name}
+                            contactTitle={ticket.dealer_contact_title}
+                        />
+                    </div>
+                    
                     <CustomerContextSidebar
+                        accountId={ticket.account_id ?? undefined}
+                        accountName={ticket.account?.name}
                         customerId={ticket.customer_id ?? undefined}
                         customerName={ticket.customer?.name}
                         serialNumber={ticket.serial_number}
-                        // @ts-ignore
                         dealerId={ticket.dealer_id ?? undefined}
                     />
                 </div>

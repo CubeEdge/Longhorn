@@ -46,6 +46,10 @@ function initService(app, db, options = {}) {
     const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate, serviceUpload);
     const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer, serviceUpload);
     const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate, serviceUpload);
+    
+    // Account-Contact Architecture (账户-联系人双层架构)
+    const accountsRoutes = require('./routes/accounts')(db, authenticate);
+    const contactsRoutes = require('./routes/contacts')(db, authenticate);
 
     // Phase 2: Export functionality
     const exportRoutes = require('./routes/export')(db, authenticate);
@@ -78,6 +82,10 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/inquiry-tickets', inquiryTicketsRoutes);
     app.use('/api/v1/rma-tickets', rmaTicketsRoutes);
     app.use('/api/v1/dealer-repairs', dealerRepairsRoutes);
+    
+    // Account-Contact Architecture routes (账户-联系人双层架构)
+    app.use('/api/v1/accounts', accountsRoutes);
+    app.use('/api/v1/contacts', contactsRoutes);
 
     // Phase 2 routes
     app.use('/api/v1/export', exportRoutes);
@@ -117,6 +125,8 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/inquiry-tickets (新: 咨询工单)');
     console.log('  - /api/v1/rma-tickets (新: RMA返厂单)');
     console.log('  - /api/v1/dealer-repairs (新: 经销商维修单)');
+    console.log('  - /api/v1/accounts (新: 账户管理)');
+    console.log('  - /api/v1/contacts (新: 联系人管理)');
     console.log('  - /api/v1/export');
     console.log('  - /api/v1/knowledge');
     console.log('  - /api/v1/knowledge/audit (新: 知识库审计日志)');

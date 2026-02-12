@@ -176,7 +176,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
                 FROM issues i
                 LEFT JOIN products p ON i.product_id = p.id
                 LEFT JOIN customers c ON i.customer_id = c.id
-                LEFT JOIN dealers d ON i.dealer_id = d.id
+                LEFT JOIN accounts d ON i.dealer_id = d.id
                 LEFT JOIN users creator ON i.created_by = creator.id
                 LEFT JOIN users assignee ON i.assigned_to = assignee.id
                 ${whereClause}
@@ -326,14 +326,14 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
                 p.product_line, p.model_name as product_name,
                 c.customer_type, c.customer_name, c.contact_person, c.phone, c.email,
                 c.country, c.province, c.city, c.company_name,
-                d.name as dealer_name, d.code as dealer_code,
+                d.name as dealer_name, d.dealer_code as dealer_code,
                 creator.username as created_by_name,
                 assignee.username as assigned_to_name,
                 closer.username as closed_by_name
                 FROM issues i
                 LEFT JOIN products p ON i.product_id = p.id
                 LEFT JOIN customers c ON i.customer_id = c.id
-                LEFT JOIN dealers d ON i.dealer_id = d.id
+                LEFT JOIN accounts d ON i.dealer_id = d.id
                 LEFT JOIN users creator ON i.created_by = creator.id
                 LEFT JOIN users assignee ON i.assigned_to = assignee.id
                 LEFT JOIN users closer ON i.closed_by = closer.id

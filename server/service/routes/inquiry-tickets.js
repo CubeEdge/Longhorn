@@ -89,12 +89,28 @@ module.exports = function (db, authenticate, serviceUpload) {
             id: ticket.id,
             ticket_number: ticket.ticket_number,
 
-            // Customer Info
+            // Customer Info (新架构)
+            account_id: ticket.account_id,
+            contact_id: ticket.contact_id,
+            reporter_name: ticket.reporter_name || ticket.customer_name || '匿名客户',
+            
+            // 向后兼容字段
             customer_name: ticket.customer_name || '匿名客户',
             customer_contact: ticket.customer_contact,
             customer_id: ticket.customer_id,
             dealer_id: ticket.dealer_id,
             dealer_name: ticket.dealer_name,
+            dealer_code: ticket.dealer_code,
+            dealer_contact_name: ticket.dealer_contact_name,
+            dealer_contact_title: ticket.dealer_contact_title,
+            
+            // 联系人信息（如果已关联）
+            contact: ticket.contact_name ? {
+                id: ticket.contact_id,
+                name: ticket.contact_name,
+                email: ticket.contact_email,
+                phone: ticket.contact_phone
+            } : null,
 
             // Product Info
             product: ticket.product_name ? {
@@ -196,7 +212,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
             if (dealer_id) {
                 conditions.push('dealer_id = ?');
-                params.push(dealer_id);
+                params.push(parseInt(dealer_id));
             }
             if (handler_id === 'me') {
                 conditions.push('handler_id = ?');
@@ -322,7 +338,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
             if (dealer_id) {
                 conditions.push('t.dealer_id = ?');
-                params.push(dealer_id);
+                params.push(parseInt(dealer_id));
             }
             if (handler_id === 'me') {
                 conditions.push('t.handler_id = ?');
@@ -334,6 +350,15 @@ module.exports = function (db, authenticate, serviceUpload) {
             if (customer_id) {
                 conditions.push('t.customer_id = ?');
                 params.push(customer_id);
+            }
+            // 新架构：支持 account_id 筛选
+            if (req.query.account_id) {
+                conditions.push('t.account_id = ?');
+                params.push(req.query.account_id);
+            }
+            if (req.query.contact_id) {
+                conditions.push('t.contact_id = ?');
+                params.push(req.query.contact_id);
             }
             if (serial_number) {
                 conditions.push('t.serial_number LIKE ?');
@@ -412,12 +437,28 @@ module.exports = function (db, authenticate, serviceUpload) {
                     h.username as handler_name,
                     c.username as creator_name,
                     p.model_name as product_name,
-                    d.name as dealer_name
+                    d.name as dealer_name,
+                    d.dealer_code as dealer_code,
+                    -- 客户联系人信息
+                    ct.name as contact_name,
+                    ct.email as contact_email,
+                    ct.phone as contact_phone,
+                    ct.job_title as contact_job_title,
+                    -- 账户信息
+                    a.name as account_name,
+                    a.account_type,
+                    a.account_number,
+                    -- 经销商主要联系人
+                    dc.name as dealer_contact_name,
+                    dc.job_title as dealer_contact_title
                 FROM inquiry_tickets t
                 LEFT JOIN users h ON t.handler_id = h.id
                 LEFT JOIN users c ON t.created_by = c.id
                 LEFT JOIN products p ON t.product_id = p.id
-                LEFT JOIN dealers d ON t.dealer_id = d.id
+                LEFT JOIN accounts d ON t.dealer_id = d.id
+                LEFT JOIN contacts ct ON t.contact_id = ct.id
+                LEFT JOIN accounts a ON t.account_id = a.id
+                LEFT JOIN contacts dc ON dc.account_id = t.dealer_id AND dc.status = 'PRIMARY'
                 WHERE t.id = ?
             `).get(req.params.id);
 
@@ -449,10 +490,17 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.post('/', authenticate, serviceUpload.array('attachments'), (req, res) => {
         try {
             const {
+                // 新架构字段
+                account_id,
+                contact_id,
+                reporter_name,
+                
+                // 向后兼容字段
                 customer_name,
                 customer_contact,
                 customer_id,
                 dealer_id,
+                
                 product_id,
                 serial_number,
                 service_type = 'Consultation',
@@ -470,16 +518,36 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             const ticketNumber = generateTicketNumber(db);
 
+            // 优先使用新架构字段，但保持向后兼容
+            const finalAccountId = account_id || customer_id;
+            const finalReporterName = reporter_name || customer_name;
+            const finalContactInfo = customer_contact;
+
             const result = db.prepare(`
                 INSERT INTO inquiry_tickets (
-                    ticket_number, customer_name, customer_contact, customer_id, dealer_id,
+                    ticket_number, 
+                    account_id, contact_id, reporter_name,
+                    customer_name, customer_contact, customer_id, dealer_id,
                     product_id, serial_number, service_type, channel, problem_summary,
                     communication_log, status, created_by, handler_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'InProgress', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'InProgress', ?, ?)
             `).run(
-                ticketNumber, customer_name, customer_contact, customer_id, dealer_id,
-                product_id, serial_number, service_type, channel, problem_summary,
-                communication_log, req.user.id, req.user.id
+                ticketNumber, 
+                finalAccountId || null, 
+                contact_id || null, 
+                finalReporterName || null,
+                customer_name || finalReporterName || null, 
+                finalContactInfo || null, 
+                customer_id || finalAccountId || null, 
+                dealer_id || null,
+                product_id || null, 
+                serial_number || null, 
+                service_type, 
+                channel || null, 
+                problem_summary,
+                communication_log || null, 
+                req.user.id, 
+                req.user.id
             );
 
             const ticketId = result.lastInsertRowid;

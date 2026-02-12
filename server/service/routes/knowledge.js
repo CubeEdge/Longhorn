@@ -46,8 +46,11 @@ const docxUpload = multer({
     }
 });
 
-module.exports = function(db, authenticate) {
+module.exports = function(db, authenticate, multerInstance, aiService) {
     const router = express.Router();
+    
+    // AI Service 注入（从 index.js 传入）
+    // 用于文章排版优化和摘要生成
     
     // 审计日志函数（从 knowledge_audit 路由注入）
     let logAudit = null;
@@ -1187,17 +1190,27 @@ module.exports = function(db, authenticate) {
 
     function formatArticleDetail(article) {
         let tags = [], productModels = [], firmwareVersions = [], departmentIds = [];
+        let imageLayoutMeta = null;
         try { tags = JSON.parse(article.tags || '[]'); } catch (e) {}
         try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) {}
         try { firmwareVersions = JSON.parse(article.firmware_versions || '[]'); } catch (e) {}
         try { departmentIds = JSON.parse(article.department_ids || '[]'); } catch (e) {}
+        try { imageLayoutMeta = article.image_layout_meta ? JSON.parse(article.image_layout_meta) : null; } catch (e) {}
 
         return {
             id: article.id,
             title: article.title,
             slug: article.slug,
             summary: article.summary,
+            short_summary: article.short_summary,
             content: article.content,
+            formatted_content: article.formatted_content,
+            format_status: article.format_status || 'none',
+            formatted_by: article.formatted_by,
+            formatted_at: article.formatted_at,
+            chapter_number: article.chapter_number,
+            section_number: article.section_number,
+            image_layout_meta: imageLayoutMeta,
             category: article.category,
             subcategory: article.subcategory,
             tags,
@@ -1210,6 +1223,9 @@ module.exports = function(db, authenticate) {
             view_count: article.view_count,
             helpful_count: article.helpful_count,
             not_helpful_count: article.not_helpful_count,
+            source_type: article.source_type,
+            source_reference: article.source_reference,
+            source_url: article.source_url,
             author: { id: article.created_by, name: article.author_name },
             updated_by: article.updated_by ? { id: article.updated_by, name: article.updated_by_name } : null,
             published_at: article.published_at,
@@ -1696,6 +1712,586 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
         
         return sections;
     }
+
+    /**
+     * POST /api/v1/knowledge/:id/bokeh-optimize
+     * Receive optimization instruction from Bokeh chat and re-optimize article
+     * This is called when user gives feedback like "图片太大，缩小一些" or "段落太长"
+     */
+    router.post('/:id/bokeh-optimize', authenticate, async (req, res) => {
+        try {
+            // Check permission
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead' && req.user.role !== 'Editor') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权执行此操作' }
+                });
+            }
+
+            const article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            const { instruction, currentContent } = req.body;
+            if (!instruction) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'MISSING_INSTRUCTION', message: '请提供优化指令' }
+                });
+            }
+
+            if (!aiService) {
+                return res.status(500).json({
+                    success: false,
+                    error: { code: 'AI_NOT_AVAILABLE', message: 'AI服务未配置' }
+                });
+            }
+
+            console.log(`[Bokeh Optimize] Article ${article.id}, Instruction: ${instruction}`);
+
+            // Use current draft content if available, otherwise use original
+            const contentToOptimize = currentContent || article.formatted_content || article.content;
+
+            // Build prompt based on user's instruction
+            const optimizePrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+
+用户正在审阅文章「${article.title}」，并给出了以下修改意见：
+
+**用户修改意见**: ${instruction}
+
+**当前文章内容**:
+${contentToOptimize.substring(0, 8000)}
+
+**你的任务**:
+根据用户的修改意见，对文章进行调整和优化。常见修改包括：
+- 图片大小调整：在图片链接后添加 HTML 标签控制大小，如 <img src="..." style="max-width: 60%;" />
+- 段落优化：拆分长段落、调整结构
+- 内容精简：删除冗余内容
+- 格式调整：调整标题层级、列表格式
+
+**重要规则**:
+1. 保持技术准确性
+2. 保留所有关键信息
+3. 保持 Markdown 格式
+4. 图片使用 <img> 标签可以控制大小
+
+请直接输出优化后的完整内容，不要添加解释。`;
+
+            let optimizedContent;
+            try {
+                optimizedContent = await aiService.generate('logic',
+                    'You are Bokeh, a professional knowledge base editor. Follow user instructions to optimize articles.',
+                    optimizePrompt
+                );
+                console.log('[Bokeh Optimize] Optimization completed');
+            } catch (aiErr) {
+                console.error('[Bokeh Optimize] AI error:', aiErr.message);
+                return res.status(500).json({
+                    success: false,
+                    error: { code: 'AI_ERROR', message: '优化失败：' + aiErr.message }
+                });
+            }
+
+            // Save as draft
+            db.prepare(`
+                UPDATE knowledge_articles SET
+                    formatted_content = ?,
+                    format_status = 'draft',
+                    formatted_by = 'ai',
+                    formatted_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(optimizedContent, article.id);
+
+            // Log audit
+            if (logAudit) {
+                logAudit({
+                    operation: 'bokeh_optimize',
+                    operation_detail: `Bokeh优化指令: ${instruction.substring(0, 100)}`,
+                    article_id: article.id,
+                    article_title: article.title,
+                    article_slug: article.slug,
+                    user_id: req.user.id,
+                    user_name: req.user.username,
+                    user_role: req.user.role
+                });
+            }
+
+            // Generate a response message for Bokeh
+            const responseMessage = `✅ 已根据您的修改意见优化文章！\n\n**优化内容**：${instruction}\n\n优化后的内容已保存为草稿，您可以：\n- 切换到「Bokeh草稿」标签查看效果\n- 如满意，点击「发布草稿」正式发布\n- 如还需调整，继续告诉我您的修改意见`;
+
+            res.json({
+                success: true,
+                data: {
+                    article_id: article.id,
+                    article_title: article.title,
+                    optimized_content: optimizedContent,
+                    format_status: 'draft',
+                    response_message: responseMessage
+                }
+            });
+        } catch (err) {
+            console.error('[Bokeh Optimize] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'OPTIMIZE_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/:id/format
+     * AI-assisted article formatting and summary generation
+     * Uses Bokeh AI service to optimize content layout and generate summaries
+     */
+    router.post('/:id/format', authenticate, async (req, res) => {
+        try {
+            // Check permission
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead' && req.user.role !== 'Editor') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权执行此操作' }
+                });
+            }
+
+            const article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            const { mode = 'full' } = req.body; // 'full' | 'summary_only' | 'layout_only'
+
+            // Use injected aiService (from module.exports parameter)
+            if (!aiService) {
+                return res.status(500).json({
+                    success: false,
+                    error: { code: 'AI_NOT_AVAILABLE', message: 'AI服务未配置' }
+                });
+            }
+
+            console.log(`[Knowledge Format] Starting AI formatting for article ${article.id}: ${article.title}`);
+
+            // Build AI prompt based on mode
+            let formattedContent = article.content;
+            let shortSummary = article.summary;
+            let imageLayoutMeta = null;
+
+            if (mode === 'full' || mode === 'layout_only') {
+                // Analyze content and optimize layout
+                const layoutPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+请分析以下技术文章，并进行排版优化：
+
+**标题**: ${article.title}
+
+**原始内容**:
+${article.content.substring(0, 8000)}
+
+**优化任务**:
+1. 识别并优化文章结构（添加缺失的小标题、将长段落拆分为短段落或列表）
+2. 保持技术准确性，不随意扩写
+3. 如有步骤操作，改为编号列表
+4. 保留所有图片引用（![...](...) 格式），不删除
+5. 保留代码块和表格格式
+
+请直接输出优化后的Markdown内容，不要添加额外说明。`;
+
+                try {
+                    formattedContent = await aiService.generate('logic',
+                        'You are Bokeh, a professional knowledge base editor. Optimize article layout while preserving technical accuracy.',
+                        layoutPrompt
+                    );
+                    console.log('[Knowledge Format] Layout optimization completed');
+                } catch (aiErr) {
+                    console.error('[Knowledge Format] Layout AI error:', aiErr.message);
+                    // Keep original content if AI fails
+                    formattedContent = article.content;
+                }
+            }
+
+            if (mode === 'full' || mode === 'summary_only') {
+                // Generate short summary for chapter cards
+                const summaryPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+请为以下技术文章生成一个简短摘要（1-2句话，最多80字），用于在章节目录卡片中显示：
+
+**标题**: ${article.title}
+
+**内容片段**:
+${article.content.substring(0, 2000)}
+
+请直接输出摘要文本，不要添加引号或额外说明。`;
+
+                try {
+                    shortSummary = await aiService.generate('logic',
+                        'You are Bokeh. Generate concise summaries for technical documentation.',
+                        summaryPrompt
+                    );
+                    shortSummary = shortSummary.trim().substring(0, 200);
+                    console.log('[Knowledge Format] Summary generation completed');
+                } catch (aiErr) {
+                    console.error('[Knowledge Format] Summary AI error:', aiErr.message);
+                    // Generate fallback summary
+                    shortSummary = article.content
+                        .replace(/!\[.*?\]\(.*?\)/g, '')
+                        .replace(/\n+/g, ' ')
+                        .trim()
+                        .substring(0, 100) + '...';
+                }
+            }
+
+            // Analyze images and suggest layout
+            const imageMatches = formattedContent.match(/!\[.*?\]\(.*?\)/g) || [];
+            if (imageMatches.length > 0) {
+                imageLayoutMeta = {
+                    mode: 'auto',
+                    maxWidth: 720,
+                    imageCount: imageMatches.length,
+                    rules: imageMatches.map((_, idx) => ({
+                        imageIndex: idx,
+                        align: 'center',
+                        width: imageMatches.length === 1 ? '100%' : '80%'
+                    }))
+                };
+            }
+
+            // Parse chapter info from title
+            const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
+            const chapterNumber = chapterMatch ? parseInt(chapterMatch[1]) : null;
+            const sectionNumber = chapterMatch && chapterMatch[2] ? parseInt(chapterMatch[2]) : null;
+
+            // Update database with draft
+            db.prepare(`
+                UPDATE knowledge_articles SET
+                    formatted_content = ?,
+                    short_summary = ?,
+                    image_layout_meta = ?,
+                    chapter_number = ?,
+                    section_number = ?,
+                    format_status = 'draft',
+                    formatted_by = 'ai',
+                    formatted_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(
+                formattedContent,
+                shortSummary,
+                imageLayoutMeta ? JSON.stringify(imageLayoutMeta) : null,
+                chapterNumber,
+                sectionNumber,
+                article.id
+            );
+
+            // Log audit
+            if (logAudit) {
+                logAudit({
+                    operation: 'format',
+                    operation_detail: `Bokeh排版优化 (${mode})`,
+                    article_id: article.id,
+                    article_title: article.title,
+                    article_slug: article.slug,
+                    user_id: req.user.id,
+                    user_name: req.user.username,
+                    user_role: req.user.role
+                });
+            }
+
+            console.log(`[Knowledge Format] ✅ Article ${article.id} formatted successfully`);
+
+            res.json({
+                success: true,
+                data: {
+                    id: article.id,
+                    format_status: 'draft',
+                    formatted_by: 'ai',
+                    formatted_at: new Date().toISOString(),
+                    short_summary: shortSummary,
+                    chapter_number: chapterNumber,
+                    section_number: sectionNumber,
+                    image_count: imageMatches.length,
+                    content_preview: formattedContent.substring(0, 500)
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Format] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'FORMAT_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/:id/publish-format
+     * Publish formatted draft to main content
+     */
+    router.post('/:id/publish-format', authenticate, (req, res) => {
+        try {
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '只有管理员可以发布格式化内容' }
+                });
+            }
+
+            const article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            if (!article.formatted_content) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_DRAFT', message: '没有待发布的格式化草稿' }
+                });
+            }
+
+            // Save current content as version
+            db.prepare(`
+                INSERT INTO knowledge_article_versions (article_id, version, title, content, change_summary, created_by)
+                SELECT id, COALESCE((SELECT MAX(version) FROM knowledge_article_versions WHERE article_id = ?), 0) + 1,
+                       title, content, '发布格式化内容', ?
+                FROM knowledge_articles WHERE id = ?
+            `).run(article.id, req.user.id, article.id);
+
+            // Publish: copy formatted_content to content, update summary
+            db.prepare(`
+                UPDATE knowledge_articles SET
+                    content = formatted_content,
+                    summary = COALESCE(short_summary, summary),
+                    format_status = 'published',
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(req.user.id, article.id);
+
+            // Log audit
+            if (logAudit) {
+                logAudit({
+                    operation: 'publish_format',
+                    operation_detail: '发布Bokeh格式化内容',
+                    article_id: article.id,
+                    article_title: article.title,
+                    article_slug: article.slug,
+                    user_id: req.user.id,
+                    user_name: req.user.username,
+                    user_role: req.user.role
+                });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    id: article.id,
+                    format_status: 'published',
+                    published_at: new Date().toISOString()
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Publish Format] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'PUBLISH_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/knowledge/chapter-aggregate
+     * Get chapter aggregation view with all sub-sections
+     * Query params: product_line, product_model, category, chapter_number
+     */
+    router.get('/chapter-aggregate', authenticate, (req, res) => {
+        try {
+            const { product_line, product_model, category = 'Manual', chapter_number } = req.query;
+
+            if (!product_line || !product_model || !chapter_number) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'MISSING_PARAMS', message: '缺少必要参数: product_line, product_model, chapter_number' }
+                });
+            }
+
+            const user = req.user;
+            const visibilityConditions = buildVisibilityConditions(user);
+
+            // Find all articles in this chapter (main chapter + sub-sections)
+            // Pattern: title contains "章节号." like "2." for chapter 2, "2.1" for section 2.1
+            const chapterPattern = `${product_model}: ${chapter_number}.%`;
+            const mainChapterPattern = `${product_model}: ${chapter_number}.%`;
+
+            const articles = db.prepare(`
+                SELECT 
+                    ka.id, ka.title, ka.slug, ka.summary, ka.short_summary,
+                    ka.chapter_number, ka.section_number,
+                    ka.category, ka.product_line, ka.product_models,
+                    ka.view_count, ka.helpful_count
+                FROM knowledge_articles ka
+                WHERE ka.status = 'Published'
+                  AND ka.product_line = ?
+                  AND ka.product_models LIKE ?
+                  AND ka.category = ?
+                  AND (ka.title LIKE ? OR ka.chapter_number = ?)
+                  AND (${visibilityConditions.sql})
+                ORDER BY ka.chapter_number, ka.section_number NULLS FIRST
+            `).all(
+                product_line,
+                `%${product_model}%`,
+                category,
+                chapterPattern,
+                parseInt(chapter_number),
+                ...visibilityConditions.params
+            );
+
+            // Separate main chapter from sub-sections
+            let mainChapter = null;
+            const subSections = [];
+
+            articles.forEach(article => {
+                const parsedSection = article.section_number;
+                if (parsedSection === null || parsedSection === undefined) {
+                    // This is the main chapter (e.g., "2. 快速指南")
+                    if (!mainChapter) mainChapter = article;
+                } else {
+                    subSections.push(article);
+                }
+            });
+
+            // If no main chapter found, use first article as main
+            if (!mainChapter && articles.length > 0) {
+                mainChapter = articles[0];
+            }
+
+            // Get full content of main chapter for intro display
+            let mainContent = null;
+            if (mainChapter) {
+                const fullArticle = db.prepare('SELECT content, formatted_content FROM knowledge_articles WHERE id = ?').get(mainChapter.id);
+                mainContent = fullArticle?.formatted_content || fullArticle?.content || '';
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    chapter_number: parseInt(chapter_number),
+                    main_chapter: mainChapter ? {
+                        id: mainChapter.id,
+                        title: mainChapter.title,
+                        slug: mainChapter.slug,
+                        summary: mainChapter.short_summary || mainChapter.summary,
+                        content_preview: mainContent?.substring(0, 1000)
+                    } : null,
+                    sub_sections: subSections.map(s => ({
+                        id: s.id,
+                        title: s.title,
+                        slug: s.slug,
+                        section_number: s.section_number,
+                        summary: s.short_summary || s.summary,
+                        view_count: s.view_count,
+                        helpful_count: s.helpful_count
+                    })),
+                    total_articles: articles.length
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Chapter Aggregate] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/knowledge/chapter-full
+     * Get full chapter content (main + all sub-sections concatenated)
+     * For "read entire chapter" feature
+     */
+    router.get('/chapter-full', authenticate, (req, res) => {
+        try {
+            const { product_line, product_model, category = 'Manual', chapter_number } = req.query;
+
+            if (!product_line || !product_model || !chapter_number) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'MISSING_PARAMS', message: '缺少必要参数' }
+                });
+            }
+
+            const user = req.user;
+            const visibilityConditions = buildVisibilityConditions(user);
+
+            const chapterPattern = `${product_model}: ${chapter_number}.%`;
+
+            const articles = db.prepare(`
+                SELECT 
+                    ka.id, ka.title, ka.slug, ka.content, ka.formatted_content,
+                    ka.chapter_number, ka.section_number
+                FROM knowledge_articles ka
+                WHERE ka.status = 'Published'
+                  AND ka.product_line = ?
+                  AND ka.product_models LIKE ?
+                  AND ka.category = ?
+                  AND (ka.title LIKE ? OR ka.chapter_number = ?)
+                  AND (${visibilityConditions.sql})
+                ORDER BY ka.chapter_number, ka.section_number NULLS FIRST
+            `).all(
+                product_line,
+                `%${product_model}%`,
+                category,
+                chapterPattern,
+                parseInt(chapter_number),
+                ...visibilityConditions.params
+            );
+
+            // Concatenate all content
+            let fullContent = '';
+            const toc = [];
+
+            articles.forEach((article, idx) => {
+                const content = article.formatted_content || article.content || '';
+                const anchor = `section-${article.section_number || 'main'}`;
+                
+                // Add to TOC
+                toc.push({
+                    id: article.id,
+                    title: article.title,
+                    slug: article.slug,
+                    anchor
+                });
+
+                // Add section header and content
+                fullContent += `\n\n<a id="${anchor}"></a>\n\n`;
+                fullContent += `## ${article.title}\n\n`;
+                fullContent += content;
+                fullContent += '\n\n---\n';
+            });
+
+            res.json({
+                success: true,
+                data: {
+                    chapter_number: parseInt(chapter_number),
+                    title: `第${chapter_number}章`,
+                    toc,
+                    full_content: fullContent.trim(),
+                    article_count: articles.length
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge Chapter Full] Error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
 
     return router;
 };

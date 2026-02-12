@@ -59,9 +59,9 @@ module.exports = function(db, authenticate) {
 
             const offset = (parseInt(page) - 1) * parseInt(page_size);
             const invoices = db.prepare(`
-                SELECT pi.*, d.name as dealer_name, d.code as dealer_code, u.username as created_by_name
+                SELECT pi.*, d.name as dealer_name, d.dealer_code as dealer_code, u.username as created_by_name
                 FROM proforma_invoices pi
-                JOIN dealers d ON pi.dealer_id = d.id
+                JOIN accounts d ON pi.dealer_id = d.id AND d.account_type = 'DEALER'
                 LEFT JOIN users u ON pi.created_by = u.id
                 ${whereClause}
                 ORDER BY pi.created_at DESC
@@ -107,11 +107,11 @@ module.exports = function(db, authenticate) {
     router.get('/:id', authenticate, (req, res) => {
         try {
             const pi = db.prepare(`
-                SELECT pi.*, d.name as dealer_name, d.code as dealer_code,
-                       d.contact_email as dealer_email, d.contact_person,
+                SELECT pi.*, d.name as dealer_name, d.dealer_code as dealer_code,
+                       d.email as dealer_email, d.contact_name as contact_person,
                        u.username as created_by_name
                 FROM proforma_invoices pi
-                JOIN dealers d ON pi.dealer_id = d.id
+                JOIN accounts d ON pi.dealer_id = d.id AND d.account_type = 'DEALER'
                 LEFT JOIN users u ON pi.created_by = u.id
                 WHERE pi.id = ?
             `).get(req.params.id);
@@ -257,7 +257,7 @@ module.exports = function(db, authenticate) {
             const totalAmount = subtotal + shipping_cost + tax_amount - discount_amount;
 
             // Get dealer info for bill_to defaults
-            const dealer = db.prepare('SELECT * FROM dealers WHERE id = ?').get(dealer_id);
+            const dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(dealer_id, 'DEALER');
 
             const result = db.prepare(`
                 INSERT INTO proforma_invoices (
@@ -430,7 +430,7 @@ module.exports = function(db, authenticate) {
             const order = db.prepare(`
                 SELECT ro.*, d.name as dealer_name, d.country as dealer_country
                 FROM restock_orders ro
-                JOIN dealers d ON ro.dealer_id = d.id
+                JOIN accounts d ON ro.dealer_id = d.id AND d.account_type = 'DEALER'
                 WHERE ro.id = ?
             `).get(req.params.orderId);
 

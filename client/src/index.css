@@ -1612,3 +1612,96 @@ select.form-control option {
   border-color: rgba(10, 132, 255, 0.3);
   color: #0A84FF;
 }
+
+/* Insight Card Hover Effect - Similar to dealer card */
+.insight-card-hover {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.insight-card-hover:hover {
+  background: rgba(255, 210, 0, 0.08);
+  border-color: rgba(255, 210, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(255, 210, 0, 0.1);
+}
+
+/* macOS26 Ticket Detail Card Styles */
+.ticket-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.ticket-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.ticket-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticket-info-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ticket-info-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.ticket-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.ticket-content-box {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ticket-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.ticket-textarea:focus {
+  outline: none;
+  border-color: rgba(255, 210, 0, 0.3);
+}

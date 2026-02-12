@@ -20,7 +20,8 @@ import {
   Book,
   Package,
   Settings,
-  Users
+  Users,
+  Building
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -43,6 +44,8 @@ import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import CustomerManagement from './components/CustomerManagement';
+import DealerManagement from './components/DealerManagement';
+import CustomerDetailPage from './components/CustomerDetailPage';
 import KnowledgeGenerator from './components/KnowledgeGenerator';
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
 import { KinefinityWiki } from './components/KinefinityWiki';
@@ -97,10 +100,10 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} currentModule={currentModule} />
 
-        {/* Content Area - Service module handles its own layout/scrolling, Files module uses standard padding */}
+        {/* Content Area - All modules support scrolling */}
         <div
           className={currentModule === 'service' ? '' : 'content-area'}
-          style={currentModule === 'service' ? { flex: 1, overflow: 'hidden', position: 'relative' } : { flex: 1, overflow: 'auto' }}
+          style={{ flex: 1, overflow: 'auto', position: 'relative' }}
         >
           <Outlet />
         </div>
@@ -162,8 +165,17 @@ const App: React.FC = () => {
 
           {/* Dealer Repairs (经销商维修单) - Layer 3 */}
 
-          {/* Customer Archives (客户档案) - Section 2.3 */}
+          {/* Archives (档案和基础信息) - Section 2.3 - 三级入口结构 */}
+          {/* 1. 渠道和经销商 (第一入口) */}
+          <Route path="/service/dealers" element={<DealerManagement />} />
+          <Route path="/service/dealers/:id" element={<CustomerDetailPage />} />
+
+          {/* 2. 客户档案 (第二入口) */}
           <Route path="/service/customers" element={<CustomerManagement />} />
+          <Route path="/service/customers/:id" element={<CustomerDetailPage />} />
+
+          {/* 3. 资产和物料 (第三入口) - 占位 */}
+          <Route path="/service/assets" element={<div style={{ padding: 40, textAlign: 'center' }}><h2>资产和物料</h2><p>功能开发中...</p></div>} />
 
           {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
           <Route path="/service/knowledge" element={
@@ -341,9 +353,27 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
+            {/* 档案和基础信息 (Archives) - 三级入口结构 */}
+            <div style={{ padding: '0 24px 8px', fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>
+              档案和基础信息
+            </div>
+
+            {/* 1. 渠道和经销商 (第一入口) */}
+            <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''} `} onClick={onClose}>
+              <Building size={18} />
+              <span>{t('sidebar.archives_dealers') || '渠道和经销商'}</span>
+            </Link>
+
+            {/* 2. 客户档案 (第二入口) */}
             <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''} `} onClick={onClose}>
               <Users size={18} />
-              <span>{t('sidebar.archives_customers') || 'Customer Archives'}</span>
+              <span>{t('sidebar.archives_customers') || '客户档案'}</span>
+            </Link>
+
+            {/* 3. 资产和物料 (第三入口) */}
+            <Link to={getRoute('/service/assets')} className={`sidebar-item ${location.pathname.startsWith('/service/assets') ? 'active' : ''} `} onClick={onClose}>
+              <Box size={18} />
+              <span>{t('sidebar.archives_assets') || '资产和物料'}</span>
             </Link>
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />

@@ -31,11 +31,13 @@ module.exports = function(db, authenticate) {
             }
 
             // Find user by username or email
+            // 经销商用户通过 dealer_id 关联到 accounts 表（新架构）
             const user = db.prepare(`
-                SELECT u.*, d.name as department_name, dl.name as dealer_name, dl.code as dealer_code
+                SELECT u.*, d.name as department_name, 
+                       acc.name as dealer_name, acc.dealer_code as dealer_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN dealers dl ON u.dealer_id = dl.id
+                LEFT JOIN accounts acc ON u.dealer_id = acc.id AND acc.account_type = 'DEALER'
                 WHERE u.username = ? OR u.username = ?
             `).get(loginId, loginId.toLowerCase());
 
@@ -162,11 +164,13 @@ module.exports = function(db, authenticate) {
      */
     router.get('/me', authenticate, (req, res) => {
         try {
+            // 经销商用户通过 dealer_id 关联到 accounts 表（新架构）
             const user = db.prepare(`
-                SELECT u.*, d.name as department_name, dl.name as dealer_name
+                SELECT u.*, d.name as department_name, 
+                       acc.name as dealer_name, acc.dealer_code as dealer_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN dealers dl ON u.dealer_id = dl.id
+                LEFT JOIN accounts acc ON u.dealer_id = acc.id AND acc.account_type = 'DEALER'
                 WHERE u.id = ?
             `).get(req.user.id);
 

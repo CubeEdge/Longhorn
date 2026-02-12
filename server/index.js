@@ -20,6 +20,7 @@ const dealerRepairs = require('./service/routes/dealer-repairs');
 const products = require('./service/routes/products');
 const settings = require('./service/routes/settings');
 const knowledgeRoutes = require('./service/routes/knowledge');
+const contextRoutes = require('./service/routes/context');
 
 dotenv.config();
 
@@ -293,6 +294,60 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_enabled BOOLEAN 
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_frequency INTEGER DEFAULT 1440").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_retention_days INTEGER DEFAULT 7").run(); } catch (e) { }
 // try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_path TEXT").run(); } catch (e) { }
+
+// Migration: customers table extra columns
+try { db.prepare("ALTER TABLE customers ADD COLUMN account_type TEXT DEFAULT 'EndUser'").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE customers ADD COLUMN service_tier TEXT DEFAULT 'STANDARD'").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE customers ADD COLUMN industry_tags TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE customers ADD COLUMN parent_dealer_id INTEGER").run(); } catch (e) { }
+
+// [DEPRECATED] Migration: dealers table
+// 经销商数据已迁移到 accounts 表 (account_type='DEALER')
+// 此表已废弃，保留代码仅作为历史参考
+/*
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS dealers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            code TEXT UNIQUE NOT NULL,
+            dealer_type TEXT DEFAULT 'FirstTier',
+            region TEXT DEFAULT '海外',
+            country TEXT,
+            city TEXT,
+            province TEXT,
+            contact_person TEXT,
+            contact_email TEXT,
+            contact_phone TEXT,
+            can_repair INTEGER DEFAULT 0,
+            repair_level TEXT,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_dealers_code ON dealers(code);
+        CREATE INDEX IF NOT EXISTS idx_dealers_region ON dealers(region);
+    `);
+} catch (e) { console.log('[Migration] dealers table:', e.message); }
+
+// Seed default dealers if table is empty
+try {
+    const dealerCount = db.prepare('SELECT COUNT(*) as cnt FROM dealers').get();
+    if (dealerCount.cnt === 0) {
+        db.exec(`
+            INSERT OR IGNORE INTO dealers (name, code, dealer_type, region, country, can_repair, repair_level) VALUES
+            ('ProAV Berlin', 'PROAV', 'FirstTier', '海外', 'Germany', 1, 'SimpleRepair'),
+            ('Gafpa Gear', 'GAFPA', 'FirstTier', '海外', 'USA', 1, 'MediumRepair'),
+            ('EU Office', 'EUOFFICE', 'Direct', '海外', 'Netherlands', 1, 'FullRepair'),
+            ('1SV', '1SV', 'FirstTier', '海外', 'USA', 0, NULL),
+            ('Cinetx', 'CINETX', 'FirstTier', '海外', 'USA', 1, 'SimpleRepair'),
+            ('RMK', 'RMK', 'FirstTier', '海外', 'Russia', 0, NULL),
+            ('DP Gadget', 'DPGADGET', 'FirstTier', '海外', 'Thailand', 0, NULL);
+        `);
+        console.log('[Init] Seeded default dealers');
+    }
+} catch (e) { console.log('[Migration] dealers seed:', e.message); }
+*/
 
 // Auto-Seeding: DISABLED to prevent loading incorrect vocabulary data
 // The seed file contains incorrect format data that needs to be cleaned
@@ -735,6 +790,7 @@ app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate, attachmentsDir, multer, serviceUpload));
 app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate, serviceUpload));
 app.use('/api/v1/knowledge', knowledgeRoutes(db, authenticate, multer, aiService));
+app.use('/api/v1/context', contextRoutes(db, authenticate));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
@@ -4485,7 +4541,250 @@ app.put('/api/products/:id', authenticate, (req, res) => {
     }
 });
 
-// --- Customers CRUD ---
+// --- Customers CRUD (v1 API) ---
+
+// GET /api/v1/customers - List customers with account_type support (Dealer/Customer)
+app.get('/api/v1/customers', authenticate, (req, res) => {
+    try {
+        const { type, account_type, name, page = 1, page_size = 50 } = req.query;
+        const limit = parseInt(page_size) || 50;
+        const offset = (parseInt(page) - 1) * limit;
+
+        let sql = `SELECT * FROM customers WHERE 1=1`;
+        const params = [];
+
+        if (req.user.role === 'Dealer') {
+            sql += ` AND (parent_dealer_id = ? OR customer_type = 'EndUser' AND parent_dealer_id = ?)`;
+            params.push(req.user.dealer_id, req.user.dealer_id);
+        }
+
+        if (account_type === 'Dealer') {
+            // Query Accounts Table for dealer list (new architecture)
+            let dealerSql = `
+                SELECT 
+                    a.id, 
+                    a.name as customer_name, 
+                    'Dealer' as customer_type,
+                    c.name as contact_person, 
+                    c.phone as phone, 
+                    c.email as email,
+                    a.country, NULL as province, a.city, 
+                    a.dealer_code as company_name, 
+                    a.notes, 
+                    'Dealer' as account_type,
+                    a.service_tier,
+                    a.dealer_level,
+                    a.is_active,
+                    a.created_at
+                FROM accounts a
+                LEFT JOIN contacts c ON c.account_id = a.id AND (c.is_primary = 1 OR c.status = 'PRIMARY')
+                WHERE a.account_type = 'DEALER'
+            `;
+            const dealerParams = [];
+
+            if (name) {
+                dealerSql += ` AND (a.name LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)`;
+                const like = `%${name}%`;
+                dealerParams.push(like, like, like, like);
+            }
+
+            dealerSql += ` ORDER BY a.created_at DESC LIMIT ? OFFSET ?`;
+            dealerParams.push(limit, offset);
+
+            const list = db.prepare(dealerSql).all(...dealerParams);
+
+            let dealerCountSql = `SELECT COUNT(*) as total FROM accounts WHERE account_type = 'DEALER'`;
+            const dealerCountParams = [];
+            if (name) {
+                dealerCountSql += ` AND (name LIKE ? OR EXISTS (SELECT 1 FROM contacts c WHERE c.account_id = accounts.id AND (c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)))`;
+                const like = `%${name}%`;
+                dealerCountParams.push(like, like, like, like);
+            }
+            const total = db.prepare(dealerCountSql).get(...dealerCountParams).total;
+
+            return res.json({ success: true, data: { list, total, page: parseInt(page), page_size: limit } });
+        }
+
+        // Normal Customer Logic (EndUser)
+        if (type) {
+            sql += ` AND customer_type = ?`;
+            params.push(type);
+        }
+
+        if (account_type) {
+            if (account_type === 'Customer') {
+                sql += ` AND customer_type = 'EndUser'`;
+            } else {
+                sql += ` AND customer_type = ?`;
+                params.push(account_type);
+            }
+        }
+
+        if (req.user.role === 'Dealer') {
+            if (!req.user.dealer_id) {
+                sql += ` AND 1=0`;
+            } else {
+                sql += ` AND parent_dealer_id = ?`;
+                params.push(req.user.dealer_id);
+            }
+        }
+
+        if (name) {
+            sql += ` AND (customer_name LIKE ? OR contact_person LIKE ? OR phone LIKE ?)`;
+            const like = `%${name}%`;
+            params.push(like, like, like);
+        }
+
+        sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const list = db.prepare(sql).all(...params);
+
+        // Get Total Count
+        let countSql = `SELECT COUNT(*) as total FROM customers WHERE 1=1`;
+        const countParams = [];
+        if (type) { countSql += ` AND customer_type = ?`; countParams.push(type); }
+        if (account_type) {
+            if (account_type === 'Customer') { countSql += ` AND customer_type = 'EndUser'`; }
+            else { countSql += ` AND customer_type = ?`; countParams.push(account_type); }
+        }
+        if (req.user.role === 'Dealer') {
+            if (!req.user.dealer_id) { countSql += ` AND 1=0`; }
+            else { countSql += ` AND parent_dealer_id = ?`; countParams.push(req.user.dealer_id); }
+        }
+        if (name) {
+            countSql += ` AND (customer_name LIKE ? OR contact_person LIKE ? OR phone LIKE ?)`;
+            const like = `%${name}%`;
+            countParams.push(like, like, like);
+        }
+        const total = db.prepare(countSql).get(...countParams).total;
+
+        res.json({ success: true, data: { list, total, page: parseInt(page), page_size: limit } });
+    } catch (err) {
+        console.error('[Customers] List Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/v1/customers - Create customer
+app.post('/api/v1/customers', authenticate, (req, res) => {
+    try {
+        const {
+            customer_type, customer_name, contact_person, phone, email,
+            country, province, city, company_name, notes,
+            account_type, service_tier, industry_tags
+        } = req.body;
+
+        if (!customer_name || !customer_type) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        let parentDealerId = null;
+        let finalCustomerType = customer_type;
+
+        if (req.user.role === 'Dealer') {
+            if (!req.user.dealer_id) return res.status(403).json({ error: 'Dealer account not linked' });
+            parentDealerId = req.user.dealer_id;
+            finalCustomerType = 'EndUser';
+        }
+
+        const result = db.prepare(`
+            INSERT INTO customers (
+                customer_type, customer_name, contact_person, phone, email,
+                country, province, city, company_name, notes,
+                account_type, service_tier, industry_tags, parent_dealer_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            finalCustomerType, customer_name, contact_person || null, phone || null, email || null,
+            country || null, province || null, city || null, company_name || null, notes || null,
+            account_type || 'EndUser', service_tier || 'STANDARD', industry_tags || null, parentDealerId
+        );
+
+        res.json({ success: true, id: result.lastInsertRowid });
+    } catch (err) {
+        console.error('[Customers] Create Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/v1/customers/:id
+app.get('/api/v1/customers/:id', authenticate, (req, res) => {
+    try {
+        const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+        if (!customer) return res.status(404).json({ error: 'Customer not found' });
+        res.json({ success: true, data: customer });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/v1/dealers/:id - Get dealer detail (Legacy 兼容，查询accounts表)
+app.get('/api/v1/dealers/:id', authenticate, (req, res) => {
+    try {
+        const dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(req.params.id, 'DEALER');
+        if (!dealer) return res.status(404).json({ error: 'Dealer not found' });
+        res.json({ success: true, data: dealer });
+    } catch (err) {
+        console.error('[Dealers] Get Detail Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/v1/customers/:id
+app.put('/api/v1/customers/:id', authenticate, (req, res) => {
+    try {
+        const {
+            customer_type, customer_name, contact_person, phone, email,
+            country, province, city, company_name, notes,
+            account_type, service_tier, industry_tags
+        } = req.body;
+
+        const result = db.prepare(`
+            UPDATE customers SET 
+                customer_type = COALESCE(?, customer_type),
+                customer_name = COALESCE(?, customer_name),
+                contact_person = COALESCE(?, contact_person),
+                phone = COALESCE(?, phone),
+                email = COALESCE(?, email),
+                country = COALESCE(?, country),
+                province = COALESCE(?, province),
+                city = COALESCE(?, city),
+                company_name = COALESCE(?, company_name),
+                notes = COALESCE(?, notes),
+                account_type = COALESCE(?, account_type),
+                service_tier = COALESCE(?, service_tier),
+                industry_tags = COALESCE(?, industry_tags),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `).run(
+            customer_type, customer_name, contact_person, phone, email,
+            country, province, city, company_name, notes,
+            account_type, service_tier, industry_tags,
+            req.params.id
+        );
+
+        if (result.changes === 0) return res.status(404).json({ error: 'Customer not found' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Customers] Update Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/v1/customers/:id
+app.delete('/api/v1/customers/:id', authenticate, (req, res) => {
+    if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        const result = db.prepare('DELETE FROM customers WHERE id = ?').run(req.params.id);
+        if (result.changes === 0) return res.status(404).json({ error: 'Customer not found' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Customers] Delete Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Legacy Customers CRUD ---
 
 // Get Customers List
 app.get('/api/customers', authenticate, (req, res) => {

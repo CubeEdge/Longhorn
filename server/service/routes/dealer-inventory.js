@@ -61,10 +61,10 @@ module.exports = function(db, authenticate) {
             const inventory = db.prepare(`
                 SELECT di.*, 
                        pc.part_number, pc.part_name, pc.category,
-                       d.name as dealer_name, d.code as dealer_code
+                       d.name as dealer_name, d.dealer_code as dealer_code
                 FROM dealer_inventory di
                 JOIN parts_catalog pc ON di.part_id = pc.id
-                JOIN dealers d ON di.dealer_id = d.id
+                JOIN accounts d ON di.dealer_id = d.id AND d.account_type = 'DEALER'
                 ${whereClause}
                 ORDER BY di.quantity <= di.reorder_point DESC, pc.category, pc.part_name
                 LIMIT ? OFFSET ?
@@ -251,7 +251,7 @@ module.exports = function(db, authenticate) {
                 SELECT it.*, pc.part_number, pc.part_name, d.name as dealer_name, u.username as created_by_name
                 FROM inventory_transactions it
                 JOIN parts_catalog pc ON it.part_id = pc.id
-                JOIN dealers d ON it.dealer_id = d.id
+                JOIN accounts d ON it.dealer_id = d.id AND d.account_type = 'DEALER'
                 LEFT JOIN users u ON it.created_by = u.id
                 ${whereClause}
                 ORDER BY it.created_at DESC
@@ -302,7 +302,7 @@ module.exports = function(db, authenticate) {
                 SELECT di.*, pc.part_number, pc.part_name, pc.category, d.name as dealer_name
                 FROM dealer_inventory di
                 JOIN parts_catalog pc ON di.part_id = pc.id
-                JOIN dealers d ON di.dealer_id = d.id
+                JOIN accounts d ON di.dealer_id = d.id AND d.account_type = 'DEALER'
                 WHERE ${conditions.join(' AND ')}
                 ORDER BY (di.reorder_point - di.quantity) DESC
             `).all(...params);
@@ -363,7 +363,7 @@ module.exports = function(db, authenticate) {
             const orders = db.prepare(`
                 SELECT ro.*, d.name as dealer_name, u.username as created_by_name
                 FROM restock_orders ro
-                JOIN dealers d ON ro.dealer_id = d.id
+                JOIN accounts d ON ro.dealer_id = d.id AND d.account_type = 'DEALER'
                 LEFT JOIN users u ON ro.created_by = u.id
                 ${whereClause}
                 ORDER BY ro.created_at DESC
@@ -487,10 +487,10 @@ module.exports = function(db, authenticate) {
     router.get('/restock-orders/:id', authenticate, (req, res) => {
         try {
             const order = db.prepare(`
-                SELECT ro.*, d.name as dealer_name, d.code as dealer_code,
+                SELECT ro.*, d.name as dealer_name, d.dealer_code as dealer_code,
                        u.username as created_by_name, approver.username as approved_by_name
                 FROM restock_orders ro
-                JOIN dealers d ON ro.dealer_id = d.id
+                JOIN accounts d ON ro.dealer_id = d.id AND d.account_type = 'DEALER'
                 LEFT JOIN users u ON ro.created_by = u.id
                 LEFT JOIN users approver ON ro.approved_by = approver.id
                 WHERE ro.id = ?

@@ -10,13 +10,13 @@ module.exports = function(db, authenticate) {
 
     /**
      * GET /api/v1/dealers
-     * List all dealers
+     * List all dealers (查询accounts表中account_type='DEALER'的记录)
      */
     router.get('/', authenticate, (req, res) => {
         try {
             const { region, can_repair } = req.query;
             
-            let conditions = [];
+            let conditions = ["account_type = 'DEALER'"];
             let params = [];
 
             if (region) {
@@ -28,10 +28,10 @@ module.exports = function(db, authenticate) {
                 params.push(can_repair === 'true' || can_repair === '1' ? 1 : 0);
             }
 
-            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+            const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
             const dealers = db.prepare(`
-                SELECT * FROM dealers ${whereClause} ORDER BY name
+                SELECT * FROM accounts ${whereClause} ORDER BY name
             `).all(...params);
 
             res.json({
@@ -39,15 +39,15 @@ module.exports = function(db, authenticate) {
                 data: dealers.map(d => ({
                     id: d.id,
                     name: d.name,
-                    code: d.code,
-                    dealer_type: d.dealer_type,
+                    code: d.dealer_code,
+                    dealer_type: d.dealer_level,
                     region: d.region,
                     country: d.country,
                     city: d.city,
                     contact_info: {
-                        contact_person: d.contact_person,
-                        email: d.contact_email,
-                        phone: d.contact_phone
+                        contact_person: d.contact_name,
+                        email: d.email,
+                        phone: d.phone
                     },
                     service_capabilities: {
                         can_repair: !!d.can_repair,
@@ -68,11 +68,11 @@ module.exports = function(db, authenticate) {
 
     /**
      * GET /api/v1/dealers/:id
-     * Get dealer detail
+     * Get dealer detail (查询accounts表)
      */
     router.get('/:id', authenticate, (req, res) => {
         try {
-            const dealer = db.prepare('SELECT * FROM dealers WHERE id = ?').get(req.params.id);
+            const dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(req.params.id, 'DEALER');
             
             if (!dealer) {
                 return res.status(404).json({
@@ -95,15 +95,15 @@ module.exports = function(db, authenticate) {
                 data: {
                     id: dealer.id,
                     name: dealer.name,
-                    code: dealer.code,
-                    dealer_type: dealer.dealer_type,
+                    code: dealer.dealer_code,
+                    dealer_type: dealer.dealer_level,
                     region: dealer.region,
                     country: dealer.country,
                     city: dealer.city,
                     contact_info: {
-                        contact_person: dealer.contact_person,
-                        email: dealer.contact_email,
-                        phone: dealer.contact_phone
+                        contact_person: dealer.contact_name,
+                        email: dealer.email,
+                        phone: dealer.phone
                     },
                     service_capabilities: {
                         can_repair: !!dealer.can_repair,
@@ -191,7 +191,7 @@ module.exports = function(db, authenticate) {
 
     /**
      * POST /api/v1/dealers
-     * Create new dealer (Admin only)
+     * Create new dealer (Admin only) - 创建到accounts表
      */
     router.post('/', authenticate, (req, res) => {
         try {
@@ -217,10 +217,10 @@ module.exports = function(db, authenticate) {
             }
 
             const result = db.prepare(`
-                INSERT INTO dealers (name, code, dealer_type, region, country, city,
-                    contact_person, contact_email, contact_phone,
+                INSERT INTO accounts (name, dealer_code, dealer_level, account_type, region, country, city,
+                    contact_name, email, phone,
                     can_repair, repair_level, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, 'DEALER', ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 name, code.toUpperCase(), dealer_type,
                 region, country || null, city || null,
@@ -249,7 +249,7 @@ module.exports = function(db, authenticate) {
 
     /**
      * PATCH /api/v1/dealers/:id
-     * Update dealer (Admin only)
+     * Update dealer (Admin only) - 更新accounts表
      */
     router.patch('/:id', authenticate, (req, res) => {
         try {
@@ -260,7 +260,7 @@ module.exports = function(db, authenticate) {
                 });
             }
 
-            const dealer = db.prepare('SELECT * FROM dealers WHERE id = ?').get(req.params.id);
+            const dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(req.params.id, 'DEALER');
             if (!dealer) {
                 return res.status(404).json({
                     success: false,
@@ -268,19 +268,28 @@ module.exports = function(db, authenticate) {
                 });
             }
 
-            const allowedFields = [
-                'name', 'dealer_type', 'region', 'country', 'city',
-                'contact_person', 'contact_email', 'contact_phone',
-                'can_repair', 'repair_level', 'notes'
-            ];
+            // 字段映射: API字段 -> accounts表字段
+            const fieldMapping = {
+                name: 'name',
+                dealer_type: 'dealer_level',
+                region: 'region',
+                country: 'country',
+                city: 'city',
+                contact_person: 'contact_name',
+                contact_email: 'email',
+                contact_phone: 'phone',
+                can_repair: 'can_repair',
+                repair_level: 'repair_level',
+                notes: 'notes'
+            };
 
             const updates = [];
             const params = [];
 
-            for (const field of allowedFields) {
-                if (req.body[field] !== undefined) {
-                    updates.push(`${field} = ?`);
-                    params.push(field === 'can_repair' ? (req.body[field] ? 1 : 0) : req.body[field]);
+            for (const [apiField, dbField] of Object.entries(fieldMapping)) {
+                if (req.body[apiField] !== undefined) {
+                    updates.push(`${dbField} = ?`);
+                    params.push(apiField === 'can_repair' ? (req.body[apiField] ? 1 : 0) : req.body[apiField]);
                 }
             }
 
@@ -294,7 +303,7 @@ module.exports = function(db, authenticate) {
             updates.push('updated_at = CURRENT_TIMESTAMP');
             params.push(req.params.id);
 
-            db.prepare(`UPDATE dealers SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+            db.prepare(`UPDATE accounts SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
             res.json({ success: true });
         } catch (err) {

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useConfirm } from '../store/useConfirm';
 import { useLanguage } from '../i18n/useLanguage';
-import { AlertCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 export const ConfirmDialog: React.FC = () => {
     const { isOpen, title, message, confirmLabel, cancelLabel, close } = useConfirm();
@@ -29,8 +29,9 @@ export const ConfirmDialog: React.FC = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(4px)',
+                background: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -42,80 +43,122 @@ export const ConfirmDialog: React.FC = () => {
                 className="modal-content"
                 onClick={e => e.stopPropagation()}
                 style={{
-                    background: 'var(--bg-secondary)', // Assuming these css vars exist from other components
-                    border: '1px solid var(--border-color)', // Fallback required if not global? Let's use hardcoded backup
+                    background: 'rgba(30, 30, 30, 0.95)',
+                    border: '1px solid rgba(255, 215, 0, 0.2)',
                     width: '90%',
-                    maxWidth: '400px',
-                    borderRadius: '16px',
-                    padding: '24px',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-                    animation: 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    color: 'white' // Force text color for safety
+                    maxWidth: '420px',
+                    borderRadius: '20px',
+                    padding: '0',
+                    boxShadow: '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 215, 0, 0.1)',
+                    animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    overflow: 'hidden'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '8px' }}>
+                {/* Header with icon */}
+                <div style={{
+                    padding: '24px 28px 20px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                }}>
                     <div style={{
-                        background: 'rgba(255, 210, 0, 0.1)',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        display: 'flex'
+                        background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
+                        padding: '12px',
+                        borderRadius: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.1)'
                     }}>
-                        <AlertCircle size={24} color="var(--accent-blue)" />
+                        <AlertTriangle size={24} color="#FFD700" strokeWidth={2} />
                     </div>
-                    <div>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 600 }}>
-                            {title || t('dialog.confirm_title') || 'Confirm Action'}
-                        </h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                            {message}
-                        </p>
-                    </div>
+                    <h3 style={{
+                        margin: 0,
+                        fontSize: '18px',
+                        fontWeight: 600,
+                        color: '#fff',
+                        letterSpacing: '-0.3px'
+                    }}>
+                        {title || t('dialog.confirm_title') || 'Confirm Action'}
+                    </h3>
                 </div>
 
+                {/* Message */}
+                <div style={{
+                    padding: '20px 28px 24px'
+                }}>
+                    <p style={{
+                        margin: 0,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        lineHeight: 1.6,
+                        fontSize: '15px'
+                    }}>
+                        {message}
+                    </p>
+                </div>
+
+                {/* Buttons */}
                 <div style={{
                     display: 'flex',
                     gap: '12px',
-                    justifyContent: 'flex-end',
-                    marginTop: '24px'
+                    padding: '0 28px 24px',
+                    justifyContent: 'flex-end'
                 }}>
                     <button
                         onClick={() => close(false)}
                         style={{
-                            padding: '10px 16px',
-                            background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            color: 'var(--text-secondary)',
+                            padding: '12px 24px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '12px',
+                            color: 'rgba(255, 255, 255, 0.7)',
                             cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            fontSize: '15px',
                             fontWeight: 500,
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minWidth: '90px'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        }}
                     >
                         {cancelLabel || t('common.cancel') || 'Cancel'}
                     </button>
                     <button
                         onClick={() => close(true)}
                         style={{
-                            padding: '10px 20px',
-                            background: 'var(--accent-blue)',
+                            padding: '12px 24px',
+                            background: 'linear-gradient(135deg, #FFD700, #FFC000)',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: '12px',
                             color: '#000',
                             cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            fontSize: '15px',
                             fontWeight: 600,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s'
+                            justifyContent: 'center',
+                            gap: '8px',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            minWidth: '90px',
+                            boxShadow: '0 4px 15px rgba(255, 215, 0, 0.3)'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.4)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.3)';
+                        }}
                     >
-                        {/* <Check size={16} /> */}
+                        <CheckCircle size={16} strokeWidth={2.5} />
                         {confirmLabel || t('common.confirm') || 'Confirm'}
                     </button>
                 </div>

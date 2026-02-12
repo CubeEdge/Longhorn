@@ -1,7 +1,12 @@
 # Service 数据模型设计
 
-**版本**: 0.7.0
-**最后更新**: 2026-02-06
+**版本**: 0.7.1
+**最后更新**: 2026-02-11
+
+> **v0.7.1 更新**：
+> - 账户类型更新：CORPORATE → ORGANIZATION
+> - 新增经销商专属字段：dealer_level（tier1/tier2/tier3/Direct）
+> - 区分 service_tier（终端客户服务等级）和 dealer_level（经销商等级）
 > **参考来源**：A02-产品返修记录.xlsx、EAGLE知识库.xlsx、Knowledge base_Edge.xlsx、固件Knowledge Base.xlsx
 
 ---
@@ -58,42 +63,174 @@ products (产品)
 
 ---
 
-### 1.2 客户 (customers)
+### 1.2 账户 (accounts)
+
+> **设计说明**：采用"账户(Account) + 联系人(Contact)"双层架构，区分法律/商业实体与具体自然人。
+> - 账户(Account)：公司、机构、个体户或个人（法律/商业实体）
+> - 联系人(Contact)：具体的自然人，负责对接沟通
 
 ```sql
-customers (客户)
+accounts (账户 - 法律/商业实体)
 ├── id: SERIAL PRIMARY KEY
-├── name: VARCHAR(255) NOT NULL -- 客户姓名
-├── company: VARCHAR(255) -- 公司名称
-├── email: VARCHAR(255) -- 邮箱
-├── phone: VARCHAR(50) -- 电话
-├── wechat: VARCHAR(100) -- 微信号
-├── customer_type: ENUM('end_user', 'kol', 'media') -- 客户类型
-├── customer_level: ENUM('vip', 'normal', 'new') DEFAULT 'normal' -- 客户等级
+├── account_number: VARCHAR(30) UNIQUE -- 账户编号 (ACC-2026-0001)
+├── name: VARCHAR(255) NOT NULL -- 账户名称（公司名或个人姓名）
+├── account_type: ENUM('ORGANIZATION', 'INDIVIDUAL', 'DEALER', 'INTERNAL') NOT NULL
+│   -- ORGANIZATION: 机构客户（租赁公司、制作公司、广电、教育机构等）
+│   -- INDIVIDUAL: 个人客户（个人摄影师、自由职业者）
+│   -- DEALER: 经销商（ProAV, Gafpa, 1SV等）
+│   -- INTERNAL: 内部/合作伙伴（友商、供应商、媒体等）
+│
+├── // 联系信息（主要联系地址）
+├── email: VARCHAR(255) -- 主邮箱
+├── phone: VARCHAR(50) -- 主电话
 ├── country: VARCHAR(100) -- 国家
 ├── province: VARCHAR(100) -- 省份/州
 ├── city: VARCHAR(100) -- 城市
 ├── address: TEXT -- 详细地址
-├── dealer_id: INT -- 关联经销商 (可为空)
+│
+├── // 业务属性
+├── service_tier: ENUM('STANDARD', 'VIP', 'VVIP', 'BLACKLIST') DEFAULT 'STANDARD'
+│   -- 终端客户服务等级（适用于 ORGANIZATION/INDIVIDUAL）
+├── dealer_level: ENUM('tier1', 'tier2', 'tier3', 'Direct') -- 经销商等级（仅 DEALER）
+│   -- tier1: 一级经销商（有配件库存+维修能力）
+│   -- tier2: 二级经销商（有维修能力但无备件）
+│   -- tier3: 三级经销商（无维修能力无备件）
+│   -- Direct: 直营
+├── industry_tags: JSON -- 行业标签 ["RENTAL_HOUSE", "PRODUCTION", "BROADCAST"]
+├── credit_limit: DECIMAL(10,2) DEFAULT 0 -- 信用额度
+│
+├── // 经销商关联（销售归属）
+├── parent_dealer_id: INT -- 关联经销商账户ID（当客户通过经销商获得时）
+│
+├── // 经销商特有字段
+├── dealer_code: VARCHAR(50) -- 经销商代码（仅 DEALER，如: ProAV, Gafpa）
+├── region: VARCHAR(100) -- 销售大区（仅 DEALER）
+├── can_repair: BOOLEAN DEFAULT false -- 是否有维修能力（仅 DEALER）
+├── repair_level: VARCHAR(50) -- 维修能力等级（仅 DEALER）
+│
+├── // 系统字段
+├── is_active: BOOLEAN DEFAULT true -- 是否启用
 ├── notes: TEXT -- 备注
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
-FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+FOREIGN KEY (parent_dealer_id) REFERENCES accounts(id)
 ```
 
 **索引**：
 - PRIMARY KEY (id)
-- INDEX idx_dealer (dealer_id)
+- UNIQUE KEY (account_number)
+- INDEX idx_account_type (account_type)
+- INDEX idx_parent_dealer (parent_dealer_id)
 - INDEX idx_email (email)
 - INDEX idx_country_province (country, province)
+- INDEX idx_service_tier (service_tier)
 
 ---
 
-### 1.3 经销商 (dealers)
+### 1.2.1 联系人 (contacts)
+
+> **设计说明**：联系人是与账户关联的具体自然人，解决B2B场景中"单位"与"人"的分离问题。
+> 例如：CVP UK（账户）有 Mike（维修主管）和 Sarah（财务经理）两个联系人。
 
 ```sql
-dealers (经销商/渠道商)
+contacts (联系人 - 具体自然人)
+├── id: SERIAL PRIMARY KEY
+├── account_id: INT NOT NULL -- 关联账户ID
+│
+├── // 个人信息
+├── name: VARCHAR(255) NOT NULL -- 姓名
+├── email: VARCHAR(255) -- 邮箱
+├── phone: VARCHAR(50) -- 电话
+├── wechat: VARCHAR(100) -- 微信号
+│
+├── // 职位与角色
+├── job_title: VARCHAR(100) -- 职位（维修主管、制片、摄影师等）
+├── department: VARCHAR(100) -- 部门
+│
+├── // 偏好设置
+├── language_preference: VARCHAR(20) DEFAULT 'en' -- 语言偏好（zh/en/de/ja等）
+├── communication_preference: ENUM('EMAIL', 'PHONE', 'WECHAT') DEFAULT 'EMAIL'
+│
+├── // 状态管理
+├── status: ENUM('ACTIVE', 'INACTIVE', 'PRIMARY') DEFAULT 'ACTIVE'
+│   -- ACTIVE: 在职/活跃
+│   -- INACTIVE: 离职/不再对接
+│   -- PRIMARY: 主要对接人
+├── is_primary: BOOLEAN DEFAULT false -- 是否为主要联系人
+│
+├── // 系统字段
+├── notes: TEXT -- 备注（如离职交接信息）
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEY (account_id) REFERENCES accounts(id)
+```
+
+**索引**：
+- PRIMARY KEY (id)
+- INDEX idx_account (account_id)
+- INDEX idx_status (status)
+- INDEX idx_email (email)
+- UNIQUE KEY (account_id, email) -- 同一账户下邮箱唯一
+
+---
+
+### 1.2.2 账户设备关联 (account_devices)
+
+> **设计说明**：记录账户名下的设备资产，支持设备历史追溯（设备可能转让，但历史归属可查）。
+
+```sql
+account_devices (账户设备关联)
+├── id: SERIAL PRIMARY KEY
+├── account_id: INT NOT NULL -- 关联账户ID
+├── product_id: INT NOT NULL -- 关联产品ID
+├── serial_number: VARCHAR(100) NOT NULL -- 序列号
+│
+├── // 设备信息
+├── firmware_version: VARCHAR(20) -- 当前固件版本
+├── purchase_date: DATE -- 购买日期
+├── warranty_until: DATE -- 保修截止日期
+│
+├── // 状态
+├── device_status: ENUM('ACTIVE', 'SOLD', 'RETIRED') DEFAULT 'ACTIVE'
+│   -- ACTIVE: 当前持有
+│   -- SOLD: 已转让/出售
+│   -- RETIRED: 已报废
+│
+├── // 系统字段
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEY (account_id) REFERENCES accounts(id)
+FOREIGN KEY (product_id) REFERENCES products(id)
+UNIQUE KEY (account_id, serial_number)
+```
+
+**索引**：
+- PRIMARY KEY (id)
+- INDEX idx_account (account_id)
+- INDEX idx_product (product_id)
+- INDEX idx_serial_number (serial_number)
+- INDEX idx_device_status (device_status)
+
+---
+
+### 1.3 经销商 (dealers) [已弃用]
+
+> **⚠️ 重要说明**：经销商数据已整合到 `accounts` 表中，通过 `account_type = 'DEALER'` 区分。
+> 
+> 原 `dealers` 表字段映射关系：
+> - `dealers.name` → `accounts.name`
+> - `dealers.code` → `accounts.dealer_code`
+> - `dealers.dealer_type` → `accounts.dealer_level`
+> - `dealers.region` → `accounts.region`
+> - `dealers.contact_*` → `contacts` 表（通过 `account_id` 关联）
+>
+> 保留此表定义仅用于历史参考，新开发请使用 `accounts` + `contacts` 双层架构。
+
+```sql
+dealers (经销商/渠道商) [已弃用，请使用 accounts 表]
 ├── id: SERIAL PRIMARY KEY
 ├── name: VARCHAR(255) NOT NULL -- 经销商名称
 ├── code: VARCHAR(50) UNIQUE -- 经销商代码 (如: ProAV, Gafpa)
@@ -153,10 +290,10 @@ inquiry_tickets (咨询工单 - 系统入口)
 ├── id: SERIAL PRIMARY KEY
 ├── ticket_number: VARCHAR(20) UNIQUE NOT NULL -- 工单编号 (KYYMM-XXXX)
 │
-├── // 客户信息 (代客户服务模式下可选)
-├── customer_name: VARCHAR(255) -- 客户姓名 (可选)
-├── customer_contact: VARCHAR(255) -- 联系方式 (可选)
-├── customer_id: INT -- 关联客户 (可为空)
+├── // 账户与联系人信息 (代客户服务模式下可选)
+├── account_id: INT -- 关联账户 (工单归属，可为空)
+├── contact_id: INT -- 关联联系人 (具体对接人，可为空)
+├── reporter_name: VARCHAR(255) -- 报告人姓名 (冗余，便于显示)
 ├── dealer_id: INT -- 关联经销商 (可为空)
 │
 ├── // 产品信息 (可选)
@@ -198,8 +335,9 @@ inquiry_tickets (咨询工单 - 系统入口)
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
-FOREIGN KEY (customer_id) REFERENCES customers(id)
-FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+FOREIGN KEY (account_id) REFERENCES accounts(id)
+FOREIGN KEY (contact_id) REFERENCES contacts(id)
+FOREIGN KEY (dealer_id) REFERENCES accounts(id) -- 经销商也是账户的一种
 FOREIGN KEY (product_id) REFERENCES products(id)
 FOREIGN KEY (handler_id) REFERENCES users(id)
 ```
@@ -207,7 +345,8 @@ FOREIGN KEY (handler_id) REFERENCES users(id)
 **索引**：
 - PRIMARY KEY (id)
 - UNIQUE KEY (ticket_number)
-- INDEX idx_customer (customer_id)
+- INDEX idx_account (account_id)
+- INDEX idx_contact (contact_id)
 - INDEX idx_dealer (dealer_id)
 - INDEX idx_handler (handler_id)
 - INDEX idx_status (status)
@@ -250,7 +389,8 @@ tickets (工单/RMA返厂单/经销商维修单)
 ├── // 关联人员
 ├── reporter_name: VARCHAR(255) -- 反馈人姓名
 ├── reporter_type: ENUM('customer', 'dealer', 'internal') -- 反馈人类型
-├── customer_id: INT -- 关联客户
+├── account_id: INT -- 关联账户 (工单归属)
+├── contact_id: INT -- 关联联系人 (具体对接人)
 ├── dealer_id: INT -- 关联经销商
 ├── region: VARCHAR(100) -- 地区
 │
@@ -281,8 +421,9 @@ tickets (工单/RMA返厂单/经销商维修单)
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 FOREIGN KEY (product_id) REFERENCES products(id)
-FOREIGN KEY (customer_id) REFERENCES customers(id)
-FOREIGN KEY (dealer_id) REFERENCES dealers(id)
+FOREIGN KEY (account_id) REFERENCES accounts(id)
+FOREIGN KEY (contact_id) REFERENCES contacts(id)
+FOREIGN KEY (dealer_id) REFERENCES accounts(id) -- 经销商也是账户的一种
 FOREIGN KEY (submitted_by) REFERENCES users(id)
 FOREIGN KEY (assigned_to) REFERENCES users(id)
 FOREIGN KEY (created_by) REFERENCES users(id)
@@ -294,7 +435,8 @@ FOREIGN KEY (inquiry_ticket_id) REFERENCES inquiry_tickets(id)
 - UNIQUE KEY (ticket_number)
 - INDEX idx_ticket_type (ticket_type)
 - INDEX idx_product (product_id)
-- INDEX idx_customer (customer_id)
+- INDEX idx_account (account_id)
+- INDEX idx_contact (contact_id)
 - INDEX idx_dealer (dealer_id)
 - INDEX idx_serial_number (serial_number)
 - INDEX idx_status (status)
@@ -598,8 +740,9 @@ repair_invoices (维修发票/PI)
 ├── id: SERIAL PRIMARY KEY
 ├── invoice_number: VARCHAR(30) UNIQUE -- 发票编号 (PI-2026-0001)
 ├── invoice_date: DATE
-├── dealer_id: INT -- 经销商ID
-├── customer_id: INT -- 客户ID
+├── dealer_id: INT -- 经销商ID (关联 accounts 表，account_type='DEALER')
+├── account_id: INT -- 账户ID (关联 accounts 表)
+├── contact_id: INT -- 联系人ID (关联 contacts 表，具体对接人)
 ├── issue_id: INT -- 关联工单
 ├── rma_number: VARCHAR(30) -- RMA号
 ├── product_model: VARCHAR(255)
@@ -762,7 +905,7 @@ ticket_search_index (工单检索源数据 - SQLite)
 ├── category: TEXT -- 故障分类
 ├── status: TEXT -- 状态
 ├── dealer_id: INTEGER -- 权限过滤: 经销商ID
-├── customer_id: INTEGER -- 权限过滤: 客户ID
+├── account_id: INTEGER -- 权限过滤: 账户ID (关联 accounts 表)
 ├── visibility: TEXT -- 'internal' | 'dealer'
 └── closed_at: TEXT -- 结案时间
 ```
@@ -825,7 +968,8 @@ feature_requests (功能期望)
 ├── product_id: INT
 ├── source_type: ENUM('inquiry_ticket', 'dealer_feedback', 'customer_self', 'internal')
 ├── source_id: INT
-├── customer_id: INT
+├── account_id: INT -- 关联账户ID (原 customer_id)
+├── contact_id: INT -- 关联联系人ID (具体反馈人)
 ├── priority: ENUM('high', 'medium', 'low')
 ├── vote_count: INT DEFAULT 1 -- 请求次数/投票数
 ├── weight_score: INT DEFAULT 1 -- 加权得分
@@ -845,26 +989,33 @@ feature_requests (功能期望)
 
 ---
 
-### 10.3 需求-客户关联 (feature_request_customers)
+### 10.3 需求-账户关联 (feature_request_accounts)
+
+> **注意**：原 `feature_request_customers` 表已重构为 `feature_request_accounts`，使用 `account_id` 替代 `customer_id`。
 
 ```sql
-feature_request_customers (需求-客户关联)
+feature_request_accounts (需求-账户关联)
 ├── id: SERIAL PRIMARY KEY
 ├── feature_request_id: INT NOT NULL
-├── customer_id: INT NOT NULL
-├── dealer_id: INT
+├── account_id: INT NOT NULL -- 关联账户ID（替代原 customer_id）
+├── contact_id: INT -- 关联联系人ID（具体投票人）
 ├── source_record_id: INT
 ├── vote_comment: TEXT
-├── customer_weight: INT DEFAULT 1 -- 客户权重 (VIP=2, KOL=3)
+├── account_weight: INT DEFAULT 1 -- 账户权重 (VIP=2, KOL=3)
 ├── notified_at: TIMESTAMP
 ├── notification_opened: BOOLEAN DEFAULT false
 ├── feedback: TEXT
 └── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEY (account_id) REFERENCES accounts(id)
+FOREIGN KEY (contact_id) REFERENCES contacts(id)
 ```
 
 ---
 
 ### 10.4 原声流 (customer_voices)
+
+> **注意**：`customer_id` 字段已更新为 `account_id`，保持命名不变但语义对应 accounts 表。
 
 ```sql
 customer_voices (原声流)
@@ -873,7 +1024,8 @@ customer_voices (原声流)
 ├── content: TEXT NOT NULL -- 原始内容
 ├── source_type: ENUM('inquiry_ticket', 'rma_ticket', 'social_media', 'email')
 ├── source_id: INT
-├── customer_id: INT
+├── account_id: INT -- 关联账户ID（原 customer_id，对应 accounts 表）
+├── contact_id: INT -- 关联联系人ID（具体反馈人）
 ├── sentiment: ENUM('positive', 'neutral', 'negative') -- 情感
 ├── ai_tags: JSON -- AI自动标签 [#画质好, #服务快, #MAVO Edge]
 ├── product_tags: JSON -- 产品标签
@@ -1011,6 +1163,8 @@ ai_usage_logs (AI 使用审计)
 |-----|------|---------|-------|------|
 | 2026-02-03 | v1.0 | 初始版本，从PRD中迁移 | - | 完整数据模型设计 |
 | 2026-02-06 | v1.1 | 新增 AI 配置与系统管理相关表定义 | - | 对应 PRD v0.9.1 |
+| 2026-02-11 | v1.2 | 重构客户模型为"账户+联系人"双层架构 | - | 引入 Account/Contact 模型，支持B2B场景 |
+| 2026-02-11 | v1.3 | 账户类型更新，新增经销商专属字段 | - | CORPORATE→ORGANIZATION，新增 dealer_level 等字段 |
 
 ---
 
@@ -1019,8 +1173,11 @@ ai_usage_logs (AI 使用审计)
 ```
 Core Entities:
   products ←── inquiry_tickets
-  customers ←── tickets
-  dealers   ←── dealer_inventory
+  accounts ←── contacts
+  accounts ←── account_devices
+  accounts ←── tickets (account_id)
+  contacts ←── tickets (contact_id)
+  accounts ←── dealer_inventory (dealer作为account的一种)
   users
 
 Ticketing System:
@@ -1036,15 +1193,15 @@ Knowledge Base:
   knowledge_articles → compatibility_entries
 
 Inventory & Billing:
-  dealers → dealer_inventory
-  dealers → dealer_inventory_transactions
-  dealers → replenishment_requests
+  accounts (DEALER) → dealer_inventory
+  accounts (DEALER) → dealer_inventory_transactions
+  accounts (DEALER) → replenishment_requests
   tickets → repair_invoices
-  dealers → dealer_settlements
+  accounts (DEALER) → dealer_settlements
 
 Product Evolution:
   product_bugs ← tickets
-  feature_requests ← feature_request_customers ← customers
+  feature_requests ← feature_request_customers ← accounts
   customer_voices ← tickets
 
 Supporting:

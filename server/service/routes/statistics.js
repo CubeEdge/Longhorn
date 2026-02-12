@@ -336,12 +336,12 @@ module.exports = function(db, authenticate) {
 
             const stats = db.prepare(`
                 SELECT 
-                    d.id, d.name, d.code, d.region,
+                    d.id, d.name, d.dealer_code as code, d.region,
                     COUNT(*) as total,
                     SUM(CASE WHEN i.status = 'Closed' THEN 1 ELSE 0 END) as closed,
                     SUM(CASE WHEN i.status NOT IN ('Closed', 'Rejected') THEN 1 ELSE 0 END) as open
                 FROM issues i
-                JOIN dealers d ON i.dealer_id = d.id
+                JOIN accounts d ON i.dealer_id = d.id AND d.account_type = 'DEALER'
                 ${whereClause}
                 GROUP BY d.id
                 ORDER BY total DESC

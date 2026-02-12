@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = (db) => {
+module.exports = (db, authenticate) => {
 
     /**
      * @route GET /api/v1/context/by-customer
@@ -113,8 +113,12 @@ module.exports = (db) => {
 
             // 5. Fetch Associated Dealer
             let dealer = null;
-            if (customer.parent_dealer_id) {
-                dealer = db.prepare('SELECT * FROM dealers WHERE id = ?').get(customer.parent_dealer_id);
+            try {
+                if (customer.parent_dealer_id) {
+                    dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(customer.parent_dealer_id, 'DEALER');
+                }
+            } catch (e) {
+                // dealers table may not exist yet
             }
 
             res.json({
@@ -135,10 +139,159 @@ module.exports = (db) => {
     });
 
     /**
+     * @route GET /api/v1/context/by-account
+     * @desc Get full context by Account ID (新架构)
+     */
+    router.get('/by-account', authenticate, (req, res) => {
+        try {
+            const { account_id } = req.query;
+
+            if (!account_id) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: { code: 'MISSING_PARAM', message: 'account_id is required' }
+                });
+            }
+
+            // 1. 获取账户信息
+            const account = db.prepare(`
+                SELECT 
+                    a.*,
+                    pd.name as parent_dealer_name,
+                    pd.dealer_code as parent_dealer_code
+                FROM accounts a
+                LEFT JOIN accounts pd ON a.parent_dealer_id = pd.id
+                WHERE a.id = ?
+            `).get(account_id);
+
+            if (!account) {
+                return res.status(404).json({ 
+                    success: false, 
+                    error: { code: 'NOT_FOUND', message: 'Account not found' }
+                });
+            }
+
+            // 2. 获取联系人列表
+            const contacts = db.prepare(`
+                SELECT 
+                    id, name, email, phone, wechat,
+                    job_title, department, status, is_primary,
+                    created_at
+                FROM contacts
+                WHERE account_id = ?
+                ORDER BY 
+                    CASE status 
+                        WHEN 'PRIMARY' THEN 1 
+                        WHEN 'ACTIVE' THEN 2 
+                        ELSE 3 
+                    END,
+                    created_at DESC
+            `).all(account_id);
+
+            // 3. 获取设备资产
+            const devices = db.prepare(`
+                SELECT 
+                    ad.*,
+                    p.model_name as product_model,
+                    p.product_family
+                FROM account_devices ad
+                LEFT JOIN products p ON ad.product_id = p.id
+                WHERE ad.account_id = ?
+                ORDER BY ad.created_at DESC
+            `).all(account_id);
+
+            // 4. 获取服务历史
+            const inquiries = db.prepare(`
+                SELECT 
+                    it.id, it.ticket_number, 'Inquiry' as type,
+                    it.service_type as category, it.problem_summary as summary,
+                    it.status, it.created_at as date,
+                    c.name as contact_name
+                FROM inquiry_tickets it
+                LEFT JOIN contacts c ON it.contact_id = c.id
+                WHERE it.account_id = ?
+                ORDER BY it.created_at DESC
+            `).all(account_id);
+
+            const rmas = db.prepare(`
+                SELECT 
+                    rt.id, rt.ticket_number, 'RMA' as type,
+                    rt.issue_category as category, rt.problem_description as summary,
+                    rt.status, rt.created_at as date,
+                    c.name as contact_name
+                FROM rma_tickets rt
+                LEFT JOIN contacts c ON rt.contact_id = c.id
+                WHERE rt.account_id = ?
+                ORDER BY rt.created_at DESC
+            `).all(account_id);
+
+            const repairs = db.prepare(`
+                SELECT 
+                    dr.id, dr.ticket_number, 'DealerRepair' as type,
+                    dr.issue_category as category, dr.problem_description as summary,
+                    dr.status, dr.created_at as date,
+                    c.name as contact_name
+                FROM dealer_repairs dr
+                LEFT JOIN contacts c ON dr.contact_id = c.id
+                WHERE dr.account_id = ?
+                ORDER BY dr.created_at DESC
+            `).all(account_id);
+
+            const history = [...inquiries, ...rmas, ...repairs]
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // 5. 生成AI档案
+            let parsedTags = [account.account_type];
+            if (account.industry_tags) {
+                try {
+                    const dbTags = JSON.parse(account.industry_tags);
+                    if (Array.isArray(dbTags)) parsedTags = [...parsedTags, ...dbTags];
+                } catch (e) { }
+            }
+            if (account.service_tier) {
+                parsedTags.push(account.service_tier + ' Tier');
+            }
+
+            const aiProfile = {
+                activity_level: history.length > 5 ? "High" : history.length > 0 ? "Normal" : "Low",
+                tags: parsedTags,
+                primary_contact: contacts.find(c => c.status === 'PRIMARY' || c.is_primary)?.name || null,
+                device_count: devices.length,
+                ticket_count: history.length,
+                inquiry_count: inquiries.length,
+                rma_count: rmas.length,
+                repair_count: repairs.length,
+                notes: "Auto-generated context from service history."
+            };
+
+            res.json({
+                success: true,
+                data: {
+                    account: {
+                        ...account,
+                        industry_tags: account.industry_tags ? JSON.parse(account.industry_tags) : []
+                    },
+                    contacts,
+                    devices,
+                    service_history: history,
+                    ai_profile: aiProfile
+                }
+            });
+
+        } catch (err) {
+            console.error('[Context] Error fetching by account:', err);
+            res.status(500).json({ 
+                success: false, 
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
      * @route GET /api/v1/context/by-serial-number
      * @desc Get device context (specs, history) by Serial Number
      */
-    router.get('/by-serial-number', (req, res) => {
+    router.get('/by-serial-number', authenticate, (req, res) => {
         try {
             const { serial_number } = req.query;
 
@@ -199,18 +352,21 @@ module.exports = (db) => {
             // Just listing unique customers associated with this device over time
             const owners = [...new Set(history.map(h => h.customer_name).filter(Boolean))];
 
-            // 4. Fetch Parts Catalog based on product family
-            // If family is A (Cameras), show modules/boards/fans
-            // If family is C (EVF), show optical/cables, etc.
+            // 4. Fetch Parts Catalog based on product family (resilient to missing table)
             let parts = [];
-            if (device.product_family) {
-                parts = db.prepare(`
-                    SELECT * FROM parts_catalog 
-                    WHERE category IN ('Module', 'PCB', 'Cooling', 'Mechanical')
-                    LIMIT 5
-                `).all();
-            } else {
-                parts = db.prepare('SELECT * FROM parts_catalog LIMIT 5').all();
+            try {
+                if (device.product_family) {
+                    parts = db.prepare(`
+                        SELECT * FROM parts_catalog 
+                        WHERE category IN ('Module', 'PCB', 'Cooling', 'Mechanical')
+                        LIMIT 5
+                    `).all();
+                } else {
+                    parts = db.prepare('SELECT * FROM parts_catalog LIMIT 5').all();
+                }
+            } catch (e) {
+                // parts_catalog table may not exist yet
+                console.log('[Context] parts_catalog not available:', e.message);
             }
 
             res.json({

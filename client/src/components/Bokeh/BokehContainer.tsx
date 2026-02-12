@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import BokehOrb from './BokehOrb';
 import BokehPanel from './BokehPanel';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useBokehContext } from '../../store/useBokehContext';
 import axios from 'axios';
 
 interface Message {
@@ -17,6 +18,7 @@ const BokehContainer: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
     const { token } = useAuthStore();
+    const { currentContext, getContextSummary } = useBokehContext();
 
     // Global Shortcut Cmd+K / Ctrl+K
     useEffect(() => {
@@ -43,24 +45,69 @@ const BokehContainer: React.FC = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post('/api/ai/chat', {
-                messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
-                context: {
-                    path: window.location.pathname,
-                    title: document.title
-                }
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Check if this is an article optimization request when viewing a wiki article
+            const isOptimizationRequest = currentContext?.type === 'wiki_article' && (
+                text.includes('优化') ||
+                text.includes('修改') ||
+                text.includes('调整') ||
+                text.includes('缩小') ||
+                text.includes('放大') ||
+                text.includes('图片') ||
+                text.includes('段落') ||
+                text.includes('格式') ||
+                text.includes('太大') ||
+                text.includes('太小') ||
+                text.includes('重写') ||
+                text.includes('精简') ||
+                text.includes('缩短')
+            );
 
-            if (res.data.success) {
-                const aiMsg: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'assistant',
-                    content: res.data.data,
-                    timestamp: Date.now()
-                };
-                setMessages(prev => [...prev, aiMsg]);
+            if (isOptimizationRequest && currentContext) {
+                // Call the bokeh-optimize API
+                const res = await axios.post(`/api/v1/knowledge/${currentContext.articleId}/bokeh-optimize`, {
+                    instruction: text
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.success) {
+                    const aiMsg: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: 'assistant',
+                        content: res.data.data.response_message,
+                        timestamp: Date.now()
+                    };
+                    setMessages(prev => [...prev, aiMsg]);
+                    
+                    // Dispatch event to notify KinefinityWiki to refresh
+                    window.dispatchEvent(new CustomEvent('bokeh-article-optimized', {
+                        detail: { articleId: currentContext.articleId }
+                    }));
+                }
+            } else {
+                // Regular chat request
+                const contextSummary = getContextSummary();
+                const res = await axios.post('/api/ai/chat', {
+                    messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+                    context: {
+                        path: window.location.pathname,
+                        title: document.title,
+                        wikiContext: currentContext,
+                        contextSummary
+                    }
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.success) {
+                    const aiMsg: Message = {
+                        id: (Date.now() + 1).toString(),
+                        role: 'assistant',
+                        content: res.data.data,
+                        timestamp: Date.now()
+                    };
+                    setMessages(prev => [...prev, aiMsg]);
+                }
             }
         } catch (err) {
             console.error('Bokeh Chat Error:', err);
@@ -93,6 +140,7 @@ const BokehContainer: React.FC = () => {
                         messages={messages}
                         onSendMessage={sendMessage}
                         loading={loading}
+                        wikiContext={currentContext}
                     />
                 )}
             </AnimatePresence>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, Loader2, AlertCircle, Hammer, Package, Clock } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
+import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -29,6 +30,33 @@ interface DealerRepair {
     customer_id?: number;
     technician?: {
         name: string;
+    };
+
+    // Dealer Info
+    dealer?: {
+        id: number;
+        name: string;
+        code?: string;
+    };
+    dealer_id?: number;
+    dealer_name?: string;
+    dealer_code?: string;
+    dealer_contact_name?: string;
+    dealer_contact_title?: string;
+
+    // Account/Contact Info (新架构)
+    account_id?: number;
+    contact_id?: number;
+    account?: {
+        id: number;
+        name: string;
+        account_type?: string;
+    };
+    contact?: {
+        id: number;
+        name: string;
+        email?: string;
+        job_title?: string;
     };
 
     // Product Info
@@ -95,7 +123,7 @@ const DealerRepairDetailPage: React.FC = () => {
             const response = await axios.get(`/api/v1/dealer-repairs/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const data = response.data;
+            const data = response.data.data;
             setRepair(data);
 
             // Init Form
@@ -114,7 +142,7 @@ const DealerRepairDetailPage: React.FC = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.put(`/api/dealer-repairs/${id}`, {
+            await axios.put(`/api/v1/dealer-repairs/${id}`, {
                 diagnosis_result: diagnosisResult,
                 repair_content: repairContent,
                 labor_hours: laborHours,
@@ -181,179 +209,246 @@ const DealerRepairDetailPage: React.FC = () => {
     }
 
     return (
-        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-            {/* Main Content Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '40px', background: '#000' }}>
-                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                    {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                <button onClick={() => navigate(getRoute('/service/dealer-repairs'))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', padding: 0 }}>
-                                    <ArrowLeft size={24} />
-                                </button>
-                                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
-                                    {repair.ticket_number}
-                                </h1>
-                                <span style={{
-                                    padding: '4px 12px',
-                                    borderRadius: '100px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    background: '#dbeafe',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #1d4ed840'
-                                }}>
-                                    {getRepairTypeLabel(repair.repair_type)}
-                                </span>
-                                <span style={{
-                                    padding: '4px 12px',
-                                    borderRadius: '100px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    background: `${statusColors[repair.status] || '#666'}20`,
-                                    color: statusColors[repair.status] || '#666',
-                                    border: `1px solid ${statusColors[repair.status] || '#666'}40`
-                                }}>
-                                    {getStatusLabel(repair.status)}
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: '#666' }}>
-                                <span>Created {formatDate(repair.created_at)}</span>
-                                <span>•</span>
-                                <span>{repair.customer_name}</span>
-                            </div>
-                        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#000' }}>
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                {/* LEFT COLUMN: Main Content */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
+                    {/* Header Strip */}
+                    <div style={{
+                        padding: '20px 40px',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        background: 'rgba(255,255,255,0.02)',
+                        backdropFilter: 'blur(20px)'
+                    }}>
+                        <button
+                            onClick={() => navigate(getRoute('/service/dealer-repairs'))}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '8px' }}
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+                            {repair.ticket_number}
+                        </h1>
+
+                        <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '100px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            background: '#dbeafe',
+                            color: '#1d4ed8',
+                            border: '1px solid #1d4ed840'
+                        }}>
+                            {getRepairTypeLabel(repair.repair_type)}
+                        </span>
+                        <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '100px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            background: `${statusColors[repair.status] || '#666'}20`,
+                            color: statusColors[repair.status] || '#666',
+                            border: `1px solid ${statusColors[repair.status] || '#666'}40`
+                        }}>
+                            {getStatusLabel(repair.status)}
+                        </span>
+
+                        <div style={{ flex: 1 }} />
+
+                        {/* Actions */}
                         <div style={{ display: 'flex', gap: '12px' }}>
                             {isEditing ? (
                                 <>
-                                    <button onClick={() => setIsEditing(false)} className="btn btn-ghost">
-                                        取消
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            padding: '8px 16px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {t('common.cancel') || 'Cancel'}
                                     </button>
-                                    <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
-                                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                        <span style={{ marginLeft: '6px' }}>保存</span>
+                                    <button
+                                        onClick={handleSave}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            background: 'var(--accent-blue)',
+                                            border: 'none',
+                                            color: '#000',
+                                            padding: '8px 24px',
+                                            borderRadius: '8px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer'
+                                        }}
+                                        disabled={saving}
+                                    >
+                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                        {saving ? 'Saving...' : (t('common.save') || 'Save')}
                                     </button>
                                 </>
                             ) : (
-                                <button onClick={() => setIsEditing(true)} className="btn-kine-lowkey">
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="btn-kine-lowkey"
+                                >
                                     <Edit2 size={16} />
-                                    <span style={{ marginLeft: '6px' }}>编辑</span>
+                                    {t('common.edit') || 'Edit'}
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Repair Body */}
-                    <div className="ticket-body">
-                        {/* Problem Description */}
-                        <section style={{ marginBottom: '40px' }}>
-                            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, lineHeight: '1.4', marginBottom: '24px', color: '#fff' }}>
-                                {repair.problem_description}
-                            </h2>
-                        </section>
+                    {/* Content Body - macOS26 Card Style */}
+                    <div style={{ padding: '40px', maxWidth: '800px' }}>
 
-                        {/* Diagnosis / Repair Section */}
-                        <section style={{ marginBottom: '40px', padding: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', marginBottom: '16px', letterSpacing: '0.05em' }}>
-                                诊断与维修
-                            </h3>
+                        {/* Info Card - 基本信息卡片 (第一个卡片) */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Clock size={14} /> {t('ticket.basic_info')}
+                            </div>
+                            <div className="ticket-info-grid">
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.created_at')}</div>
+                                    <div className="ticket-info-value">{formatDate(repair.created_at)}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('dealer_repair.customer')}</div>
+                                    <div className="ticket-info-value">{repair.customer_name || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.product')}</div>
+                                    <div className="ticket-info-value">{repair.product?.name || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('ticket.serial_number')}</div>
+                                    <div className="ticket-info-value">{repair.serial_number || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('dealer_repair.technician')}</div>
+                                    <div className="ticket-info-value">{repair.technician?.name || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('dealer_repair.condition')}</div>
+                                    <div className="ticket-info-value">{repair.received_condition || '-'}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('dealer_repair.repair_type')}</div>
+                                    <div className="ticket-info-value">{getRepairTypeLabel(repair.repair_type)}</div>
+                                </div>
+                                <div className="ticket-info-item">
+                                    <div className="ticket-info-label">{t('dealer_repair.status')}</div>
+                                    <div className="ticket-info-value">{getStatusLabel(repair.status)}</div>
+                                </div>
+                            </div>
+                        </div>
 
+                        {/* Problem Card - 问题描述卡片 (第二个卡片) */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <AlertCircle size={14} /> {t('ticket.problem_description')}
+                            </div>
+                            <h2 className="ticket-section-title">{repair.problem_description}</h2>
+                        </div>
+
+                        {/* Diagnosis & Repair Card - 诊断与维修卡片 (第三个卡片) */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Hammer size={14} /> {t('dealer_repair.diagnosis_repair')}
+                            </div>
                             {isEditing ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                     <div>
-                                        <label className="form-label">Diagnosis Result</label>
+                                        <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.diagnosis_result')}</div>
                                         <textarea
                                             value={diagnosisResult}
                                             onChange={(e) => setDiagnosisResult(e.target.value)}
-                                            className="form-control"
+                                            className="ticket-textarea"
                                             rows={3}
                                         />
                                     </div>
                                     <div>
-                                        <label className="form-label">Repair Content</label>
+                                        <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.repair_content')}</div>
                                         <textarea
                                             value={repairContent}
                                             onChange={(e) => setRepairContent(e.target.value)}
-                                            className="form-control"
+                                            className="ticket-textarea"
                                             rows={3}
                                         />
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div className="ticket-info-grid">
                                         <div>
-                                            <label className="form-label">Labor Hours</label>
-                                            <input type="number" value={laborHours} onChange={e => setLaborHours(parseFloat(e.target.value))} className="form-control" />
+                                            <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.labor_hours')}</div>
+                                            <input type="number" value={laborHours} onChange={e => setLaborHours(parseFloat(e.target.value))} className="ticket-textarea" style={{ minHeight: '40px' }} />
                                         </div>
                                         <div>
-                                            <label className="form-label">Labor Cost</label>
-                                            <input type="number" value={laborCost} onChange={e => setLaborCost(parseFloat(e.target.value))} className="form-control" />
+                                            <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.labor_cost')}</div>
+                                            <input type="number" value={laborCost} onChange={e => setLaborCost(parseFloat(e.target.value))} className="ticket-textarea" style={{ minHeight: '40px' }} />
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="form-label">Status</label>
-                                        <select
-                                            value={status}
-                                            onChange={(e) => setStatus(e.target.value)}
-                                            className="form-control"
-                                            style={{ width: 'auto' }}
-                                        >
-                                            <option value="Received">{t('dealer_repair.status.received')}</option>
-                                            <option value="Diagnosing">{t('dealer_repair.status.diagnosing')}</option>
-                                            <option value="AwaitingParts">{t('dealer_repair.status.awaiting_parts')}</option>
-                                            <option value="InRepair">{t('dealer_repair.status.in_repair')}</option>
-                                            <option value="Completed">{t('dealer_repair.status.completed')}</option>
-                                            <option value="Returned">{t('dealer_repair.status.returned')}</option>
-                                        </select>
                                     </div>
                                 </div>
                             ) : (
                                 <div style={{ display: 'grid', gap: '24px' }}>
                                     <div>
-                                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '8px' }}>Diagnosis</div>
-                                        <div style={{ lineHeight: '1.6', color: '#ccc' }}>{repair.diagnosis_result || 'Pending diagnosis'}</div>
+                                        <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.diagnosis_result')}</div>
+                                        <div className="ticket-content-box">
+                                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                                                {repair.diagnosis_result || t('dealer_repair.pending_diagnosis')}
+                                            </p>
+                                        </div>
                                     </div>
                                     {repair.repair_content && (
                                         <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '8px' }}>Repair Content</div>
-                                            <div style={{ lineHeight: '1.6', color: '#ccc' }}>{repair.repair_content}</div>
+                                            <div className="ticket-info-label" style={{ marginBottom: '8px' }}>{t('dealer_repair.repair_content')}</div>
+                                            <div className="ticket-content-box">
+                                                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                                                    {repair.repair_content}
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
-                                    <div style={{ display: 'flex', gap: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Hours</div>
-                                            <div>{repair.labor_hours}h</div>
+                                    <div className="ticket-info-grid" style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div className="ticket-info-item">
+                                            <div className="ticket-info-label">{t('dealer_repair.labor_hours')}</div>
+                                            <div className="ticket-info-value">{repair.labor_hours}h</div>
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Labor</div>
-                                            <div>¥{repair.labor_cost}</div>
+                                        <div className="ticket-info-item">
+                                            <div className="ticket-info-label">{t('dealer_repair.labor_cost')}</div>
+                                            <div className="ticket-info-value">¥{repair.labor_cost}</div>
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Parts</div>
-                                            <div>¥{repair.parts_cost}</div>
+                                        <div className="ticket-info-item">
+                                            <div className="ticket-info-label">{t('dealer_repair.parts_cost')}</div>
+                                            <div className="ticket-info-value">¥{repair.parts_cost}</div>
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Total</div>
-                                            <div style={{ color: '#FFD200', fontWeight: 600 }}>¥{repair.total_cost}</div>
+                                        <div className="ticket-info-item">
+                                            <div className="ticket-info-label">{t('dealer_repair.total_cost')}</div>
+                                            <div className="ticket-info-value" style={{ color: '#FFD200' }}>¥{repair.total_cost}</div>
                                         </div>
                                     </div>
                                 </div>
                             )}
-                        </section>
+                        </div>
 
-                        {/* Parts Used Table */}
-                        <section style={{ marginBottom: '40px' }}>
-                            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', marginBottom: '16px', letterSpacing: '0.05em' }}>
-                                配件使用 ({repair.parts_used?.length || 0})
-                            </h3>
+                        {/* Parts Used Card - 配件使用卡片 */}
+                        <div className="ticket-card">
+                            <div className="ticket-card-title">
+                                <Package size={14} /> {t('dealer_repair.parts_used')} ({repair.parts_used?.length || 0})
+                            </div>
                             {repair.parts_used && repair.parts_used.length > 0 ? (
                                 <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: '#ccc' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#666' }}>
-                                            <th style={{ textAlign: 'left', padding: '8px' }}>Name</th>
-                                            <th style={{ textAlign: 'left', padding: '8px' }}>P/N</th>
-                                            <th style={{ textAlign: 'right', padding: '8px' }}>Qty</th>
-                                            <th style={{ textAlign: 'right', padding: '8px' }}>Price</th>
+                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>
+                                            <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_name')}</th>
+                                            <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_number')}</th>
+                                            <th style={{ textAlign: 'right', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.quantity')}</th>
+                                            <th style={{ textAlign: 'right', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.price')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -368,38 +463,36 @@ const DealerRepairDetailPage: React.FC = () => {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div style={{ color: '#666', fontStyle: 'italic' }}>No parts used.</div>
+                                <div style={{ color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>{t('dealer_repair.no_parts_used')}</div>
                             )}
-                        </section>
+                        </div>
 
-                        {/* Metadata Grid */}
-                        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                            <div>
-                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Customer</div>
-                                <div>{repair.customer_name}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#666' }}>{repair.customer_contact}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Technician</div>
-                                <div>{repair.technician?.name || '-'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '4px' }}>Condition</div>
-                                <div>{repair.received_condition || '-'}</div>
-                            </div>
-                        </section>
                     </div>
                 </div>
-            </div>
 
-            {/* Right Sidebar - Customer Context */}
-            <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {/* Right Sidebar - Customer Context */}
+                <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {/* Dealer Info Card */}
+                <div style={{ padding: '20px', paddingBottom: 0 }}>
+                    <DealerInfoCard
+                        dealerId={repair.dealer_id || repair.dealer?.id}
+                        dealerName={repair.dealer_name || repair.dealer?.name}
+                        dealerCode={repair.dealer_code || repair.dealer?.code}
+                        contactName={repair.dealer_contact_name}
+                        contactTitle={repair.dealer_contact_title}
+                    />
+                </div>
+                
                 <CustomerContextSidebar
+                    accountId={repair.account_id}
+                    accountName={repair.account?.name}
                     customerId={repair.customer_id}
                     customerName={repair.customer_name}
                     serialNumber={repair.serial_number}
+                    dealerId={repair.dealer_id || repair.dealer?.id}
                 />
             </div>
+        </div>
         </div>
     );
 };

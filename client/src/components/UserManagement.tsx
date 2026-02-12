@@ -165,11 +165,20 @@ const UserManagement: React.FC = () => {
     const [dealers, setDealers] = useState<any[]>([]);
 
     useEffect(() => {
-        // Fetch Dealers
-        axios.get('/api/v1/customers?account_type=Dealer&page_size=100', { headers: { Authorization: `Bearer ${token}` } })
+        // Fetch Dealers (使用新的 accounts API)
+        axios.get('/api/v1/accounts?account_type=DEALER&page_size=100', { headers: { Authorization: `Bearer ${token}` } })
             .then(res => {
                 if (res.data.success) {
-                    setDealers(res.data.data.list || []);
+                    const accountsData = Array.isArray(res.data.data) 
+                        ? res.data.data 
+                        : (res.data.data.list || []);
+                    // 映射 accounts 数据到 dealers 格式
+                    setDealers(accountsData.map((acc: any) => ({
+                        id: acc.id,
+                        name: acc.name,
+                        code: acc.dealer_code,
+                        dealer_type: acc.dealer_level
+                    })));
                 }
             })
             .catch(err => console.error('Failed to fetch dealers', err));

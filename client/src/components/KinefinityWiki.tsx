@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useConfirm } from '../store/useConfirm';
+import { useBokehContext } from '../store/useBokehContext';
+import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -12,7 +14,14 @@ interface KnowledgeArticle {
     title: string;
     slug: string;
     summary: string;
+    short_summary?: string;
     content: string;
+    formatted_content?: string;
+    format_status?: 'none' | 'draft' | 'published';
+    formatted_by?: 'ai' | 'human' | 'external';
+    formatted_at?: string;
+    chapter_number?: number;
+    section_number?: number;
     category: string;
     product_line: string;
     product_models: string[];
@@ -24,6 +33,9 @@ interface KnowledgeArticle {
     created_at: string;
     helpful_count: number;
     not_helpful_count: number;
+    permissions?: {
+        can_edit: boolean;
+    };
 }
 
 interface CategoryNode {
@@ -49,11 +61,34 @@ interface RecentArticle {
     timestamp: number;
 }
 
+interface ChapterAggregate {
+    chapter_number: number;
+    main_chapter: {
+        id: number;
+        title: string;
+        slug: string;
+        summary: string;
+        content_preview?: string;
+    } | null;
+    sub_sections: Array<{
+        id: number;
+        title: string;
+        slug: string;
+        section_number: number;
+        summary: string;
+        view_count: number;
+        helpful_count: number;
+    }>;
+    total_articles: number;
+}
+
 export const KinefinityWiki: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { slug } = useParams<{ slug: string }>();
     const { token } = useAuthStore();
+    const { confirm } = useConfirm();
+    const { setWikiContext, clearContext } = useBokehContext();
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,6 +106,16 @@ export const KinefinityWiki: React.FC = () => {
         return saved ? JSON.parse(saved) : [];
     });
     const tocPanelRef = React.useRef<HTMLDivElement>(null);
+    const selectedArticleRef = React.useRef<KnowledgeArticle | null>(null);
+
+    // AI formatting & chapter view states
+    const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
+    const [isFormatting, setIsFormatting] = useState(false);
+    const [chapterView, setChapterView] = useState<ChapterAggregate | null>(null);
+    const [showChapterView, setShowChapterView] = useState(false);
+    const [fullChapterContent, setFullChapterContent] = useState<string | null>(null);
+    const [showFullChapter, setShowFullChapter] = useState(false);
+    const [loadingFullChapter, setLoadingFullChapter] = useState(false);
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -230,6 +275,7 @@ export const KinefinityWiki: React.FC = () => {
                 const article = articles.find(a => a.slug === lastSlug);
                 if (article) {
                     setSelectedArticle(article);
+                    selectedArticleRef.current = article;
                     buildBreadcrumb(article);
                 }
             }
@@ -239,6 +285,38 @@ export const KinefinityWiki: React.FC = () => {
     useEffect(() => {
         localStorage.setItem('wiki-expanded-nodes', JSON.stringify(Array.from(expandedNodes)));
     }, [expandedNodes]);
+
+    // Listen for Bokeh optimization events - use ref to avoid stale closure
+    useEffect(() => {
+        const handleBokehOptimized = async (event: Event) => {
+            const customEvent = event as CustomEvent;
+            const { articleId } = customEvent.detail;
+            console.log('[WIKI] Bokeh optimization completed for article:', articleId);
+            
+            // Use ref to get current article (avoids stale closure)
+            const currentArticle = selectedArticleRef.current;
+            if (currentArticle && currentArticle.id === articleId) {
+                // Reload article from server
+                try {
+                    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                    const res = await axios.get(`/api/v1/knowledge/${currentArticle.slug}`, { headers });
+                    if (res.data.success) {
+                        setSelectedArticle(res.data.data);
+                        selectedArticleRef.current = res.data.data;
+                        setViewMode('draft'); // Auto-switch to draft view
+                        console.log('[WIKI] Article reloaded and switched to draft view');
+                    }
+                } catch (err) {
+                    console.error('[WIKI] Failed to reload article:', err);
+                }
+            }
+        };
+
+        window.addEventListener('bokeh-article-optimized', handleBokehOptimized);
+        return () => {
+            window.removeEventListener('bokeh-article-optimized', handleBokehOptimized);
+        };
+    }, [token]); // Only depends on token, not selectedArticle
 
     const fetchArticles = async () => {
         try {
@@ -304,13 +382,30 @@ export const KinefinityWiki: React.FC = () => {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             const res = await axios.get(`/api/v1/knowledge/${article.slug}`, { headers });
             if (res.data.success) {
-                setSelectedArticle(res.data.data);
+                const detailed = res.data.data;
+                setSelectedArticle(detailed);
+                selectedArticleRef.current = detailed;
+                // Set Bokeh context for this article
+                setWikiContext({
+                    id: detailed.id,
+                    title: detailed.title,
+                    slug: detailed.slug,
+                    hasDraft: detailed.format_status === 'draft'
+                });
             } else {
                 setSelectedArticle(article);
+                selectedArticleRef.current = article;
+                setWikiContext({
+                    id: article.id,
+                    title: article.title,
+                    slug: article.slug,
+                    hasDraft: false
+                });
             }
         } catch (err) {
             console.error('[WIKI] Failed to load article detail:', err);
             setSelectedArticle(article);
+            selectedArticleRef.current = article;
         }
     };
 
@@ -388,7 +483,9 @@ export const KinefinityWiki: React.FC = () => {
         }
 
         setSelectedArticle(null);
+        selectedArticleRef.current = null;
         setBreadcrumbPath([]);
+        clearContext(); // Clear Bokeh context
         navigate('/tech-hub/wiki');
         localStorage.removeItem('wiki-last-article');
     };
@@ -415,11 +512,194 @@ export const KinefinityWiki: React.FC = () => {
         }
     };
 
+    // AI formatting functions
+    const handleAIFormat = async () => {
+        if (!selectedArticle || !token) return;
+        
+        setIsFormatting(true);
+        try {
+            const res = await axios.post(
+                `/api/v1/knowledge/${selectedArticle.id}/format`,
+                { mode: 'full' },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (res.data.success) {
+                // Reload article to get formatted content
+                await loadArticleDetail(selectedArticle);
+                setViewMode('draft');
+            }
+        } catch (err: any) {
+            console.error('[WIKI] AI format error:', err);
+            alert(err.response?.data?.error?.message || 'Bokeh格式化失败');
+        } finally {
+            setIsFormatting(false);
+        }
+    };
+
+    const handlePublishFormat = async () => {
+        if (!selectedArticle || !token) return;
+        
+        const confirmed = await confirm(
+            '发布后将覆盖原有内容，此操作不可撤销。',
+            '发布 Bokeh 优化内容',
+            '确认发布',
+            '取消'
+        );
+        if (!confirmed) return;
+        
+        try {
+            const res = await axios.post(
+                `/api/v1/knowledge/${selectedArticle.id}/publish-format`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (res.data.success) {
+                await loadArticleDetail(selectedArticle);
+                setViewMode('published');
+            }
+        } catch (err: any) {
+            console.error('[WIKI] Publish format error:', err);
+            alert(err.response?.data?.error?.message || '发布失败');
+        }
+    };
+
+    // Chapter aggregation functions
+    const loadChapterAggregate = async (chapterNum: number, productLine: string, productModel: string) => {
+        if (!token) return;
+        
+        try {
+            const res = await axios.get('/api/v1/knowledge/chapter-aggregate', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    product_line: productLine,
+                    product_model: productModel,
+                    category: 'Manual',
+                    chapter_number: chapterNum
+                }
+            });
+            
+            if (res.data.success) {
+                setChapterView(res.data.data);
+                setShowChapterView(true);
+                setSelectedArticle(null); // 隐藏单篇文章视图
+                selectedArticleRef.current = null;
+                setFullChapterContent(null);
+                setShowFullChapter(false);
+            }
+        } catch (err) {
+            console.error('[WIKI] Load chapter aggregate error:', err);
+        }
+    };
+
+    // Load full chapter content for "Read entire chapter" feature
+    const loadFullChapter = async () => {
+        if (!token || !chapterView) return;
+        
+        // Find product info from first article
+        const firstSection = chapterView.sub_sections[0] || chapterView.main_chapter;
+        if (!firstSection) return;
+        
+        const article = articles.find(a => a.slug === firstSection.slug);
+        if (!article) return;
+        
+        setLoadingFullChapter(true);
+        try {
+            const productModel = Array.isArray(article.product_models) 
+                ? article.product_models[0] 
+                : article.product_models;
+            
+            const res = await axios.get('/api/v1/knowledge/chapter-full', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                    product_line: article.product_line,
+                    product_model: productModel,
+                    category: 'Manual',
+                    chapter_number: chapterView.chapter_number
+                }
+            });
+            
+            if (res.data.success) {
+                setFullChapterContent(res.data.data.full_content);
+                setShowFullChapter(true);
+            }
+        } catch (err) {
+            console.error('[WIKI] Load full chapter error:', err);
+        } finally {
+            setLoadingFullChapter(false);
+        }
+    };
+
+    // Get current display content based on view mode
+    const getDisplayContent = () => {
+        if (!selectedArticle) return '';
+        if (viewMode === 'draft' && selectedArticle.formatted_content) {
+            return selectedArticle.formatted_content;
+        }
+        return selectedArticle.content || '暂无内容';
+    };
+
+    // Get current display summary based on view mode
+    const getDisplaySummary = () => {
+        if (!selectedArticle) return null;
+        // In draft mode, show optimized summary if available
+        if (viewMode === 'draft' && selectedArticle.short_summary) {
+            return selectedArticle.short_summary;
+        }
+        return selectedArticle.summary;
+    };
+
+    // Check if user can edit (Admin/Lead/Editor)
+    const canEdit = selectedArticle?.permissions?.can_edit || false;
+
     const renderTreeNode = (node: CategoryNode, level: number = 0) => {
         const isExpanded = expandedNodes.has(node.id);
         const hasChildren = node.children && node.children.length > 0;
         const hasArticles = node.articles && node.articles.length > 0;
         const isClickable = hasChildren || hasArticles;
+
+        // Check if this is a chapter node (e.g., "a-mavo-edge-6k-manual-chapter-2")
+        const isChapterNode = node.id.includes('-chapter-');
+        const chapterMatch = node.id.match(/-chapter-(\d+)$/);
+        const chapterNum = chapterMatch ? parseInt(chapterMatch[1]) : null;
+
+        // Extract product info from node hierarchy
+        const getProductInfo = () => {
+            // Parse product_line and product_model from parent node id
+            const idParts = node.id.split('-');
+            let productLine = '';
+            let productModel = '';
+            
+            // Try to find from the tree context
+            if (idParts[0]?.toUpperCase().match(/^[A-D]$/)) {
+                productLine = idParts[0].toUpperCase();
+            }
+            
+            // Find product model from articles
+            if (node.articles && node.articles.length > 0) {
+                const firstArticle = node.articles[0];
+                productLine = firstArticle.product_line || productLine;
+                if (firstArticle.product_models && firstArticle.product_models.length > 0) {
+                    productModel = Array.isArray(firstArticle.product_models) 
+                        ? firstArticle.product_models[0] 
+                        : firstArticle.product_models;
+                }
+            }
+            
+            return { productLine, productModel };
+        };
+
+        const handleChapterClick = async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (chapterNum === null) return;
+            
+            const { productLine, productModel } = getProductInfo();
+            if (productLine && productModel) {
+                await loadChapterAggregate(chapterNum, productLine, productModel);
+                setTocVisible(false);
+            }
+        };
 
         return (
             <div key={node.id} style={{ marginLeft: level * 0 }}>
@@ -459,6 +739,35 @@ export const KinefinityWiki: React.FC = () => {
                     }}>
                         {node.label}
                     </span>
+                    
+                    {/* Chapter Aggregate Button */}
+                    {isChapterNode && hasArticles && node.articles && node.articles.length > 1 && (
+                        <button
+                            onClick={handleChapterClick}
+                            style={{
+                                background: 'rgba(0, 191, 165, 0.1)',
+                                border: '1px solid rgba(0, 191, 165, 0.3)',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.2s',
+                                marginRight: '4px'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.1)';
+                            }}
+                            title="查看整章概览"
+                        >
+                            <Layers size={12} color="#00BFA5" />
+                        </button>
+                    )}
+                    
                     {hasArticles && node.articles && (
                         <span style={{
                             fontSize: '11px',
@@ -672,8 +981,116 @@ export const KinefinityWiki: React.FC = () => {
                             {selectedArticle.title}
                         </h1>
 
+                        {/* AI Formatting Toolbar - Only for editors */}
+                        {canEdit && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                marginBottom: '20px',
+                                padding: '12px 16px',
+                                background: 'rgba(0, 191, 165, 0.05)',
+                                border: '1px solid rgba(0, 191, 165, 0.15)',
+                                borderRadius: '12px'
+                            }}>
+                                {/* View Mode Toggle - Show when draft exists */}
+                                {selectedArticle.format_status === 'draft' && (
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '4px',
+                                        padding: '4px',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        borderRadius: '8px'
+                                    }}>
+                                        <button
+                                            onClick={() => setViewMode('published')}
+                                            style={{
+                                                padding: '6px 12px',
+                                                background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                color: viewMode === 'published' ? '#fff' : '#888',
+                                                fontSize: '12px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <Eye size={14} /> 发布版
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('draft')}
+                                            style={{
+                                                padding: '6px 12px',
+                                                background: viewMode === 'draft' ? '#00BFA5' : 'transparent',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                color: viewMode === 'draft' ? '#000' : '#888',
+                                                fontSize: '12px',
+                                                fontWeight: viewMode === 'draft' ? 600 : 400,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <EyeOff size={14} /> Bokeh草稿
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                <div style={{ flex: 1 }} />
+                                
+                                {/* AI Format Button */}
+                                <button
+                                    onClick={handleAIFormat}
+                                    disabled={isFormatting}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: isFormatting ? 'rgba(0,191,165,0.1)' : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: isFormatting ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Sparkles size={14} />
+                                    {isFormatting ? 'Bokeh 处理中...' : 'Bokeh 优化排版'}
+                                </button>
+                                
+                                {/* Publish Button - Only show when draft exists */}
+                                {selectedArticle.format_status === 'draft' && viewMode === 'draft' && (
+                                    <button
+                                        onClick={handlePublishFormat}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: 'linear-gradient(135deg, #D4A017, #B8860B)',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            color: '#fff',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        发布草稿
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {/* Article Summary */}
-                        {selectedArticle.summary && (
+                        {getDisplaySummary() && (
                             <div style={{
                                 background: 'rgba(255,215,0,0.06)',
                                 border: '1px solid rgba(255,215,0,0.15)',
@@ -684,7 +1101,7 @@ export const KinefinityWiki: React.FC = () => {
                                 lineHeight: '1.6',
                                 color: '#ccc'
                             }}>
-                                {selectedArticle.summary}
+                                {getDisplaySummary()}
                             </div>
                         )}
 
@@ -743,7 +1160,7 @@ export const KinefinityWiki: React.FC = () => {
                                     hr: ({ node, ...props }: any) => <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '32px', marginBottom: '32px' }} {...props} />,
                                 }}
                             >
-                                {selectedArticle.content || '暂无内容'}
+                                {getDisplayContent()}
                             </ReactMarkdown>
                         </div>
 
@@ -847,6 +1264,344 @@ export const KinefinityWiki: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                ) : showChapterView && chapterView ? (
+                    // Chapter Aggregate View
+                    <div style={{ maxWidth: '880px', margin: '0 auto', padding: '32px 40px' }}>
+                        {/* Back Button */}
+                        <button
+                            onClick={() => {
+                                setShowChapterView(false);
+                                setChapterView(null);
+                            }}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '10px',
+                                padding: '8px 16px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '24px',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            }}
+                        >
+                            <ChevronLeft size={18} color="#999" />
+                            <span style={{ color: '#999', fontSize: '14px' }}>返回</span>
+                        </button>
+
+                        {/* Chapter Header */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            marginBottom: '32px'
+                        }}>
+                            <Layers size={32} color="#FFD700" />
+                            <div>
+                                <h1 style={{
+                                    fontSize: '28px',
+                                    fontWeight: 700,
+                                    color: '#fff',
+                                    marginBottom: '8px'
+                                }}>
+                                    第{chapterView.chapter_number}章
+                                    {chapterView.main_chapter && (
+                                        <span style={{ color: '#ccc', fontWeight: 500 }}>：{chapterView.main_chapter.title.split(':').pop()?.split('.').slice(1).join('.')}</span>
+                                    )}
+                                </h1>
+                                <p style={{ color: '#999', fontSize: '14px' }}>
+                                    共 {chapterView.total_articles} 篇文章
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Main Chapter Summary */}
+                        {chapterView.main_chapter && chapterView.main_chapter.summary && (
+                            <div style={{
+                                background: 'rgba(255,215,0,0.06)',
+                                border: '1px solid rgba(255,215,0,0.15)',
+                                borderRadius: '12px',
+                                padding: '20px',
+                                marginBottom: '32px'
+                            }}>
+                                <div style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.6' }}>
+                                    {chapterView.main_chapter.summary}
+                                </div>
+                                {chapterView.main_chapter.slug && (
+                                    <button
+                                        onClick={() => {
+                                            const article = articles.find(a => a.slug === chapterView.main_chapter!.slug);
+                                            if (article) {
+                                                setShowChapterView(false);
+                                                handleArticleClick(article);
+                                            }
+                                        }}
+                                        style={{
+                                            marginTop: '16px',
+                                            padding: '8px 16px',
+                                            background: 'rgba(255,215,0,0.1)',
+                                            border: '1px solid rgba(255,215,0,0.3)',
+                                            borderRadius: '8px',
+                                            color: '#FFD700',
+                                            fontSize: '13px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        查看章节概述
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Read Full Chapter Button */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginBottom: '24px',
+                            padding: '16px 20px',
+                            background: 'rgba(0, 191, 165, 0.05)',
+                            border: '1px solid rgba(0, 191, 165, 0.15)',
+                            borderRadius: '12px'
+                        }}>
+                            <BookOpen size={20} color="#00BFA5" />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#00BFA5' }}>
+                                    {showFullChapter ? '正在阅读完整章节' : '一键阅读整章内容'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                                    {showFullChapter ? '点击右侧按钮收起' : '将所有小节内容合并展示，方便连续阅读'}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    if (showFullChapter) {
+                                        setShowFullChapter(false);
+                                    } else {
+                                        loadFullChapter();
+                                    }
+                                }}
+                                disabled={loadingFullChapter}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: showFullChapter 
+                                        ? 'rgba(255,255,255,0.1)' 
+                                        : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    cursor: loadingFullChapter ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {loadingFullChapter ? (
+                                    <>加载中...</>
+                                ) : showFullChapter ? (
+                                    <>收起<ChevronDown size={14} /></>
+                                ) : (
+                                    <>阅读整章<ChevronRight size={14} /></>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Full Chapter Content */}
+                        {showFullChapter && fullChapterContent && (
+                            <div style={{
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(0, 191, 165, 0.2)',
+                                borderRadius: '16px',
+                                padding: '32px',
+                                marginBottom: '32px'
+                            }}>
+                                <div className="markdown-content" style={{
+                                    fontSize: '15px',
+                                    lineHeight: '1.8',
+                                    color: '#ccc'
+                                }}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw]}
+                                        components={{
+                                            h1: ({ node, ...props }: any) => <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '40px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }} {...props} />,
+                                            h2: ({ node, ...props }: any) => <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#FFD700', marginTop: '32px', marginBottom: '14px' }} {...props} />,
+                                            h3: ({ node, ...props }: any) => <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#00BFA5', marginTop: '24px', marginBottom: '12px' }} {...props} />,
+                                            h4: ({ node, ...props }: any) => <h4 style={{ fontSize: '17px', fontWeight: 500, color: '#FFD700', marginTop: '20px', marginBottom: '10px' }} {...props} />,
+                                            p: ({ node, ...props }: any) => <p style={{ marginBottom: '16px', lineHeight: '1.8' }} {...props} />,
+                                            ul: ({ node, ...props }: any) => <ul style={{ marginLeft: '20px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
+                                            ol: ({ node, ...props }: any) => <ol style={{ marginLeft: '20px', marginBottom: '16px' }} {...props} />,
+                                            li: ({ node, ...props }: any) => <li style={{ marginBottom: '8px', lineHeight: '1.6' }} {...props} />,
+                                            code: ({ node, inline, ...props }: any) => inline
+                                                ? <code style={{ background: 'rgba(255,215,0,0.1)', padding: '2px 6px', borderRadius: '6px', fontSize: '13px', color: '#FFD700' }} {...props} />
+                                                : <code style={{ display: 'block', background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px', overflow: 'auto', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.08)' }} {...props} />,
+                                            img: ({ node, ...props }: any) => (
+                                                <img
+                                                    {...props}
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        height: 'auto',
+                                                        borderRadius: '12px',
+                                                        marginTop: '20px',
+                                                        marginBottom: '20px',
+                                                        border: '1px solid rgba(255,255,255,0.08)'
+                                                    }}
+                                                />
+                                            ),
+                                            table: ({ node, ...props }: any) => (
+                                                <div style={{ overflowX: 'auto', marginBottom: '20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                    <table style={{ width: '100%', borderCollapse: 'collapse' }} {...props} />
+                                                </div>
+                                            ),
+                                            th: ({ node, ...props }: any) => <th style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left', fontWeight: 600, fontSize: '13px' }} {...props} />,
+                                            td: ({ node, ...props }: any) => <td style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }} {...props} />,
+                                            blockquote: ({ node, ...props }: any) => (
+                                                <blockquote style={{
+                                                    borderLeft: '3px solid #00BFA5',
+                                                    paddingLeft: '20px',
+                                                    marginLeft: '0',
+                                                    marginBottom: '20px',
+                                                    color: '#999',
+                                                    fontStyle: 'italic'
+                                                }} {...props} />
+                                            ),
+                                            hr: ({ node, ...props }: any) => (
+                                                <hr style={{
+                                                    border: 'none',
+                                                    borderTop: '2px dashed rgba(0, 191, 165, 0.3)',
+                                                    margin: '32px 0'
+                                                }} {...props} />
+                                            ),
+                                        }}
+                                    >
+                                        {fullChapterContent}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Sub-sections Grid - Hidden when full chapter is shown */}
+                        {!showFullChapter && (
+                            <>
+                                <h2 style={{
+                                    fontSize: '18px',
+                                    fontWeight: 600,
+                                    color: '#FFD700',
+                                    marginBottom: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <List size={18} />
+                                    本章内容
+                                </h2>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                            gap: '16px'
+                        }}>
+                            {chapterView.sub_sections.map((section) => (
+                                <div
+                                    key={section.id}
+                                    onClick={() => {
+                                        const article = articles.find(a => a.slug === section.slug);
+                                        if (article) {
+                                            setShowChapterView(false);
+                                            handleArticleClick(article);
+                                        }
+                                    }}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.02)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '12px',
+                                        padding: '20px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    {/* Section Number Badge */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        marginBottom: '12px'
+                                    }}>
+                                        <span style={{
+                                            background: 'rgba(255,215,0,0.15)',
+                                            color: '#FFD700',
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            fontSize: '12px',
+                                            fontWeight: 600
+                                        }}>
+                                            {chapterView.chapter_number}.{section.section_number}
+                                        </span>
+                                    </div>
+
+                                    {/* Section Title */}
+                                    <h3 style={{
+                                        fontSize: '15px',
+                                        fontWeight: 600,
+                                        color: '#fff',
+                                        marginBottom: '8px',
+                                        lineHeight: '1.4'
+                                    }}>
+                                        {section.title.split(':').pop()?.split('.').slice(1).join('.') || section.title}
+                                    </h3>
+
+                                    {/* Section Summary */}
+                                    {section.summary && (
+                                        <p style={{
+                                            fontSize: '13px',
+                                            color: '#888',
+                                            lineHeight: '1.5',
+                                            marginBottom: '12px',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 3,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {section.summary}
+                                        </p>
+                                    )}
+
+                                    {/* Stats */}
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: '16px',
+                                        fontSize: '12px',
+                                        color: '#666'
+                                    }}>
+                                        <span>👁 {section.view_count}</span>
+                                        <span>👍 {section.helpful_count}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                            </>
+                        )}
                     </div>
                 ) : (
                     // Welcome View

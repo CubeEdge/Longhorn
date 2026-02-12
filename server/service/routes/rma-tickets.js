@@ -103,10 +103,34 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
             repair_content: ticket.repair_content,
             problem_analysis: ticket.problem_analysis,
 
-            // People
+            // People (新架构)
+            account_id: ticket.account_id,
+            contact_id: ticket.contact_id,
             reporter_name: ticket.reporter_name,
+            
+            // 账户/联系人详情
+            account: ticket.account_id ? {
+                id: ticket.account_id,
+                name: ticket.account_name,
+                account_number: ticket.account_number,
+                account_type: ticket.account_type
+            } : null,
+            contact: ticket.contact_id ? {
+                id: ticket.contact_id,
+                name: ticket.contact_name,
+                email: ticket.contact_email,
+                job_title: ticket.contact_job_title
+            } : null,
+            
+            // 向后兼容
             customer: ticket.customer_id ? { id: ticket.customer_id, name: ticket.customer_name } : null,
-            dealer: ticket.dealer_name ? { id: ticket.dealer_id, name: ticket.dealer_name } : null,
+            customer_id: ticket.customer_id,
+            dealer: ticket.dealer_id ? { id: ticket.dealer_id, name: ticket.dealer_name, code: ticket.dealer_code } : null,
+            dealer_id: ticket.dealer_id,
+            dealer_name: ticket.dealer_name,
+            dealer_code: ticket.dealer_code,
+            dealer_contact_name: ticket.dealer_contact_name,
+            dealer_contact_title: ticket.dealer_contact_title,
             submitted_by: ticket.submitter_name ? { id: ticket.submitted_by, name: ticket.submitter_name } : null,
             assigned_to: ticket.assigned_name ? { id: ticket.assigned_to, name: ticket.assigned_name } : null,
 
@@ -203,6 +227,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 severity,
                 product_id,
                 dealer_id,
+                customer_id,
                 assigned_to,
                 is_warranty,
                 created_from,
@@ -256,7 +281,11 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
             }
             if (dealer_id) {
                 conditions.push('t.dealer_id = ?');
-                params.push(dealer_id);
+                params.push(parseInt(dealer_id));
+            }
+            if (customer_id) {
+                conditions.push('t.customer_id = ?');
+                params.push(customer_id);
             }
             if (assigned_to === 'me') {
                 conditions.push('t.assigned_to = ?');
@@ -342,14 +371,32 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                     a.username as assigned_name,
                     s.username as submitter_name,
                     p.model_name as product_name,
-                    d.customer_name as dealer_name,
-                    inq.ticket_number as inquiry_ticket_number
+                    dlr.name as dealer_name,
+                    dlr.dealer_code as dealer_code,
+                    inq.ticket_number as inquiry_ticket_number,
+                    -- 账户信息
+                    acc.name as account_name,
+                    acc.account_number,
+                    acc.account_type,
+                    -- 客户联系人信息
+                    ct.name as contact_name,
+                    ct.email as contact_email,
+                    ct.job_title as contact_job_title,
+                    -- 客户信息（向后兼容）
+                    cust.customer_name as customer_name,
+                    -- 经销商主要联系人
+                    dc.name as dealer_contact_name,
+                    dc.job_title as dealer_contact_title
                 FROM rma_tickets t
                 LEFT JOIN users a ON t.assigned_to = a.id
                 LEFT JOIN users s ON t.submitted_by = s.id
                 LEFT JOIN products p ON t.product_id = p.id
-                LEFT JOIN customers d ON t.dealer_id = d.id
+                LEFT JOIN accounts dlr ON t.dealer_id = dlr.id
                 LEFT JOIN inquiry_tickets inq ON t.inquiry_ticket_id = inq.id
+                LEFT JOIN accounts acc ON t.account_id = acc.id
+                LEFT JOIN contacts ct ON t.contact_id = ct.id
+                LEFT JOIN customers cust ON t.customer_id = cust.id
+                LEFT JOIN contacts dc ON dc.account_id = t.dealer_id AND dc.status = 'PRIMARY'
                 WHERE t.id = ?
             `).get(req.params.id);
 
@@ -391,9 +438,16 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 firmware_version,
                 problem_description,
                 is_warranty = true,
+                
+                // 新架构字段
+                account_id,
+                contact_id,
                 reporter_name,
+                
+                // 向后兼容字段
                 customer_id,
                 dealer_id,
+                
                 inquiry_ticket_id
             } = req.body;
 
@@ -406,18 +460,28 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
 
             const ticketNumber = generateTicketNumber(db, channel_code);
 
+            // 优先使用新架构字段，但保持向后兼容
+            const finalAccountId = account_id || customer_id;
+            const finalReporterName = reporter_name || req.body.reporter_name;
+
             const result = db.prepare(`
                 INSERT INTO rma_tickets (
                     ticket_number, channel_code, issue_type, issue_category, issue_subcategory,
                     severity, product_id, serial_number, firmware_version, problem_description,
-                    is_warranty, reporter_name, customer_id, dealer_id, submitted_by,
-                    inquiry_ticket_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
+                    is_warranty, reporter_name, account_id, contact_id, customer_id, dealer_id, 
+                    submitted_by, inquiry_ticket_id, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
             `).run(
                 ticketNumber, channel_code, issue_type, issue_category, issue_subcategory,
                 severity, product_id, serial_number, firmware_version, problem_description,
-                is_warranty ? 1 : 0, reporter_name, customer_id, dealer_id, req.user.id,
-                inquiry_ticket_id
+                is_warranty ? 1 : 0, 
+                finalReporterName || null,
+                finalAccountId || null,
+                contact_id || null,
+                customer_id || finalAccountId || null, 
+                dealer_id || null, 
+                req.user.id,
+                inquiry_ticket_id || null
             );
 
             const ticketId = result.lastInsertRowid;
