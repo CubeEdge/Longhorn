@@ -6,8 +6,9 @@ module.exports = (db, authenticate) => {
     /**
      * @route GET /api/v1/context/by-customer
      * @desc Get full context (profile, devices, history) by customer ID or Name
+     * @note 兼容旧架构：优先查询 accounts 表，如未找到则返回 404
      */
-    router.get('/by-customer', (req, res) => {
+    router.get('/by-customer', authenticate, (req, res) => {
         try {
             const { customer_id, customer_name } = req.query;
 
@@ -17,44 +18,63 @@ module.exports = (db, authenticate) => {
 
             let customer;
 
-            // 1. Fetch Customer Profile
+            // 1. Fetch Customer Profile from accounts table (新架构)
             if (customer_id) {
                 customer = db.prepare(`
-                    SELECT * FROM customers WHERE id = ?
+                    SELECT 
+                        id,
+                        name as customer_name,
+                        email,
+                        phone,
+                        country,
+                        city,
+                        address,
+                        account_type as customer_type,
+                        service_tier,
+                        industry_tags,
+                        parent_dealer_id,
+                        created_at
+                    FROM accounts 
+                    WHERE id = ? AND account_type IN ('ORGANIZATION', 'INDIVIDUAL')
                 `).get(customer_id);
             } else if (customer_name) {
                 // Fuzzy match for name search
                 customer = db.prepare(`
-                    SELECT * FROM customers 
-                    WHERE customer_name LIKE ? OR contact_person LIKE ? OR email LIKE ?
+                    SELECT 
+                        id,
+                        name as customer_name,
+                        email,
+                        phone,
+                        country,
+                        city,
+                        address,
+                        account_type as customer_type,
+                        service_tier,
+                        industry_tags,
+                        parent_dealer_id,
+                        created_at
+                    FROM accounts 
+                    WHERE (name LIKE ? OR email LIKE ?)
+                    AND account_type IN ('ORGANIZATION', 'INDIVIDUAL')
                     LIMIT 1
-                `).get(`%${customer_name}%`, `%${customer_name}%`, `%${customer_name}%`);
+                `).get(`%${customer_name}%`, `%${customer_name}%`);
             }
 
-            // Mock customer if not found (for dev/demo purposes if needed, strictly fallback)
-            // But better to return 404 if not found in DB to avoid confusion
             if (!customer) {
                 return res.status(404).json({ success: false, error: "Customer not found" });
             }
 
             const cId = customer.id;
 
-            // 2. Fetch Owned Devices (based on service history interactions or explicit ownership table if it existed)
-            // Since we don't have a strict 'ownership' table yet, we infer from tickets or just search products if there was a link.
-            // For now, let's find products linked to this customer in tickets.
+            // 2. Fetch Owned Devices from account_devices table
             const relatedProducts = db.prepare(`
                 SELECT DISTINCT p.* 
                 FROM products p
-                JOIN inquiry_tickets it ON it.product_id = p.id
-                WHERE it.customer_id = ?
-                UNION
-                SELECT DISTINCT p.* 
-                FROM products p
-                JOIN rma_tickets rt ON rt.product_id = p.id
-                WHERE rt.customer_id = ?
-            `).all(cId, cId);
+                JOIN account_devices ad ON ad.product_id = p.id
+                WHERE ad.account_id = ?
+            `).all(cId);
 
-            // 3. Fetch Service History (Inquiry, RMA, Dealer Repairs)
+            // 3. Fetch Service History (Inquiry, RMA, Dealer Repairs) - 使用 account_id
             // Inquiry Tickets
             const inquiries = db.prepare(`
                 SELECT 
@@ -62,7 +82,7 @@ module.exports = (db, authenticate) => {
                     service_type as category, problem_summary as summary, 
                     status, created_at as date
                 FROM inquiry_tickets 
-                WHERE customer_id = ?
+                WHERE account_id = ?
                 ORDER BY created_at DESC
             `).all(cId);
 
@@ -73,7 +93,7 @@ module.exports = (db, authenticate) => {
                     issue_category as category, problem_description as summary, 
                     status, created_at as date
                 FROM rma_tickets 
-                WHERE customer_id = ?
+                WHERE account_id = ?
                 ORDER BY created_at DESC
             `).all(cId);
 
@@ -84,7 +104,7 @@ module.exports = (db, authenticate) => {
                     issue_category as category, problem_description as summary, 
                     status, created_at as date
                 FROM dealer_repairs 
-                WHERE customer_id = ?
+                WHERE account_id = ?
                 ORDER BY created_at DESC
             `).all(cId);
 
@@ -206,9 +226,8 @@ module.exports = (db, authenticate) => {
                     it.id, it.ticket_number, 'Inquiry' as type,
                     it.service_type as category, it.problem_summary as summary,
                     it.status, it.created_at as date,
-                    c.name as contact_name
+                    it.customer_name as contact_name
                 FROM inquiry_tickets it
-                LEFT JOIN contacts c ON it.contact_id = c.id
                 WHERE it.account_id = ?
                 ORDER BY it.created_at DESC
             `).all(account_id);
@@ -218,9 +237,8 @@ module.exports = (db, authenticate) => {
                     rt.id, rt.ticket_number, 'RMA' as type,
                     rt.issue_category as category, rt.problem_description as summary,
                     rt.status, rt.created_at as date,
-                    c.name as contact_name
+                    rt.reporter_name as contact_name
                 FROM rma_tickets rt
-                LEFT JOIN contacts c ON rt.contact_id = c.id
                 WHERE rt.account_id = ?
                 ORDER BY rt.created_at DESC
             `).all(account_id);
@@ -230,9 +248,8 @@ module.exports = (db, authenticate) => {
                     dr.id, dr.ticket_number, 'DealerRepair' as type,
                     dr.issue_category as category, dr.problem_description as summary,
                     dr.status, dr.created_at as date,
-                    c.name as contact_name
+                    dr.customer_name as contact_name
                 FROM dealer_repairs dr
-                LEFT JOIN contacts c ON dr.contact_id = c.id
                 WHERE dr.account_id = ?
                 ORDER BY dr.created_at DESC
             `).all(account_id);
@@ -310,14 +327,13 @@ module.exports = (db, authenticate) => {
 
             const pId = device.id;
 
-            // 2. Fetch Service History for this Device
+            // 2. Fetch Service History for this Device (使用工单表自带的 customer_name)
             const inquiries = db.prepare(`
                 SELECT 
                     it.id, it.ticket_number, 'Inquiry' as type, 
                     it.problem_summary as summary, it.status, it.created_at as date,
-                    c.customer_name
+                    it.customer_name
                 FROM inquiry_tickets it
-                LEFT JOIN customers c ON it.customer_id = c.id
                 WHERE it.product_id = ?
                 ORDER BY it.created_at DESC
             `).all(pId);
@@ -326,9 +342,8 @@ module.exports = (db, authenticate) => {
                 SELECT 
                     rt.id, rt.ticket_number, 'RMA' as type, 
                     rt.problem_description as summary, rt.status, rt.created_at as date,
-                    c.customer_name
+                    rt.reporter_name as customer_name
                 FROM rma_tickets rt
-                LEFT JOIN customers c ON rt.customer_id = c.id
                 WHERE rt.product_id = ?
                 ORDER BY rt.created_at DESC
             `).all(pId);
@@ -337,9 +352,8 @@ module.exports = (db, authenticate) => {
                 SELECT 
                     dr.id, dr.ticket_number, 'DealerRepair' as type, 
                     dr.problem_description as summary, dr.status, dr.created_at as date,
-                    c.customer_name
+                    dr.customer_name
                 FROM dealer_repairs dr
-                LEFT JOIN customers c ON dr.customer_id = c.id
                 WHERE dr.product_id = ?
                 ORDER BY dr.created_at DESC
             `).all(pId);

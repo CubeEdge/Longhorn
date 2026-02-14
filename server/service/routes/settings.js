@@ -35,10 +35,15 @@ module.exports = (db, authenticate, backupService) => {
                     settings.ai_data_sources = ['tickets', 'knowledge'];
                 }
 
-                // Normalize Backup Settings
+                // Normalize Primary Backup Settings
                 settings.backup_enabled = Boolean(settings.backup_enabled);
                 settings.backup_frequency = parseInt(settings.backup_frequency) || 1440;
                 settings.backup_retention_days = parseInt(settings.backup_retention_days) || 7;
+
+                // Normalize Secondary Backup Settings
+                settings.secondary_backup_enabled = Boolean(settings.secondary_backup_enabled);
+                settings.secondary_backup_frequency = parseInt(settings.secondary_backup_frequency) || 4320;
+                settings.secondary_backup_retention_days = parseInt(settings.secondary_backup_retention_days) || 30;
             }
 
             providers.forEach(p => {
@@ -83,6 +88,9 @@ module.exports = (db, authenticate, backupService) => {
                         backup_enabled = @backup_enabled,
                         backup_frequency = @backup_frequency,
                         backup_retention_days = @backup_retention_days,
+                        secondary_backup_enabled = @secondary_backup_enabled,
+                        secondary_backup_frequency = @secondary_backup_frequency,
+                        secondary_backup_retention_days = @secondary_backup_retention_days,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
                 `).run({
@@ -93,7 +101,10 @@ module.exports = (db, authenticate, backupService) => {
                     ai_data_sources: dataSources,
                     backup_enabled: settings.backup_enabled ? 1 : 0,
                     backup_frequency: parseInt(settings.backup_frequency) || 1440,
-                    backup_retention_days: parseInt(settings.backup_retention_days) || 7
+                    backup_retention_days: parseInt(settings.backup_retention_days) || 7,
+                    secondary_backup_enabled: settings.secondary_backup_enabled ? 1 : 0,
+                    secondary_backup_frequency: parseInt(settings.secondary_backup_frequency) || 4320,
+                    secondary_backup_retention_days: parseInt(settings.secondary_backup_retention_days) || 30
                 });
 
                 // Reload Backup Service
@@ -143,14 +154,47 @@ module.exports = (db, authenticate, backupService) => {
         }
     });
 
-    // POST /api/admin/backup/now
+    // GET /api/admin/backup/status - Get backup status and file lists
+    router.get('/backup/status', (req, res) => {
+        try {
+            if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
+            
+            const status = backupService.getStatus();
+            res.json({ success: true, data: status });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // POST /api/admin/backup/now - Trigger primary backup (backward compatible)
     router.post('/backup/now', async (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
 
             const result = await backupService.trigger();
             if (result.success) {
-                res.json({ success: true, path: result.path });
+                res.json({ success: true, path: result.path, type: result.type, label: result.label });
+            } else {
+                res.status(500).json({ error: result.error });
+            }
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // POST /api/admin/backup/now/:type - Trigger specific backup type
+    router.post('/backup/now/:type', async (req, res) => {
+        try {
+            if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
+            
+            const { type } = req.params;
+            if (!['primary', 'secondary'].includes(type)) {
+                return res.status(400).json({ error: 'Invalid backup type. Use "primary" or "secondary"' });
+            }
+
+            const result = await backupService.triggerType(type);
+            if (result.success) {
+                res.json({ success: true, path: result.path, type: result.type, label: result.label });
             } else {
                 res.status(500).json({ error: result.error });
             }

@@ -86,13 +86,14 @@ interface DealerRepair {
     attachments?: Attachment[];
 }
 
+// Status colors aligned with Dashboard (ServiceTopBarStats)
 const statusColors: Record<string, string> = {
-    Received: '#6b7280',      // Gray
-    Diagnosing: '#eab308',    // Yellow
-    AwaitingParts: '#f97316', // Orange
-    InRepair: '#3b82f6',      // Blue
-    Completed: '#22c55e',     // Green
-    Returned: '#8b5cf6'       // Purple
+    Received: '#f59e0b',      // 已收货 - Orange (same as Dashboard)
+    Diagnosing: '#8b5cf6',    // 检测中 - Purple (same as Dashboard)
+    AwaitingParts: '#f97316', // 待配件 - Orange
+    InRepair: '#3b82f6',      // 维修中 - Blue (same as Dashboard)
+    Completed: '#10b981',     // 已完成 - Green (same as Dashboard)
+    Returned: '#8b5cf6'       // 已退回 - Purple
 };
 
 const DealerRepairDetailPage: React.FC = () => {
@@ -226,26 +227,36 @@ const DealerRepairDetailPage: React.FC = () => {
                     }}>
                         <button
                             onClick={() => navigate(getRoute('/service/dealer-repairs'))}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '8px' }}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '10px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '40px',
+                                height: '40px',
+                                padding: 0,
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
                         >
-                            <ArrowLeft size={18} />
+                            <ArrowLeft size={22} />
                         </button>
 
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
                             {repair.ticket_number}
                         </h1>
 
-                        <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '100px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            background: '#dbeafe',
-                            color: '#1d4ed8',
-                            border: '1px solid #1d4ed840'
-                        }}>
-                            {getRepairTypeLabel(repair.repair_type)}
-                        </span>
                         <span style={{
                             padding: '4px 12px',
                             borderRadius: '100px',

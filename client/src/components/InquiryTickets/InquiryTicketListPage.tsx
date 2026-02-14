@@ -1,21 +1,41 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, MessageSquare, Clock, CheckCircle, Loader2, AlertCircle, AlertTriangle, List, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, MessageSquare, Clock, CheckCircle, Loader2, AlertCircle, AlertTriangle, List, Layers, ChevronDown, ChevronUp, Users, MessageCircleQuestion } from 'lucide-react';
 import { KineSelect } from '../UI/KineSelect';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
+import { SortDropdown } from '../UI/SortDropdown';
 import { formatDistanceToNow, differenceInHours, subDays, format, subMonths } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useTicketStore } from '../../store/useTicketStore';
 import { useCachedTickets } from '../../hooks/useCachedTickets';
+import { useListStateStore } from '../../store/useListStateStore';
 
 interface InquiryTicket {
     id: number;
     ticket_number: string;
     service_type: string;
     channel: string;
-    customer_name: string;
+    // Account/Contact Info
+    account_id?: number;
+    contact_id?: number;
+    account?: {
+        id: number;
+        name: string;
+        account_type?: string;
+        service_tier?: string;
+    };
+    contact?: {
+        id: number;
+        name: string;
+    };
+    // Dealer Info
+    dealer_id?: number;
     dealer_name?: string;
+    dealer_contact_name?: string;
+    // Customer Info
+    customer_name: string;
+    customer_contact?: string;
     problem_summary: string;
     status: string;
     handler: { id: number; name: string } | null;
@@ -26,12 +46,15 @@ interface InquiryTicket {
     product_family?: string;
 }
 
-const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-    InProgress: { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa', border: 'transparent' },
-    AwaitingFeedback: { bg: 'rgba(192, 132, 252, 0.1)', text: '#c084fc', border: 'transparent' },
-    Resolved: { bg: 'rgba(52, 211, 153, 0.1)', text: '#34d399', border: 'transparent' },
-    AutoClosed: { bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af', border: 'transparent' },
-    Upgraded: { bg: 'rgba(34, 211, 238, 0.1)', text: '#22d3ee', border: 'transparent' }
+// Status colors using Kine brand colors from context.md
+// Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444
+const statusColors: Record<string, string> = {
+    Pending: '#EF4444',        // Kine Red - urgent attention
+    InProgress: '#3b82f6',     // Blue - in progress
+    AwaitingFeedback: '#d946ef', // Purple - waiting
+    Resolved: '#4CAF50',       // Kine Green - completed
+    AutoClosed: '#9ca3af',     // Gray - closed
+    Upgraded: '#22d3ee'        // Cyan - upgraded
 };
 
 const CollapsibleSection: React.FC<{
@@ -41,13 +64,22 @@ const CollapsibleSection: React.FC<{
     color: string;
     children: React.ReactNode;
     defaultOpen?: boolean;
-}> = ({ title, count, icon: Icon, color, children, defaultOpen = true }) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
+    sectionKey: string;
+    onToggle?: (key: string, isOpen: boolean) => void;
+    initialOpen?: boolean;
+}> = ({ title, count, icon: Icon, color, children, defaultOpen = true, sectionKey, onToggle, initialOpen }) => {
+    const [isOpen, setIsOpen] = useState(initialOpen !== undefined ? initialOpen : defaultOpen);
+
+    const handleToggle = () => {
+        const newState = !isOpen;
+        setIsOpen(newState);
+        onToggle?.(sectionKey, newState);
+    };
 
     return (
         <section style={{ marginBottom: '16px' }}>
             <div
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleToggle}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -87,6 +119,20 @@ const InquiryTicketListPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
 
+    // List state store for persisting view preferences
+    const {
+        inquiryViewMode: savedViewMode,
+        setInquiryViewMode: saveViewMode,
+        isInquirySectionCollapsed,
+        setInquirySectionCollapsed,
+        inquiryScrollPosition: savedScrollPosition,
+        setInquiryScrollPosition: saveScrollPosition,
+        setInquiryFilters
+    } = useListStateStore();
+
+    // Ref for scroll container
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
     const [pageSize] = useState(50);
 
     // Scope Filters
@@ -94,14 +140,17 @@ const InquiryTicketListPage: React.FC = () => {
     const productFamilyScope = searchParams.get('product_family') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
     const statusFilter = searchParams.get('status') || 'all';
-    const viewModeParam = searchParams.get('view') || 'list';
     const pageParam = searchParams.get('page');
     const page = pageParam ? parseInt(pageParam) : 1;
 
-    // Local States
-    const [viewMode, setViewMode] = useState<'list' | 'card'>(viewModeParam as 'list' | 'card'); // 'list' is Grouped, 'card' is Flat List
+    // Local States - use saved view mode from store
+    const [viewMode, setViewMode] = useState<'list' | 'card'>(savedViewMode === 'grouped' ? 'list' : 'card');
     const [customFamilyOpen, setCustomFamilyOpen] = useState(false);
     const [selectedFamilies, setSelectedFamilies] = useState<string[]>([]);
+
+    // Sort State
+    const [sortBy, setSortBy] = useState<string>('created_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Real-time Search State
     const [localSearch, setLocalSearch] = useState(searchTerm);
@@ -124,11 +173,36 @@ const InquiryTicketListPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [localSearch]);
 
+    // Save filters to store for detail page to use
+    React.useEffect(() => {
+        setInquiryFilters({
+            time_scope: timeScope,
+            product_family: productFamilyScope,
+            status: statusFilter,
+            keyword: searchTerm
+        });
+    }, [timeScope, productFamilyScope, statusFilter, searchTerm, setInquiryFilters]);
+
+    // Restore scroll position on mount
+    React.useEffect(() => {
+        if (scrollContainerRef.current && savedScrollPosition > 0) {
+            scrollContainerRef.current.scrollTop = savedScrollPosition;
+        }
+    }, []);
+
+    // Save scroll position on scroll
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop;
+        saveScrollPosition(scrollTop);
+    }, [saveScrollPosition]);
+
     // Build params for SWR hook
     const queryParams = useMemo(() => {
         const params: Record<string, string | number | undefined> = {
             page,
-            page_size: pageSize
+            page_size: pageSize,
+            sort_by: sortBy,
+            sort_order: sortOrder
         };
 
         if (timeScope === '7d') {
@@ -147,7 +221,7 @@ const InquiryTicketListPage: React.FC = () => {
         if (statusFilter !== 'all') params.status = statusFilter;
 
         return params;
-    }, [page, pageSize, timeScope, productFamilyScope, searchTerm, statusFilter, searchParams]);
+    }, [page, pageSize, timeScope, productFamilyScope, searchTerm, statusFilter, searchParams, sortBy, sortOrder]);
 
     const { tickets, meta, isLoading } = useCachedTickets<InquiryTicket>('inquiry', queryParams);
     const total = meta.total;
@@ -203,7 +277,14 @@ const InquiryTicketListPage: React.FC = () => {
 
     const toggleViewMode = (mode: 'list' | 'card') => {
         setViewMode(mode);
+        // Save to store: 'list' = grouped, 'card' = flat
+        saveViewMode(mode === 'list' ? 'grouped' : 'flat');
         updateFilter({ view: mode });
+    };
+
+    // Handle section toggle to persist collapsed state
+    const handleSectionToggle = (sectionKey: string, isOpen: boolean) => {
+        setInquirySectionCollapsed(sectionKey, !isOpen);
     };
 
     // Calculate groups for specific display logic
@@ -241,9 +322,6 @@ const InquiryTicketListPage: React.FC = () => {
 
     const TicketCard = ({ ticket }: { ticket: InquiryTicket }) => {
         const statusLabel = t(`inquiry_ticket.status.${ticket.status.replace(/([A-Z])/g, '_$1').toLowerCase().slice(1)}` as any) || ticket.status;
-        const channelLabel = ticket.channel === 'Dealer' ? t('rma_ticket.channel.dealer') :
-            ticket.channel === 'Internal' ? t('rma_ticket.channel.internal') :
-                t('rma_ticket.channel.customer');
         const family = ticket.product_family || (ticket.product ? 'Unknown' : null);
 
         return (
@@ -252,87 +330,266 @@ const InquiryTicketListPage: React.FC = () => {
                 style={{
                     background: 'var(--bg-card)',
                     borderRadius: '12px',
-                    padding: '16px',
+                    padding: '18px',
                     border: '1px solid var(--border-color)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    position: 'relative'
+                    position: 'relative',
+                    display: 'flex',
+                    gap: '24px'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <span style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.ticket_number}</span>
+                {/* Left Column - Main Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Line 1: Ticket Number + Status + Family */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{ticket.ticket_number}</span>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: `${statusColors[ticket.status] || '#6b7280'}20`,
+                            color: statusColors[ticket.status] || '#6b7280'
+                        }}>
+                            {statusLabel}
+                        </span>
+                        {family && family !== 'Unknown' && (
                             <span style={{
+                                fontSize: '0.70rem',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                fontSize: '0.7rem',
+                                background: 'rgba(234, 179, 8, 0.1)',
+                                color: '#eab308',
                                 fontWeight: 600,
-                                background: '#e5e7eb',
-                                color: '#374151'
+                                textTransform: 'uppercase'
                             }}>
-                                {channelLabel}
+                                {family}
                             </span>
-
-                            <span
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '2px 8px',
-                                    borderRadius: '12px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 500,
-                                    background: statusColors[ticket.status]?.bg || 'rgba(59, 130, 246, 0.1)',
-                                    color: statusColors[ticket.status]?.text || 'var(--text-secondary)'
-                                }}
-                            >
-                                {statusLabel}
-                            </span>
-                            {/* Product Family Badge */}
-                            {family && family !== 'Unknown' && (
-                                <span style={{
-                                    fontSize: '0.70rem',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    background: 'rgba(234, 179, 8, 0.1)',
-                                    color: '#eab308',
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase'
-                                }}>
-                                    {family}
-                                </span>
-                            )}
-                        </div>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                            {ticket.customer_name || 'Anonymous'} · {ticket.service_type}
-                        </p>
+                        )}
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                        {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: zhCN })}
-                    </span>
+
+                    {/* Line 2: Customer + Contact (with Dealer if applicable) + Service Tier */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        {(() => {
+                            // 如果有经销商：经销商名称 👤 客户名称 + 客户联系人
+                            // 如果没有经销商：客户名称 + 客户联系人
+                            const accountName = ticket.account?.name || ticket.customer_name || 'Anonymous';
+                            const contactName = ticket.contact?.name || ticket.customer_contact;
+                            const dealerName = ticket.dealer_name;
+                            const serviceTier = ticket.account?.service_tier || 'Standard';
+                            const isVIP = serviceTier === 'VIP';
+                            const isVVIP = serviceTier === 'VVIP';
+
+                            if (dealerName) {
+                                // 有经销商：经销商名称 👤 客户名称 + 客户联系人
+                                return (
+                                    <>
+                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{dealerName}</span>
+                                        <span style={{ marginLeft: '8px', marginRight: '4px' }}></span>
+                                        <Users size={14} style={{ color: 'var(--text-secondary)' }} />
+                                        <span style={{ fontWeight: 500 }}>{accountName}</span>
+                                        {contactName && contactName !== accountName && (
+                                            <>
+                                                <span>·</span>
+                                                <span>{contactName}</span>
+                                            </>
+                                        )}
+                                        {/* Service Tier Badge */}
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            marginLeft: '8px',
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
+                                            color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
+                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                        }}>
+                                            {(isVIP || isVVIP) && '👑'}{serviceTier}
+                                        </span>
+                                    </>
+                                );
+                            } else {
+                                // 无经销商：客户名称 + 客户联系人
+                                return (
+                                    <>
+                                        <span style={{ fontWeight: 500 }}>{accountName}</span>
+                                        {contactName && contactName !== accountName && (
+                                            <>
+                                                <span>·</span>
+                                                <span>{contactName}</span>
+                                            </>
+                                        )}
+                                        {/* Service Tier Badge */}
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            marginLeft: '8px',
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
+                                            color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
+                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                        }}>
+                                            {(isVIP || isVVIP) && '👑'}{serviceTier}
+                                        </span>
+                                    </>
+                                );
+                            }
+                        })()}
+                    </div>
+
+                    {/* Line 3: Service Type + Problem Summary */}
+                    <p style={{
+                        fontSize: '0.9rem',
+                        color: 'var(--text-primary)',
+                        lineHeight: '1.5',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        margin: 0
+                    }}>
+                        {ticket.service_type && (
+                            <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>
+                                [{ticket.service_type}]
+                            </span>
+                        )}
+                        {ticket.problem_summary || '-'}
+                    </p>
                 </div>
 
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {ticket.problem_summary}
-                </p>
-
-                {(ticket.product || ticket.serial_number || ticket.handler) && (
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        {ticket.product && <span>📷 {ticket.product.name}</span>}
-                        {ticket.serial_number && <span>SN: {ticket.serial_number}</span>}
-                        {ticket.handler && <span>🔧 {ticket.handler.name}</span>}
-                        {ticket.dealer_name && <span style={{ color: 'var(--primary)' }}>🏢 {ticket.dealer_name}</span>}
+                {/* Right Column - Product Info + Time */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '200px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                        {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: zhCN })}
+                    </span>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-end',
+                        gap: '4px',
+                        fontSize: '0.85rem',
+                        color: 'var(--text-secondary)'
+                    }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📷 {ticket.product?.name || '-'}
+                        </span>
+                        <span>SN: {ticket.serial_number || '-'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            🔧 {ticket.handler?.name || '-'}
+                        </span>
                     </div>
-                )}
+                </div>
             </div>
         );
     };
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '24px', width: '100%', margin: '0', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+            {/* Header - macOS26 Style */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
+                        <MessageCircleQuestion size={28} color="#3B82F6" />
+                        咨询工单
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
+                        处理客户技术咨询、故障排查和使用问题
+                    </p>
+                </div>
+                {/* Right: Search & New Ticket */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', height: '40px' }}>
+                        {!searchOpen ? (
+                            <button
+                                onClick={() => { setSearchOpen(true); }}
+                                style={{
+                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                title={t('action.search')}
+                            >
+                                <Search size={18} />
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '8px', animation: 'fadeIn 0.2s ease-out' }}>
+                                <div style={{ position: 'relative', width: '200px', height: '40px' }}>
+                                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder={t('action.search')}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            padding: '0 12px 0 32px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #3B82F6',
+                                            background: '#1C1C1E',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.85rem',
+                                            outline: 'none',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                        }}
+                                        value={localSearch}
+                                        onChange={(e) => setLocalSearch(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { updateFilter({ keyword: localSearch }); } }}
+                                        onBlur={() => { if (!localSearch) setSearchOpen(false); }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => openModal('Inquiry')}
+                        className="btn"
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
+                            padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.5)',
+                            color: '#3B82F6',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                            e.currentTarget.style.borderColor = '#3B82F6';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                        }}
+                    >
+                        <Plus size={16} />
+                        {t('inquiry_ticket.title')}
+                    </button>
+                </div>
+            </div>
 
             {/* Filter Toolbar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -372,13 +629,45 @@ const InquiryTicketListPage: React.FC = () => {
                             ]}
                         />
                     </div>
+
+                    {/* Advanced Filter Button - Moved here */}
+                    <button
+                        onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+                        style={{
+                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                            background: showAdvancedFilter ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                            color: showAdvancedFilter ? '#3B82F6' : 'var(--text-secondary)',
+                            display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
+                            transition: 'all 0.2s', fontSize: '0.85rem'
+                        }}
+                        title="Advanced Filter"
+                    >
+                        <Filter size={16} />
+                        <span>筛选</span>
+                    </button>
                 </div>
 
-                {/* Right: Search & Actions */}
+                {/* Right: View Mode & Sort */}
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Sort Dropdown - macOS26 Finder Style */}
+                    <SortDropdown
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onChange={(field, order) => {
+                            setSortBy(field);
+                            setSortOrder(order);
+                        }}
+                        options={[
+                            { field: 'created_at', label: '创建时间' },
+                            { field: 'updated_at', label: '更新时间' },
+                            { field: 'ticket_number', label: '工单编号' },
+                            { field: 'customer_name', label: '客户名称' },
+                            { field: 'handler_name', label: '处理人' }
+                        ]}
+                    />
+
                     {/* View Mode */}
                     <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
-                        {/* Grouped View (formerly List) */}
                         <button
                             onClick={() => toggleViewMode('list')}
                             title="Group View"
@@ -392,7 +681,6 @@ const InquiryTicketListPage: React.FC = () => {
                         >
                             <Layers size={16} />
                         </button>
-                        {/* Flat Card View */}
                         <button
                             onClick={() => toggleViewMode('card')}
                             title="List View"
@@ -407,99 +695,6 @@ const InquiryTicketListPage: React.FC = () => {
                             <List size={16} />
                         </button>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', height: '40px' }}>
-                        {!searchOpen ? (
-                            <button
-                                onClick={() => { setSearchOpen(true); }}
-                                style={{
-                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                title={t('action.search')}
-                            >
-                                <Search size={16} />
-                            </button>
-                        ) : (
-                            <div style={{ display: 'flex', gap: '8px', animation: 'fadeIn 0.2s ease-out' }}>
-                                <div style={{ position: 'relative', width: '240px', height: '40px' }}>
-                                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                                    <input
-                                        autoFocus
-                                        type="text"
-                                        placeholder={t('action.search')}
-                                        style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            padding: '0 12px 0 32px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #FFD700',
-                                            background: '#1C1C1E',
-                                            color: 'var(--text-primary)',
-                                            fontSize: '0.85rem',
-                                            outline: 'none',
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
-                                        }}
-                                        value={localSearch}
-                                        onChange={(e) => setLocalSearch(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter') { updateFilter({ keyword: localSearch }); } }}
-                                        onBlur={() => { if (!localSearch) setSearchOpen(false); }}
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => updateFilter({ keyword: localSearch })}
-                                    style={{
-                                        height: '40px', padding: '0 16px', borderRadius: '8px', border: 'none',
-                                        background: '#FFD700', color: '#000', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
-                                    }}
-                                >
-                                    {t('action.confirm')}
-                                </button>
-                                <button
-                                    onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-                                    style={{
-                                        width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                                        background: showAdvancedFilter ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
-                                        color: showAdvancedFilter ? '#FFD700' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    title="Advanced Filter"
-                                >
-                                    <Filter size={16} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <button
-                        onClick={() => openModal('Inquiry')}
-                        className="btn"
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
-                            padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                            background: 'rgba(255, 215, 0, 0.1)',
-                            border: '1px solid rgba(255, 215, 0, 0.5)',
-                            color: '#FFD700',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)';
-                            e.currentTarget.style.borderColor = '#FFD700';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.5)';
-                        }}
-                    >
-                        <Plus size={16} />
-                        {t('inquiry_ticket.title')}
-                    </button>
                 </div>
             </div>
 
@@ -656,7 +851,7 @@ const InquiryTicketListPage: React.FC = () => {
             }
 
             {/* List Content */}
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto' }}>
                 {isLoading && tickets.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px' }}>
                         <Loader2 size={32} className="animate-spin text-primary" style={{ margin: '0 auto' }} />
@@ -676,25 +871,61 @@ const InquiryTicketListPage: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                         {/* Urgent Section */}
                         {groupedTickets.urgent.length > 0 && (
-                            <CollapsibleSection title={t('dashboard.urgent_attention')} count={groupedTickets.urgent.length} icon={AlertTriangle} color="#ef4444">
+                            <CollapsibleSection
+                                title={t('dashboard.urgent_attention')}
+                                count={groupedTickets.urgent.length}
+                                icon={AlertTriangle}
+                                color="#EF4444"
+                                sectionKey="urgent"
+                                defaultOpen={true}
+                                initialOpen={!isInquirySectionCollapsed('urgent', true)}
+                                onToggle={handleSectionToggle}
+                            >
                                 {groupedTickets.urgent.map(t => <TicketCard key={t.id} ticket={t} />)}
                             </CollapsibleSection>
                         )}
                         {/* Attention Section */}
                         {groupedTickets.attention.length > 0 && (
-                            <CollapsibleSection title="Needs Follow-up" count={groupedTickets.attention.length} icon={AlertCircle} color="#f59e0b">
+                            <CollapsibleSection
+                                title="Needs Follow-up"
+                                count={groupedTickets.attention.length}
+                                icon={AlertCircle}
+                                color="#FFD700"
+                                sectionKey="attention"
+                                defaultOpen={true}
+                                initialOpen={!isInquirySectionCollapsed('attention', true)}
+                                onToggle={handleSectionToggle}
+                            >
                                 {groupedTickets.attention.map(t => <TicketCard key={t.id} ticket={t} />)}
                             </CollapsibleSection>
                         )}
                         {/* Active Section */}
                         {groupedTickets.active.length > 0 && (
-                            <CollapsibleSection title={t('dashboard.active_tickets')} count={groupedTickets.active.length} icon={Clock} color="var(--primary)">
+                            <CollapsibleSection
+                                title={t('dashboard.active_tickets')}
+                                count={groupedTickets.active.length}
+                                icon={Clock}
+                                color="var(--primary)"
+                                sectionKey="active"
+                                defaultOpen={true}
+                                initialOpen={!isInquirySectionCollapsed('active', true)}
+                                onToggle={handleSectionToggle}
+                            >
                                 {groupedTickets.active.map(t => <TicketCard key={t.id} ticket={t} />)}
                             </CollapsibleSection>
                         )}
                         {/* Done Section */}
                         {groupedTickets.done.length > 0 && (
-                            <CollapsibleSection title={t('inquiry_ticket.status.resolved')} count={groupedTickets.done.length} icon={CheckCircle} color="var(--text-tertiary)" defaultOpen={false}>
+                            <CollapsibleSection
+                                title={t('inquiry_ticket.status.resolved')}
+                                count={groupedTickets.done.length}
+                                icon={CheckCircle}
+                                color="#4CAF50"
+                                sectionKey="done"
+                                defaultOpen={false}
+                                initialOpen={!isInquirySectionCollapsed('done', false)}
+                                onToggle={handleSectionToggle}
+                            >
                                 {groupedTickets.done.map(t => <TicketCard key={t.id} ticket={t} />)}
                             </CollapsibleSection>
                         )}

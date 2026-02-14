@@ -374,7 +374,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             console.log(`[Knowledge Import] PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} chars`);
 
             // Extract images from PDF
-            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
@@ -500,7 +500,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             
             if (req.body.mergedFilePath) {
                 // 分块上传后合并的文件
-                const DISK_A = path.resolve(__dirname, '../../data/DiskA');
+                const DISK_A = '/Volumes/fileserver/Files';
                 docxPath = path.join(DISK_A, req.body.mergedFilePath);
                 
                 console.log('[DOCX Import] Merged file path:', docxPath);
@@ -543,7 +543,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             const timestamp = Date.now();
             const tempDir = `/tmp/docx_import_${timestamp}`;
             const mdPath = path.join(tempDir, 'output.md');
-            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             
             // 创建临时目录
             fs.mkdirSync(tempDir, { recursive: true });
@@ -832,7 +832,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             
             // Download images from webpage
             console.log('[Knowledge Import URL] Downloading images...');
-            const imagesDir = path.join(__dirname, '../../data/knowledge_images');
+            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }

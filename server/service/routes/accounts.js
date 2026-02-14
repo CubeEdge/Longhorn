@@ -78,15 +78,14 @@ module.exports = function(db, authenticate) {
                 params.push(region);
             }
             
-            // 支持三种状态筛选: active, inactive, deleted
+            // 支持状态筛选: active, inactive
             if (status) {
                 if (status === 'active') {
-                    conditions.push('a.is_active = 1 AND (a.is_deleted IS NULL OR a.is_deleted = 0)');
+                    conditions.push('a.is_active = 1');
                 } else if (status === 'inactive') {
-                    conditions.push('a.is_active = 0 AND (a.is_deleted IS NULL OR a.is_deleted = 0)');
-                } else if (status === 'deleted') {
-                    conditions.push('a.is_deleted = 1');
+                    conditions.push('a.is_active = 0');
                 }
+                // Note: 'deleted' status not supported - accounts table doesn't have is_deleted column
             } else if (is_active !== undefined) {
                 // 兼容旧的 is_active 参数
                 conditions.push('a.is_active = ?');
@@ -139,7 +138,7 @@ module.exports = function(db, authenticate) {
                     a.region,
                     a.can_repair
                 FROM accounts a
-                LEFT JOIN contacts c ON c.account_id = a.id AND (c.is_primary = 1 OR c.status = 'PRIMARY')
+                LEFT JOIN contacts c ON c.account_id = a.id AND c.status = 'PRIMARY'
                 ${whereClause}
                 ORDER BY a.${orderByField} ${orderDirection}
                 LIMIT ? OFFSET ?

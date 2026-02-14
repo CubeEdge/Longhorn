@@ -62,6 +62,27 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
             issue_type: ticket.issue_type,
             issue_category: ticket.issue_category,
             severity: ticket.severity,
+            // Account/Contact Info
+            account_id: ticket.account_id,
+            contact_id: ticket.contact_id,
+            account: ticket.account_id ? {
+                id: ticket.account_id,
+                name: ticket.account_name,
+                account_type: ticket.account_type,
+                service_tier: ticket.service_tier
+            } : null,
+            contact: ticket.contact_id ? {
+                id: ticket.contact_id,
+                name: ticket.contact_name
+            } : null,
+            // Dealer Info
+            dealer_id: ticket.dealer_id,
+            dealer_name: ticket.dealer_name,
+            dealer_contact_name: ticket.dealer_contact_name,
+            // Customer Info (向后兼容)
+            customer_name: ticket.customer_name || ticket.account_name,
+            customer_contact: ticket.customer_contact || ticket.contact_name,
+            // Product Info
             product: ticket.product_name ? { id: ticket.product_id, name: ticket.product_name } : null,
             serial_number: ticket.serial_number,
             problem_description: ticket.problem_description,
@@ -122,9 +143,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 job_title: ticket.contact_job_title
             } : null,
             
-            // 向后兼容
-            customer: ticket.customer_id ? { id: ticket.customer_id, name: ticket.customer_name } : null,
-            customer_id: ticket.customer_id,
+            // 经销商信息
             dealer: ticket.dealer_id ? { id: ticket.dealer_id, name: ticket.dealer_name, code: ticket.dealer_code } : null,
             dealer_id: ticket.dealer_id,
             dealer_name: ticket.dealer_name,
@@ -172,28 +191,66 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
     router.get('/stats', authenticate, (req, res) => {
         try {
             const user = req.user;
+            const { time_scope, product_family, keyword } = req.query;
             let conditions = [];
             let params = [];
 
             // Role-based filtering
             if (user.user_type === 'Dealer') {
-                conditions.push('dealer_id = ?');
+                conditions.push('t.dealer_id = ?');
                 params.push(user.dealer_id);
             } else if (user.role === 'Member') {
-                conditions.push('(assigned_to = ? OR submitted_by = ?)');
+                conditions.push('(t.assigned_to = ? OR t.submitted_by = ?)');
                 params.push(user.id, user.id);
+            }
+
+            // Time scope filtering
+            if (time_scope) {
+                const now = new Date();
+                let fromDate;
+                if (time_scope === '7d') {
+                    fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                } else if (time_scope === '30d') {
+                    fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                }
+                if (fromDate) {
+                    conditions.push('date(t.created_at) >= ?');
+                    params.push(fromDate.toISOString().split('T')[0]);
+                }
+            }
+
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('t.product_id IN (SELECT id FROM products WHERE product_family = ?)');
+                params.push(product_family);
+            }
+
+            // Keyword filtering
+            if (keyword) {
+                conditions.push(`(
+                    t.ticket_number LIKE ? OR 
+                    t.reporter_name LIKE ? OR 
+                    t.problem_description LIKE ? OR
+                    t.serial_number LIKE ?
+                )`);
+                const term = `%${keyword}%`;
+                params.push(term, term, term, term);
             }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
             const stats = db.prepare(`
-                SELECT status, COUNT(*) as count 
-                FROM rma_tickets ${whereClause}
-                GROUP BY status
+                SELECT t.status, COUNT(*) as count 
+                FROM rma_tickets t
+                LEFT JOIN products p ON t.product_id = p.id
+                ${whereClause}
+                GROUP BY t.status
             `).all(...params);
 
             const totalRow = db.prepare(`
-                SELECT COUNT(*) as total FROM rma_tickets ${whereClause}
+                SELECT COUNT(*) as total FROM rma_tickets t
+                LEFT JOIN products p ON t.product_id = p.id
+                ${whereClause}
             `).get(...params);
 
             const result = {
@@ -233,7 +290,8 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 created_from,
                 created_to,
                 keyword,
-                product_family
+                product_family,
+                service_tier
             } = req.query;
 
             const user = req.user;
@@ -275,8 +333,9 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 conditions.push('t.product_id = ?');
                 params.push(product_id);
             }
-            if (product_family) {
-                conditions.push('t.product_family = ?');
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('t.product_id IN (SELECT id FROM products WHERE product_family = ?)');
                 params.push(product_family);
             }
             if (dealer_id) {
@@ -316,6 +375,11 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 const term = `%${keyword}%`;
                 params.push(term, term, term, term);
             }
+            // Service tier filter (from accounts table)
+            if (service_tier) {
+                conditions.push(`t.account_id IN (SELECT id FROM accounts WHERE service_tier = ?)`);
+                params.push(service_tier);
+            }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
@@ -335,10 +399,20 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 SELECT 
                     t.*,
                     a.username as assigned_name,
-                    p.model_name as product_name
+                    p.model_name as product_name,
+                    acc.name as account_name,
+                    acc.account_type,
+                    acc.service_tier,
+                    ct.name as contact_name,
+                    dlr.name as dealer_name,
+                    dc.name as dealer_contact_name
                 FROM rma_tickets t
                 LEFT JOIN users a ON t.assigned_to = a.id
                 LEFT JOIN products p ON t.product_id = p.id
+                LEFT JOIN accounts acc ON t.account_id = acc.id
+                LEFT JOIN contacts ct ON t.contact_id = ct.id
+                LEFT JOIN accounts dlr ON t.dealer_id = dlr.id
+                LEFT JOIN contacts dc ON dc.account_id = t.dealer_id AND dc.status = 'PRIMARY'
                 ${whereClause}
                 ORDER BY t.${safeSortBy} ${safeSortOrder}
                 LIMIT ? OFFSET ?
@@ -382,8 +456,6 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                     ct.name as contact_name,
                     ct.email as contact_email,
                     ct.job_title as contact_job_title,
-                    -- 客户信息（向后兼容）
-                    cust.customer_name as customer_name,
                     -- 经销商主要联系人
                     dc.name as dealer_contact_name,
                     dc.job_title as dealer_contact_title
@@ -395,7 +467,6 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 LEFT JOIN inquiry_tickets inq ON t.inquiry_ticket_id = inq.id
                 LEFT JOIN accounts acc ON t.account_id = acc.id
                 LEFT JOIN contacts ct ON t.contact_id = ct.id
-                LEFT JOIN customers cust ON t.customer_id = cust.id
                 LEFT JOIN contacts dc ON dc.account_id = t.dealer_id AND dc.status = 'PRIMARY'
                 WHERE t.id = ?
             `).get(req.params.id);

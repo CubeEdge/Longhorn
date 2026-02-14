@@ -380,7 +380,7 @@ ${enhancedContext}`;
                 tsi.title,
                 tsi.resolution,
                 tsi.product_model,
-                tsi.customer_id,
+                tsi.account_id,
                 fts.rank
             FROM ticket_search_index tsi
             INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
@@ -393,12 +393,12 @@ ${enhancedContext}`;
         try {
             const results = this.db.prepare(searchQuery).all(params);
 
-            // Enrich with customer names
+            // Enrich with account names
             return results.map(r => {
                 let customer_name = null;
-                if (r.customer_id) {
-                    const customer = this.db.prepare('SELECT customer_name FROM customers WHERE id = ?').get(r.customer_id);
-                    customer_name = customer?.customer_name;
+                if (r.account_id) {
+                    const account = this.db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
+                    customer_name = account?.name;
                 }
                 return {
                     ...r,

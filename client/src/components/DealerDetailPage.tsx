@@ -216,38 +216,56 @@ const DealerDetailPage: React.FC = () => {
 
     return (
         <div className="fade-in" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', height: '100vh', overflow: 'auto' }}>
-            {/* Header */}
-            <div style={{ marginBottom: 32 }}>
+            {/* Header - macOS26 Style */}
+            <div style={{
+                padding: '20px 0',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                marginBottom: 32
+            }}>
                 <button
                     onClick={() => navigate('/service/dealers')}
                     style={{
-                        background: 'none',
-                        border: 'none',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '10px',
                         color: 'var(--text-secondary)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        marginBottom: 16,
-                        padding: '8px'
+                        justifyContent: 'center',
+                        width: '40px',
+                        height: '40px',
+                        padding: 0,
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.color = 'var(--text-secondary)';
                     }}
                 >
-                    <ArrowLeft size={18} />
-                    返回经销商列表
+                    <ArrowLeft size={22} />
                 </button>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>
-                            {dealer.name}
-                        </h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                            {getDealerTypeLabel(dealer.dealer_type)} · {dealer.code}
-                        </p>
-                    </div>
-                    
-                    {/* More Actions Menu */}
-                    <div style={{ position: 'relative' }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>
+                        {dealer.name}
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                        {getDealerTypeLabel(dealer.dealer_type)} · {dealer.code}
+                    </p>
+                </div>
+
+                <div style={{ flex: 1 }} />
+
+                {/* More Actions Menu */}
+                <div style={{ position: 'relative' }}>
                         <button
                             onClick={() => setShowMoreMenu(!showMoreMenu)}
                             style={{
@@ -387,7 +405,6 @@ const DealerDetailPage: React.FC = () => {
                             </>
                         )}
                     </div>
-                </div>
             </div>
 
             {/* Basic Info Card */}

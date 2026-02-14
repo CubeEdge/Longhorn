@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿色颜色对比</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: white;
+            padding: 40px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #FFD700;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .color-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .color-sample {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .color-info {
+            text-align: center;
+        }
+        
+        .color-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .color-value {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 4px 0;
+        }
+        
+        .comparison-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .comparison-title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: #FFD700;
+        }
+        
+        .side-by-side {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .comparison-item {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+        }
+        
+        .small-sample {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .usage-note {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4CAF50;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🟢 绿色系颜色对比</h1>
+        
+        <div class="color-grid">
+            <div class="color-card">
+                <div class="color-sample" style="background: #4CAF50;">
+                    #4CAF50
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Material Green</div>
+                    <div class="color-value">#4CAF50</div>
+                    <div class="color-value">rgb(76, 175, 80)</div>
+                </div>
+            </div>
+            
+            <div class="color-card">
+                <div class="color-sample" style="background: #73D3A9;">
+                    #73D3A9
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Mint Green</div>
+                    <div class="color-value">#73D3A9</div>
+                    <div class="color-value">rgb(115, 211, 169)</div>
+                </div>
+            </div>
+            
+            <div class="color-card">
+                <div class="color-sample" style="background: #10B981;">
+                    #10B981
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Kine Green</div>
+                    <div class="color-value">#10B981</div>
+                    <div class="color-value">rgb(16, 185, 129)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="comparison-section">
+            <div class="comparison-title">🎯 对比分析</div>
+            
+            <div class="side-by-side">
+                <div class="comparison-item">
+                    <div class="small-sample" style="background: #4CAF50;"></div>
+                    <strong>右上角版本标签</strong><br>
+                    <span class="color-value">#4CAF50</span>
+                </div>
+                
+                <div class="comparison-item">
+                    <div class="small-sample" style="background: #73D3A9;"></div>
+                    <strong>下方操作按钮</strong><br>
+                    <span class="color-value">#73D3A9</span>
+                </div>
+                
+                <div class="comparison-item">
+                    <div class="small-sample" style="background: #10B981;"></div>
+                    <strong>Kine Green</strong><br>
+                    <span class="color-value">#10B981</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="usage-note">
+            <strong>💡 设计建议：</strong><br>
+            • <strong>#4CAF50</strong> - 适合作为成功状态、确认按钮<br>
+            • <strong>#73D3A9</strong> - 适合作为操作按钮、次要动作<br>
+            • <strong>#10B981</strong> - Kine品牌主绿色，建议作为主要成功标记色<br><br>
+            
+            根据项目UI规范，推荐统一使用 <strong>#10B981 (Kine Green)</strong> 作为标准绿色。
+        </div>
+    </div>
+</body>
+</html>

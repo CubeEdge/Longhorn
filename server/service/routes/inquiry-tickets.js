@@ -69,11 +69,31 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ticket_number: ticket.ticket_number,
                 service_type: ticket.service_type,
                 channel: ticket.channel,
-                customer_name: ticket.customer_name || '匿名客户',
+                // Account/Contact Info
+                account_id: ticket.account_id,
+                contact_id: ticket.contact_id,
+                account: ticket.account_id ? {
+                    id: ticket.account_id,
+                    name: ticket.account_name,
+                    account_type: ticket.account_type,
+                    service_tier: ticket.service_tier
+                } : null,
+                contact: ticket.contact_id ? {
+                    id: ticket.contact_id,
+                    name: ticket.contact_name
+                } : null,
+                // Dealer Info
+                dealer_id: ticket.dealer_id,
+                dealer_name: ticket.dealer_name,
+                dealer_contact_name: ticket.dealer_contact_name,
+                // Customer Info
+                customer_name: ticket.account_name || ticket.customer_name || '匿名客户',
+                customer_contact: ticket.contact_name || ticket.customer_contact,
                 problem_summary: ticket.problem_summary,
                 status: ticket.status,
                 handler: ticket.handler_name ? { id: ticket.handler_id, name: ticket.handler_name } : null,
                 product: ticket.product_name ? { id: ticket.product_id, name: ticket.product_name } : null,
+                product_family: ticket.product_family,
                 serial_number: ticket.serial_number,
                 created_at: parseDate(ticket.created_at),
                 updated_at: parseDate(ticket.updated_at)
@@ -94,10 +114,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             contact_id: ticket.contact_id,
             reporter_name: ticket.reporter_name || ticket.customer_name || '匿名客户',
             
-            // 向后兼容字段
-            customer_name: ticket.customer_name || '匿名客户',
-            customer_contact: ticket.customer_contact,
-            customer_id: ticket.customer_id,
+            // 经销商信息
             dealer_id: ticket.dealer_id,
             dealer_name: ticket.dealer_name,
             dealer_code: ticket.dealer_code,
@@ -169,7 +186,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 created_to,
                 keyword,
                 product_id,
-                product_family
+                product_family,
+                time_scope
             } = req.query;
 
             const user = req.user;
@@ -186,6 +204,21 @@ module.exports = function (db, authenticate, serviceUpload) {
             } else if (user.role === 'Member') {
                 conditions.push('(handler_id = ? OR created_by = ?)');
                 params.push(user.id, user.id);
+            }
+
+            // Time scope filtering
+            if (time_scope) {
+                const now = new Date();
+                let fromDate;
+                if (time_scope === '7d') {
+                    fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                } else if (time_scope === '30d') {
+                    fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                }
+                if (fromDate) {
+                    conditions.push('date(created_at) >= ?');
+                    params.push(fromDate.toISOString().split('T')[0]);
+                }
             }
 
             // Filter conditions
@@ -206,8 +239,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('product_id = ?');
                 params.push(product_id);
             }
-            if (product_family) {
-                conditions.push('product_family = ?');
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('product_id IN (SELECT id FROM products WHERE product_family = ?)');
                 params.push(product_family);
             }
             if (dealer_id) {
@@ -295,7 +329,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 created_to,
                 keyword,
                 product_id,
-                product_family
+                product_family,
+                service_tier
             } = req.query;
 
             const user = req.user;
@@ -332,8 +367,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.product_id = ?');
                 params.push(product_id);
             }
-            if (product_family) {
-                conditions.push('t.product_family = ?');
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('t.product_id IN (SELECT id FROM products WHERE product_family = ?)');
                 params.push(product_family);
             }
             if (dealer_id) {
@@ -382,6 +418,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 const term = `%${keyword}%`;
                 params.push(term, term, term, term);
             }
+            // Service tier filter (from accounts table)
+            if (service_tier) {
+                conditions.push(`t.account_id IN (SELECT id FROM accounts WHERE service_tier = ?)`);
+                params.push(service_tier);
+            }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
@@ -401,10 +442,20 @@ module.exports = function (db, authenticate, serviceUpload) {
                 SELECT 
                     t.*,
                     h.username as handler_name,
-                    p.model_name as product_name
+                    p.model_name as product_name,
+                    a.name as account_name,
+                    a.account_type,
+                    a.service_tier,
+                    ct.name as contact_name,
+                    d.name as dealer_name,
+                    dc.name as dealer_contact_name
                 FROM inquiry_tickets t
                 LEFT JOIN users h ON t.handler_id = h.id
                 LEFT JOIN products p ON t.product_id = p.id
+                LEFT JOIN accounts a ON t.account_id = a.id
+                LEFT JOIN contacts ct ON t.contact_id = ct.id
+                LEFT JOIN accounts d ON t.dealer_id = d.id
+                LEFT JOIN contacts dc ON dc.account_id = t.dealer_id AND dc.status = 'PRIMARY'
                 ${whereClause}
                 ORDER BY t.${safeSortBy} ${safeSortOrder}
                 LIMIT ? OFFSET ?

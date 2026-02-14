@@ -4,10 +4,11 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import WikiEditorModal from './Knowledge/WikiEditorModal';
 
 interface KnowledgeArticle {
     id: number;
@@ -116,6 +117,7 @@ export const KinefinityWiki: React.FC = () => {
     const [fullChapterContent, setFullChapterContent] = useState<string | null>(null);
     const [showFullChapter, setShowFullChapter] = useState(false);
     const [loadingFullChapter, setLoadingFullChapter] = useState(false);
+    const [showEditorModal, setShowEditorModal] = useState(false);
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -1065,6 +1067,28 @@ export const KinefinityWiki: React.FC = () => {
                                     {isFormatting ? 'Bokeh 处理中...' : 'Bokeh 优化排版'}
                                 </button>
                                 
+                                {/* Manual Edit Button */}
+                                <button
+                                    onClick={() => setShowEditorModal(true)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'rgba(255,215,0,0.15)',
+                                        border: '1px solid rgba(255,215,0,0.3)',
+                                        borderRadius: '8px',
+                                        color: '#FFD700',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <Edit3 size={14} />
+                                    人工编辑
+                                </button>
+                                
                                 {/* Publish Button - Only show when draft exists */}
                                 {selectedArticle.format_status === 'draft' && viewMode === 'draft' && (
                                     <button
@@ -1935,6 +1959,17 @@ export const KinefinityWiki: React.FC = () => {
                     to { transform: translateX(0); }
                 }
             `}</style>
+
+            {/* Wiki Editor Modal */}
+            <WikiEditorModal
+                isOpen={showEditorModal}
+                onClose={() => setShowEditorModal(false)}
+                article={selectedArticle as any}
+                onSaved={(updatedArticle: any) => {
+                    setSelectedArticle(updatedArticle);
+                    selectedArticleRef.current = updatedArticle;
+                }}
+            />
         </div>
     );
 };

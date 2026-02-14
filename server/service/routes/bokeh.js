@@ -71,7 +71,7 @@ module.exports = (db, authenticate, aiService) => {
                     tsi.category,
                     tsi.status,
                     tsi.closed_at,
-                    tsi.customer_id,
+                    tsi.account_id,
                     fts.rank
                 FROM ticket_search_index tsi
                 INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
@@ -106,12 +106,12 @@ module.exports = (db, authenticate, aiService) => {
                 }
             }
 
-            // Enrich results with customer names
+            // Enrich results with account names
             const enrichedResults = results.map(r => {
                 let customer_name = null;
-                if (r.customer_id) {
-                    const customer = db.prepare('SELECT customer_name FROM customers WHERE id = ?').get(r.customer_id);
-                    customer_name = customer?.customer_name;
+                if (r.account_id) {
+                    const account = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
+                    customer_name = account?.name;
                 }
                 return {
                     ticket_number: r.ticket_number,
@@ -241,12 +241,12 @@ module.exports = (db, authenticate, aiService) => {
                     ticket_type, ticket_id, ticket_number,
                     title, description, resolution, tags,
                     product_model, serial_number, category, status,
-                    dealer_id, customer_id, visibility, closed_at
+                    dealer_id, account_id, visibility, closed_at
                 ) VALUES (
                     @ticket_type, @ticket_id, @ticket_number,
                     @title, @description, @resolution, @tags,
                     @product_model, @serial_number, @category, @status,
-                    @dealer_id, @customer_id, @visibility, @closed_at
+                    @dealer_id, @account_id, @visibility, @closed_at
                 )
             `).run({
                 ticket_type,
@@ -261,7 +261,7 @@ module.exports = (db, authenticate, aiService) => {
                 category,
                 status: ticketData.status,
                 dealer_id: ticketData.dealer_id || null,
-                customer_id: ticketData.customer_id || null,
+                account_id: ticketData.account_id || null,
                 visibility,
                 closed_at
             });
@@ -406,12 +406,12 @@ function indexTicket(db, ticket_type, ticket_id) {
             ticket_type, ticket_id, ticket_number,
             title, description, resolution, tags,
             product_model, serial_number, category, status,
-            dealer_id, customer_id, visibility, closed_at
+            dealer_id, account_id, visibility, closed_at
         ) VALUES (
             @ticket_type, @ticket_id, @ticket_number,
             @title, @description, @resolution, @tags,
             @product_model, @serial_number, @category, @status,
-            @dealer_id, @customer_id, @visibility, @closed_at
+            @dealer_id, @account_id, @visibility, @closed_at
         )
     `).run({
         ticket_type,
@@ -426,7 +426,7 @@ function indexTicket(db, ticket_type, ticket_id) {
         category,
         status: ticketData.status,
         dealer_id: ticketData.dealer_id || null,
-        customer_id: ticketData.customer_id || null,
+        account_id: ticketData.account_id || null,
         visibility,
         closed_at
     });

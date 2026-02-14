@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kine 品牌色彩体系</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: white;
+            padding: 40px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #FFD700;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .brand-colors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .color-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .color-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .color-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .color-sample {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            margin-right: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .color-info h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+        }
+        
+        .color-role {
+            font-size: 14px;
+            opacity: 0.8;
+            margin: 0;
+        }
+        
+        .color-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .value-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .value-label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        
+        .value-content {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .usage-guidelines {
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 4px solid #FFD700;
+            border-radius: 0 12px 12px 0;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .guidelines-title {
+            color: #FFD700;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .guideline-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .guideline-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .color-preview {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .preview-item {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .preview-swatch {
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .preview-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Kine 品牌色彩体系</h1>
+        <p class="subtitle">基于 macOS26 风格的统一色彩规范</p>
+        
+        <div class="brand-colors">
+            <!-- Kine Yellow -->
+            <div class="color-card">
+                <div class="color-header">
+                    <div class="color-sample" style="background: #FFD700;"></div>
+                    <div class="color-info">
+                        <h2>Kine Yellow</h2>
+                        <p class="color-role">主品牌色 · 强调色</p>
+                    </div>
+                </div>
+                
+                <div class="color-values">
+                    <div class="value-box">
+                        <div class="value-label">HEX</div>
+                        <div class="value-content">#FFD700</div>
+                    </div>
+                    <div class="value-box">
+                        <div class="value-label">RGB</div>
+                        <div class="value-content">255,215,0</div>
+                    </div>
+                </div>
+                
+                <div class="color-preview">
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #FFD700;"></div>
+                        <div class="preview-label">Primary</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #FFE55C;"></div>
+                        <div class="preview-label">Light</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #CCAC00;"></div>
+                        <div class="preview-label">Dark</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Kine Green -->
+            <div class="color-card">
+                <div class="color-header">
+                    <div class="color-sample" style="background: #4CAF50;"></div>
+                    <div class="color-info">
+                        <h2>Kine Green</h2>
+                        <p class="color-role">成功状态 · 选中标记</p>
+                    </div>
+                </div>
+                
+                <div class="color-values">
+                    <div class="value-box">
+                        <div class="value-label">HEX</div>
+                        <div class="value-content">#4CAF50</div>
+                    </div>
+                    <div class="value-box">
+                        <div class="value-label">RGB</div>
+                        <div class="value-content">76,175,80</div>
+                    </div>
+                </div>
+                
+                <div class="color-preview">
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #4CAF50;"></div>
+                        <div class="preview-label">Success</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #81C784;"></div>
+                        <div class="preview-label">Light</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #388E3C;"></div>
+                        <div class="preview-label">Dark</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Kine Red (New Proposal) -->
+            <div class="color-card">
+                <div class="color-header">
+                    <div class="color-sample" style="background: #EF4444;"></div>
+                    <div class="color-info">
+                        <h2>Kine Red</h2>
+                        <p class="color-role">警告状态 · 删除操作</p>
+                    </div>
+                </div>
+                
+                <div class="color-values">
+                    <div class="value-box">
+                        <div class="value-label">HEX</div>
+                        <div class="value-content">#EF4444</div>
+                    </div>
+                    <div class="value-box">
+                        <div class="value-label">RGB</div>
+                        <div class="value-content">239,68,68</div>
+                    </div>
+                </div>
+                
+                <div class="color-preview">
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #EF4444;"></div>
+                        <div class="preview-label">Danger</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #F87171;"></div>
+                        <div class="preview-label">Light</div>
+                    </div>
+                    <div class="preview-item">
+                        <div class="preview-swatch" style="background: #DC2626;"></div>
+                        <div class="preview-label">Dark</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="usage-guidelines">
+            <h3 class="guidelines-title">📋 使用规范</h3>
+            <div class="guideline-list">
+                <div class="guideline-item">
+                    <strong>Kine Yellow (#FFD700)</strong><br>
+                    • 主要品牌标识色<br>
+                    • 按钮、链接强调色<br>
+                    • 重要信息提示
+                </div>
+                <div class="guideline-item">
+                    <strong>Kine Green (#4CAF50)</strong><br>
+                    • 成功状态反馈<br>
+                    • 选中/激活状态<br>
+                    • 确认操作按钮
+                </div>
+                <div class="guideline-item">
+                    <strong>Kine Red (#EF4444)</strong><br>
+                    • 危险/警告状态<br>
+                    • 删除/撤销操作<br>
+                    • 错误信息提示
+                </div>
+                <div class="guideline-item">
+                    <strong>色彩搭配原则</strong><br>
+                    • 保持色彩间足够的对比度<br>
+                    • 同一界面不超过三种主色<br>
+                    • 遵循 WCAG 2.1 可访问性标准
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

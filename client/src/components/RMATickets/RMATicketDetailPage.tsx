@@ -70,14 +70,16 @@ interface RMATicket {
     attachments?: Attachment[];
 }
 
+// Status colors aligned with Dashboard (ServiceTopBarStats)
 const statusConfig: Record<string, { color: string, icon: any }> = {
-    Pending: { color: '#f59e0b', icon: Clock },
-    Assigned: { color: '#3b82f6', icon: Activity },
-    InRepair: { color: '#8b5cf6', icon: Hammer },
-    Repaired: { color: '#10b981', icon: CheckCircle },
-    Shipped: { color: '#06b6d4', icon: Truck },
-    Completed: { color: '#22c55e', icon: CheckCircle },
-    Cancelled: { color: '#6b7280', icon: XCircle }
+    Pending: { color: '#f59e0b', icon: Clock },      // 待处理 - Orange
+    Assigned: { color: '#3b82f6', icon: Activity },  // 分配 - Blue
+    InRepair: { color: '#3b82f6', icon: Hammer },   // 维修中 - Blue (same as Dashboard)
+    Repaired: { color: '#10b981', icon: CheckCircle }, // 已修复 - Green
+    Shipped: { color: '#06b6d4', icon: Truck },     // 已发货 - Cyan
+    Returned: { color: '#10b981', icon: CheckCircle }, // 已寄回 - Green (same as Dashboard)
+    Completed: { color: '#22c55e', icon: CheckCircle }, // 已完成
+    Cancelled: { color: '#6b7280', icon: XCircle }  // 已取消
 };
 
 const RMATicketDetailPage: React.FC = () => {
@@ -192,9 +194,30 @@ const RMATicketDetailPage: React.FC = () => {
                     }}>
                         <button
                             onClick={() => navigate(getRoute('/service/rma-tickets'))}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '10px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '40px',
+                                height: '40px',
+                                padding: 0,
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
                         >
-                            <ArrowLeft size={18} />
+                            <ArrowLeft size={22} />
                         </button>
 
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>

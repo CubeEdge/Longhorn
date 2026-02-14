@@ -651,10 +651,27 @@ const CustomerManagement: React.FC = () => {
                                         <div style={{ fontSize: '0.9rem' }}>{c.contact_person || '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        {/* 终端客户显示 service_tier（STANDARD/VIP等） */}
-                                        <span className={`badge ${c.service_tier === 'VIP' ? 'badge-warning' : 'badge-default'}`} style={{ padding: '4px 8px', borderRadius: 4, background: c.service_tier === 'VIP' ? 'rgba(255,165,0,0.2)' : 'rgba(255,255,255,0.1)', color: c.service_tier === 'VIP' ? 'orange' : 'white' }}>
-                                            {c.service_tier}
-                                        </span>
+                                        {/* 终端客户显示 service_tier（STANDARD/VIP/VVIP等） */}
+                                        {(() => {
+                                            const isVIP = c.service_tier === 'VIP';
+                                            const isVVIP = c.service_tier === 'VVIP';
+                                            return (
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '10px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
+                                                    color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
+                                                    border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                                }}>
+                                                    {(isVIP || isVVIP) && '👑'}{c.service_tier}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                     <td style={{ padding: 16 }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'flex', gap: 4 }}>

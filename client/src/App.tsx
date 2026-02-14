@@ -18,10 +18,10 @@ import {
   MessageCircleQuestion,
   BookOpen,
   Book,
-  Package,
   Settings,
   Users,
-  Building
+  Building,
+  Wrench
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -45,6 +45,7 @@ import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './c
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
 import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
+import ProductManagement from './components/ProductManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
 import KnowledgeGenerator from './components/KnowledgeGenerator';
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
@@ -64,6 +65,7 @@ import ShareCollectionPage from './components/ShareCollectionPage';
 import Toast from './components/Toast';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useRouteMemoryStore } from './store/useRouteMemoryStore';
+import { useListStateStore } from './store/useListStateStore';
 
 // Main Layout Component for authenticated users
 // Main Layout Component for authenticated users
@@ -174,8 +176,11 @@ const App: React.FC = () => {
           <Route path="/service/customers" element={<CustomerManagement />} />
           <Route path="/service/customers/:id" element={<CustomerDetailPage />} />
 
-          {/* 3. 资产和物料 (第三入口) - 占位 */}
-          <Route path="/service/assets" element={<div style={{ padding: 40, textAlign: 'center' }}><h2>资产和物料</h2><p>功能开发中...</p></div>} />
+          {/* 3. 资产和物料 (第三入口) */}
+          <Route path="/service/products" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductManagement /> : <Navigate to="/" />
+          } />
+          <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 
           {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
           <Route path="/service/knowledge" element={
@@ -347,7 +352,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('sidebar.rma_tickets')}</span>
             </Link>
             <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''} `} onClick={onClose}>
-              <Package size={18} />
+              <Wrench size={18} />
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
 
@@ -370,10 +375,10 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('sidebar.archives_customers') || '客户档案'}</span>
             </Link>
 
-            {/* 3. 资产和物料 (第三入口) */}
-            <Link to={getRoute('/service/assets')} className={`sidebar-item ${location.pathname.startsWith('/service/assets') ? 'active' : ''} `} onClick={onClose}>
+            {/* 3. 产品管理 (第三入口) */}
+            <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''} `} onClick={onClose}>
               <Box size={18} />
-              <span>{t('sidebar.archives_assets') || '资产和物料'}</span>
+              <span>{t('sidebar.archives_assets') || '产品管理'}</span>
             </Link>
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
@@ -571,6 +576,9 @@ const ServiceTopBarStats: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  // Get saved filters from store
+  const { inquiryFilters, rmaFilters, dealerFilters } = useListStateStore();
+
   // Determine context
   const context = React.useMemo(() => {
     if (location.pathname.startsWith('/service/inquiry-tickets')) return 'inquiry';
@@ -579,7 +587,38 @@ const ServiceTopBarStats: React.FC = () => {
     return null;
   }, [location.pathname]);
 
-  // Fetch stats based on context
+  // Check if on detail page (e.g., /service/rma-tickets/123)
+  const isDetailPage = React.useMemo(() => {
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    return pathSegments.length >= 3 && !isNaN(Number(pathSegments[pathSegments.length - 1]));
+  }, [location.pathname]);
+
+  // Get filter params for stats query
+  // On detail page: use saved filters from store
+  // On list page: use URL params
+  const { timeScope, productFamily, keyword } = React.useMemo(() => {
+    if (isDetailPage) {
+      // Use saved filters from store based on context
+      const savedFilters = context === 'inquiry' ? inquiryFilters
+        : context === 'rma' ? rmaFilters
+        : context === 'dealer' ? dealerFilters
+        : { time_scope: '7d', product_family: 'all', keyword: '' };
+      return {
+        timeScope: savedFilters.time_scope,
+        productFamily: savedFilters.product_family,
+        keyword: savedFilters.keyword
+      };
+    } else {
+      // Use URL params
+      return {
+        timeScope: searchParams.get('time_scope') || '7d',
+        productFamily: searchParams.get('product_family') || 'all',
+        keyword: searchParams.get('keyword') || ''
+      };
+    }
+  }, [isDetailPage, context, searchParams, inquiryFilters, rmaFilters, dealerFilters]);
+
+  // Fetch stats based on context and filters
   React.useEffect(() => {
     if (!context) return;
 
@@ -591,7 +630,16 @@ const ServiceTopBarStats: React.FC = () => {
         else if (context === 'rma') endpoint = '/api/v1/rma-tickets/stats';
         else if (context === 'dealer') endpoint = '/api/v1/dealer-repairs/stats';
 
-        const res = await axios.get(endpoint, { headers: { Authorization: `Bearer ${token} ` } });
+        // Build query params with filters
+        const params = new URLSearchParams();
+        if (timeScope && timeScope !== 'all') params.set('time_scope', timeScope);
+        if (productFamily && productFamily !== 'all') params.set('product_family', productFamily);
+        if (keyword) params.set('keyword', keyword);
+
+        const queryString = params.toString();
+        const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+
+        const res = await axios.get(url, { headers: { Authorization: `Bearer ${token} ` } });
         setStats(res.data?.data || {});
       } catch (err) {
         console.error('Failed to fetch stats:', err);
@@ -601,7 +649,7 @@ const ServiceTopBarStats: React.FC = () => {
     };
 
     fetchStats();
-  }, [context, token]);
+  }, [context, token, timeScope, productFamily, keyword]);
 
   if (!context) return null;
 
@@ -620,8 +668,21 @@ const ServiceTopBarStats: React.FC = () => {
     // Reset page to 1 when changing filters
     newParams.set('page', '1');
 
+    // Check if currently on a detail page (e.g., /service/rma-tickets/123)
+    // If so, navigate to the list page instead of staying on detail page
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const isDetailPage = pathSegments.length >= 3 && !isNaN(Number(pathSegments[pathSegments.length - 1]));
+    
+    let targetPathname = location.pathname;
+    if (isDetailPage) {
+      // Navigate to list page
+      if (context === 'inquiry') targetPathname = '/service/inquiry-tickets';
+      else if (context === 'rma') targetPathname = '/service/rma-tickets';
+      else if (context === 'dealer') targetPathname = '/service/dealer-repairs';
+    }
+
     navigate({
-      pathname: location.pathname,
+      pathname: targetPathname,
       search: `?${newParams.toString()}`
     });
   };
@@ -680,17 +741,23 @@ const ServiceTopBarStats: React.FC = () => {
         opacity: loading ? 0.7 : 1
       }}
     >
+      {/* Status colors using Kine brand colors from context.md:
+          Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444 */}
       {context === 'inquiry' && (
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
-          {renderStatItem('Pending', '待处理', '#ef4444')}
+          {renderStatItem('Pending', '待处理', '#EF4444')}      {/* Kine Red */}
           {divider}
-          {renderStatItem('InProgress', '处理中', '#3b82f6')}
+          {renderStatItem('InProgress', '处理中', '#3b82f6')}   {/* Blue */}
           {divider}
-          {renderStatItem('AwaitingFeedback', '待反馈', '#d946ef')}
+          {renderStatItem('AwaitingFeedback', '待反馈', '#d946ef')} {/* Purple */}
           {divider}
-          {renderStatItem('Resolved', '已解决', '#10b981')}
+          {renderStatItem('Resolved', '已解决', '#4CAF50')}     {/* Kine Green */}
+          {divider}
+          {renderStatItem('AutoClosed', '已关闭', '#9ca3af')}   {/* Gray */}
+          {divider}
+          {renderStatItem('Upgraded', '已升级', '#22d3ee')}     {/* Cyan */}
         </>
       )}
 
@@ -698,11 +765,15 @@ const ServiceTopBarStats: React.FC = () => {
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
-          {renderStatItem('Pending', '待处理', '#f59e0b')}
+          {renderStatItem('Pending', '已收货', '#FFD700')}      {/* Kine Yellow */}
           {divider}
-          {renderStatItem('InRepair', '维修中', '#3b82f6')}
+          {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
           {divider}
-          {renderStatItem('Returned', '已寄回', '#10b981')}
+          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}   {/* Purple */}
+          {divider}
+          {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
+          {divider}
+          {renderStatItem('Completed', '已完成', '#4CAF50')}    {/* Kine Green - 使用Completed状态 */}
         </>
       )}
 
@@ -710,13 +781,15 @@ const ServiceTopBarStats: React.FC = () => {
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
-          {renderStatItem('Received', '已收货', '#f59e0b')}
+          {renderStatItem('Received', '已收货', '#FFD700')}     {/* Kine Yellow */}
           {divider}
-          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}
+          {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
           {divider}
-          {renderStatItem('InRepair', '维修中', '#3b82f6')}
+          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}   {/* Purple */}
           {divider}
-          {renderStatItem('Completed', '已完成', '#10b981')}
+          {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
+          {divider}
+          {renderStatItem('Completed', '已完成', '#4CAF50')}    {/* Kine Green */}
         </>
       )}
     </div>

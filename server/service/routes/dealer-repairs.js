@@ -54,11 +54,35 @@ module.exports = function (db, authenticate, serviceUpload) {
             dealer_id: repair.dealer_id,
             dealer_name: repair.dealer_name,
             dealer_code: repair.dealer_code,
-            customer_name: repair.customer_name,
+            // Account/Contact Info
+            account_id: repair.account_id,
+            contact_id: repair.contact_id,
+            account: repair.account_id ? {
+                id: repair.account_id,
+                name: repair.account_name,
+                account_type: repair.account_type,
+                service_tier: repair.service_tier
+            } : null,
+            contact: repair.contact_id ? {
+                id: repair.contact_id,
+                name: repair.contact_name
+            } : null,
+            // Dealer Contact (PRIMARY)
+            dealer_contact_name: repair.dealer_contact_name,
+            // Product Info
             product: repair.product_name ? { id: repair.product_id, name: repair.product_name } : null,
             serial_number: repair.serial_number,
             issue_category: repair.issue_category,
+            problem_description: repair.problem_description,
             repair_content: repair.repair_content,
+            
+            // Technician Info
+            technician: repair.technician_name ? { 
+                id: repair.technician_id, 
+                name: repair.technician_name,
+                job_title: repair.technician_job_title 
+            } : null,
+            
             status: repair.status,
             created_at: repair.created_at ? new Date(repair.created_at.replace(' ', 'T')).toISOString() : null
         };
@@ -93,11 +117,6 @@ module.exports = function (db, authenticate, serviceUpload) {
                 job_title: repair.contact_job_title
             } : null,
 
-            // Customer Info (向后兼容)
-            customer_name: repair.customer_name,
-            customer_contact: repair.customer_contact,
-            customer_id: repair.customer_id,
-
             // Product Info
             product: repair.product_name ? { id: repair.product_id, name: repair.product_name } : null,
             serial_number: repair.serial_number,
@@ -112,6 +131,15 @@ module.exports = function (db, authenticate, serviceUpload) {
             inquiry_ticket: repair.inquiry_ticket_number ? {
                 id: repair.inquiry_ticket_id,
                 ticket_number: repair.inquiry_ticket_number
+            } : null,
+            
+            // Technician Info
+            technician: repair.technician_name ? {
+                id: repair.technician_id,
+                name: repair.technician_name,
+                job_title: repair.technician_job_title,
+                email: repair.technician_email,
+                phone: repair.technician_phone
             } : null,
 
             // Status
@@ -133,26 +161,61 @@ module.exports = function (db, authenticate, serviceUpload) {
      */
     router.get('/stats', authenticate, (req, res) => {
         try {
+            const { time_scope, product_family, keyword } = req.query;
             const user = req.user;
             let conditions = [];
             let params = [];
 
             // Role-based filtering
             if (user.user_type === 'Dealer') {
-                conditions.push('dealer_id = ?');
+                conditions.push('r.dealer_id = ?');
                 params.push(user.dealer_id);
+            }
+
+            // Time scope filtering
+            if (time_scope) {
+                const now = new Date();
+                let fromDate;
+                if (time_scope === '7d') {
+                    fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                } else if (time_scope === '30d') {
+                    fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                }
+                if (fromDate) {
+                    conditions.push('date(r.created_at) >= ?');
+                    params.push(fromDate.toISOString().split('T')[0]);
+                }
+            }
+
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('r.product_id IN (SELECT id FROM products WHERE product_family = ?)');
+                params.push(product_family);
+            }
+
+            // Keyword filtering
+            if (keyword) {
+                conditions.push(`(
+                    r.ticket_number LIKE ? OR 
+                    r.customer_name LIKE ? OR 
+                    r.serial_number LIKE ?
+                )`);
+                const term = `%${keyword}%`;
+                params.push(term, term, term);
             }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
             const stats = db.prepare(`
-                SELECT status, COUNT(*) as count 
-                FROM dealer_repairs ${whereClause}
-                GROUP BY status
+                SELECT r.status, COUNT(*) as count 
+                FROM dealer_repairs r
+                ${whereClause}
+                GROUP BY r.status
             `).all(...params);
 
             const totalRow = db.prepare(`
-                SELECT COUNT(*) as total FROM dealer_repairs ${whereClause}
+                SELECT COUNT(*) as total FROM dealer_repairs r
+                ${whereClause}
             `).get(...params);
 
             const result = {
@@ -183,7 +246,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 created_from,
                 created_to,
                 keyword,
-                product_family
+                product_family,
+                service_tier
             } = req.query;
 
             const user = req.user;
@@ -209,8 +273,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('r.product_id = ?');
                 params.push(product_id);
             }
-            if (product_family) {
-                conditions.push('r.product_family = ?');
+            // Product family filtering through products table join
+            if (product_family && product_family !== 'all') {
+                conditions.push('r.product_id IN (SELECT id FROM products WHERE product_family = ?)');
                 params.push(product_family);
             }
             if (created_from) {
@@ -230,6 +295,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 const term = `%${keyword}%`;
                 params.push(term, term, term);
             }
+            // Service tier filter (from accounts table)
+            if (service_tier) {
+                conditions.push(`r.account_id IN (SELECT id FROM accounts WHERE service_tier = ?)`);
+                params.push(service_tier);
+            }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
@@ -243,11 +313,23 @@ module.exports = function (db, authenticate, serviceUpload) {
             const repairs = db.prepare(`
                 SELECT 
                     r.*,
-                    d.customer_name as dealer_name,
-                    p.model_name as product_name
+                    dlr.name as dealer_name,
+                    dlr.dealer_code as dealer_code,
+                    p.model_name as product_name,
+                    acc.name as account_name,
+                    acc.account_type,
+                    acc.service_tier,
+                    ct.name as contact_name,
+                    dc.name as dealer_contact_name,
+                    tech.name as technician_name,
+                    tech.job_title as technician_job_title
                 FROM dealer_repairs r
-                LEFT JOIN customers d ON r.dealer_id = d.id
+                LEFT JOIN accounts dlr ON r.dealer_id = dlr.id
                 LEFT JOIN products p ON r.product_id = p.id
+                LEFT JOIN accounts acc ON r.account_id = acc.id
+                LEFT JOIN contacts ct ON r.contact_id = ct.id
+                LEFT JOIN contacts dc ON dc.account_id = r.dealer_id AND dc.status = 'PRIMARY'
+                LEFT JOIN contacts tech ON r.technician_id = tech.id
                 ${whereClause}
                 ORDER BY r.created_at DESC
                 LIMIT ? OFFSET ?
@@ -291,7 +373,12 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ct.job_title as contact_job_title,
                     -- 经销商主要联系人
                     dc.name as dealer_contact_name,
-                    dc.job_title as dealer_contact_title
+                    dc.job_title as dealer_contact_title,
+                    -- 技术员信息
+                    tech.name as technician_name,
+                    tech.job_title as technician_job_title,
+                    tech.email as technician_email,
+                    tech.phone as technician_phone
                 FROM dealer_repairs r
                 LEFT JOIN accounts dlr ON r.dealer_id = dlr.id
                 LEFT JOIN products p ON r.product_id = p.id
@@ -299,6 +386,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 LEFT JOIN accounts acc ON r.account_id = acc.id
                 LEFT JOIN contacts ct ON r.contact_id = ct.id
                 LEFT JOIN contacts dc ON dc.account_id = r.dealer_id AND dc.status = 'PRIMARY'
+                LEFT JOIN contacts tech ON r.technician_id = tech.id
                 WHERE r.id = ?
             `).get(req.params.id);
 

@@ -25,12 +25,15 @@ interface InquiryTicket {
     customer_id: number | null;
     account_id?: number | null;
     contact_id?: number | null;
+    // 新架构字段 - 联系人信息
+    contact?: { id: number; name: string; email?: string; job_title?: string } | null;
+    account?: { id: number; name: string; account_type?: string } | null;
     dealer_id: number | null;
     dealer_name: string | null;
     dealer_code?: string | null;
     dealer_contact_name?: string | null;
     dealer_contact_title?: string | null;
-    contact_name?: string | null;
+    contact_name?: string | null;  // 向后兼容
     contact_job_title?: string | null;
     product: { id: number; name: string } | null;
     serial_number: string;
@@ -191,9 +194,30 @@ const InquiryTicketDetailPage: React.FC = () => {
                     }}>
                         <button
                             onClick={() => navigate(getRoute('/service/inquiry-tickets'))}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '8px' }}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '10px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '40px',
+                                height: '40px',
+                                padding: 0,
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.color = '#fff';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
                         >
-                            <ArrowLeft size={18} />
+                            <ArrowLeft size={22} />
                         </button>
 
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
@@ -303,7 +327,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.contact')}</div>
-                                    <div className="ticket-info-value">{ticket.contact_name || ticket.customer_name || '-'}</div>
+                                    <div className="ticket-info-value">{ticket.contact?.name || ticket.contact_name || ticket.account?.name || ticket.customer_name || '-'}</div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.product')}</div>

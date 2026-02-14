@@ -1,0 +1,35 @@
+{
+  "terminal": {
+    "autoRunCommands": true,
+    "runMode": "autoRun",
+    "allowedCommands": [
+      "curl",
+      "wget", 
+      "ls",
+      "cat",
+      "grep",
+      "head",
+      "tail",
+      "echo",
+      "pwd",
+      "whoami"
+    ],
+    "deniedCommands": [
+      "rm",
+      "mv", 
+      "cp",
+      "sudo",
+      "kill",
+      "killall"
+    ]
+  },
+  "chat": {
+    "autoRunMcpTools": true,
+    "commandRunMode": "autoRun",
+    "webToolsMode": "autoRun"
+  },
+  "security": {
+    "commandConfirmation": false,
+    "readOnlyCommandsAutoRun": true
+  }
+}

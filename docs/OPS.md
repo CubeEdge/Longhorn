@@ -185,7 +185,218 @@ pm2 logs longhorn-watcher
 
 ---
 
-## 📂 目录结构参考
+## 📂 文件存储架构 (Fileserver)
+
+所有用户文件（Files应用、Service应用）统一存储在 `/Volumes/fileserver/` 目录下。
+
+### 目录结构
+
+```
+/Volumes/fileserver/
+├── 📁 Files/                    # Files 应用根目录
+│   ├── MS/                      # 市场部部门文件
+│   ├── OP/                      # 运营部部门文件
+│   ├── RD/                      # 研发部部门文件
+│   ├── RE/                      # 通用台面
+│   ├── GE/                      # 旧目录（保留）
+│   └── MEMBERS/                 # 个人空间
+│       └── {username}/
+│
+├── 📁 Service/                  # Service 应用根目录
+│   ├── 📁 Tickets/              # 工单附件
+│   │   ├── Inquiry/             # 咨询工单
+│   │   ├── RMA/                 # RMA返厂单
+│   │   └── DealerRepair/        # 经销商维修单
+│   │
+│   ├── 📁 Knowledge/            # 知识库资源
+│   │   ├── Images/              # 知识库图片
+│   │   ├── Videos/              # 知识库视频
+│   │   └── Documents/           # 知识库文档
+│   │
+│   ├── 📁 Products/             # 产品相关
+│   │   ├── Photos/              # 产品照片
+│   │   ├── Manuals/             # 说明书
+│   │   └── Firmware/            # 固件文件
+│   │
+│   └── 📁 Temp/                 # 临时上传目录
+│       └── Chunks/              # 分块上传临时文件
+│
+├── 📁 System/                   # 系统文件
+│   ├── Backups/db/              # 数据库备份
+│   ├── Thumbnails/              # 缩略图缓存
+│   └── RecycleBin/              # 回收站
+│
+└── 📁 Shared/                   # 共享资源
+    ├── Public/                  # 公开访问文件
+    └── Templates/               # 模板文件
+```
+
+### 软链接配置
+
+| 软链接 | 目标路径 | 用途 |
+| :--- | :--- | :--- |
+| `~/Documents/server/Longhorn/server/data/DiskA` | `/Volumes/fileserver/Files` | Files 应用数据访问 |
+
+### 重要说明
+
+- **Files 应用**：通过 `DiskA` 软链接访问 `/Volumes/fileserver/Files`
+- **Service 应用**：直接访问 `/Volumes/fileserver/Service`
+- **知识库图片**：存储在 `Service/Knowledge/Images/`，通过 `/data/knowledge_images` URL 访问
+- **工单附件**：新上传的文件将存储在 `Service/Tickets/{类型}/`
+
+---
+
+## 💾 数据库备份策略（双重备份）
+
+### 备份架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Mac mini 服务器                           │
+│                                                             │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐  │
+│  │      主备份 (Primary)    │  │    次级备份 (Secondary)  │  │
+│  │                         │  │                         │  │
+│  │  /Volumes/fileserver/   │  │  ~/Documents/server/    │  │
+│  │  System/Backups/db/     │  │  Longhorn/server/       │  │
+│  │  └── backups/           │  │  backups/secondary/     │  │
+│  │                         │  │                         │  │
+│  │  频率: 24小时 (可配置)   │  │  频率: 72小时 (可配置)   │  │
+│  │  保留: 7天 (可配置)      │  │  保留: 30天 (可配置)     │  │
+│  │  存储: fileserver SSD   │  │  存储: 系统盘            │  │
+│  └─────────────────────────┘  └─────────────────────────┘  │
+│           ↑                              ↑                  │
+│           │                              │                  │
+│      应用内自动备份                 应用内自动备份           │
+│    (BackupService调度)            (BackupService调度)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 备份层级说明
+
+| 层级 | 存储位置 | 频率 | 保留期 | 用途 |
+|------|---------|------|--------|------|
+| **主备份** | `/Volumes/fileserver/System/Backups/db/` | 24小时 | 7天 | 日常快速恢复 |
+| **次级备份** | `~/Documents/server/Longhorn/server/backups/secondary/` | 72小时 | 30天 | 系统盘故障时恢复 |
+
+### 系统设置管理
+
+备份配置可在系统管理后台进行可视化设置：
+
+```bash
+# 获取备份状态和文件列表
+GET /api/admin/backup/status
+
+# 触发主备份
+POST /api/admin/backup/now
+
+# 触发次级备份
+POST /api/admin/backup/now/secondary
+
+# 更新备份设置（通过 /api/admin/settings）
+POST /api/admin/settings
+{
+  "settings": {
+    "backup_enabled": true,
+    "backup_frequency": 1440,
+    "backup_retention_days": 7,
+    "secondary_backup_enabled": true,
+    "secondary_backup_frequency": 4320,
+    "secondary_backup_retention_days": 30
+  }
+}
+```
+
+### 主备份（Primary）
+
+- **状态**: ✅ 已启用
+- **频率**: 每 24 小时 (1440 分钟，可配置)
+- **保留期**: 7 天 (可配置)
+- **存储位置**: `/Volumes/fileserver/System/Backups/db/`
+- **备份文件命名**: `longhorn-{ISO8601时间戳}.db`
+- **触发方式**: 应用内 BackupService 自动调度
+
+### 次级备份（Secondary）
+
+- **状态**: ✅ 已启用
+- **频率**: 每 72 小时 (4320 分钟，可配置，默认主备份的3倍)
+- **保留期**: 30 天 (可配置)
+- **存储位置**: `~/Documents/server/Longhorn/server/backups/secondary/`
+- **备份文件命名**: `longhorn-secondary-{ISO8601时间戳}.db`
+- **触发方式**: 应用内 BackupService 自动调度
+
+### 手动触发备份
+
+```bash
+# 主备份（立即执行）
+curl -X POST http://localhost:4000/api/admin/backup/now \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 次级备份（立即执行）
+curl -X POST http://localhost:4000/api/admin/backup/now/secondary \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 手动复制备份
+cp ~/Documents/server/Longhorn/server/longhorn.db \
+   /Volumes/fileserver/System/Backups/db/longhorn_manual_$(date +%Y%m%d_%H%M%S).db
+```
+
+### 备份配置检查
+
+```bash
+# 查看备份配置
+sqlite3 ~/Documents/server/Longhorn/server/longhorn.db \
+  "SELECT 
+    backup_enabled, backup_frequency, backup_retention_days,
+    secondary_backup_enabled, secondary_backup_frequency, secondary_backup_retention_days 
+  FROM system_settings;"
+
+# 查看主备份文件
+ls -la /Volumes/fileserver/System/Backups/db/
+
+# 查看次级备份文件
+ls -la ~/Documents/server/Longhorn/server/backups/secondary/
+
+# 通过 API 查看完整备份状态
+curl -s http://localhost:4000/api/admin/backup/status \
+  -H "Authorization: Bearer YOUR_TOKEN" | jq
+```
+
+### 恢复备份
+
+**从主备份恢复（推荐，通常最新）:**
+```bash
+# 1. 停止服务
+pm2 stop longhorn
+
+# 2. 备份当前数据库（以防万一）
+cp ~/Documents/server/Longhorn/server/longhorn.db \
+   ~/Documents/server/Longhorn/server/longhorn_corrupt_$(date +%Y%m%d).db
+
+# 3. 恢复指定备份
+cp /Volumes/fileserver/System/Backups/db/longhorn-{timestamp}.db \
+   ~/Documents/server/Longhorn/server/longhorn.db
+
+# 4. 重启服务
+pm2 start longhorn
+```
+
+**从次级备份恢复（fileserver故障时）:**
+```bash
+# 1. 停止服务
+pm2 stop longhorn
+
+# 2. 恢复次级备份
+cp ~/Documents/server/Longhorn/server/backups/secondary/longhorn-secondary-{timestamp}.db \
+   ~/Documents/server/Longhorn/server/longhorn.db
+
+# 3. 重启服务
+pm2 start longhorn
+```
+
+---
+
+## 📂 部署路径参考
 
 | 节点 | 角色 | 部署路径 | 备注 |
 | :--- | :--- | :--- | :--- |

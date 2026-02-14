@@ -13,14 +13,10 @@ const sharp = require('sharp');
 const AIService = require('./service/ai_service');
 const BackupService = require('./service/backup_service');
 
-// Service Ticket Routes
-const inquiryTickets = require('./service/routes/inquiry-tickets');
-const rmaTickets = require('./service/routes/rma-tickets');
-const dealerRepairs = require('./service/routes/dealer-repairs');
+// Service Ticket Routes (products and settings loaded here; others via service/index.js)
 const products = require('./service/routes/products');
+const productsAdmin = require('./service/routes/products-admin');
 const settings = require('./service/routes/settings');
-const knowledgeRoutes = require('./service/routes/knowledge');
-const contextRoutes = require('./service/routes/context');
 
 dotenv.config();
 
@@ -31,7 +27,7 @@ const DISK_A = path.resolve(__dirname, process.env.DISK_A || 'data/DiskA');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads');
-const BACKUP_DIR = path.join(DISK_A, '.backups', 'db');
+const BACKUP_DIR = '/Volumes/fileserver/System/Backups/db';
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
@@ -289,11 +285,15 @@ db.exec(`
 // Migration to add topic column (Safe fail if exists)
 try { db.prepare("ALTER TABLE vocabulary ADD COLUMN topic TEXT").run(); } catch (e) { }
 
-// Migration for Backup Settings
+// Migration for Backup Settings (Primary)
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_frequency INTEGER DEFAULT 1440").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_retention_days INTEGER DEFAULT 7").run(); } catch (e) { }
-// try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_path TEXT").run(); } catch (e) { }
+
+// Migration for Secondary Backup Settings
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_frequency INTEGER DEFAULT 4320").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_retention_days INTEGER DEFAULT 30").run(); } catch (e) { }
 
 // Migration: customers table extra columns
 try { db.prepare("ALTER TABLE customers ADD COLUMN account_type TEXT DEFAULT 'EndUser'").run(); } catch (e) { }
@@ -782,15 +782,13 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 });
 
 
-// Service Routes - Layer 1
+// Service Routes - Core (non-duplicated)
+// NOTE: inquiry-tickets, rma-tickets, dealer-repairs, knowledge, context 
+//       are registered in service/index.js via initService()
 const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');
-app.use('/api/admin', settings(db, authenticate));
-app.use('/api/v1/inquiry-tickets', inquiryTickets(db, authenticate, serviceUpload));
+app.use('/api/admin', settings(db, authenticate, backupService));
 app.use('/api/v1/products', products(db, authenticate));
-app.use('/api/v1/rma-tickets', rmaTickets(db, authenticate, attachmentsDir, multer, serviceUpload));
-app.use('/api/v1/dealer-repairs', dealerRepairs(db, authenticate, serviceUpload));
-app.use('/api/v1/knowledge', knowledgeRoutes(db, authenticate, multer, aiService));
-app.use('/api/v1/context', contextRoutes(db, authenticate));
+app.use('/api/v1/admin/products', productsAdmin(db, authenticate));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
@@ -3672,8 +3670,8 @@ app.use(express.static(path.join(__dirname, '../client/dist'), {
     lastModified: true
 }));
 
-// Serve knowledge base images
-app.use('/data/knowledge_images', express.static(path.join(__dirname, 'data/knowledge_images'), {
+// Serve knowledge base images (from fileserver Service directory)
+app.use('/data/knowledge_images', express.static('/Volumes/fileserver/Service/Knowledge/Images', {
     maxAge: '1d',  // Cache for 1 day
     etag: true
 }));

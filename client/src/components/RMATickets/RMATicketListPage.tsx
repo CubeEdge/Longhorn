@@ -1,11 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Package, List, Layers, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Package, List, Layers, AlertTriangle, ChevronDown, ChevronUp, Clock, AlertCircle, CheckCircle, HelpCircle, Users, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useTicketStore } from '../../store/useTicketStore';
 import { useCachedTickets } from '../../hooks/useCachedTickets';
+import { useListStateStore } from '../../store/useListStateStore';
 import { KineSelect } from '../UI/KineSelect';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
+import { SortDropdown } from '../UI/SortDropdown';
 import { format, subDays, subMonths, formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -16,6 +18,26 @@ interface RMATicket {
     issue_type: string;
     issue_category: string;
     severity: number;
+    // Account/Contact Info
+    account_id?: number;
+    contact_id?: number;
+    account?: {
+        id: number;
+        name: string;
+        account_type?: string;
+        service_tier?: string;
+    };
+    contact?: {
+        id: number;
+        name: string;
+    };
+    // Dealer Info
+    dealer_id?: number;
+    dealer_name?: string;
+    dealer_contact_name?: string;
+    // Customer Info (backward compatible)
+    customer_name: string;
+    customer_contact?: string;
     product: { id: number; name: string } | null;
     serial_number: string;
     problem_description: string;
@@ -26,20 +48,74 @@ interface RMATicket {
     updated_at: string;
 }
 
+// Status colors using Kine brand colors from context.md
+// Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444
 const statusColors: Record<string, string> = {
-    Pending: '#f59e0b',
-    Assigned: '#3b82f6',
-    InRepair: '#8b5cf6',
-    Repaired: '#10b981',
-    Shipped: '#06b6d4',
-    Completed: '#22c55e',
-    Cancelled: '#6b7280'
+    Pending: '#FFD700',        // Kine Yellow - received/waiting
+    Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
+    Diagnosing: '#8b5cf6',     // Purple - in diagnosis
+    InRepair: '#3b82f6',       // Blue - in repair
+    Repaired: '#4CAF50',       // Kine Green - repaired
+    Shipped: '#06b6d4',        // Cyan - shipped
+    Completed: '#4CAF50',      // Kine Green - completed
+    Cancelled: '#6b7280'       // Gray - cancelled
+};
+
+const CollapsibleSection: React.FC<{
+    title: string;
+    count: number;
+    icon: React.ElementType;
+    color: string;
+    children: React.ReactNode;
+    defaultOpen?: boolean;
+    sectionKey: string;
+    onToggle?: (key: string, isOpen: boolean) => void;
+    initialOpen?: boolean;
+}> = ({ title, count, icon: Icon, color, children, defaultOpen = true, sectionKey, onToggle, initialOpen }) => {
+    const [isOpen, setIsOpen] = useState(initialOpen !== undefined ? initialOpen : defaultOpen);
+
+    const handleToggle = () => {
+        const newState = !isOpen;
+        setIsOpen(newState);
+        onToggle?.(sectionKey, newState);
+    };
+
+    return (
+        <section style={{ marginBottom: '16px' }}>
+            <div
+                onClick={handleToggle}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '12px',
+                    color: color,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '8px 0'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <Icon size={18} />
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                        {title} ({count})
+                    </h2>
+                </div>
+                {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
+            {isOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {children}
+                </div>
+            )}
+        </section>
+    );
 };
 
 const severityColors: Record<number, string> = {
-    1: '#ef4444',
-    2: '#f59e0b',
-    3: '#6b7280'
+    1: '#EF4444',  // Kine Red - critical
+    2: '#f59e0b',  // Amber - warning
+    3: '#6b7280'   // Gray - low
 };
 
 const RMATicketListPage: React.FC = () => {
@@ -47,6 +123,20 @@ const RMATicketListPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const openModal = useTicketStore(state => state.openModal);
+
+    // List state store for persisting view preferences
+    const {
+        rmaViewMode: savedViewMode,
+        setRmaViewMode: saveViewMode,
+        isRmaSectionCollapsed,
+        setRmaSectionCollapsed,
+        rmaScrollPosition: savedScrollPosition,
+        setRmaScrollPosition: saveScrollPosition,
+        setRmaFilters
+    } = useListStateStore();
+
+    // Ref for scroll container
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const [pageSize] = useState(20);
 
@@ -56,12 +146,11 @@ const RMATicketListPage: React.FC = () => {
     const statusFilter = searchParams.get('status') || 'all';
     const channelFilter = searchParams.get('channel_code') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
-    const viewModeParam = searchParams.get('view') || 'list';
     const pageParam = searchParams.get('page');
     const page = pageParam ? parseInt(pageParam) : 1;
 
-    // Local States
-    const [viewMode, setViewMode] = useState<'list' | 'card'>(viewModeParam as 'list' | 'card');
+    // Local States - use saved view mode from store
+    const [groupMode, setGroupMode] = useState<'grouped' | 'flat'>(savedViewMode);
     const [searchOpen, setSearchOpen] = useState(false);
     const [localSearch, setLocalSearch] = useState(searchTerm);
     const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
@@ -70,6 +159,10 @@ const RMATicketListPage: React.FC = () => {
         start: format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
         end: format(new Date(), 'yyyy-MM-dd')
     });
+
+    // Sort State
+    const [sortBy, setSortBy] = useState<string>('created_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Debounce Search
     useEffect(() => {
@@ -81,11 +174,36 @@ const RMATicketListPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [localSearch]);
 
+    // Save filters to store for detail page to use
+    useEffect(() => {
+        setRmaFilters({
+            time_scope: timeScope,
+            product_family: productFamilyScope,
+            status: statusFilter,
+            keyword: searchTerm
+        });
+    }, [timeScope, productFamilyScope, statusFilter, searchTerm, setRmaFilters]);
+
+    // Restore scroll position on mount
+    useEffect(() => {
+        if (scrollContainerRef.current && savedScrollPosition > 0) {
+            scrollContainerRef.current.scrollTop = savedScrollPosition;
+        }
+    }, []);
+
+    // Save scroll position on scroll
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop;
+        saveScrollPosition(scrollTop);
+    }, [saveScrollPosition]);
+
     // Build params
     const queryParams = useMemo(() => {
         const params: Record<string, string | number | undefined> = {
             page,
-            page_size: pageSize
+            page_size: pageSize,
+            sort_by: sortBy,
+            sort_order: sortOrder
         };
 
         if (timeScope === '7d') {
@@ -105,7 +223,7 @@ const RMATicketListPage: React.FC = () => {
         if (searchTerm) params.keyword = searchTerm;
 
         return params;
-    }, [page, pageSize, timeScope, productFamilyScope, statusFilter, channelFilter, searchTerm, searchParams]);
+    }, [page, pageSize, timeScope, productFamilyScope, statusFilter, channelFilter, searchTerm, searchParams, sortBy, sortOrder]);
 
     const { tickets, meta, isLoading } = useCachedTickets<RMATicket>('rma', queryParams);
     const total = meta.total;
@@ -134,9 +252,14 @@ const RMATicketListPage: React.FC = () => {
         }
     };
 
-    const toggleViewMode = (mode: 'list' | 'card') => {
-        setViewMode(mode);
-        updateFilter({ view: mode });
+    const toggleGroupMode = (mode: 'grouped' | 'flat') => {
+        setGroupMode(mode);
+        saveViewMode(mode);
+    };
+
+    // Handle section toggle to persist collapsed state
+    const handleSectionToggle = (sectionKey: string, isOpen: boolean) => {
+        setRmaSectionCollapsed(sectionKey, !isOpen);
     };
 
     const productFamilies = [
@@ -149,97 +272,236 @@ const RMATicketListPage: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
-            Pending: t('rma_ticket.status.pending'),
-            Assigned: t('rma_ticket.status.assigned'),
-            InRepair: t('rma_ticket.status.in_repair'),
-            Repaired: t('rma_ticket.status.repaired'),
-            Shipped: t('rma_ticket.status.shipped'),
-            Completed: t('rma_ticket.status.completed'),
-            Cancelled: t('rma_ticket.status.cancelled')
+            Pending: t('rma_ticket.status.pending' as any) || '已收货',
+            Confirming: t('rma_ticket.status.confirming' as any) || '确认中',
+            Diagnosing: t('rma_ticket.status.diagnosing' as any) || '检测中',
+            InRepair: t('rma_ticket.status.in_repair' as any) || '维修中',
+            Repaired: t('rma_ticket.status.repaired' as any) || '已修复',
+            Shipped: t('rma_ticket.status.shipped' as any) || '已发货',
+            Completed: t('rma_ticket.status.completed' as any) || '已完成',
+            Cancelled: t('rma_ticket.status.cancelled' as any) || '已取消'
         };
         return labels[status] || status;
     };
 
-    const getChannelLabel = (code: string) => {
-        const labels: Record<string, string> = {
-            D: t('rma_ticket.channel.dealer'),
-            C: t('rma_ticket.channel.customer'),
-            I: t('rma_ticket.channel.internal')
+    // Group tickets by status
+    const groupedTickets = useMemo(() => {
+        const groups: Record<string, RMATicket[]> = {
+            Pending: [],
+            Confirming: [],
+            Diagnosing: [],
+            InRepair: [],
+            Repaired: [],
+            Shipped: [],
+            Completed: [],
+            Cancelled: []
         };
-        return labels[code] || code;
+        tickets.forEach(ticket => {
+            if (groups[ticket.status]) {
+                groups[ticket.status].push(ticket);
+            }
+        });
+        return groups;
+    }, [tickets]);
+
+    const statusOrder = ['Pending', 'Confirming', 'Diagnosing', 'InRepair', 'Repaired', 'Shipped', 'Completed', 'Cancelled'];
+    const statusIcons: Record<string, React.ElementType> = {
+        Pending: Package,
+        Confirming: HelpCircle,
+        Diagnosing: Clock,
+        InRepair: Clock,
+        Repaired: CheckCircle,
+        Shipped: Package,
+        Completed: CheckCircle,
+        Cancelled: AlertCircle
     };
 
-    return (
-        <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-
-            {/* Filter Toolbar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    {/* Time Scope */}
-                    <div style={{ minWidth: '150px' }}>
-                        <KineSelect
-                            value={timeScope}
-                            onChange={(val) => {
-                                if (val === 'custom') {
-                                    setShowDatePicker(true);
-                                } else {
-                                    updateFilter({ time_scope: val, start_date: '', end_date: '' });
-                                }
-                            }}
-                            options={[
-                                { value: '7d', label: t('filter.last_7_days') },
-                                { value: '30d', label: t('filter.last_30_days') },
-                                {
-                                    value: 'custom',
-                                    label: (timeScope === 'custom' && searchParams.get('start_date') && searchParams.get('end_date'))
-                                        ? `${searchParams.get('start_date')} ~ ${searchParams.get('end_date')}`
-                                        : '自定义日期' // Fallback if translations not ready, but user asked for it
-                                }
-                            ]}
-                        />
-                    </div>
-
-                    {/* Product Family */}
-                    <div style={{ minWidth: '180px' }}>
-                        <KineSelect
-                            value={productFamilyScope}
-                            onChange={(val) => updateFilter({ product_family: val })}
-                            options={productFamilies.map(fam => ({ value: fam.id, label: fam.label }))}
-                        />
-                    </div>
+    const TicketCard = ({ ticket }: { ticket: RMATicket }) => (
+        <div
+            onClick={() => navigate(`/service/rma-tickets/${ticket.id}`)}
+            style={{
+                background: 'var(--bg-card)', borderRadius: '12px', padding: '18px',
+                border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',
+                position: 'relative', display: 'flex', gap: '24px'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.boxShadow = 'none';
+            }}
+        >
+            {/* Left Column - Main Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Line 1: Ticket Number + Severity + Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{ticket.ticket_number}</span>
+                    {ticket.severity && (
+                        <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                            background: `${severityColors[ticket.severity]}20`, color: severityColors[ticket.severity]
+                        }}>
+                            <AlertTriangle size={11} /> P{ticket.severity}
+                        </span>
+                    )}
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600,
+                        background: `${statusColors[ticket.status] || '#6b7280'}20`, color: statusColors[ticket.status] || '#6b7280'
+                    }}>
+                        {getStatusLabel(ticket.status)}
+                    </span>
                 </div>
 
-                {/* Right: Search & Actions */}
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    {/* View Mode */}
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
-                        <button
-                            onClick={() => toggleViewMode('list')}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
-                                background: viewMode === 'list' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: viewMode === 'list' ? '#fff' : 'var(--text-tertiary)',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <Layers size={16} />
-                        </button>
-                        <button
-                            onClick={() => toggleViewMode('card')}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
-                                background: viewMode === 'card' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: viewMode === 'card' ? '#fff' : 'var(--text-tertiary)',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <List size={16} />
-                        </button>
-                    </div>
+                {/* Line 2: Reporter/Contact Info + Service Tier */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    {(() => {
+                        // RMA-C (channel_code='C'): 客户名称 + 客户联系人
+                        // RMA-D (channel_code='D'): 经销商名称 客户icon 客户名称 + 客户联系人
+                        const isDealerChannel = ticket.channel_code === 'D';
+                        const serviceTier = ticket.account?.service_tier || 'Standard';
+                        const isVIP = serviceTier === 'VIP';
+                        const isVVIP = serviceTier === 'VVIP';
 
-                    {/* Expanding Search */}
+                        if (isDealerChannel) {
+                            // RMA-D: 经销商名称 客户icon 客户名称 + 客户联系人
+                            const dealerName = ticket.dealer_name;
+                            const accountName = ticket.account?.name || ticket.customer_name;
+                            const contactName = ticket.contact?.name || ticket.customer_contact;
+
+                            return (
+                                <>
+                                    {dealerName && (
+                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{dealerName}</span>
+                                    )}
+                                    {accountName && (
+                                        <>
+                                            <span style={{ marginLeft: '8px', marginRight: '4px' }}></span>
+                                            <Users size={14} style={{ color: 'var(--text-secondary)' }} />
+                                            <span style={{ fontWeight: 500 }}>{accountName}</span>
+                                            {contactName && contactName !== accountName && (
+                                                <>
+                                                    <span>·</span>
+                                                    <span>{contactName}</span>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                    {/* Service Tier Badge */}
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        marginLeft: '8px',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
+                                        color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
+                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                    }}>
+                                        {(isVIP || isVVIP) && '👑'}{serviceTier}
+                                    </span>
+                                </>
+                            );
+                        } else {
+                            // RMA-C: 客户名称 + 客户联系人（保持不变）
+                            const displayName = ticket.contact?.name || ticket.customer_contact || ticket.account?.name || ticket.customer_name || ticket.reporter_name || '匿名';
+                            let contactPart = '';
+
+                            if (ticket.contact?.name && ticket.contact.name !== displayName) {
+                                contactPart = ticket.contact.name;
+                            } else if (ticket.customer_contact && ticket.customer_contact !== displayName) {
+                                contactPart = ticket.customer_contact;
+                            }
+
+                            return (
+                                <>
+                                    <span style={{ fontWeight: 500 }}>{displayName}</span>
+                                    {contactPart && (
+                                        <>
+                                            <span>·</span>
+                                            <span>{contactPart}</span>
+                                        </>
+                                    )}
+                                    {/* Service Tier Badge */}
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        marginLeft: '8px',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
+                                        color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
+                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                    }}>
+                                        {(isVIP || isVVIP) && '👑'}{serviceTier}
+                                    </span>
+                                </>
+                            );
+                        }
+                    })()}
+                </div>
+
+                {/* Line 3: Issue Category + Problem Description */}
+                <p style={{
+                    fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: '1.5',
+                    display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden', margin: 0
+                }}>
+                    {(ticket.issue_category || ticket.issue_type) && (
+                        <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>
+                            [{ticket.issue_category || ticket.issue_type}]
+                        </span>
+                    )}
+                    {ticket.problem_description || '-'}
+                </p>
+            </div>
+
+            {/* Right Column - Product Info + Time */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', minWidth: '200px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                    {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: zhCN })}
+                </span>
+                <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                    gap: '4px', fontSize: '0.85rem', color: 'var(--text-secondary)'
+                }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        📷 {ticket.product?.name || '-'}
+                    </span>
+                    <span>SN: {ticket.serial_number || '-'}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        🔧 {ticket.assigned_to?.name || '-'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '24px', width: '100%', margin: '0', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+            {/* Header - macOS26 Style */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <div>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
+                        <ClipboardList size={28} color="#FFD700" />
+                        RMA返修工单
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
+                        管理返厂维修流程，从收货到发货的全流程跟踪
+                    </p>
+                </div>
+                {/* Right: Search & New Ticket */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', height: '40px' }}>
                         {!searchOpen ? (
                             <button
@@ -251,11 +513,11 @@ const RMATicketListPage: React.FC = () => {
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                <Search size={16} />
+                                <Search size={18} />
                             </button>
                         ) : (
                             <div style={{ display: 'flex', gap: '8px', animation: 'fadeIn 0.2s ease-out' }}>
-                                <div style={{ position: 'relative', width: '240px', height: '40px' }}>
+                                <div style={{ position: 'relative', width: '200px', height: '40px' }}>
                                     <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                     <input
                                         autoFocus
@@ -273,31 +535,9 @@ const RMATicketListPage: React.FC = () => {
                                         onBlur={() => { if (!localSearch) setSearchOpen(false); }}
                                     />
                                 </div>
-                                <button
-                                    onClick={() => updateFilter({ keyword: localSearch })}
-                                    style={{
-                                        height: '40px', padding: '0 16px', borderRadius: '8px', border: 'none',
-                                        background: '#FFD700', color: '#000', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
-                                    }}
-                                >
-                                    {t('action.confirm')}
-                                </button>
-                                <button
-                                    onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-                                    style={{
-                                        width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                                        background: showAdvancedFilter ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
-                                        color: showAdvancedFilter ? '#FFD700' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <Filter size={16} />
-                                </button>
                             </div>
                         )}
                     </div>
-
                     <button
                         onClick={() => openModal('RMA')}
                         className="btn"
@@ -327,6 +567,111 @@ const RMATicketListPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* Filter Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {/* Time Scope */}
+                    <div style={{ minWidth: '150px' }}>
+                        <KineSelect
+                            value={timeScope}
+                            onChange={(val) => {
+                                if (val === 'custom') {
+                                    setShowDatePicker(true);
+                                } else {
+                                    updateFilter({ time_scope: val, start_date: '', end_date: '' });
+                                }
+                            }}
+                            options={[
+                                { value: '7d', label: t('filter.last_7_days') },
+                                { value: '30d', label: t('filter.last_30_days') },
+                                {
+                                    value: 'custom',
+                                    label: (timeScope === 'custom' && searchParams.get('start_date') && searchParams.get('end_date'))
+                                        ? `${searchParams.get('start_date')} ~ ${searchParams.get('end_date')}`
+                                        : '自定义日期'
+                                }
+                            ]}
+                        />
+                    </div>
+
+                    {/* Product Family */}
+                    <div style={{ minWidth: '180px' }}>
+                        <KineSelect
+                            value={productFamilyScope}
+                            onChange={(val) => updateFilter({ product_family: val })}
+                            options={productFamilies.map(fam => ({ value: fam.id, label: fam.label }))}
+                        />
+                    </div>
+
+                    {/* Advanced Filter Button - Moved here */}
+                    <button
+                        onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+                        style={{
+                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
+                            background: showAdvancedFilter ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                            color: showAdvancedFilter ? '#FFD700' : 'var(--text-secondary)',
+                            display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
+                            transition: 'all 0.2s', fontSize: '0.85rem'
+                        }}
+                    >
+                        <Filter size={16} />
+                        <span>筛选</span>
+                    </button>
+
+                </div>
+
+                {/* Right: Group Mode & Sort */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Sort Dropdown - macOS26 Finder Style */}
+                    <SortDropdown
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onChange={(field: string, order: 'asc' | 'desc') => {
+                            setSortBy(field);
+                            setSortOrder(order);
+                        }}
+                        options={[
+                            { field: 'created_at', label: '创建时间' },
+                            { field: 'updated_at', label: '更新时间' },
+                            { field: 'ticket_number', label: '工单编号' },
+                            { field: 'customer_name', label: '客户名称' },
+                            { field: 'handler_name', label: '处理人' },
+                            { field: 'severity', label: '严重程度' }
+                        ]}
+                    />
+
+                    {/* Group Mode Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
+                        <button
+                            onClick={() => toggleGroupMode('grouped')}
+                            title="分组模式"
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                                background: groupMode === 'grouped' ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: groupMode === 'grouped' ? '#fff' : 'var(--text-tertiary)',
+                                cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                        >
+                            <Layers size={16} />
+                        </button>
+                        <button
+                            onClick={() => toggleGroupMode('flat')}
+                            title="平铺模式"
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                                background: groupMode === 'flat' ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: groupMode === 'flat' ? '#fff' : 'var(--text-tertiary)',
+                                cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                        >
+                            <List size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Advanced Filters Panel */}
             {showAdvancedFilter && (
                 <div style={{
@@ -341,13 +686,14 @@ const RMATicketListPage: React.FC = () => {
                             onChange={(val) => updateFilter({ status: val })}
                             options={[
                                 { value: 'all', label: t('filter.all_status') },
-                                { value: 'Pending', label: t('rma_ticket.status.pending') },
-                                { value: 'Assigned', label: t('rma_ticket.status.assigned') },
-                                { value: 'InRepair', label: t('rma_ticket.status.in_repair') },
-                                { value: 'Repaired', label: t('rma_ticket.status.repaired') },
-                                { value: 'Shipped', label: t('rma_ticket.status.shipped') },
-                                { value: 'Completed', label: t('rma_ticket.status.completed') },
-                                { value: 'Cancelled', label: t('rma_ticket.status.cancelled') }
+                                { value: 'Pending', label: t('rma_ticket.status.pending' as any) || '已收货' },
+                                { value: 'Confirming', label: t('rma_ticket.status.confirming' as any) || '确认中' },
+                                { value: 'Diagnosing', label: t('rma_ticket.status.diagnosing' as any) || '检测中' },
+                                { value: 'InRepair', label: t('rma_ticket.status.in_repair' as any) || '维修中' },
+                                { value: 'Repaired', label: t('rma_ticket.status.repaired' as any) || '已修复' },
+                                { value: 'Shipped', label: t('rma_ticket.status.shipped' as any) || '已发货' },
+                                { value: 'Completed', label: t('rma_ticket.status.completed' as any) || '已完成' },
+                                { value: 'Cancelled', label: t('rma_ticket.status.cancelled' as any) || '已取消' }
                             ]}
                         />
                     </div>
@@ -378,57 +724,38 @@ const RMATicketListPage: React.FC = () => {
                     <Package size={48} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
                     <p>{t('rma_ticket.empty_hint')}</p>
                 </div>
+            ) : groupMode === 'grouped' ? (
+                // Grouped Mode
+                <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto' }}>
+                    {statusOrder.map(status => {
+                        const statusTickets = groupedTickets[status] || [];
+                        if (statusTickets.length === 0) return null;
+                        const Icon = statusIcons[status];
+                        const defaultOpen = ['Pending', 'Confirming', 'Diagnosing', 'InRepair'].includes(status);
+                        return (
+                            <CollapsibleSection
+                                key={status}
+                                title={getStatusLabel(status)}
+                                count={statusTickets.length}
+                                icon={Icon}
+                                color={statusColors[status] || '#6b7280'}
+                                sectionKey={status}
+                                defaultOpen={defaultOpen}
+                                initialOpen={!isRmaSectionCollapsed(status, defaultOpen)}
+                                onToggle={handleSectionToggle}
+                            >
+                                {statusTickets.map(ticket => (
+                                    <TicketCard key={ticket.id} ticket={ticket} />
+                                ))}
+                            </CollapsibleSection>
+                        );
+                    })}
+                </div>
             ) : (
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {tickets.map((ticket) => (
-                        <div
-                            key={ticket.id}
-                            onClick={() => navigate(`/service/rma-tickets/${ticket.id}`)}
-                            style={{
-                                background: 'var(--bg-card)', borderRadius: '12px', padding: '16px',
-                                border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',
-                                position: 'relative'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
-                            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                        <span style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.ticket_number}</span>
-                                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: '#e5e7eb', color: '#374151' }}>
-                                            {getChannelLabel(ticket.channel_code)}
-                                        </span>
-                                        {ticket.severity && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, background: `${severityColors[ticket.severity]}20`, color: severityColors[ticket.severity] }}>
-                                                <AlertTriangle size={10} /> P{ticket.severity}
-                                            </span>
-                                        )}
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500, background: `${statusColors[ticket.status] || '#6b7280'}20`, color: statusColors[ticket.status] || '#6b7280' }}>
-                                            {getStatusLabel(ticket.status)}
-                                        </span>
-                                    </div>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                                        {ticket.reporter_name || '匿名'} · {ticket.issue_category || ticket.issue_type}
-                                    </p>
-                                </div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                    {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: zhCN })}
-                                </span>
-                            </div>
-
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '12px' }}>
-                                {ticket.problem_description}
-                            </p>
-
-                            {(ticket.product || ticket.assigned_to) && (
-                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                    {ticket.product && <span>📷 {ticket.product.name}</span>}
-                                    {ticket.serial_number && <span>SN: {ticket.serial_number}</span>}
-                                    {ticket.assigned_to && <span>🔧 {ticket.assigned_to.name}</span>}
-                                </div>
-                            )}
-                        </div>
+                // Flat Mode
+                <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {tickets.map(ticket => (
+                        <TicketCard key={ticket.id} ticket={ticket} />
                     ))}
                 </div>
             )}

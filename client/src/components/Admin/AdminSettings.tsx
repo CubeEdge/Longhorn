@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText, X } from 'lucide-react';
+import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText, X, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import KnowledgeAuditLog from '../KnowledgeAuditLog';
@@ -25,9 +25,14 @@ interface SystemSettings {
     ai_enabled: boolean;
     ai_work_mode: boolean;
     ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
+    // Primary Backup
     backup_enabled: boolean;
     backup_frequency: number;
     backup_retention_days: number;
+    // Secondary Backup
+    secondary_backup_enabled: boolean;
+    secondary_backup_frequency: number;
+    secondary_backup_retention_days: number;
 }
 
 type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup';
@@ -113,9 +118,48 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [backingUp, setBackingUp] = useState(false);
+    const [backingUpPrimary, setBackingUpPrimary] = useState(false);
+    const [backingUpSecondary, setBackingUpSecondary] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
     const [backupResult, setBackupResult] = useState<{ success: boolean, message: string, path?: string } | null>(null);
+    
+    // Backup status state
+    const [backupStatus, setBackupStatus] = useState<{
+        primary: {
+            enabled: boolean;
+            frequency: number;
+            retention: number;
+            path: string;
+            label: string;
+            backups: { name: string; size: number; created_at: string; path: string }[];
+        };
+        secondary: {
+            enabled: boolean;
+            frequency: number;
+            retention: number;
+            path: string;
+            label: string;
+            backups: { name: string; size: number; created_at: string; path: string }[];
+        };
+    } | null>(null);
+    
+    // Confirm dialog state
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        confirmLabel?: string;
+        cancelLabel?: string;
+        isDanger?: boolean;
+    }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+    
+    // Restore modal state
+    const [restoreModal, setRestoreModal] = useState<{
+        isOpen: boolean;
+        type: 'primary' | 'secondary';
+        selectedBackup: string | null;
+    }>({ isOpen: false, type: 'primary', selectedBackup: null });
 
     useEffect(() => {
         if (initialTab) setActiveTab(initialTab);
@@ -154,6 +198,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
     useEffect(() => {
         fetchData();
+        if (activeTab === 'backup') {
+            fetchBackupStatus();
+        }
         let interval: any;
         if (activeTab === 'health') {
             interval = setInterval(fetchStats, 5000);
@@ -168,13 +215,64 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         } catch (err) { console.error(err); }
     };
 
+    const fetchBackupStatus = async () => {
+        try {
+            const res = await axios.get('/api/admin/backup/status', { headers: { Authorization: `Bearer ${token}` } });
+            setBackupStatus(res.data.data);
+        } catch (err) { console.error('Failed to fetch backup status:', err); }
+    };
+
+    // Show confirm dialog
+    const showConfirm = (title: string, message: string, onConfirm: () => void, options?: { confirmLabel?: string; cancelLabel?: string; isDanger?: boolean }) => {
+        setConfirmDialog({
+            isOpen: true,
+            title,
+            message,
+            onConfirm,
+            confirmLabel: options?.confirmLabel,
+            cancelLabel: options?.cancelLabel,
+            isDanger: options?.isDanger
+        });
+    };
+
+    // Close confirm dialog
+    const closeConfirm = (confirmed: boolean) => {
+        if (confirmed && confirmDialog.onConfirm) {
+            confirmDialog.onConfirm();
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+    };
+
+    // Handle backup with confirmation
+    const handleBackupWithConfirm = (type: 'primary' | 'secondary') => {
+        const isPrimary = type === 'primary';
+        showConfirm(
+            isPrimary ? '确认主备份' : '确认次级备份',
+            isPrimary 
+                ? '即将执行主备份，备份文件将存储至 fileserver SSD。此操作可能需要几分钟，请确保系统正常运行。'
+                : '即将执行次级备份，备份文件将存储至系统盘。此操作可能需要几分钟，请确保系统正常运行。',
+            () => handleManualBackupTyped(type),
+            { confirmLabel: '开始备份', cancelLabel: '取消' }
+        );
+    };
+
+
+
     const handleSave = async () => {
         if (!settings) return;
         setSaving(true);
         try {
             await axios.post('/api/admin/settings', { settings, providers }, { headers: { Authorization: `Bearer ${token}` } });
-        } catch (err) {
+            // Show success message
+            alert('设置已保存成功！');
+            // Reload settings to reflect changes
+            const res = await axios.get('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
+            if (res.data.success && res.data.settings) {
+                setSettings(res.data.settings);
+            }
+        } catch (err: any) {
             console.error('Failed to save settings:', err);
+            alert('保存失败: ' + (err.response?.data?.error || err.message));
         } finally {
             setSaving(false);
         }
@@ -217,13 +315,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     };
 
     const handleManualBackup = async () => {
-        setBackingUp(true);
+        handleBackupWithConfirm('primary');
+    };
+
+    const handleManualBackupTyped = async (type: 'primary' | 'secondary') => {
+        if (type === 'primary') {
+            setBackingUpPrimary(true);
+        } else {
+            setBackingUpSecondary(true);
+        }
         try {
-            const res = await axios.post('/api/admin/backup/now', {}, { headers: { Authorization: `Bearer ${token}` } });
+            const endpoint = type === 'primary' ? '/api/admin/backup/now' : '/api/admin/backup/now/secondary';
+            const res = await axios.post(endpoint, {}, { headers: { Authorization: `Bearer ${token}` } });
             if (res.data.success) {
                 setBackupResult({
                     success: true,
-                    message: '数据库备份成功完成。',
+                    message: `${res.data.label} 成功完成！`,
                     path: res.data.path
                 });
             } else {
@@ -239,7 +346,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 message: '备份请求失败，请检查控制台。'
             });
         } finally {
-            setBackingUp(false);
+            if (type === 'primary') {
+                setBackingUpPrimary(false);
+            } else {
+                setBackingUpSecondary(false);
+            }
         }
     };
 
@@ -584,46 +695,61 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 {activeTab === 'backup' && settings && (
                     <div style={{ padding: 32 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                            {/* Policy Settings */}
+                            {/* Primary Backup Column - Settings + Dashboard */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                <div className="setting-card">
-                                    <div style={{ flex: 1 }}>
-                                        <div className="setting-label">启用自动备份</div>
-                                        <div className="setting-desc">系统将按照指定频率自动备份数据库文件 (SQLite Hot Backup)。</div>
+                                {/* Primary Backup Settings */}
+                                <div style={{ 
+                                    background: 'rgba(16, 185, 129, 0.08)', 
+                                    padding: '16px 20px', 
+                                    borderRadius: 12,
+                                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                                    marginBottom: 8
+                                }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10B981', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Database size={18} />
+                                        主备份 (Primary)
+                                    </h3>
+                                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                                        存储于 fileserver SSD，用于日常快速恢复
                                     </div>
-                                    <Switch checked={settings.backup_enabled} onChange={v => setSettings({ ...settings, backup_enabled: v })} />
+                                </div>
+
+                                <div className="setting-card" style={{ minHeight: '72px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="setting-label">启用主备份</div>
+                                        <div className="setting-desc">自动备份到 fileserver SSD</div>
+                                    </div>
+                                    <Switch checked={settings.backup_enabled} onChange={v => setSettings({ ...settings, backup_enabled: v })} activeColor="#10B981" />
                                 </div>
 
                                 <div className="setting-field">
-                                    <label>备份频率 (分钟)</label>
+                                    <label>备份频率 (小时)</label>
                                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                                         <input
                                             type="number"
                                             className="text-input"
-                                            value={settings.backup_frequency}
-                                            onChange={e => setSettings({ ...settings, backup_frequency: parseInt(e.target.value) || 1440 })}
+                                            value={Math.floor(settings.backup_frequency / 60)}
+                                            onChange={e => setSettings({ ...settings, backup_frequency: (parseInt(e.target.value) || 1) * 60 })}
+                                            min={1}
                                         />
-                                        <span style={{ fontSize: '0.9rem', opacity: 0.5 }}>
-                                            (当前: {Math.floor(settings.backup_frequency / 60)}小时 {settings.backup_frequency % 60}分钟)
-                                        </span>
                                     </div>
                                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                                        {[60, 180, 360, 720, 1440].map(mins => (
+                                        {[1, 3, 6, 12, 24].map(hours => (
                                             <button
-                                                key={mins}
-                                                onClick={() => setSettings({ ...settings, backup_frequency: mins })}
+                                                key={hours}
+                                                onClick={() => setSettings({ ...settings, backup_frequency: hours * 60 })}
                                                 style={{
                                                     padding: '6px 12px',
                                                     borderRadius: 8,
                                                     border: '1px solid rgba(255,255,255,0.1)',
-                                                    background: settings.backup_frequency === mins ? 'rgba(255,215,0,0.1)' : 'transparent',
-                                                    color: settings.backup_frequency === mins ? '#FFD700' : 'rgba(255,255,255,0.5)',
+                                                    background: settings.backup_frequency === hours * 60 ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                                    color: settings.backup_frequency === hours * 60 ? '#10B981' : 'rgba(255,255,255,0.5)',
                                                     cursor: 'pointer',
                                                     fontSize: '0.8rem',
                                                     transition: 'all 0.2s'
                                                 }}
                                             >
-                                                {mins / 60}h
+                                                {hours}h
                                             </button>
                                         ))}
                                     </div>
@@ -638,83 +764,287 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         onChange={e => setSettings({ ...settings, backup_retention_days: parseInt(e.target.value) || 7 })}
                                     />
                                     <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
-                                        超过此时间的旧备份文件将被自动清理以节省空间。
+                                        超过此时间的旧备份文件将被自动清理。
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Actions & Status */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: 28, borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)' }}>
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <Database size={22} color="#FFD700" />
-                                        手动操作
-                                    </h3>
-                                    <div style={{ marginBottom: 24, fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-                                        立即触发一次完整数据库备份。备份文件将存储在远程服务器的 <code>/Disks/DiskA/.backups/db/</code> 目录下。
-                                    </div>
-                                    <button
-                                        onClick={handleManualBackup}
-                                        disabled={backingUp}
-                                        style={{
-                                            width: '100%',
-                                            padding: '16px',
-                                            borderRadius: 14,
-                                            background: 'transparent',
-                                            color: '#FFD700',
-                                            border: '1px solid rgba(255, 210, 0, 0.4)',
-                                            fontWeight: 700,
-                                            cursor: backingUp ? 'wait' : 'pointer',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                {/* Primary Backup Dashboard Card */}
+                                {backupStatus && (
+                                    <div 
+                                        onClick={() => setRestoreModal({ isOpen: true, type: 'primary', selectedBackup: null })}
+                                        style={{ 
+                                            background: 'rgba(16, 185, 129, 0.05)', 
+                                            padding: 28, 
+                                            borderRadius: 20, 
+                                            border: '1px solid rgba(16, 185, 129, 0.15)', 
+                                            backdropFilter: 'blur(10px)',
+                                            cursor: 'pointer',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            backdropFilter: 'blur(10px)'
+                                            marginTop: 'auto'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (!backingUp) {
-                                                e.currentTarget.style.background = 'rgba(255, 210, 0, 0.08)';
-                                                e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
-                                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                            }
+                                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                                            e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.25)';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (!backingUp) {
-                                                e.currentTarget.style.background = 'transparent';
-                                                e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
-                                                e.currentTarget.style.transform = 'translateY(0)';
-                                            }
+                                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.15)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
                                         }}
                                     >
-                                        {backingUp ? <RefreshCcw className="animate-spin" size={20} /> : <Save size={20} />}
-                                        {backingUp ? '正在执行热备份...' : '立即备份 (Backup Now)'}
-                                    </button>
+                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, color: '#10B981' }}>
+                                            <Database size={22} />
+                                            主备份状态
+                                        </h3>
+                                        
+                                        {/* Stats Grid */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>备份总数</div>
+                                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#10B981' }}>{backupStatus.primary.backups.length}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>总空间</div>
+                                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
+                                                    {(backupStatus.primary.backups.reduce((acc, b) => acc + b.size, 0) / 1024 / 1024).toFixed(1)} MB
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
+                                                    {backupStatus.primary.backups[0] 
+                                                        ? new Date(backupStatus.primary.backups[0].created_at).toLocaleDateString('zh-CN')
+                                                        : '无'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>自动备份</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: backupStatus.primary.enabled ? '#10B981' : '#EF4444' }}>
+                                                    {backupStatus.primary.enabled ? '已启用' : '已禁用'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleManualBackup();
+                                            }}
+                                            disabled={backingUpPrimary}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: 12,
+                                                background: 'transparent',
+                                                color: '#10B981',
+                                                border: '1px solid rgba(16, 185, 129, 0.4)',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem',
+                                                cursor: backingUpPrimary ? 'wait' : 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!backingUpPrimary) {
+                                                    e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
+                                                    e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.7)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!backingUpPrimary) {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                    e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                                                }
+                                            }}
+                                        >
+                                            {backingUpPrimary ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
+                                            {backingUpPrimary ? '备份中...' : '立即主备份'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Secondary Backup Column - Settings + Dashboard */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                {/* Secondary Backup Settings */}
+                                <div style={{ 
+                                    background: 'rgba(255,255,255,0.03)', 
+                                    padding: '16px 20px', 
+                                    borderRadius: 12,
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    marginBottom: 8
+                                }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#FFFFFF', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Database size={18} />
+                                        次级备份 (Secondary)
+                                    </h3>
+                                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                                        存储于系统盘，用于 fileserver 故障时恢复
+                                    </div>
                                 </div>
 
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    padding: 28,
-                                    borderRadius: 20,
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    backdropFilter: 'blur(10px)'
-                                }}>
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <Database size={22} color="#FFD700" />
-                                        备份机制说明
-                                    </h3>
-                                    <ul style={{ paddingLeft: 0, listStyle: 'none', fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <li style={{ display: 'flex', gap: 10 }}>
-                                            <span style={{ color: '#FFD700' }}>•</span>
-                                            <span>使用 SQLite Online Backup API，支持运行中热备份，无须停机。</span>
-                                        </li>
-                                        <li style={{ display: 'flex', gap: 10 }}>
-                                            <span style={{ color: '#FFD700' }}>•</span>
-                                            <span>生成的备份文件将自动同步至 <b>DiskA</b> 高可靠存储区域。</span>
-                                        </li>
-                                        <li style={{ display: 'flex', gap: 10 }}>
-                                            <span style={{ color: '#FFD700' }}>•</span>
-                                            <span>建议开启自动备份，并将保留天数设置为 7 天及以上。</span>
-                                        </li>
-                                    </ul>
+                                <div className="setting-card" style={{ minHeight: '72px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="setting-label">启用次级备份</div>
+                                        <div className="setting-desc">自动备份到系统本地磁盘</div>
+                                    </div>
+                                    <Switch checked={settings.secondary_backup_enabled} onChange={v => setSettings({ ...settings, secondary_backup_enabled: v })} activeColor="#FFFFFF" />
                                 </div>
+
+                                <div className="setting-field">
+                                    <label>备份频率 (小时)</label>
+                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                        <input
+                                            type="number"
+                                            className="text-input"
+                                            value={Math.floor(settings.secondary_backup_frequency / 60)}
+                                            onChange={e => setSettings({ ...settings, secondary_backup_frequency: (parseInt(e.target.value) || 1) * 60 })}
+                                            min={1}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                        {[3, 6, 12, 24, 72, 168].map(hours => (
+                                            <button
+                                                key={hours}
+                                                onClick={() => setSettings({ ...settings, secondary_backup_frequency: hours * 60 })}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: 8,
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: settings.secondary_backup_frequency === hours * 60 ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                    color: settings.secondary_backup_frequency === hours * 60 ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.8rem',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {hours >= 24 ? `${hours / 24}d` : `${hours}h`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="setting-field">
+                                    <label>保留策略 (天数)</label>
+                                    <input
+                                        type="number"
+                                        className="text-input"
+                                        value={settings.secondary_backup_retention_days}
+                                        onChange={e => setSettings({ ...settings, secondary_backup_retention_days: parseInt(e.target.value) || 30 })}
+                                    />
+                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
+                                        建议设置比主备份更长的保留期。
+                                    </div>
+                                </div>
+
+                                {/* Secondary Backup Dashboard Card */}
+                                {backupStatus && (
+                                    <div 
+                                        onClick={() => setRestoreModal({ isOpen: true, type: 'secondary', selectedBackup: null })}
+                                        style={{ 
+                                            background: 'rgba(255,255,255,0.02)', 
+                                            padding: 28, 
+                                            borderRadius: 20, 
+                                            border: '1px solid rgba(255,255,255,0.08)', 
+                                            backdropFilter: 'blur(10px)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            marginTop: 'auto'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, color: '#FFFFFF' }}>
+                                            <Database size={22} />
+                                            次级备份状态
+                                        </h3>
+                                        
+                                        {/* Stats Grid */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>备份总数</div>
+                                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>{backupStatus.secondary.backups.length}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>总空间</div>
+                                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
+                                                    {(backupStatus.secondary.backups.reduce((acc, b) => acc + b.size, 0) / 1024 / 1024).toFixed(1)} MB
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
+                                                    {backupStatus.secondary.backups[0] 
+                                                        ? new Date(backupStatus.secondary.backups[0].created_at).toLocaleDateString('zh-CN')
+                                                        : '无'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>自动备份</div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 500, color: backupStatus.secondary.enabled ? '#10B981' : '#EF4444' }}>
+                                                    {backupStatus.secondary.enabled ? '已启用' : '已禁用'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleBackupWithConfirm('secondary');
+                                            }}
+                                            disabled={backingUpSecondary}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: 12,
+                                                background: 'transparent',
+                                                color: '#FFFFFF',
+                                                border: '1px solid rgba(255, 255, 255, 0.4)',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem',
+                                                cursor: backingUpSecondary ? 'wait' : 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!backingUpSecondary) {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.7)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!backingUpSecondary) {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                                                }
+                                            }}
+                                        >
+                                            {backingUpSecondary ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
+                                            {backingUpSecondary ? '备份中...' : '立即次级备份'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Backup Info - Simplified */}
+                            <div style={{ padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)', gridColumn: '1 / -1' }}>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12, color: 'rgba(255,255,255,0.6)' }}>
+                                    备份机制说明
+                                </h4>
+                                <ul style={{ paddingLeft: 0, listStyle: 'none', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <li>• 使用 SQLite Online Backup API，支持运行中热备份，无须停机</li>
+                                    <li>• 主备份存储于 fileserver SSD，次级备份存储于系统盘</li>
+                                    <li>• 建议开启自动备份，主备份保留 7 天，次级备份保留 30 天</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -743,6 +1073,313 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                         result={backupResult}
                         onClose={() => setBackupResult(null)}
                     />
+                )}
+
+                {/* Confirm Dialog */}
+                {confirmDialog.isOpen && (
+                    <div
+                        onClick={() => closeConfirm(false)}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(12px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001,
+                            animation: 'fadeIn 0.2s ease'
+                        }}
+                    >
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'rgba(30, 30, 30, 0.95)',
+                                border: confirmDialog.isDanger ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 215, 0, 0.2)',
+                                width: '90%', maxWidth: '420px',
+                                borderRadius: '20px',
+                                padding: '0',
+                                boxShadow: confirmDialog.isDanger 
+                                    ? '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)'
+                                    : '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 215, 0, 0.1)',
+                                animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* Header */}
+                            <div style={{
+                                padding: '24px 28px 20px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                                display: 'flex', alignItems: 'center', gap: '16px'
+                            }}>
+                                <div style={{
+                                    background: confirmDialog.isDanger 
+                                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1))'
+                                        : 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
+                                    padding: '12px', borderRadius: '14px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: confirmDialog.isDanger 
+                                        ? '0 4px 12px rgba(239, 68, 68, 0.1)'
+                                        : '0 4px 12px rgba(255, 215, 0, 0.1)'
+                                }}>
+                                    {confirmDialog.isDanger 
+                                        ? <AlertTriangle size={24} color="#EF4444" strokeWidth={2} />
+                                        : <Database size={24} color="#FFD700" strokeWidth={2} />
+                                    }
+                                </div>
+                                <h3 style={{
+                                    margin: 0, fontSize: '18px', fontWeight: 600,
+                                    color: '#fff', letterSpacing: '-0.3px'
+                                }}>
+                                    {confirmDialog.title.replace(/^⚠️\s*/, '')}
+                                </h3>
+                            </div>
+
+                            {/* Message */}
+                            <div style={{ padding: '20px 28px 24px' }}>
+                                <p style={{
+                                    margin: 0, color: 'rgba(255, 255, 255, 0.7)',
+                                    lineHeight: 1.6, fontSize: '15px', whiteSpace: 'pre-line'
+                                }}>
+                                    {confirmDialog.message.replace(/⚠️\s*/g, '')}
+                                </p>
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{
+                                display: 'flex', gap: '12px',
+                                padding: '0 28px 24px', justifyContent: 'flex-end'
+                            }}>
+                                <button
+                                    onClick={() => closeConfirm(false)}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        color: 'rgba(255, 255, 255, 0.7)',
+                                        cursor: 'pointer', fontSize: '15px', fontWeight: 500,
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        minWidth: '90px'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                >
+                                    {confirmDialog.cancelLabel || '取消'}
+                                </button>
+                                <button
+                                    onClick={() => closeConfirm(true)}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: confirmDialog.isDanger 
+                                            ? 'linear-gradient(135deg, #EF4444, #DC2626)'
+                                            : 'linear-gradient(135deg, #FFD700, #FFC000)',
+                                        border: 'none', borderRadius: '12px',
+                                        color: confirmDialog.isDanger ? '#fff' : '#000',
+                                        cursor: 'pointer', fontSize: '15px', fontWeight: 600,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        minWidth: '90px',
+                                        boxShadow: confirmDialog.isDanger 
+                                            ? '0 4px 15px rgba(239, 68, 68, 0.3)'
+                                            : '0 4px 15px rgba(255, 215, 0, 0.3)'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger 
+                                            ? '0 6px 20px rgba(239, 68, 68, 0.4)'
+                                            : '0 6px 20px rgba(255, 215, 0, 0.4)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger 
+                                            ? '0 4px 15px rgba(239, 68, 68, 0.3)'
+                                            : '0 4px 15px rgba(255, 215, 0, 0.3)';
+                                    }}
+                                >
+                                    <CheckCircle size={16} strokeWidth={2.5} />
+                                    {confirmDialog.confirmLabel || '确认'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Restore Modal */}
+                {restoreModal.isOpen && backupStatus && (
+                    <div
+                        onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(20px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000,
+                            animation: 'fadeIn 0.2s ease'
+                        }}
+                    >
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'rgba(28, 28, 30, 0.98)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                width: '90%', maxWidth: '600px', maxHeight: '80vh',
+                                borderRadius: '24px',
+                                padding: '0',
+                                boxShadow: '0 32px 96px rgba(0, 0, 0, 0.6)',
+                                animation: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                overflow: 'hidden',
+                                display: 'flex', flexDirection: 'column'
+                            }}
+                        >
+                            {/* Header */}
+                            <div style={{
+                                padding: '28px 32px 24px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <div style={{
+                                        background: restoreModal.type === 'primary'
+                                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.1))'
+                                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                                        padding: '12px', borderRadius: '14px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <Database size={24} color={restoreModal.type === 'primary' ? '#10B981' : '#FFFFFF'} strokeWidth={2} />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff' }}>
+                                            {restoreModal.type === 'primary' ? '主备份恢复' : '次级备份恢复'}
+                                        </h3>
+                                        <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
+                                            选择一个备份文件进行恢复
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
+                                    style={{
+                                        background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)',
+                                        cursor: 'pointer', padding: '8px', borderRadius: '8px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.color = 'white'}
+                                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            {/* Backup List */}
+                            <div style={{ padding: '24px 32px', overflowY: 'auto', maxHeight: '400px' }}>
+                                {(restoreModal.type === 'primary' ? backupStatus.primary.backups : backupStatus.secondary.backups).length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '48px 0', color: 'rgba(255,255,255,0.4)' }}>
+                                        <Database size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
+                                        <p>暂无备份文件</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        {(restoreModal.type === 'primary' ? backupStatus.primary.backups : backupStatus.secondary.backups).map((backup, index) => (
+                                            <div
+                                                key={backup.name}
+                                                onClick={() => {
+                                                    showConfirm(
+                                                        '危险操作：恢复数据库',
+                                                        `您确定要恢复此备份吗？\n\n备份文件：${backup.name}\n备份时间：${new Date(backup.created_at).toLocaleString('zh-CN')}\n文件大小：${(backup.size / 1024 / 1024).toFixed(1)} MB\n\n警告：这将覆盖当前数据库，所有现有数据将被替换。建议在恢复前执行一次手动备份。`,
+                                                        () => {
+                                                            console.log('Restoring from:', backup.path);
+                                                            setBackupResult({
+                                                                success: true,
+                                                                message: '恢复功能开发中，请联系管理员手动恢复。'
+                                                            });
+                                                            setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null });
+                                                        },
+                                                        { confirmLabel: '确认恢复', cancelLabel: '取消', isDanger: true }
+                                                    );
+                                                }}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid rgba(255,255,255,0.06)',
+                                                    borderRadius: '16px',
+                                                    padding: '20px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                                    e.currentTarget.style.borderColor = restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.15)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                                    <div style={{
+                                                        width: 40, height: 40, borderRadius: 10,
+                                                        background: restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.05)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        <Database size={20} color={restoreModal.type === 'primary' ? '#10B981' : '#FFFFFF'} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>
+                                                            {index === 0 ? '最新备份' : `备份 #${index + 1}`}
+                                                        </div>
+                                                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                                                            {new Date(backup.created_at).toLocaleString('zh-CN')}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>
+                                                        {(backup.size / 1024 / 1024).toFixed(1)} MB
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                                                        点击恢复
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div style={{
+                                padding: '20px 32px 28px',
+                                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}>
+                                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+                                    共 {(restoreModal.type === 'primary' ? backupStatus.primary.backups : backupStatus.secondary.backups).length} 个备份文件
+                                </div>
+                                <button
+                                    onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        color: 'rgba(255, 255, 255, 0.7)',
+                                        cursor: 'pointer', fontSize: '14px', fontWeight: 500,
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.color = 'white';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                                    }}
+                                >
+                                    关闭
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -836,8 +1473,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     );
 };
 
-const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
-    <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? '#FFD700' : 'rgba(255,255,255,0.15)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void, activeColor?: string }> = ({ checked, onChange, activeColor = '#FFD700' }) => (
+    <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? activeColor : 'rgba(255,255,255,0.15)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
         <div style={{ width: 20, height: 20, background: checked ? 'black' : 'white', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
     </div>
 );
