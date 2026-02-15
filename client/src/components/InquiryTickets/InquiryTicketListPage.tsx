@@ -136,10 +136,11 @@ const InquiryTicketListPage: React.FC = () => {
     const [pageSize] = useState(50);
 
     // Scope Filters
-    const timeScope = searchParams.get('time_scope') || '7d';
+    const timeScope = searchParams.get('time_scope') || '30d';
     const productFamilyScope = searchParams.get('product_family') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
     const statusFilter = searchParams.get('status') || 'all';
+    const serviceTierFilter = searchParams.get('service_tier') || 'all';
     const pageParam = searchParams.get('page');
     const page = pageParam ? parseInt(pageParam) : 1;
 
@@ -219,6 +220,7 @@ const InquiryTicketListPage: React.FC = () => {
         if (productFamilyScope !== 'all') params.product_family = productFamilyScope;
         if (searchTerm) params.keyword = searchTerm;
         if (statusFilter !== 'all') params.status = statusFilter;
+        if (serviceTierFilter !== 'all') params.service_tier = serviceTierFilter;
 
         return params;
     }, [page, pageSize, timeScope, productFamilyScope, searchTerm, statusFilter, searchParams, sortBy, sortOrder]);
@@ -254,12 +256,17 @@ const InquiryTicketListPage: React.FC = () => {
         }
     };
 
+    // 产品族群映射：前端显示名称 -> 数据库代码
+    // A = 在售电影机 (Current Cine Cameras)
+    // B = 历史机型 (Archived Cine Cameras)
+    // C = 电子寻像器 (Eagle e-Viewfinder)
+    // D = 通用配件 (Universal Accessories)
     const productFamilies = [
         { id: 'all', label: t('filter.all_products') },
-        { id: 'Current Cine Cameras', label: 'Current Cine Cameras' },
-        { id: 'Archived Cine Cameras', label: 'Archived Cine Cameras' },
-        { id: 'Eagle e-Viewfinder', label: 'Eagle e-Viewfinder' },
-        { id: 'Universal Accessories', label: 'Universal Accessories' }
+        { id: 'A', label: '在售电影机' },
+        { id: 'B', label: '历史机型' },
+        { id: 'C', label: '电子寻像器' },
+        { id: 'D', label: '通用配件' }
     ];
 
     const handleFamilySelect = (val: string) => {
@@ -717,12 +724,27 @@ const InquiryTicketListPage: React.FC = () => {
                             value={statusFilter}
                             onChange={(val) => updateFilter({ status: val })}
                             options={[
-                                { value: 'all', label: 'All Statuses' },
-                                { value: 'New', label: 'New' },
-                                { value: 'Open', label: 'Open' },
-                                { value: 'Pending', label: 'Pending' },
-                                { value: 'Resolved', label: 'Resolved' },
-                                { value: 'Closed', label: 'Closed' }
+                                { value: 'all', label: t('filter.all_status') },
+                                { value: 'Pending', label: t('inquiry_ticket.status.pending' as any) || '待处理' },
+                                { value: 'InProgress', label: t('inquiry_ticket.status.in_progress' as any) || '处理中' },
+                                { value: 'AwaitingFeedback', label: t('inquiry_ticket.status.awaiting_feedback' as any) || '待客户反馈' },
+                                { value: 'Resolved', label: t('inquiry_ticket.status.resolved' as any) || '已解决' },
+                                { value: 'AutoClosed', label: t('inquiry_ticket.status.auto_closed' as any) || '自动关闭' },
+                                { value: 'Upgraded', label: t('inquiry_ticket.status.upgraded' as any) || '已升级' }
+                            ]}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
+                        <KineSelect
+                            value={serviceTierFilter}
+                            onChange={(val) => updateFilter({ service_tier: val })}
+                            options={[
+                                { value: 'all', label: t('filter.all_tiers') },
+                                { value: 'VIP', label: t('service_tier.VIP') },
+                                { value: 'VVIP', label: t('service_tier.VVIP') },
+                                { value: 'STANDARD', label: t('service_tier.STANDARD') },
+                                { value: 'BLACKLIST', label: t('service_tier.BLACKLIST') }
                             ]}
                         />
                     </div>

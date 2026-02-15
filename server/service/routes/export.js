@@ -130,13 +130,15 @@ module.exports = function(db, authenticate) {
                     i.feedback_date, i.ship_date, i.received_date, i.completed_date,
                     i.created_at, i.updated_at,
                     p.model_name as product_name,
-                    c.customer_name, c.phone as customer_phone, c.email as customer_email,
+                    acc.name as customer_name,
+                    ct.phone as customer_phone, ct.email as customer_email,
                     d.name as dealer_name, d.dealer_code as dealer_code,
                     creator.username as created_by_name,
                     assignee.username as assigned_to_name
                 FROM issues i
                 LEFT JOIN products p ON i.product_id = p.id
-                LEFT JOIN customers c ON i.customer_id = c.id
+                LEFT JOIN accounts acc ON i.account_id = acc.id
+                LEFT JOIN contacts ct ON i.contact_id = ct.id
                 LEFT JOIN accounts d ON i.dealer_id = d.id
                 LEFT JOIN users creator ON i.created_by = creator.id
                 LEFT JOIN users assignee ON i.assigned_to = assignee.id

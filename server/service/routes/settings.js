@@ -113,6 +113,8 @@ module.exports = (db, authenticate, backupService) => {
 
             // 2. Update/Insert Providers
             if (providers && Array.isArray(providers)) {
+                console.log('[Settings] Saving providers:', providers.map(p => ({ name: p.name, hasApiKey: !!p.api_key, apiKeyLen: p.api_key?.length || 0 })));
+                
                 const upsertProvider = db.prepare(`
                     INSERT INTO ai_providers (
                         name, api_key, base_url, chat_model, reasoner_model, vision_model, allow_search, temperature, max_tokens, top_p, is_active, updated_at
@@ -120,7 +122,7 @@ module.exports = (db, authenticate, backupService) => {
                         @name, @api_key, @base_url, @chat_model, @reasoner_model, @vision_model, @allow_search, @temperature, @max_tokens, @top_p, @is_active, CURRENT_TIMESTAMP
                     )
                     ON CONFLICT(name) DO UPDATE SET
-                        api_key = COALESCE(@api_key, api_key),
+                        api_key = CASE WHEN @api_key IS NOT NULL AND @api_key != '' THEN @api_key ELSE api_key END,
                         base_url = @base_url,
                         chat_model = @chat_model,
                         reasoner_model = @reasoner_model,

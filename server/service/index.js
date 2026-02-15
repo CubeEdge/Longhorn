@@ -54,8 +54,12 @@ function initService(app, db, options = {}) {
     // Phase 2: Export functionality
     const exportRoutes = require('./routes/export')(db, authenticate);
 
-    // Phase 3: Knowledge base
-    const knowledgeRoutes = require('./routes/knowledge')(db, authenticate);
+    // Phase 6: Bokeh AI Service (must be created BEFORE knowledge routes)
+    const AIService = require('./ai_service');
+    const aiService = new AIService(db);
+
+    // Phase 3: Knowledge base (with aiService for AI formatting)
+    const knowledgeRoutes = require('./routes/knowledge')(db, authenticate, null, aiService);
     const compatibilityRoutes = require('./routes/compatibility')(db, authenticate);
     const knowledgeAuditRoutes = require('./routes/knowledge_audit')(db, authenticate);
 
@@ -106,9 +110,7 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/dealer-inventory', dealerInventoryRoutes);
     app.use('/api/v1/proforma-invoices', proformaInvoiceRoutes);
 
-    // Phase 6: Bokeh AI Routes
-    const AIService = require('./ai_service');
-    const aiService = new AIService(db);
+    // Phase 6: Bokeh AI Routes (aiService already created above)
     const bokehRoutes = require('./routes/bokeh')(db, authenticate, aiService);
     app.use('/api/v1/bokeh', bokehRoutes);
     app.use('/api/v1/internal/tickets', bokehRoutes); // Internal ticket indexing APIs

@@ -262,13 +262,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         if (!settings) return;
         setSaving(true);
         try {
+            console.log('[AdminSettings] Saving providers:', providers.map(p => ({ name: p.name, hasApiKey: !!p.api_key })));
             await axios.post('/api/admin/settings', { settings, providers }, { headers: { Authorization: `Bearer ${token}` } });
             // Show success message
             alert('设置已保存成功！');
             // Reload settings to reflect changes
             const res = await axios.get('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data.success && res.data.settings) {
-                setSettings(res.data.settings);
+            if (res.data.success && res.data.data?.settings) {
+                setSettings(res.data.data.settings);
+                setProviders(res.data.data.providers || []);
             }
         } catch (err: any) {
             console.error('Failed to save settings:', err);
@@ -333,6 +335,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     message: `${res.data.label} 成功完成！`,
                     path: res.data.path
                 });
+                // Refresh backup status to show the new backup in the list
+                fetchBackupStatus();
             } else {
                 setBackupResult({
                     success: false,

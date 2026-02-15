@@ -82,9 +82,9 @@ export const useListStateStore = create<ListState>()(
             dealerScrollPosition: 0,
 
             // Default filter params
-            inquiryFilters: { time_scope: '7d', product_family: 'all', status: 'all', keyword: '' },
-            rmaFilters: { time_scope: '7d', product_family: 'all', status: 'all', keyword: '' },
-            dealerFilters: { time_scope: '7d', product_family: 'all', status: 'all', keyword: '' },
+            inquiryFilters: { time_scope: '30d', product_family: 'all', status: 'all', keyword: '' },
+            rmaFilters: { time_scope: '30d', product_family: 'all', status: 'all', keyword: '' },
+            dealerFilters: { time_scope: '30d', product_family: 'all', status: 'all', keyword: '' },
 
             setInquiryViewMode: (mode) => set({ inquiryViewMode: mode }),
             setRmaViewMode: (mode) => set({ rmaViewMode: mode }),

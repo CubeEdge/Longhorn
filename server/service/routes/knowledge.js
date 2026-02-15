@@ -946,7 +946,8 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 'title', 'slug', 'summary', 'content',
                 'category', 'subcategory', 'tags',
                 'product_line', 'product_models', 'firmware_versions',
-                'visibility', 'department_ids', 'status'
+                'visibility', 'department_ids', 'status',
+                'formatted_content', 'format_status', 'short_summary'  // Wiki editor fields
             ];
 
             const updates = [];
@@ -2010,11 +2011,11 @@ ${article.content.substring(0, 2000)}
                     format_status: 'draft',
                     formatted_by: 'ai',
                     formatted_at: new Date().toISOString(),
+                    formatted_content: formattedContent,  // Return full content for editor
                     short_summary: shortSummary,
                     chapter_number: chapterNumber,
                     section_number: sectionNumber,
-                    image_count: imageMatches.length,
-                    content_preview: formattedContent.substring(0, 500)
+                    image_count: imageMatches.length
                 }
             });
         } catch (err) {

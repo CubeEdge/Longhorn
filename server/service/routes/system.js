@@ -191,26 +191,28 @@ module.exports = function (db, authenticate) {
 
     /**
      * GET /api/v1/system/customers
-     * Search customers for autocomplete
+     * Search customers for autocomplete (now from accounts table)
      */
     router.get('/customers', authenticate, (req, res) => {
         try {
             const { search, limit = 20 } = req.query;
 
             let sql = `
-                SELECT id, customer_name as name, customer_type as type, 
-                       company_name as company, phone, email
-                FROM customers
+                SELECT id, name, account_type as type, 
+                       name as company, 
+                       (SELECT phone FROM contacts WHERE account_id = accounts.id AND status = 'PRIMARY' LIMIT 1) as phone,
+                       (SELECT email FROM contacts WHERE account_id = accounts.id AND status = 'PRIMARY' LIMIT 1) as email
+                FROM accounts
             `;
             let params = [];
 
             if (search) {
-                sql += ` WHERE customer_name LIKE ? OR company_name LIKE ? OR phone LIKE ?`;
+                sql += ` WHERE name LIKE ?`;
                 const term = `%${search}%`;
-                params.push(term, term, term);
+                params.push(term);
             }
 
-            sql += ` ORDER BY customer_name LIMIT ?`;
+            sql += ` ORDER BY name LIMIT ?`;
             params.push(parseInt(limit));
 
             const customers = db.prepare(sql).all(...params);
@@ -230,12 +232,12 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/system/customers
-     * Quick create customer
+     * Quick create customer (now creates account + contact)
      */
     router.post('/customers', authenticate, (req, res) => {
         try {
             const {
-                customer_name, customer_type = 'EndUser',
+                customer_name, customer_type = 'INDIVIDUAL',
                 contact_person, phone, email,
                 country, province, city, company_name
             } = req.body;
@@ -247,19 +249,30 @@ module.exports = function (db, authenticate) {
                 });
             }
 
-            const result = db.prepare(`
-                INSERT INTO customers (customer_name, customer_type, contact_person, 
-                    phone, email, country, province, city, company_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            // Create account
+            const accountResult = db.prepare(`
+                INSERT INTO accounts (name, account_type, country, province, city)
+                VALUES (?, ?, ?, ?, ?)
             `).run(
-                customer_name, customer_type, contact_person || null,
-                phone || null, email || null,
-                country || null, province || null, city || null, company_name || null
+                customer_name, customer_type,
+                country || null, province || null, city || null
             );
+
+            const accountId = accountResult.lastInsertRowid;
+
+            // Create primary contact if contact info provided
+            if (contact_person || phone || email) {
+                db.prepare(`
+                    INSERT INTO contacts (account_id, name, phone, email, status, is_primary)
+                    VALUES (?, ?, ?, ?, 'PRIMARY', 1)
+                `).run(
+                    accountId, contact_person || customer_name, phone || null, email || null
+                );
+            }
 
             res.status(201).json({
                 success: true,
-                data: { id: result.lastInsertRowid, name: customer_name }
+                data: { id: accountId, name: customer_name }
             });
         } catch (err) {
             console.error('[System] Create customer error:', err);

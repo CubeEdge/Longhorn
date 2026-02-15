@@ -7,7 +7,6 @@ import { useConfirm } from '../../store/useConfirm';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
-import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -162,6 +161,17 @@ const InquiryTicketDetailPage: React.FC = () => {
         } catch (err) {
             console.error('Failed to reopen ticket:', err);
         }
+    };
+
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     if (loading) {
@@ -323,7 +333,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                             <div className="ticket-info-grid">
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.created_at')}</div>
-                                    <div className="ticket-info-value">{new Date(ticket.created_at).toLocaleString()}</div>
+                                    <div className="ticket-info-value">{formatDate(ticket.created_at)}</div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.contact')}</div>
@@ -440,23 +450,16 @@ const InquiryTicketDetailPage: React.FC = () => {
 
                 {/* RIGHT COLUMN: Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    {/* Dealer Info Card (if dealer exists) */}
-                    <div style={{ padding: '20px', paddingBottom: 0 }}>
-                        <DealerInfoCard
-                            dealerId={ticket.dealer_id}
-                            dealerName={ticket.dealer_name}
-                            dealerCode={ticket.dealer_code}
-                            contactName={ticket.dealer_contact_name}
-                            contactTitle={ticket.dealer_contact_title}
-                        />
-                    </div>
-                    
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
                         customerId={ticket.customer_id ?? undefined}
                         customerName={ticket.customer_name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
+                        dealerName={ticket.dealer_name ?? undefined}
+                        dealerCode={ticket.dealer_code ?? undefined}
+                        dealerContactName={ticket.dealer_contact_name ?? undefined}
+                        dealerContactTitle={ticket.dealer_contact_title ?? undefined}
                     />
                 </div>
             </div>

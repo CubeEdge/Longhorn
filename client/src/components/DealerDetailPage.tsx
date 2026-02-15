@@ -125,11 +125,47 @@ const DealerDetailPage: React.FC = () => {
 
     const getDealerTypeLabel = (type: string) => {
         const map: Record<string, string> = {
+            'tier1': '一级经销商',
+            'tier2': '二级经销商',
+            'tier3': '三级经销商',
+            // 兼容旧数据
             'FirstTier': '一级经销商',
             'SecondTier': '二级经销商',
             'ThirdTier': '三级经销商'
         };
         return map[type] || type;
+    };
+
+    // 维修能力等级标签映射
+    const getRepairLevelLabel = (level: string | undefined) => {
+        if (!level) return '无';
+        const map: Record<string, string> = {
+            'simple': '简单',
+            'advanced': '高级',
+            'full': '完整',
+            // 兼容旧数据
+            'intermediate': '高级',
+            'SimpleRepair': '简单',
+            'MediumRepair': '高级',
+            'FullRepair': '完整'
+        };
+        return map[level] || level;
+    };
+
+    // 维修能力等级颜色
+    const getRepairLevelColor = (level: string | undefined) => {
+        if (!level) return { bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af' };
+        const colors: Record<string, { bg: string; text: string }> = {
+            'simple': { bg: 'rgba(34, 197, 94, 0.1)', text: '#22c55e' },
+            'advanced': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
+            'full': { bg: 'rgba(255, 215, 0, 0.15)', text: '#FFD700' },
+            // 兼容旧数据
+            'intermediate': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
+            'SimpleRepair': { bg: 'rgba(34, 197, 94, 0.1)', text: '#22c55e' },
+            'MediumRepair': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
+            'FullRepair': { bg: 'rgba(255, 215, 0, 0.15)', text: '#FFD700' }
+        };
+        return colors[level] || { bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af' };
     };
 
     // 删除经销商处理 - 点击显示确认弹窗
@@ -257,9 +293,42 @@ const DealerDetailPage: React.FC = () => {
                     <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>
                         {dealer.name}
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                        {getDealerTypeLabel(dealer.dealer_type)} · {dealer.code}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        {/* 经销商等级标签 */}
+                        <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '100px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            background: dealer.dealer_type === 'tier1' || dealer.dealer_type === 'FirstTier' 
+                                ? 'rgba(255, 215, 0, 0.15)' 
+                                : dealer.dealer_type === 'tier2' || dealer.dealer_type === 'SecondTier'
+                                    ? 'rgba(59, 130, 246, 0.15)'
+                                    : 'rgba(156, 163, 175, 0.15)',
+                            color: dealer.dealer_type === 'tier1' || dealer.dealer_type === 'FirstTier' 
+                                ? '#FFD700' 
+                                : dealer.dealer_type === 'tier2' || dealer.dealer_type === 'SecondTier'
+                                    ? '#60a5fa'
+                                    : '#9ca3af'
+                        }}>
+                            {getDealerTypeLabel(dealer.dealer_type)}
+                        </span>
+                        {/* 维修能力标签 */}
+                        <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '100px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            background: getRepairLevelColor(dealer.repair_level).bg,
+                            color: getRepairLevelColor(dealer.repair_level).text
+                        }}>
+                            🔧 {getRepairLevelLabel(dealer.repair_level)}
+                        </span>
+                        {/* 经销商代码 */}
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+                            {dealer.code}
+                        </span>
+                    </div>
                 </div>
 
                 <div style={{ flex: 1 }} />

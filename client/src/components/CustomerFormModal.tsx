@@ -268,28 +268,44 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                     <>
                                         <div>
                                             <label className="hint">经销商等级</label>
+                                            {/* 
+                                            经销商等级定义 (PRD 1.3.2)：
+                                            - tier1 (一级经销商): 有配件库存 + 强维修能力
+                                              代表: ProAV, Gafpa, 1SV, EU Office
+                                            - tier2 (二级经销商): 无配件库存 + 有维修能力
+                                              代表: DP Gadget
+                                            - tier3 (三级经销商): 无配件库存 + 无维修能力
+                                              代表: RMK
+                                            */}
                                             <select 
                                                 className="form-control" 
                                                 value={formData.dealer_level || ''} 
                                                 onChange={e => setFormData({ ...formData, dealer_level: e.target.value })}
                                             >
                                                 <option value="">请选择</option>
-                                                <option value="FirstTier">一级经销商</option>
-                                                <option value="SecondTier">二级经销商</option>
-                                                <option value="ThirdTier">三级经销商</option>
+                                                <option value="tier1">一级经销商</option>
+                                                <option value="tier2">二级经销商</option>
+                                                <option value="tier3">三级经销商</option>
                                             </select>
                                         </div>
                                         <div>
                                             <label className="hint">维修能力</label>
+                                            {/*
+                                            维修能力等级（PRD 1.3.2）：
+                                            - 无: 无维修能力
+                                            - 简单: 基础维修，可处理简单问题
+                                            - 高级: 高级维修能力
+                                            - 完整: 完整维修能力，可处理所有问题
+                                            */}
                                             <select 
                                                 className="form-control" 
                                                 value={formData.repair_level || ''} 
                                                 onChange={e => setFormData({ ...formData, repair_level: e.target.value, can_repair: !!e.target.value })}
                                             >
                                                 <option value="">无维修能力</option>
-                                                <option value="SimpleRepair">简单维修</option>
-                                                <option value="MediumRepair">中等维修</option>
-                                                <option value="FullRepair">完整维修</option>
+                                                <option value="simple">简单</option>
+                                                <option value="advanced">高级</option>
+                                                <option value="full">完整</option>
                                             </select>
                                         </div>
                                     </>

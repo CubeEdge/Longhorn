@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { Search, Plus, Edit2, Package, ChevronUp, ChevronDown, Trash2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle } from 'lucide-react';
 
 // Types
 interface Product {
@@ -10,7 +10,6 @@ interface Product {
     model_name: string;
     internal_name: string;
     product_family: 'A' | 'B' | 'C' | 'D';
-    product_line: string;
     firmware_version: string;
     description: string;
     is_active: boolean;
@@ -23,26 +22,30 @@ interface Product {
 }
 
 const PRODUCT_FAMILY_MAP = {
-    'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-100 text-blue-800' },
-    'B': { code: 'B', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-100 text-gray-800' },
-    'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-100 text-green-800' },
-    'D': { code: 'D', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-100 text-purple-800' }
+    'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+    'B': { code: 'B', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
+    'D': { code: 'D', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
 };
+
+type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
 
 const ProductManagement: React.FC = () => {
     const { token, user } = useAuthStore();
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // State from URL
-    const productFamily = searchParams.get('family') || 'all';
+    const productFamily = (searchParams.get('family') || 'ALL') as ProductFamily;
     const searchQuery = searchParams.get('q') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const sortBy = searchParams.get('sort_by') || 'model_name';
     const sortOrder = (searchParams.get('sort_order') || 'asc') as 'asc' | 'desc';
+    const statusFilter = searchParams.get('status') || 'active';
 
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
-    const [total, setTotal] = useState(0);
+    const [, setTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
     // Modal State
@@ -52,12 +55,19 @@ const ProductManagement: React.FC = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
+    // More dropdown state
+    const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+    const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Search expand state
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
     // Form State
     const [formData, setFormData] = useState<Partial<Product>>({
         model_name: '',
         internal_name: '',
         product_family: 'A',
-        product_line: '',
         firmware_version: '',
         description: '',
         is_active: true
@@ -68,7 +78,7 @@ const ProductManagement: React.FC = () => {
         setSearchParams({ ...current, ...newParams });
     };
 
-    const setProductFamily = (family: string) => {
+    const setProductFamily = (family: ProductFamily) => {
         updateParams({ family, page: '1' });
     };
 
@@ -85,16 +95,24 @@ const ProductManagement: React.FC = () => {
         updateParams({ sort_by: field, sort_order: newOrder, page: '1' });
     };
 
+    const setStatusFilter = (status: string) => {
+        updateParams({ status, page: '1' });
+        setIsMoreDropdownOpen(false);
+    };
+
     const fetchProducts = async () => {
         setLoading(true);
         setError(null);
         try {
             const res = await axios.get(`/api/v1/admin/products`, {
                 params: {
-                    product_family: productFamily === 'all' ? undefined : productFamily,
+                    product_family: productFamily === 'ALL' ? undefined : productFamily,
                     keyword: searchQuery,
                     page,
-                    page_size: 20
+                    page_size: 20,
+                    sort_by: sortBy,
+                    sort_order: sortOrder,
+                    status: statusFilter
                 },
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -112,7 +130,18 @@ const ProductManagement: React.FC = () => {
 
     useEffect(() => {
         if (token) fetchProducts();
-    }, [token, productFamily, page, searchQuery]);
+    }, [token, productFamily, page, searchQuery, sortBy, sortOrder, statusFilter]);
+
+    // Click outside to close dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
+                setIsMoreDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleOpenModal = (product?: Product) => {
         if (product) {
@@ -121,7 +150,6 @@ const ProductManagement: React.FC = () => {
                 model_name: product.model_name,
                 internal_name: product.internal_name,
                 product_family: product.product_family,
-                product_line: product.product_line,
                 firmware_version: product.firmware_version,
                 description: product.description,
                 is_active: product.is_active
@@ -132,7 +160,6 @@ const ProductManagement: React.FC = () => {
                 model_name: '',
                 internal_name: '',
                 product_family: 'A',
-                product_line: '',
                 firmware_version: '',
                 description: '',
                 is_active: true
@@ -169,9 +196,9 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    const handleDelete = async (product: Product) => {
-        setDeleteConfirm(product);
-    };
+    // const handleDelete = async (product: Product) => {
+    //     setDeleteConfirm(product);
+    // };
 
     const confirmDelete = async () => {
         if (!deleteConfirm) return;
@@ -190,266 +217,379 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    const totalPages = Math.ceil(total / 20);
-
     // Check if user has admin access
     const canManage = user?.role === 'Admin' || user?.role === 'Lead';
 
+    // Family tabs configuration
+    const familyTabs: { key: ProductFamily; label: string }[] = [
+        { key: 'ALL', label: '全部' },
+        { key: 'A', label: '在售电影机' },
+        { key: 'B', label: '历史机型' },
+        { key: 'C', label: '电子寻像器' },
+        { key: 'D', label: '通用配件' }
+    ];
+
     return (
-        <div className="h-full flex flex-col bg-[#f5f5f7]">
-            {/* Header */}
-            <div className="px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-gray-200/50">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Package className="w-6 h-6 text-gray-700" />
-                        <h1 className="text-xl font-semibold text-gray-900">产品管理</h1>
-                        <span className="text-sm text-gray-500">({total} 个产品)</span>
+        <div className="fade-in" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Header - macOS26 Style */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                    <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Package size={28} color="#FFD700" />
+                        产品管理
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Manage Products & Device Models</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Search Icon / Expandable Input */}
+                    <div style={{ 
+                        position: 'relative', 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        justifyContent: isSearchExpanded ? 'flex-start' : 'center',
+                        width: isSearchExpanded ? 280 : 40,
+                        height: 40,
+                        background: isSearchExpanded ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        border: isSearchExpanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        borderRadius: 8,
+                        transition: 'all 0.3s ease',
+                        overflow: 'hidden'
+                    }}>
+                        <button
+                            onClick={() => {
+                                setIsSearchExpanded(!isSearchExpanded);
+                                if (!isSearchExpanded) {
+                                    setTimeout(() => searchInputRef.current?.focus(), 100);
+                                }
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                padding: 8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                            }}
+                        >
+                            <Search size={20} />
+                        </button>
+                        {isSearchExpanded && (
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="搜索型号..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                onBlur={() => {
+                                    if (!searchQuery) setIsSearchExpanded(false);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    fontSize: '0.95rem',
+                                    outline: 'none',
+                                    padding: '0 8px'
+                                }}
+                            />
+                        )}
                     </div>
                     {canManage && (
-                        <button
-                            onClick={() => handleOpenModal()}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                        >
-                            <Plus className="w-4 h-4" />
-                            添加产品
+                        <button className="btn-kine-lowkey" onClick={() => handleOpenModal()}>
+                            <Plus size={18} /> 添加产品
                         </button>
                     )}
+                    {/* More Dropdown */}
+                    <div ref={moreDropdownRef} style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: 8,
+                                padding: '0 16px',
+                                height: '40px',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8
+                            }}
+                        >
+                            <MoreHorizontal size={18} />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>更多</span>
+                        </button>
+                        {isMoreDropdownOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: 4,
+                                background: 'rgba(30, 30, 35, 0.98)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: 8,
+                                padding: '4px 0',
+                                minWidth: 140,
+                                zIndex: 100,
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                            }}>
+                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    查看列表
+                                </div>
+                                <button
+                                    onClick={() => setStatusFilter('active')}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: statusFilter === 'active' ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                                        border: 'none',
+                                        color: statusFilter === 'active' ? '#22c55e' : 'white',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    启用中
+                                </button>
+                                <button
+                                    onClick={() => setStatusFilter('inactive')}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
+                                        border: 'none',
+                                        color: statusFilter === 'inactive' ? '#9ca3af' : 'white',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    已停用
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Family Filter Tabs */}
-            <div className="px-6 py-3 bg-white/60 border-b border-gray-200/50">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setProductFamily('all')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            productFamily === 'all'
-                                ? 'bg-gray-900 text-white'
-                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                        }`}
-                    >
-                        全部
-                    </button>
-                    {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
+            <div style={{ marginBottom: 20 }}>
+                <div className="tabs" style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 10, height: '48px', alignItems: 'center', width: 'fit-content' }}>
+                    {familyTabs.map((tab) => (
                         <button
-                            key={code}
-                            onClick={() => setProductFamily(code)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                productFamily === code
-                                    ? 'bg-gray-900 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                            }`}
+                            key={tab.key}
+                            className={`tab-btn ${productFamily === tab.key ? 'active' : ''}`}
+                            onClick={() => setProductFamily(tab.key)}
+                            style={{
+                                padding: '0 24px',
+                                height: '40px',
+                                background: productFamily === tab.key ? 'rgba(255, 215, 0, 0.2)' : 'transparent',
+                                color: productFamily === tab.key ? '#FFD700' : 'var(--text-secondary)',
+                                borderRadius: 8,
+                                fontWeight: productFamily === tab.key ? 600 : 400,
+                                fontSize: '1rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
                         >
-                            {info.label}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="px-6 py-3 bg-white/40 border-b border-gray-200/50">
-                <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="搜索型号..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                </div>
-            </div>
-
             {/* Error Message */}
             {error && (
-                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+                <div className="mx-6 mt-4 p-4 bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg flex items-center gap-2 text-[#EF4444]">
                     <AlertCircle className="w-5 h-5" />
                     {error}
                 </div>
             )}
 
-            {/* Product Table */}
-            <div className="flex-1 overflow-auto px-6 py-4">
-                {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                ) : products.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                        <Package className="w-12 h-12 mb-4 opacity-30" />
-                        <p>暂无产品数据</p>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-50/80 border-b border-gray-200">
-                                <tr>
-                                    <th
-                                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                        onClick={() => handleSort('model_name')}
-                                    >
-                                        <div className="flex items-center gap-1">
-                                            型号
-                                            {sortBy === 'model_name' && (
-                                                sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        族群
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        产品线
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        固件版本
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        关联工单
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        状态
-                                    </th>
-                                    {canManage && (
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            操作
-                                        </th>
+            {/* Product List - macOS26 Card Style */}
+            <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid var(--glass-border)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
+                            <th 
+                                style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
+                                onClick={() => handleSort('model_name')}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    型号
+                                    {sortBy === 'model_name' && (
+                                        sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                     )}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {products.map((product) => (
-                                    <tr key={product.id} className="hover:bg-gray-50/50">
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium text-gray-900">{product.model_name}</div>
-                                            {product.internal_name !== product.model_name && (
-                                                <div className="text-xs text-gray-500">{product.internal_name}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-100 text-gray-800'
-                                            }`}>
-                                                {PRODUCT_FAMILY_MAP[product.product_family]?.label || product.product_family}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
-                                            {product.product_line || '-'}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
-                                            {product.firmware_version || '-'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="text-sm font-medium text-gray-900">
-                                                {product.ticket_count || 0}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                product.is_active
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-gray-100 text-gray-600'
-                                            }`}>
-                                                {product.is_active ? '启用' : '停用'}
-                                            </span>
-                                        </td>
-                                        {canManage && (
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenModal(product)}
-                                                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        title="编辑"
-                                                    >
-                                                        <Edit2 className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(product)}
-                                                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="删除"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                </div>
+                            </th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>固件版本</th>
+                            <th 
+                                style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
+                                onClick={() => handleSort('ticket_count')}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    关联工单
+                                    {sortBy === 'ticket_count' && (
+                                        sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    )}
+                                </div>
+                            </th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
+                        ) : products.length === 0 ? (
+                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                    <Package size={48} opacity={0.3} />
+                                    <span>暂无产品数据</span>
+                                </div>
+                            </td></tr>
+                        ) : (
+                            products.map((product) => (
+                                <tr 
+                                    key={product.id} 
+                                    className="row-hover" 
+                                    style={{ 
+                                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => navigate(`/service/products/${product.id}`)}
+                                >
+                                    <td style={{ padding: 16 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{product.model_name}</div>
+                                        {product.internal_name && product.internal_name !== product.model_name && (
+                                            <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{product.internal_name}</div>
                                         )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                                        }`}>
+                                            {PRODUCT_FAMILY_MAP[product.product_family]?.label || product.product_family}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{product.firmware_version || '-'}</span>
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.ticket_count || 0}</span>
+                                    </td>
+                                    <td style={{ padding: 16, textAlign: 'center' }}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenModal(product);
+                                            }}
+                                            title="编辑"
+                                            style={{ 
+                                                background: 'transparent',
+                                                border: 'none',
+                                                padding: '8px',
+                                                color: '#FFD700',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s',
+                                                borderRadius: '6px',
+                                                margin: '0 auto'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
-                        <div className="text-sm text-gray-500">
-                            第 {page} 页，共 {totalPages} 页
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setPage(page - 1)}
-                                disabled={page <= 1}
-                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                上一页
-                            </button>
-                            <button
-                                onClick={() => setPage(page + 1)}
-                                disabled={page >= totalPages}
-                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                下一页
-                            </button>
-                        </div>
-                    </div>
-                )}
+            {/* Pagination */}
+            <div className="pagination" style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20, paddingBottom: 20 }}>
+                <button
+                    disabled={page === 1}
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    className="btn-secondary"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                    上一页
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', opacity: 0.8 }}>
+                    第 {page} 页
+                </span>
+                <button
+                    onClick={() => setPage(page + 1)}
+                    className="btn-secondary"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
+                >
+                    下一页
+                </button>
             </div>
 
             {/* Add/Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-lg font-semibold text-gray-900">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-[#1C1C1E] rounded-2xl border border-white/10 shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-white/10">
+                            <h2 className="text-lg font-semibold text-white">
                                 {editingProduct ? '编辑产品' : '添加产品'}
                             </h2>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    型号名称 <span className="text-red-500">*</span>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    型号名称 <span className="text-[#EF4444]">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.model_name}
                                     onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
                                     placeholder="例如: MAVO Edge 8K"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
                                     内部名称
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.internal_name || ''}
                                     onChange={(e) => setFormData({ ...formData, internal_name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
                                     placeholder="例如: MAVO Edge 8K (内部代号)"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    产品族群 <span className="text-red-500">*</span>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    产品族群 <span className="text-[#EF4444]">*</span>
                                 </label>
                                 <select
                                     required
                                     value={formData.product_family}
                                     onChange={(e) => setFormData({ ...formData, product_family: e.target.value as 'A' | 'B' | 'C' | 'D' })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
                                 >
                                     {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
                                         <option key={code} value={code}>
@@ -459,38 +599,26 @@ const ProductManagement: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    产品线
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.product_line || ''}
-                                    onChange={(e) => setFormData({ ...formData, product_line: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                    placeholder="例如: Camera, EVF, Accessory"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
                                     固件版本
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.firmware_version || ''}
                                     onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
                                     placeholder="例如: 8.0.123"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
                                     描述
                                 </label>
                                 <textarea
                                     value={formData.description || ''}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     rows={3}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700] resize-none"
                                     placeholder="产品描述..."
                                 />
                             </div>
@@ -500,24 +628,24 @@ const ProductManagement: React.FC = () => {
                                     id="is_active"
                                     checked={formData.is_active}
                                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    className="w-4 h-4 text-[#FFD700] border-white/20 rounded bg-[#000] focus:ring-[#FFD700]"
                                 />
-                                <label htmlFor="is_active" className="text-sm text-gray-700">
+                                <label htmlFor="is_active" className="text-sm text-gray-300">
                                     启用
                                 </label>
                             </div>
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
                                 >
                                     取消
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                                    className="px-4 py-2 text-sm font-semibold text-black bg-[#FFD700] hover:bg-[#E6BD00] rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     {saving ? '保存中...' : '保存'}
                                 </button>
@@ -529,18 +657,18 @@ const ProductManagement: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-[#1C1C1E] rounded-2xl border border-white/10 shadow-xl w-full max-w-md mx-4 p-6">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-red-100 rounded-full">
-                                <AlertCircle className="w-6 h-6 text-red-600" />
+                            <div className="p-2 bg-[#EF4444]/20 rounded-full">
+                                <AlertCircle className="w-6 h-6 text-[#EF4444]" />
                             </div>
-                            <h2 className="text-lg font-semibold text-gray-900">确认删除</h2>
+                            <h2 className="text-lg font-semibold text-white">确认删除</h2>
                         </div>
-                        <p className="text-gray-600 mb-6">
-                            确定要删除产品 <span className="font-medium text-gray-900">{deleteConfirm.model_name}</span> 吗？
+                        <p className="text-gray-400 mb-6">
+                            确定要删除产品 <span className="font-medium text-white">{deleteConfirm.model_name}</span> 吗？
                             {deleteConfirm.ticket_count > 0 && (
-                                <span className="block mt-2 text-red-600">
+                                <span className="block mt-2 text-[#EF4444]">
                                     注意：此产品有 {deleteConfirm.ticket_count} 个关联工单，无法删除。
                                 </span>
                             )}
@@ -548,14 +676,14 @@ const ProductManagement: React.FC = () => {
                         <div className="flex items-center justify-end gap-3">
                             <button
                                 onClick={() => setDeleteConfirm(null)}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
                             >
                                 取消
                             </button>
                             <button
                                 onClick={confirmDelete}
                                 disabled={deleteLoading || deleteConfirm.ticket_count > 0}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium text-white bg-[#EF4444] hover:bg-[#DC2626] rounded-lg transition-colors disabled:opacity-50"
                             >
                                 {deleteLoading ? '删除中...' : '删除'}
                             </button>

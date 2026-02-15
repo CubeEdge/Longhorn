@@ -282,9 +282,10 @@ module.exports = function(db, authenticate) {
 
             // Get issue and customer info
             const issue = db.prepare(`
-                SELECT i.*, c.customer_name, c.email as customer_email
+                SELECT i.*, acc.name as customer_name, ct.email as customer_email
                 FROM issues i
-                LEFT JOIN customers c ON i.customer_id = c.id
+                LEFT JOIN accounts acc ON i.account_id = acc.id
+                LEFT JOIN contacts ct ON i.contact_id = ct.id
                 WHERE i.id = ?
             `).get(issue_id);
 

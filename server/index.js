@@ -160,31 +160,16 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_products_serial ON products(serial_number);
     CREATE INDEX IF NOT EXISTS idx_products_batch ON products(production_batch);
 
-    -- Customer Records
-    CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_type TEXT NOT NULL CHECK(customer_type IN ('EndUser', 'Dealer', 'Distributor', 'Internal')),
-        customer_name TEXT NOT NULL,
-        contact_person TEXT,
-        phone TEXT,
-        email TEXT,
-        country TEXT,
-        province TEXT,
-        city TEXT,
-        company_name TEXT,
-        notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS idx_customers_type ON customers(customer_type);
-    CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(country, province, city);
+    -- [DEPRECATED] Customer Records - 已迁移到 accounts 表
+    -- customers 表已废弃，所有客户数据现通过 accounts + contacts 表管理
 
-    -- Issue Tickets
+    -- Issue Tickets (旧版issues表，仅用于兼容性)
     CREATE TABLE IF NOT EXISTS issues (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_number TEXT UNIQUE NOT NULL,
         product_id INTEGER,
-        customer_id INTEGER,
+        account_id INTEGER,
+        contact_id INTEGER,
         issue_category TEXT NOT NULL CHECK(issue_category IN ('Hardware', 'Software', 'Consultation', 'Return', 'Complaint')),
         issue_source TEXT NOT NULL CHECK(issue_source IN ('OnlineFeedback', 'OfflineReturn', 'DealerFeedback', 'InternalTest')),
         title TEXT NOT NULL,
@@ -201,7 +186,8 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(product_id) REFERENCES products(id),
-        FOREIGN KEY(customer_id) REFERENCES customers(id),
+        FOREIGN KEY(account_id) REFERENCES accounts(id),
+        FOREIGN KEY(contact_id) REFERENCES contacts(id),
         FOREIGN KEY(assigned_to) REFERENCES users(id),
         FOREIGN KEY(created_by) REFERENCES users(id),
         FOREIGN KEY(closed_by) REFERENCES users(id)
@@ -210,7 +196,7 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(issue_category);
     CREATE INDEX IF NOT EXISTS idx_issues_assigned ON issues(assigned_to);
     CREATE INDEX IF NOT EXISTS idx_issues_product ON issues(product_id);
-    CREATE INDEX IF NOT EXISTS idx_issues_customer ON issues(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_account ON issues(account_id);
     CREATE INDEX IF NOT EXISTS idx_issues_created ON issues(created_at);
 
     -- Issue Comments / Activity Log
@@ -295,11 +281,12 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_enable
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_frequency INTEGER DEFAULT 4320").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_retention_days INTEGER DEFAULT 30").run(); } catch (e) { }
 
-// Migration: customers table extra columns
-try { db.prepare("ALTER TABLE customers ADD COLUMN account_type TEXT DEFAULT 'EndUser'").run(); } catch (e) { }
-try { db.prepare("ALTER TABLE customers ADD COLUMN service_tier TEXT DEFAULT 'STANDARD'").run(); } catch (e) { }
-try { db.prepare("ALTER TABLE customers ADD COLUMN industry_tags TEXT").run(); } catch (e) { }
-try { db.prepare("ALTER TABLE customers ADD COLUMN parent_dealer_id INTEGER").run(); } catch (e) { }
+// [DEPRECATED] Migration: customers table extra columns
+// customers 表已废弃，以下迁移代码保留仅作为历史参考
+// try { db.prepare("ALTER TABLE customers ADD COLUMN account_type TEXT DEFAULT 'EndUser'").run(); } catch (e) { }
+// try { db.prepare("ALTER TABLE customers ADD COLUMN service_tier TEXT DEFAULT 'STANDARD'").run(); } catch (e) { }
+// try { db.prepare("ALTER TABLE customers ADD COLUMN industry_tags TEXT").run(); } catch (e) { }
+// try { db.prepare("ALTER TABLE customers ADD COLUMN parent_dealer_id INTEGER").run(); } catch (e) { }
 
 // [DEPRECATED] Migration: dealers table
 // 经销商数据已迁移到 accounts 表 (account_type='DEALER')
@@ -4079,7 +4066,7 @@ app.get('/api/issues', authenticate, (req, res) => {
         // Count total
         const countSql = `
             SELECT COUNT(*) as total FROM issues i
-            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN accounts acc ON i.account_id = acc.id
             ${whereClause}
         `;
         const total = db.prepare(countSql).get(...params).total;
@@ -4090,13 +4077,13 @@ app.get('/api/issues', authenticate, (req, res) => {
                 i.*,
                 p.model_name as product_model,
                 p.serial_number as product_serial,
-                c.customer_name,
-                c.customer_type,
+                acc.name as customer_name,
+                acc.account_type as customer_type,
                 creator.username as created_by_name,
                 assignee.username as assigned_to_name
             FROM issues i
             LEFT JOIN products p ON i.product_id = p.id
-            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN accounts acc ON i.account_id = acc.id
             LEFT JOIN users creator ON i.created_by = creator.id
             LEFT JOIN users assignee ON i.assigned_to = assignee.id
             ${whereClause}
@@ -4122,7 +4109,7 @@ app.get('/api/issues', authenticate, (req, res) => {
 // Create Issue
 app.post('/api/issues', authenticate, (req, res) => {
     try {
-        const { product_id, customer_id, issue_category, issue_source, title, description, severity } = req.body;
+        const { product_id, account_id, issue_category, issue_source, title, description, severity } = req.body;
 
         if (!issue_category || !issue_source || !title || !description) {
             return res.status(400).json({ error: 'Missing required fields: issue_category, issue_source, title, description' });
@@ -4131,12 +4118,12 @@ app.post('/api/issues', authenticate, (req, res) => {
         const issue_number = generateIssueNumber();
 
         const result = db.prepare(`
-            INSERT INTO issues (issue_number, product_id, customer_id, issue_category, issue_source, title, description, severity, created_by)
+            INSERT INTO issues (issue_number, product_id, account_id, issue_category, issue_source, title, description, severity, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             issue_number,
             product_id || null,
-            customer_id || null,
+            account_id || null,
             issue_category,
             issue_source,
             title,
@@ -4159,13 +4146,16 @@ app.get('/api/issues/:id', authenticate, (req, res) => {
             SELECT 
                 i.*,
                 p.product_line, p.model_name, p.serial_number, p.firmware_version, p.production_batch,
-                c.customer_type, c.customer_name, c.contact_person, c.phone, c.email, c.country, c.province, c.city, c.company_name,
+                acc.account_type as customer_type, acc.name as customer_name,
+                ct.name as contact_person, ct.phone, ct.email,
+                acc.country, acc.province, acc.city,
                 creator.username as created_by_name,
                 assignee.username as assigned_to_name,
                 closer.username as closed_by_name
             FROM issues i
             LEFT JOIN products p ON i.product_id = p.id
-            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN accounts acc ON i.account_id = acc.id
+            LEFT JOIN contacts ct ON i.contact_id = ct.id
             LEFT JOIN users creator ON i.created_by = creator.id
             LEFT JOIN users assignee ON i.assigned_to = assignee.id
             LEFT JOIN users closer ON i.closed_by = closer.id
@@ -4782,8 +4772,10 @@ app.delete('/api/v1/customers/:id', authenticate, (req, res) => {
     }
 });
 
-// --- Legacy Customers CRUD ---
-
+// --- [DEPRECATED] Legacy Customers CRUD ---
+// customers 表已废弃，以下 API 保留仅作为历史参考
+// 新的客户管理请使用 /api/v1/accounts API
+/*
 // Get Customers List
 app.get('/api/customers', authenticate, (req, res) => {
     try {
@@ -4854,7 +4846,7 @@ app.get('/api/customers/:id', authenticate, (req, res) => {
 
         const relatedIssues = db.prepare(`
             SELECT id, issue_number, title, status, severity, created_at
-            FROM issues WHERE customer_id = ?
+            FROM issues WHERE account_id = ?
             ORDER BY created_at DESC
             LIMIT 20
         `).all(req.params.id);
@@ -4863,7 +4855,7 @@ app.get('/api/customers/:id', authenticate, (req, res) => {
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as resolved
-            FROM issues WHERE customer_id = ?
+            FROM issues WHERE account_id = ?
         `).get(req.params.id);
 
         res.json({ customer, related_issues: relatedIssues, issue_statistics: stats });
@@ -4910,6 +4902,7 @@ app.put('/api/customers/:id', authenticate, (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+*/
 
 // --- Statistics API ---
 

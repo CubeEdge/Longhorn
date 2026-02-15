@@ -239,6 +239,9 @@ module.exports = function(db, authenticate) {
      * 删除联系人（硬删除 - 真正从数据库删除）
      * 注：由于 contacts 表有 UNIQUE(account_id, email) 约束，
      * 软删除会导致编辑时无法重新创建相同 email 的联系人
+     * 
+     * 删除前会将工单表中引用该联系人的记录置为 NULL，
+     * 避免外键约束错误
      */
     router.delete('/:id', authenticate, (req, res) => {
         try {
@@ -252,6 +255,11 @@ module.exports = function(db, authenticate) {
                     error: { code: 'NOT_FOUND', message: 'Contact not found' }
                 });
             }
+
+            // 先将工单表中引用该联系人的记录置为 NULL，避免外键约束错误
+            db.prepare('UPDATE inquiry_tickets SET contact_id = NULL WHERE contact_id = ?').run(contactId);
+            db.prepare('UPDATE rma_tickets SET contact_id = NULL WHERE contact_id = ?').run(contactId);
+            db.prepare('UPDATE dealer_repairs SET contact_id = NULL WHERE contact_id = ?').run(contactId);
 
             // 硬删除：真正从数据库中删除记录
             db.prepare('DELETE FROM contacts WHERE id = ?').run(contactId);

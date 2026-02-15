@@ -10,7 +10,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
-import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -443,17 +442,6 @@ const RMATicketDetailPage: React.FC = () => {
 
                 {/* RIGHT SIDEBAR: Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    {/* Dealer Info Card (if dealer exists) */}
-                    <div style={{ padding: '20px', paddingBottom: 0 }}>
-                        <DealerInfoCard
-                            dealerId={ticket.dealer_id}
-                            dealerName={ticket.dealer_name}
-                            dealerCode={ticket.dealer_code}
-                            contactName={ticket.dealer_contact_name}
-                            contactTitle={ticket.dealer_contact_title}
-                        />
-                    </div>
-                    
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
                         accountName={ticket.account?.name}
@@ -461,6 +449,10 @@ const RMATicketDetailPage: React.FC = () => {
                         customerName={ticket.customer?.name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
+                        dealerName={ticket.dealer_name ?? undefined}
+                        dealerCode={ticket.dealer_code ?? undefined}
+                        dealerContactName={ticket.dealer_contact_name ?? undefined}
+                        dealerContactTitle={ticket.dealer_contact_title ?? undefined}
                     />
                 </div>
 

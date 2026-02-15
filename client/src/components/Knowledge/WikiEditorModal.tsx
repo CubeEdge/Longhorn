@@ -7,105 +7,54 @@ import {
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
 
-// Simple markdown to HTML converter
-const markdownToHtml = (markdown: string): string => {
-    if (!markdown) return '';
+// Convert content to editable HTML (preserve existing HTML, convert markdown parts)
+const contentToHtml = (content: string): string => {
+    if (!content) return '<p>Click here to start editing...</p>';
     
-    let html = markdown
-        // Escape HTML
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        // Headers
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    // The content may already contain HTML (like <img> tags)
+    // We need to:
+    // 1. Convert markdown syntax to HTML
+    // 2. Wrap images with resize handles
+    // 3. Add proper styling
+    
+    let html = content
+        // Markdown images: ![alt](url) -> <img src="url" alt="alt">
+        // IMPORTANT: This must be before links to avoid conflict
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+        // Headers (only if line starts with #)
+        .replace(/^### (.*)$/gm, '<h3 style="font-size:18px;font-weight:600;color:#FFD700;margin:20px 0 12px;">$1</h3>')
+        .replace(/^## (.*)$/gm, '<h2 style="font-size:22px;font-weight:600;color:#fff;margin:24px 0 14px;">$1</h2>')
+        .replace(/^# (.*)$/gm, '<h1 style="font-size:28px;font-weight:700;color:#fff;margin:28px 0 16px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:12px;">$1</h1>')
         // Bold
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.*?)__/g, '<strong>$1</strong>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         // Italic
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/_(.*?)_/g, '<em>$1</em>')
-        // Code
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        // Inline code
         .replace(/`([^`]+)`/g, '<code style="background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:4px;color:#FFD700;font-size:13px;">$1</code>')
-        // Code blocks
-        .replace(/```([\s\S]*?)```/g, '<pre style="background:rgba(0,0,0,0.4);padding:16px;border-radius:10px;overflow:auto;font-size:13px;margin:16px 0;border:1px solid rgba(255,255,255,0.08);"><code>$1</code></pre>')
         // Links
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:#FFD700;text-decoration:none;border-bottom:1px solid rgba(255,215,0,0.3);">$1</a>')
-        // Images - with resize handle
-        .replace(/<img([^>]+)>/g, '<div class="wiki-image-wrapper" style="position:relative;display:inline-block;margin:16px 0;" contenteditable="false"><img$1 style="max-width:100%;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:-8px;right:-8px;width:16px;height:16px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;"></div></div>')
-        // Tables
-        .replace(/\|(.+)\|/g, (_match, content) => {
-            const cells = content.split('|').map((c: string) => c.trim());
-            return '<tr>' + cells.map((c: string) => `<td style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;">${c}</td>`).join('') + '</tr>';
-        })
         // Blockquotes
-        .replace(/^> (.*$)/gim, '<blockquote style="border-left:3px solid #FFD700;padding-left:20px;margin:16px 0;color:#999;font-style:italic;">$1</blockquote>')
-        // Horizontal rule
-        .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:32px 0;">')
-        // Line breaks
+        .replace(/^> (.*)$/gm, '<blockquote style="border-left:3px solid #FFD700;padding-left:20px;margin:16px 0;color:#999;font-style:italic;">$1</blockquote>')
+        // Line breaks - convert newlines to <br> but preserve paragraph structure
+        .replace(/\n\n/g, '</p><p style="margin-bottom:16px;line-height:1.8;">')
         .replace(/\n/g, '<br>');
     
-    return html;
-};
-
-// HTML to markdown converter
-const htmlToMarkdown = (html: string): string => {
-    if (!html) return '';
-    
-    // Create a temporary div to parse HTML
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    
-    // Process nodes recursively
-    const processNode = (node: Node): string => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            return node.textContent || '';
-        }
+    // Wrap images with resize handles (handle both <img> and self-closing <img />)
+    html = html.replace(/<img\s+([^>]*)\/?>/gi, (_match, attrs) => {
+        // Extract existing style if any
+        const styleMatch = attrs.match(/style="([^"]*)"/i);
+        const existingStyle = styleMatch ? styleMatch[1] : '';
+        const attrsWithoutStyle = attrs.replace(/style="[^"]*"/i, '').trim();
         
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node as HTMLElement;
-            const tag = el.tagName.toLowerCase();
-            const children = Array.from(el.childNodes).map(processNode).join('');
-            
-            switch (tag) {
-                case 'h1': return `# ${children}\n\n`;
-                case 'h2': return `## ${children}\n\n`;
-                case 'h3': return `### ${children}\n\n`;
-                case 'strong':
-                case 'b': return `**${children}**`;
-                case 'em':
-                case 'i': return `*${children}*`;
-                case 'code': return children.includes('\n') ? children : `\`${children}\``;
-                case 'pre': return `\`\`\`${children}\`\`\`\n\n`;
-                case 'a': return `[${children}](${el.getAttribute('href') || ''})`;
-                case 'blockquote': return `> ${children}\n\n`;
-                case 'br': return '\n';
-                case 'div':
-                    if (el.classList.contains('wiki-image-wrapper')) {
-                        const img = el.querySelector('img');
-                        if (img) {
-                            const src = img.getAttribute('src') || '';
-                            const alt = img.getAttribute('alt') || '';
-                            const width = img.style.width;
-                            const widthAttr = width ? ` style="width:${width}"` : '';
-                            return `<img src="${src}" alt="${alt}"${widthAttr}>`;
-                        }
-                    }
-                    return children;
-                case 'img':
-                    const src = el.getAttribute('src') || '';
-                    const alt = el.getAttribute('alt') || '';
-                    const width = el.style.width;
-                    const widthAttr = width ? ` style="width:${width}"` : '';
-                    return `<img src="${src}" alt="${alt}"${widthAttr}>`;
-                default: return children;
-            }
-        }
-        return '';
-    };
+        // Use width:fit-content to ensure wrapper matches image size exactly
+        return `<div class="wiki-image-wrapper" style="position:relative;display:block;width:fit-content;margin:16px 0;" contenteditable="false"><img ${attrsWithoutStyle} style="${existingStyle};max-width:800px;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;cursor:pointer;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;opacity:0.8;"></div></div>`;    });
     
-    return processNode(temp).trim();
+    // Wrap in paragraph if not already wrapped
+    if (!html.startsWith('<')) {
+        html = `<p style="margin-bottom:16px;line-height:1.8;">${html}</p>`;
+    }
+    
+    return html;
 };
 
 interface Article {
@@ -121,55 +70,41 @@ interface WikiEditorModalProps {
     isOpen: boolean;
     onClose: () => void;
     article: Article | null;
-    onSaved?: (article: Article) => void;
+    onSaved?: () => void;
 }
 
 const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, article, onSaved }) => {
     const { token } = useAuthStore();
-    const [markdownContent, setMarkdownContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isClient, setIsClient] = useState(false);
     
     const editorRef = useRef<HTMLDivElement>(null);
 
-    // Set isClient on mount
+    // Load article content into editor when modal opens or article changes
     useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    // Load article content
-    useEffect(() => {
-        if (article && article.content) {
-            const content = article.formatted_content || article.content || '';
-            setMarkdownContent(content);
-            setError(null);
-        } else if (article) {
-            setMarkdownContent(article.content || article.formatted_content || '');
+        if (isOpen && article && editorRef.current) {
+            // Get the best available content
+            const rawContent = article.formatted_content || article.content || '';
+            console.log('[WikiEditor] Loading content:', rawContent.substring(0, 200) + '...');
+            
+            if (rawContent) {
+                const html = contentToHtml(rawContent);
+                editorRef.current.innerHTML = html;
+            } else {
+                editorRef.current.innerHTML = '<p style="color:#666;">点击此处开始编辑...</p>';
+            }
         }
-    }, [article]);
+    }, [isOpen, article]);
 
-    // Sync HTML content when markdown changes or when editor is ready
-    useEffect(() => {
-        if (editorRef.current && isClient && markdownContent) {
-            const html = markdownToHtml(markdownContent);
-            editorRef.current.innerHTML = html;
-        }
-    }, [markdownContent, isClient]);
-
-    // Handle editor input - update markdown from HTML
+    // Handle editor input - just track changes (WYSIWYG)
     const handleEditorInput = useCallback(() => {
-        if (editorRef.current) {
-            const html = editorRef.current.innerHTML;
-            const md = htmlToMarkdown(html);
-            setMarkdownContent(md);
-        }
+        // Content is directly in the editor, no conversion needed
     }, []);
 
-    // Handle image resize
+    // Handle image resize - must rebind when modal opens
     useEffect(() => {
-        if (!editorRef.current) return;
+        if (!isOpen || !editorRef.current) return;
 
         const editor = editorRef.current;
         let resizingImage: HTMLImageElement | null = null;
@@ -187,6 +122,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                     if (resizingImage) {
                         startX = e.clientX;
                         startWidth = resizingImage.offsetWidth;
+                        console.log('[WikiEditor] Start resize, width:', startWidth);
                     }
                 }
             }
@@ -204,8 +140,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
 
         const handleMouseUp = () => {
             if (resizingImage) {
-                // Update markdown content with new width
-                handleEditorInput();
+                console.log('[WikiEditor] End resize, new width:', resizingImage.style.width);
                 resizingImage = null;
             }
         };
@@ -219,7 +154,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-    }, [handleEditorInput]);
+    }, [isOpen]);
 
     // Toolbar actions
     const toolbarActions = [
@@ -236,7 +171,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             action: () => {
                 const url = prompt('请输入图片URL:');
                 if (url) {
-                    const html = `<div class="wiki-image-wrapper" style="position:relative;display:inline-block;margin:16px 0;" contenteditable="false"><img src="${url}" alt="" style="max-width:100%;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:-8px;right:-8px;width:16px;height:16px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;"></div></div><br>`;
+                    const html = `<div class="wiki-image-wrapper" style="position:relative;display:block;width:fit-content;margin:16px 0;" contenteditable="false"><img src="${url}" alt="" style="max-width:800px;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;opacity:0.8;"></div></div><br>`;
                     document.execCommand('insertHTML', false, html);
                 }
             }
@@ -262,15 +197,25 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
         setIsSaving(true);
         setError(null);
         try {
-            const res = await axios.put(`/api/v1/knowledge/${article.id}`, {
-                formatted_content: markdownContent,
+            // Get current HTML content from editor and clean up for saving
+            let htmlContent = editorRef.current?.innerHTML || '';
+            // Remove resize handles before saving
+            htmlContent = htmlContent.replace(/<div class="resize-handle"[^>]*><\/div>/gi, '');
+            // Unwrap wiki-image-wrapper divs - keep img with its style
+            htmlContent = htmlContent.replace(/<div class="wiki-image-wrapper"[^>]*>\s*(<img[^>]*>)\s*<\/div>/gi, '$1');
+            
+            console.log('[WikiEditor] Saving HTML content:', htmlContent.substring(0, 200) + '...');
+            
+            const res = await axios.patch(`/api/v1/knowledge/${article.id}`, {
+                // Only save to formatted_content (draft), don't touch content (published)
+                formatted_content: htmlContent,
                 format_status: 'draft'
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (res.data.success && onSaved) {
-                onSaved(res.data.data);
+                onSaved();
             }
             onClose();
         } catch (err: any) {
@@ -295,12 +240,28 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
         setIsSaving(true);
         setError(null);
         try {
+            // First, save current editor content to formatted_content
+            let htmlContent = editorRef.current?.innerHTML || '';
+            htmlContent = htmlContent.replace(/<div class="resize-handle"[^>]*><\/div>/gi, '');
+            htmlContent = htmlContent.replace(/<div class="wiki-image-wrapper"[^>]*>\s*(<img[^>]*>)\s*<\/div>/gi, '$1');
+            
+            console.log('[WikiEditor] Saving before publish:', htmlContent.substring(0, 200) + '...');
+            
+            // Save to formatted_content first
+            await axios.patch(`/api/v1/knowledge/${article.id}`, {
+                formatted_content: htmlContent,
+                format_status: 'draft'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // Then publish
             const res = await axios.post(`/api/v1/knowledge/${article.id}/publish-format`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (res.data.success && onSaved) {
-                onSaved(res.data.data);
+                onSaved();
             }
             onClose();
         } catch (err: any) {
@@ -330,8 +291,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            if (res.data.success) {
-                setMarkdownContent(res.data.data.formatted_content || markdownContent);
+            if (res.data.success && editorRef.current) {
+                // Update editor content with AI-optimized result
+                const newContent = res.data.data.formatted_content || '';
+                editorRef.current.innerHTML = contentToHtml(newContent);
             }
         } catch (err: any) {
             console.error('AI optimize error:', err);

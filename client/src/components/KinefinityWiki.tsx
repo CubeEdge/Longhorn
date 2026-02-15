@@ -276,8 +276,8 @@ export const KinefinityWiki: React.FC = () => {
             if (lastSlug && articles.length > 0) {
                 const article = articles.find(a => a.slug === lastSlug);
                 if (article) {
-                    setSelectedArticle(article);
-                    selectedArticleRef.current = article;
+                    // Load full article detail including content
+                    loadArticleDetail(article);
                     buildBreadcrumb(article);
                 }
             }
@@ -636,10 +636,15 @@ export const KinefinityWiki: React.FC = () => {
     // Get current display content based on view mode
     const getDisplayContent = () => {
         if (!selectedArticle) return '';
-        if (viewMode === 'draft' && selectedArticle.formatted_content) {
+        // Priority: content (published) > formatted_content (draft)
+        // Page should show published content, editor shows draft
+        if (selectedArticle.content && selectedArticle.content !== '暂无内容') {
+            return selectedArticle.content;
+        }
+        if (selectedArticle.formatted_content) {
             return selectedArticle.formatted_content;
         }
-        return selectedArticle.content || '暂无内容';
+        return '暂无内容';
     };
 
     // Get current display summary based on view mode
@@ -1965,9 +1970,11 @@ export const KinefinityWiki: React.FC = () => {
                 isOpen={showEditorModal}
                 onClose={() => setShowEditorModal(false)}
                 article={selectedArticle as any}
-                onSaved={(updatedArticle: any) => {
-                    setSelectedArticle(updatedArticle);
-                    selectedArticleRef.current = updatedArticle;
+                onSaved={() => {
+                    // Reload article detail to get complete updated data
+                    if (selectedArticle) {
+                        loadArticleDetail(selectedArticle);
+                    }
                 }}
             />
         </div>

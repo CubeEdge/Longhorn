@@ -611,7 +611,7 @@ const ServiceTopBarStats: React.FC = () => {
     } else {
       // Use URL params
       return {
-        timeScope: searchParams.get('time_scope') || '7d',
+        timeScope: searchParams.get('time_scope') || '30d',
         productFamily: searchParams.get('product_family') || 'all',
         keyword: searchParams.get('keyword') || ''
       };

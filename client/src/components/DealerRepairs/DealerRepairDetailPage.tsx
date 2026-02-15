@@ -6,7 +6,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
-import DealerInfoCard from '../Service/DealerInfoCard';
 
 interface Attachment {
     id: number;
@@ -483,17 +482,6 @@ const DealerRepairDetailPage: React.FC = () => {
 
                 {/* Right Sidebar - Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                {/* Dealer Info Card */}
-                <div style={{ padding: '20px', paddingBottom: 0 }}>
-                    <DealerInfoCard
-                        dealerId={repair.dealer_id || repair.dealer?.id}
-                        dealerName={repair.dealer_name || repair.dealer?.name}
-                        dealerCode={repair.dealer_code || repair.dealer?.code}
-                        contactName={repair.dealer_contact_name}
-                        contactTitle={repair.dealer_contact_title}
-                    />
-                </div>
-                
                 <CustomerContextSidebar
                     accountId={repair.account_id}
                     accountName={repair.account?.name}
@@ -501,6 +489,10 @@ const DealerRepairDetailPage: React.FC = () => {
                     customerName={repair.customer_name}
                     serialNumber={repair.serial_number}
                     dealerId={repair.dealer_id || repair.dealer?.id}
+                    dealerName={repair.dealer_name || repair.dealer?.name}
+                    dealerCode={repair.dealer_code || repair.dealer?.code}
+                    dealerContactName={repair.dealer_contact_name}
+                    dealerContactTitle={repair.dealer_contact_title}
                 />
             </div>
         </div>
