@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3 } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, Settings, FileText, Trash2, Upload, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -54,6 +54,11 @@ interface BreadcrumbItem {
     label: string;
     nodeId?: string;
     articleSlug?: string;
+    type?: 'home' | 'product_line' | 'product_model' | 'category' | 'article';
+    productLine?: string;
+    productModel?: string;
+    category?: string;
+    viewMode?: 'list' | 'grouped';
 }
 
 interface RecentArticle {
@@ -89,7 +94,7 @@ export const KinefinityWiki: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const { token } = useAuthStore();
     const { confirm } = useConfirm();
-    const { setWikiContext, clearContext } = useBokehContext();
+    const { setWikiViewContext, clearContext } = useBokehContext();
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
     const [loading, setLoading] = useState(true);
@@ -99,7 +104,7 @@ export const KinefinityWiki: React.FC = () => {
         return saved ? new Set(JSON.parse(saved)) : new Set(['a-camera']);
     });
     const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
-    const [tocVisible, setTocVisible] = useState(false); // 目录可见性
+    const [tocVisible, setTocVisible] = useState(false);
     const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([]);
     const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
     const [recentArticles, setRecentArticles] = useState<RecentArticle[]>(() => {
@@ -108,6 +113,25 @@ export const KinefinityWiki: React.FC = () => {
     });
     const tocPanelRef = React.useRef<HTMLDivElement>(null);
     const selectedArticleRef = React.useRef<KnowledgeArticle | null>(null);
+    
+    // 分组折叠视图状态 - 从 localStorage 恢复
+    const [groupedExpandedModels, setGroupedExpandedModels] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('wiki-grouped-expanded-models');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
+    const [groupedExpandedCategories, setGroupedExpandedCategories] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('wiki-grouped-expanded-categories');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [searchResults, setSearchResults] = useState<KnowledgeArticle[]>([]);
+    const [, setIsSearching] = useState(false);
+    
+    // 搜索栏展开/收起状态
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    
+    // 当前选中的产品族类
+    const [selectedProductLine, setSelectedProductLine] = useState<string | null>(null);
 
     // AI formatting & chapter view states
     const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
@@ -118,6 +142,17 @@ export const KinefinityWiki: React.FC = () => {
     const [showFullChapter, setShowFullChapter] = useState(false);
     const [loadingFullChapter, setLoadingFullChapter] = useState(false);
     const [showEditorModal, setShowEditorModal] = useState(false);
+    
+    // 管理菜单状态
+    const [showAdminMenu, setShowAdminMenu] = useState(false);
+    const [showArticleManager, setShowArticleManager] = useState(false);
+    const [manageArticles, setManageArticles] = useState<KnowledgeArticle[]>([]);
+    const [selectedArticleIds, setSelectedArticleIds] = useState<Set<number>>(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [managerSearchQuery, setManagerSearchQuery] = useState('');
+    
+    // 手册目录弹窗状态
+    const [showManualTocModal, setShowManualTocModal] = useState(false);
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -264,6 +299,83 @@ export const KinefinityWiki: React.FC = () => {
         fetchArticles();
     }, []);
 
+    // 监听 URL 参数变化，处理面包屑导航和分组视图
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const productLine = params.get('line');
+        const productModel = params.get('model');
+        const category = params.get('category');
+        
+        // 如果有 URL 参数，构建对应的面包屑路径和筛选视图
+        if (productLine || productModel || category) {
+            const newBreadcrumb: BreadcrumbItem[] = [{ label: 'WIKI', type: 'home' }];
+            
+            if (productLine) {
+                const lineLabels: Record<string, string> = {
+                    'A': 'A 类',
+                    'B': 'B 类',
+                    'C': 'C 类',
+                    'D': 'D 类'
+                };
+                newBreadcrumb.push({
+                    label: lineLabels[productLine],
+                    type: 'product_line',
+                    productLine,
+                    viewMode: 'grouped'
+                });
+            }
+            
+            if (productModel && productLine) {
+                newBreadcrumb.push({
+                    label: productModel,
+                    type: 'product_model',
+                    productLine,
+                    productModel,
+                    viewMode: 'grouped'
+                });
+            }
+            
+            if (category && productModel && productLine) {
+                const categoryLabels: Record<string, string> = {
+                    'Manual': '操作手册',
+                    'Troubleshooting': '故障排查',
+                    'FAQ': '常见问题'
+                };
+                newBreadcrumb.push({
+                    label: categoryLabels[category] || category,
+                    type: 'category',
+                    productLine,
+                    productModel,
+                    category,
+                    viewMode: 'grouped'
+                });
+            }
+            
+            setBreadcrumbPath(newBreadcrumb);
+            
+            // 筛选文章
+            const filtered = articles.filter(a => {
+                let match = true;
+                if (productLine) match = match && a.product_line === productLine;
+                if (productModel) {
+                    const models = Array.isArray(a.product_models) ? a.product_models : [a.product_models];
+                    match = match && models.includes(productModel);
+                }
+                if (category) match = match && a.category === category;
+                return match;
+            });
+            
+            setSearchResults(filtered);
+            setShowSearchResults(true);
+            setGroupedExpandedModels(new Set());
+            setGroupedExpandedCategories(new Set());
+        } else if (!slug) {
+            // 没有 URL 参数且没有文章 slug，返回首页
+            setBreadcrumbPath([]);
+            setShowSearchResults(false);
+        }
+    }, [location.search, articles]);
+
     useEffect(() => {
         if (slug && articles.length > 0) {
             const article = articles.find(a => a.slug === slug);
@@ -287,6 +399,15 @@ export const KinefinityWiki: React.FC = () => {
     useEffect(() => {
         localStorage.setItem('wiki-expanded-nodes', JSON.stringify(Array.from(expandedNodes)));
     }, [expandedNodes]);
+
+    // 保存分组展开状态到 localStorage
+    useEffect(() => {
+        localStorage.setItem('wiki-grouped-expanded-models', JSON.stringify(Array.from(groupedExpandedModels)));
+    }, [groupedExpandedModels]);
+
+    useEffect(() => {
+        localStorage.setItem('wiki-grouped-expanded-categories', JSON.stringify(Array.from(groupedExpandedCategories)));
+    }, [groupedExpandedCategories]);
 
     // Listen for Bokeh optimization events - use ref to avoid stale closure
     useEffect(() => {
@@ -320,6 +441,34 @@ export const KinefinityWiki: React.FC = () => {
         };
     }, [token]); // Only depends on token, not selectedArticle
 
+    // 搜索防抖 - 输入后 300ms 触发 API 调用
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setShowSearchResults(false);
+            setSearchResults([]);
+            return;
+        }
+        
+        const timer = setTimeout(async () => {
+            try {
+                setIsSearching(true);
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const res = await axios.get('/api/v1/knowledge', {
+                    headers,
+                    params: { search: searchQuery.trim(), page_size: 50 }
+                });
+                setSearchResults(res.data.data || []);
+                setShowSearchResults(true);
+            } catch (err) {
+                console.error('[Wiki] Search error:', err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+        
+        return () => clearTimeout(timer);
+    }, [searchQuery, token]);
+
     const fetchArticles = async () => {
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -337,35 +486,54 @@ export const KinefinityWiki: React.FC = () => {
 
     const buildBreadcrumb = (article: KnowledgeArticle) => {
         const crumbs: BreadcrumbItem[] = [
-            { label: 'WIKI', articleSlug: undefined }
+            { label: 'WIKI', type: 'home' }
         ];
-
+    
         const lineLabels: Record<string, string> = {
-            'A': 'A类',
-            'B': 'B类',
-            'C': 'C类',
-            'D': 'D类'
+            'A': 'A 类',
+            'B': 'B 类',
+            'C': 'C 类',
+            'D': 'D 类'
         };
         if (article.product_line && lineLabels[article.product_line]) {
-            crumbs.push({ label: lineLabels[article.product_line] });
+            crumbs.push({ 
+                label: lineLabels[article.product_line],
+                type: 'product_line',
+                productLine: article.product_line
+            });
         }
-
+    
         if (article.product_models && article.product_models.length > 0) {
             const model = Array.isArray(article.product_models) ? article.product_models[0] : article.product_models;
-            crumbs.push({ label: model });
+            crumbs.push({ 
+                label: model,
+                type: 'product_model',
+                productLine: article.product_line,
+                productModel: model
+            });
         }
-
+    
         if (article.category) {
             const categoryLabels: Record<string, string> = {
                 'Manual': '操作手册',
                 'Troubleshooting': '故障排查',
                 'FAQ': '常见问题'
             };
-            crumbs.push({ label: categoryLabels[article.category] || article.category });
+            crumbs.push({ 
+                label: categoryLabels[article.category] || article.category,
+                type: 'category',
+                productLine: article.product_line,
+                productModel: Array.isArray(article.product_models) ? article.product_models[0] : article.product_models,
+                category: article.category
+            });
         }
-
-        crumbs.push({ label: article.title, articleSlug: article.slug });
-
+    
+        crumbs.push({ 
+            label: article.title, 
+            articleSlug: article.slug,
+            type: 'article'
+        });
+    
         setBreadcrumbPath(crumbs);
     };
 
@@ -388,20 +556,20 @@ export const KinefinityWiki: React.FC = () => {
                 setSelectedArticle(detailed);
                 selectedArticleRef.current = detailed;
                 // Set Bokeh context for this article
-                setWikiContext({
+                setWikiViewContext({
                     id: detailed.id,
                     title: detailed.title,
                     slug: detailed.slug,
-                    hasDraft: detailed.format_status === 'draft'
+                    summary: detailed.summary
                 });
             } else {
                 setSelectedArticle(article);
                 selectedArticleRef.current = article;
-                setWikiContext({
+                setWikiViewContext({
                     id: article.id,
                     title: article.title,
                     slug: article.slug,
-                    hasDraft: false
+                    summary: article.summary
                 });
             }
         } catch (err) {
@@ -441,6 +609,13 @@ export const KinefinityWiki: React.FC = () => {
 
     // 打开TOC时自动展开并滚动到当前文章位置
     const openTocAtCurrentArticle = () => {
+        // 如果是Manual类文章，显示手册目录弹窗
+        if (selectedArticle?.category === 'Manual') {
+            setShowManualTocModal(true);
+            return;
+        }
+        
+        // 否则显示标准目录面板
         setTocVisible(true);
 
         if (selectedArticle) {
@@ -487,20 +662,108 @@ export const KinefinityWiki: React.FC = () => {
         setSelectedArticle(null);
         selectedArticleRef.current = null;
         setBreadcrumbPath([]);
+        setShowSearchResults(false);
         clearContext(); // Clear Bokeh context
         navigate('/tech-hub/wiki');
         localStorage.removeItem('wiki-last-article');
     };
 
-    const handleBreadcrumbClick = (index: number) => {
+    // 点击产品族类卡片
+    const handleProductLineClick = (productLine: string) => {
+        const filtered = articles.filter(a => a.product_line === productLine);
+        
+        const lineLabels: Record<string, string> = {
+            'A': 'A 类',
+            'B': 'B 类',
+            'C': 'C 类',
+            'D': 'D 类'
+        };
+        
+        const newBreadcrumb: BreadcrumbItem[] = [{
+            label: 'WIKI',
+            type: 'home'
+        }, {
+            label: lineLabels[productLine],
+            type: 'product_line',
+            productLine,
+            viewMode: 'grouped'
+        }];
+        
+        setBreadcrumbPath(newBreadcrumb);
+        setSelectedProductLine(productLine); // 设置选中状态
+        setSearchResults(filtered);
+        setShowSearchResults(true);
+        // 产品族类筛选不设置为搜索模式，保持分组视图显示
+        setIsSearching(false);
+        setGroupedExpandedModels(new Set());
+        setGroupedExpandedCategories(new Set());
+        
+        // 使用 URL 参数支持浏览器前进/后退
+        navigate(`/tech-hub/wiki?line=${productLine}`);
+    };
+
+    const handleBreadcrumbClick = async (index: number) => {
         const crumb = breadcrumbPath[index];
-        if (crumb.articleSlug) {
+        
+        // 点击文章节点
+        if (crumb.type === 'article' && crumb.articleSlug) {
             const article = articles.find(a => a.slug === crumb.articleSlug);
             if (article) {
                 handleArticleClick(article);
             }
-        } else if (index === 0) {
+            return;
+        }
+        
+        // 点击 WIKI 首页
+        if (crumb.type === 'home') {
             handleHomeClick();
+            return;
+        }
+        
+        // 点击产品线、产品型号或分类节点，加载对应的分组视图
+        const filterParams: any = {};
+        if (crumb.type === 'product_line') {
+            filterParams.product_line = crumb.productLine;
+        } else if (crumb.type === 'product_model') {
+            filterParams.product_line = crumb.productLine;
+            filterParams.product_models = crumb.productModel;
+        } else if (crumb.type === 'category') {
+            filterParams.product_line = crumb.productLine;
+            filterParams.product_models = crumb.productModel;
+            filterParams.category = crumb.category;
+        }
+        
+        try {
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const res = await axios.get('/api/v1/knowledge', {
+                headers,
+                params: { ...filterParams, page_size: 1000 }
+            });
+            
+            const filteredArticles = res.data.data || [];
+            const newBreadcrumb = breadcrumbPath.slice(0, index + 1);
+            
+            setBreadcrumbPath(newBreadcrumb);
+            setSearchResults(filteredArticles);
+            setShowSearchResults(true);
+            setIsSearching(false);
+            setSelectedArticle(null);
+            selectedArticleRef.current = null;
+            
+            setGroupedExpandedModels(new Set());
+            setGroupedExpandedCategories(new Set());
+            
+            // 构建 URL 参数
+            let url = '/tech-hub/wiki';
+            const params = new URLSearchParams();
+            if (crumb.productLine) params.set('line', crumb.productLine);
+            if (crumb.productModel) params.set('model', crumb.productModel);
+            if (crumb.category) params.set('category', crumb.category);
+            if (params.toString()) url += `?${params.toString()}`;
+            
+            navigate(url);
+        } catch (err) {
+            console.error('[WIKI] Failed to load category articles:', err);
         }
     };
 
@@ -659,6 +922,10 @@ export const KinefinityWiki: React.FC = () => {
 
     // Check if user can edit (Admin/Lead/Editor)
     const canEdit = selectedArticle?.permissions?.can_edit || false;
+    
+    // Check if user has wiki admin access (Admin/Lead can access Wiki admin)
+    const { user } = useAuthStore();
+    const hasWikiAdminAccess = user?.role === 'Admin' || user?.role === 'Lead';
 
     const renderTreeNode = (node: CategoryNode, level: number = 0) => {
         const isExpanded = expandedNodes.has(node.id);
@@ -708,40 +975,48 @@ export const KinefinityWiki: React.FC = () => {
             }
         };
 
+        // Apple 风格树节点
         return (
-            <div key={node.id} style={{ marginLeft: level * 0 }}>
+            <div key={node.id}>
                 <div
                     onClick={() => isClickable && toggleNode(node.id)}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '10px 16px',
+                        padding: level === 0 ? '14px 16px' : '10px 16px',
+                        marginLeft: level * 16,
                         cursor: isClickable ? 'pointer' : 'default',
-                        borderRadius: '10px',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        background: isExpanded ? 'rgba(255,215,0,0.08)' : 'transparent',
+                        borderBottom: level === 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                        transition: 'background 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                        if (isClickable && !isExpanded) {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        if (isClickable) {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
                         }
                     }}
                     onMouseLeave={(e) => {
-                        if (!isExpanded) {
-                            e.currentTarget.style.background = 'transparent';
-                        }
+                        e.currentTarget.style.background = 'transparent';
                     }}
                 >
+                    {/* 展开/收起箭头 - Apple 风格 */}
                     {isClickable && (
-                        isExpanded ?
-                            <ChevronDown size={18} color="#FFD700" style={{ transition: 'transform 0.2s' }} /> :
-                            <ChevronRight size={18} color="#999" style={{ transition: 'transform 0.2s' }} />
+                        <ChevronRight 
+                            size={16} 
+                            color="#FFD700" 
+                            style={{ 
+                                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s ease',
+                                flexShrink: 0
+                            }} 
+                        />
                     )}
+                    {!isClickable && <div style={{ width: 16 }} />}
+                    
                     <span style={{
                         fontSize: level === 0 ? '15px' : '14px',
                         fontWeight: level === 0 ? 600 : 400,
-                        color: level === 0 ? '#fff' : '#ccc',
+                        color: level === 0 ? '#FFD700' : '#ddd',
                         flex: 1
                     }}>
                         {node.label}
@@ -774,62 +1049,96 @@ export const KinefinityWiki: React.FC = () => {
                             <Layers size={12} color="#00BFA5" />
                         </button>
                     )}
-                    
-                    {hasArticles && node.articles && (
-                        <span style={{
-                            fontSize: '11px',
-                            color: '#999',
-                            background: 'rgba(255,255,255,0.05)',
-                            padding: '2px 8px',
-                            borderRadius: '12px'
-                        }}>
-                            {node.articles.length}
-                        </span>
-                    )}
                 </div>
 
                 {isExpanded && hasChildren && (
-                    <div style={{ marginLeft: '20px', marginTop: '4px' }}>
+                    <div>
                         {node.children!.map(child => renderTreeNode(child, level + 1))}
                     </div>
                 )}
 
                 {isExpanded && hasArticles && (
-                    <div style={{ marginLeft: '26px', marginTop: '4px' }}>
-                        {node.articles!.map(article => (
-                            <div
-                                key={article.id}
-                                data-article-id={article.id}
-                                onClick={() => handleArticleClick(article)}
-                                style={{
-                                    padding: '8px 12px',
-                                    cursor: 'pointer',
-                                    borderRadius: '8px',
-                                    background: selectedArticle?.id === article.id ? 'rgba(255,215,0,0.1)' : 'transparent',
-                                    borderLeft: selectedArticle?.id === article.id ? '2px solid #FFD700' : '2px solid transparent',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    marginBottom: '2px'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (selectedArticle?.id !== article.id) {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (selectedArticle?.id !== article.id) {
-                                        e.currentTarget.style.background = 'transparent';
-                                    }
-                                }}
-                            >
-                                <div style={{
-                                    fontSize: '13px',
-                                    color: selectedArticle?.id === article.id ? '#FFD700' : '#aaa',
-                                    lineHeight: '1.5'
-                                }}>
-                                    {article.title}
-                                </div>
-                            </div>
-                        ))}
+                    <div style={{ marginLeft: (level + 1) * 16 }}>
+                        {node.articles!
+                            .sort((a, b) => {
+                                // Manual类按章节号排序
+                                if (node.category === 'Manual' || node.label === '操作手册') {
+                                    const getNum = (title: string) => {
+                                        const match = title.match(/:\s*(\d+)(?:\.(\d+))?/);
+                                        if (match) {
+                                            const chapter = parseInt(match[1]) * 100;
+                                            const section = match[2] ? parseInt(match[2]) : 0;
+                                            return chapter + section;
+                                        }
+                                        return 9999;
+                                    };
+                                    return getNum(a.title) - getNum(b.title);
+                                }
+                                return 0;
+                            })
+                            .map(article => {
+                                // 提取章节号和标题
+                                const isManual = node.category === 'Manual' || node.label === '操作手册';
+                                const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
+                                const chapterNum = chapterMatch ? chapterMatch[1] : '';
+                                const sectionNum = chapterMatch ? chapterMatch[2] : '';
+                                const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
+                                const cleanTitle = titleMatch ? titleMatch[1] : article.title;
+                                const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
+                                
+                                return (
+                                    <div
+                                        key={article.id}
+                                        data-article-id={article.id}
+                                        onClick={() => handleArticleClick(article)}
+                                        style={{
+                                            padding: '10px 16px',
+                                            cursor: 'pointer',
+                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                            background: selectedArticle?.id === article.id ? 'rgba(255,215,0,0.08)' : 'transparent',
+                                            transition: 'background 0.15s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (selectedArticle?.id !== article.id) {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (selectedArticle?.id !== article.id) {
+                                                e.currentTarget.style.background = 'transparent';
+                                            }
+                                        }}
+                                    >
+                                        {/* 章节号标签 */}
+                                        {isManual && displayNum && (
+                                            <span style={{
+                                                minWidth: '32px',
+                                                padding: '2px 6px',
+                                                background: selectedArticle?.id === article.id ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
+                                                borderRadius: '4px',
+                                                fontSize: '10px',
+                                                fontWeight: 600,
+                                                color: '#FFD700',
+                                                textAlign: 'center'
+                                            }}>
+                                                {displayNum}
+                                            </span>
+                                        )}
+                                        <div style={{
+                                            fontSize: '14px',
+                                            color: selectedArticle?.id === article.id ? '#FFD700' : '#bbb',
+                                            lineHeight: '1.5',
+                                            flex: 1
+                                        }}>
+                                            {isManual ? cleanTitle : article.title}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        }
                     </div>
                 )}
             </div>
@@ -873,46 +1182,53 @@ export const KinefinityWiki: React.FC = () => {
                 {selectedArticle ? (
                     // Article View
                     <div style={{ maxWidth: '880px', margin: '0 auto', padding: '32px 40px' }}>
-                        {/* Top Bar with Breadcrumb and TOC Toggle */}
+                        {/* Top Bar with Breadcrumb and TOC Toggle - FileBrowser 风格 */}
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '16px',
+                            gap: '12px',
                             marginBottom: '32px',
                             paddingBottom: '20px',
                             borderBottom: '1px solid rgba(255,255,255,0.06)'
                         }}>
-                            {/* Back Button - 始终显示 */}
+                            {/* Back Button - 圆形设计 */}
                             <button
                                 onClick={handleBackClick}
                                 style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: '10px',
-                                    padding: '8px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '50%',
+                                    width: '40px',
+                                    height: '40px',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    flexShrink: 0
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.background = '#FFD700';
+                                    e.currentTarget.style.borderColor = '#FFD700';
+                                    e.currentTarget.style.transform = 'scale(1.1)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
-                                <ChevronLeft size={20} color="#999" />
+                                <ChevronLeft size={22} color="#fff" strokeWidth={2.5} />
                             </button>
 
-                            {/* Breadcrumb */}
+                            {/* Breadcrumb - FileBrowser 风格：最后一项大字体 */}
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
                                 flex: 1,
-                                fontSize: '13px',
-                                color: '#666',
                                 overflowX: 'auto',
                                 whiteSpace: 'nowrap'
                             }}>
@@ -922,15 +1238,16 @@ export const KinefinityWiki: React.FC = () => {
 
                                     return (
                                         <React.Fragment key={index}>
-                                            {index > 0 && <ChevronRight size={14} color="#444" />}
+                                            {index > 0 && <ChevronRight size={16} color="#666" />}
                                             <span
                                                 onClick={() => isClickable && handleBreadcrumbClick(index)}
                                                 style={{
-                                                    color: isLast ? '#FFD700' : '#999',
+                                                    color: isLast ? '#fff' : '#888',
                                                     cursor: isClickable ? 'pointer' : 'default',
-                                                    fontWeight: isLast ? 600 : 400,
+                                                    fontWeight: isLast ? 700 : 400,
+                                                    fontSize: isLast ? '1.25rem' : '0.9rem',
                                                     transition: 'color 0.2s',
-                                                    maxWidth: '200px',
+                                                    maxWidth: isLast ? '400px' : '150px',
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis'
                                                 }}
@@ -938,7 +1255,7 @@ export const KinefinityWiki: React.FC = () => {
                                                     if (isClickable) e.currentTarget.style.color = '#FFD700';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    if (isClickable) e.currentTarget.style.color = '#999';
+                                                    if (isClickable) e.currentTarget.style.color = '#888';
                                                 }}
                                             >
                                                 {crumb.label}
@@ -1633,108 +1950,725 @@ export const KinefinityWiki: React.FC = () => {
                         )}
                     </div>
                 ) : (
-                    // Welcome View
+                    // Welcome View - 重构后的主页
                     <div style={{
-                        maxWidth: '800px',
+                        maxWidth: '1200px',
                         margin: '0 auto',
-                        padding: '80px 32px',
-                        textAlign: 'center'
+                        padding: '40px 32px'
                     }}>
-                        <BookOpen size={64} color="#FFD700" style={{ marginBottom: '24px' }} />
-                        <h1 style={{
-                            fontSize: '36px',
-                            fontWeight: 700,
-                            color: '#fff',
-                            marginBottom: '16px'
-                        }}>
-                            欢迎使用 Kinefinity WIKI
-                        </h1>
-                        <p style={{
-                            fontSize: '16px',
-                            color: '#999',
-                            marginBottom: '48px',
-                            lineHeight: '1.6'
-                        }}>
-                            这里汇集了 Kinefinity 全系列产品的技术文档、故障排查指南和常见问题解答。<br />
-                            点击右上角目录按钮开始探索。
-                            {navigationHistory.length > 0 && (
-                                <>
-                                    <br />
-                                    <span style={{ color: '#FFD700', fontSize: '14px' }}>
-                                        ← 点击左上角返回按钮可返回上一页
-                                    </span>
-                                </>
-                            )}
-                        </p>
-
+                        {/* 顶部布局：标题 + 搜索栏 + 操作按钮 */}
                         <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                            gap: '16px',
-                            marginTop: '48px',
-                            textAlign: 'left'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '32px'
                         }}>
-                            {[
-                                { title: 'A类：在售电影摄影机', desc: 'MAVO Edge系列、Mark2等现役机型的完整技术文档和使用指南' },
-                                { title: 'B类：历史机型', desc: 'MAVO LF、Terra、MAVO S35等经典机型的存档文档' },
-                                { title: 'C类：电子寻像器', desc: 'Eagle系列监视器的使用指南和兼容性信息' },
-                                { title: 'D类：通用配件', desc: 'GripBAT、Magic Arm等跨代配件的使用说明' }
-                            ].map((item, idx) => (
-                                <div key={idx} style={{
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                    borderRadius: '12px',
-                                    padding: '20px',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    cursor: 'pointer'
-                                }}
-                                    onClick={() => setTocVisible(true)}
+                            {/* 左侧：标题 */}
+                            <div>
+                                <h1 style={{
+                                    fontSize: '28px',
+                                    fontWeight: 700,
+                                    color: '#fff',
+                                    margin: '0 0 8px 0'
+                                }}>
+                                    Kinefinity WIKI
+                                </h1>
+                                <p style={{
+                                    fontSize: '14px',
+                                    color: '#666',
+                                    margin: 0
+                                }}>
+                                    Explore Technical Documentation & Knowledge Base
+                                </p>
+                            </div>
+                            
+                            {/* 右侧：搜索栏 + 目录 + 管理 */}
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                {/* 可展开搜索栏 */}
+                                <div style={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}>
+                                    {/* 可展开搜索栏 - 使用 overflow:hidden 防止闪烁 */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '10px',
+                                        padding: '0 12px',
+                                        width: isSearchExpanded ? '280px' : '40px',
+                                        height: '40px',
+                                        overflow: 'hidden',
+                                        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s',
+                                        cursor: isSearchExpanded ? 'default' : 'pointer',
+                                        borderColor: isSearchExpanded ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'
+                                    }}
+                                    onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        if (!isSearchExpanded) e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        if (!isSearchExpanded) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    }}
+                                    >
+                                        <Search size={16} color={isSearchExpanded ? '#FFD700' : '#999'} style={{ flexShrink: 0 }} />
+                                        {isSearchExpanded && (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    placeholder="搜索知识库..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    autoFocus
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '10px 12px',
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: '#fff',
+                                                        fontSize: '14px',
+                                                        outline: 'none',
+                                                        minWidth: 0
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (!searchQuery) setIsSearchExpanded(false);
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSearchQuery('');
+                                                        setIsSearchExpanded(false);
+                                                    }}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: '4px',
+                                                        display: 'flex',
+                                                        flexShrink: 0
+                                                    }}
+                                                >
+                                                    <X size={14} color="#666" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* 目录按钮 */}
+                                <button
+                                    onClick={() => setTocVisible(true)}
+                                    style={{
+                                        padding: '10px 16px',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '10px',
+                                        color: '#999',
+                                        fontSize: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                        e.currentTarget.style.color = '#fff';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                        e.currentTarget.style.color = '#999';
                                     }}
                                 >
-                                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
-                                        {item.title}
-                                    </h3>
-                                    <p style={{ fontSize: '13px', color: '#999', lineHeight: '1.6', margin: 0 }}>
-                                        {item.desc}
-                                    </p>
-                                </div>
-                            ))}
+                                    <List size={18} />
+                                    目录
+                                </button>
+                                
+                                {/* 管理按钮 - 下拉菜单 */}
+                                {hasWikiAdminAccess && (
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            onClick={() => setShowAdminMenu(!showAdminMenu)}
+                                            style={{
+                                                padding: '10px 16px',
+                                                background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                                border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '10px',
+                                                color: showAdminMenu ? '#FFD700' : '#999',
+                                                fontSize: '14px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!showAdminMenu) {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                    e.currentTarget.style.color = '#fff';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!showAdminMenu) {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.color = '#999';
+                                                }
+                                            }}
+                                        >
+                                            <Settings size={18} />
+                                        </button>
+                                        
+                                        {/* 下拉菜单 */}
+                                        {showAdminMenu && (
+                                            <>
+                                                {/* 点击外部关闭 */}
+                                                <div
+                                                    onClick={() => setShowAdminMenu(false)}
+                                                    style={{
+                                                        position: 'fixed',
+                                                        top: 0,
+                                                        left: 0,
+                                                        right: 0,
+                                                        bottom: 0,
+                                                        zIndex: 99
+                                                    }}
+                                                />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    right: 0,
+                                                    marginTop: '8px',
+                                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '12px',
+                                                    padding: '8px',
+                                                    minWidth: '180px',
+                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                                    zIndex: 100
+                                                }}>
+                                                    <div
+                                                        onClick={() => {
+                                                            setShowAdminMenu(false);
+                                                            navigate('/tech-hub/knowledge-import');
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '10px',
+                                                            padding: '10px 12px',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Upload size={16} color="#4CAF50" />
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>导入知识</span>
+                                                    </div>
+                                                    <div
+                                                        onClick={() => {
+                                                            setShowAdminMenu(false);
+                                                            setManageArticles(articles);
+                                                            setSelectedArticleIds(new Set());
+                                                            setShowArticleManager(true);
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '10px',
+                                                            padding: '10px 12px',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <FileText size={16} color="#FFD700" />
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>管理文章</span>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+
+                        {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类Tab之上） */}
+                        {showSearchResults && searchResults.length > 0 && searchQuery.trim() !== '' && (
+                            <div style={{
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '16px',
+                                padding: '20px',
+                                marginBottom: '24px'
+                            }}>
+                                {/* 统计文案 + 关闭按钮 */}
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '16px'
+                                }}>
+                                    <span style={{ fontSize: '14px', color: '#999' }}>
+                                        搜索结果：找到 <span style={{ color: '#fff', fontWeight: 600 }}>{searchResults.length}</span> 篇文章
+                                    </span>
+                                    <button
+                                        onClick={() => {
+                                            setShowSearchResults(false);
+                                            setSearchQuery('');
+                                            navigate('/tech-hub/wiki');
+                                        }}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                        }}
+                                    >
+                                        <X size={14} color="#999" />
+                                    </button>
+                                </div>
+                                
+                                {/* 文章列表 */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {searchResults.map(article => (
+                                        <div
+                                            key={article.id}
+                                            onClick={() => handleArticleClick(article)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                padding: '14px 16px',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                border: '1px solid rgba(255,255,255,0.06)',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
+                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                            }}
+                                        >
+                                            {/* 产品线标记 */}
+                                            <span style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                background: 'rgba(255,215,0,0.15)',
+                                                color: '#FFD700',
+                                                borderRadius: '6px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '12px',
+                                                fontWeight: 700
+                                            }}>
+                                                {article.product_line}
+                                            </span>
+                                            
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 600, color: '#fff', fontSize: '15px', marginBottom: '2px' }}>
+                                                    {article.title}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                                    {Array.isArray(article.product_models) ? article.product_models[0] : article.product_models} · {article.category}
+                                                </div>
+                                            </div>
+                                            
+                                            <ChevronRight size={18} color="#666" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 产品族类 Tab 栏 - 搜索时隐藏 */}
+                        {searchQuery.trim() === '' && (
+                        <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            padding: '12px 0',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            marginBottom: '32px'
+                        }}>
+                            {[
+                                { line: 'A', label: 'A类 · 在售机型' },
+                                { line: 'B', label: 'B类 · 历史机型' },
+                                { line: 'C', label: 'C类 · 寻像器' },
+                                { line: 'D', label: 'D类 · 配件' }
+                            ].map(item => {
+                                const lineArticles = articles.filter(a => a.product_line === item.line);
+                                const count = lineArticles.length;
+                                const isSelected = selectedProductLine === item.line;
+                                
+                                return (
+                                    <button
+                                        key={item.line}
+                                        onClick={() => handleProductLineClick(item.line)}
+                                        style={{
+                                            padding: '10px 18px',
+                                            background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
+                                            border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                            borderRadius: '10px',
+                                            color: isSelected ? '#FFD700' : '#888',
+                                            fontSize: '14px',
+                                            fontWeight: isSelected ? 600 : 400,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isSelected) {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                e.currentTarget.style.color = '#ccc';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isSelected) {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.color = '#888';
+                                            }
+                                        }}
+                                    >
+                                        {item.label}
+                                        {count > 0 && (
+                                            <span style={{
+                                                padding: '2px 8px',
+                                                background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                                                borderRadius: '10px',
+                                                fontSize: '12px',
+                                                color: isSelected ? '#FFD700' : '#666'
+                                            }}>
+                                                {count}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        )}
+
+                        {/* 分组折叠视图（点击产品族类后显示） */}
+                        {showSearchResults && searchResults.length > 0 && searchQuery.trim() === '' && (() => {
+                            // 统计产品型号和文章数
+                            const modelSet = new Set<string>();
+                            searchResults.forEach(a => {
+                                const models = Array.isArray(a.product_models) ? a.product_models : [a.product_models];
+                                models.forEach(m => m && modelSet.add(m));
+                            });
+                            const modelCount = modelSet.size;
+                            const articleCount = searchResults.length;
+                            
+                            // 按产品型号分组
+                            const groupedByModel = new Map<string, KnowledgeArticle[]>();
+                            searchResults.forEach(a => {
+                                const model = Array.isArray(a.product_models) ? a.product_models[0] : a.product_models;
+                                if (!model) return;
+                                if (!groupedByModel.has(model)) {
+                                    groupedByModel.set(model, []);
+                                }
+                                groupedByModel.get(model)!.push(a);
+                            });
+                            
+                            return (
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '16px',
+                                    padding: '20px',
+                                    marginBottom: '32px'
+                                }}>
+                                    {/* 统计文案 + 关闭按钮 */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '16px'
+                                    }}>
+                                        <span style={{ fontSize: '14px', color: '#999' }}>
+                                            共 <span style={{ color: '#fff', fontWeight: 600 }}>{modelCount}</span> 种产品型号，<span style={{ color: '#fff', fontWeight: 600 }}>{articleCount}</span> 篇文章
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                setShowSearchResults(false);
+                                                setSelectedProductLine(null);
+                                                setSearchQuery('');
+                                                setBreadcrumbPath([]);
+                                                navigate('/tech-hub/wiki');
+                                            }}
+                                            style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            }}
+                                        >
+                                            <X size={14} color="#999" />
+                                        </button>
+                                    </div>
+                                    
+                                    {/* 产品型号分组列表 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {Array.from(groupedByModel.entries()).map(([model, modelArticles]) => {
+                                            const isExpanded = groupedExpandedModels.has(model);
+                                            
+                                            // 获取该产品型号的产品线（从第一篇文章获取）
+                                            const productLine = modelArticles[0]?.product_line || '';
+                                            
+                                            // 按分类分组
+                                            const byCategory = new Map<string, KnowledgeArticle[]>();
+                                            modelArticles.forEach(a => {
+                                                const cat = a.category || 'Other';
+                                                if (!byCategory.has(cat)) byCategory.set(cat, []);
+                                                byCategory.get(cat)!.push(a);
+                                            });
+                                            
+                                            return (
+                                                <div key={model}>
+                                                    {/* 产品型号行 */}
+                                                    <div
+                                                        onClick={() => {
+                                                            const newSet = new Set(groupedExpandedModels);
+                                                            if (isExpanded) {
+                                                                newSet.delete(model);
+                                                            } else {
+                                                                newSet.add(model);
+                                                            }
+                                                            setGroupedExpandedModels(newSet);
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            padding: '12px 16px',
+                                                            background: isExpanded ? 'rgba(255,215,0,0.05)' : 'rgba(255,255,255,0.02)',
+                                                            border: `1px solid ${isExpanded ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                                                            borderRadius: '10px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {/* 产品线标记 */}
+                                                        <span style={{
+                                                            width: '28px',
+                                                            height: '28px',
+                                                            background: 'rgba(255,215,0,0.15)',
+                                                            color: '#FFD700',
+                                                            borderRadius: '6px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '12px',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            {productLine}
+                                                        </span>
+                                                        
+                                                        <span style={{ flex: 1, fontWeight: 600, color: '#fff', fontSize: '15px' }}>
+                                                            {model}
+                                                        </span>
+                                                        
+                                                        <span style={{
+                                                            padding: '4px 10px',
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            borderRadius: '12px',
+                                                            fontSize: '12px',
+                                                            color: '#999'
+                                                        }}>
+                                                            {modelArticles.length}篇
+                                                        </span>
+                                                        
+                                                        <ChevronDown
+                                                            size={18}
+                                                            color="#666"
+                                                            style={{
+                                                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                transition: 'transform 0.2s'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    
+                                                    {/* 展开的分类列表 */}
+                                                    {isExpanded && (
+                                                        <div style={{
+                                                            marginLeft: '40px',
+                                                            marginTop: '8px',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '6px'
+                                                        }}>
+                                                            {Array.from(byCategory.entries()).map(([category, catArticles]) => {
+                                                                const catKey = `${model}-${category}`;
+                                                                const isCatExpanded = groupedExpandedCategories.has(catKey);
+                                                                const categoryLabels: Record<string, string> = {
+                                                                    'Manual': '操作手册',
+                                                                    'Troubleshooting': '故障排查',
+                                                                    'FAQ': '常见问题'
+                                                                };
+                                                                
+                                                                return (
+                                                                    <div key={catKey}>
+                                                                        <div
+                                                                            onClick={() => {
+                                                                                const newSet = new Set(groupedExpandedCategories);
+                                                                                if (isCatExpanded) {
+                                                                                    newSet.delete(catKey);
+                                                                                } else {
+                                                                                    newSet.add(catKey);
+                                                                                }
+                                                                                setGroupedExpandedCategories(newSet);
+                                                                            }}
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '10px',
+                                                                                padding: '10px 14px',
+                                                                                background: isCatExpanded ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.02)',
+                                                                                border: `1px solid ${isCatExpanded ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                                                                borderRadius: '8px',
+                                                                                cursor: 'pointer',
+                                                                                transition: 'all 0.2s'
+                                                                            }}
+                                                                        >
+                                                                            <span style={{
+                                                                                width: '24px',
+                                                                                height: '24px',
+                                                                                background: 'rgba(76,175,80,0.15)',
+                                                                                color: '#4CAF50',
+                                                                                borderRadius: '5px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                fontSize: '11px',
+                                                                                fontWeight: 700
+                                                                            }}>
+                                                                                {catArticles.length}
+                                                                            </span>
+                                                                            
+                                                                            <span style={{ flex: 1, color: '#ccc', fontSize: '14px' }}>
+                                                                                {categoryLabels[category] || category} {catArticles.length}篇
+                                                                            </span>
+                                                                            
+                                                                            <ChevronDown
+                                                                                size={16}
+                                                                                color="#666"
+                                                                                style={{
+                                                                                    transform: isCatExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                                    transition: 'transform 0.2s'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        
+                                                                        {/* 文章列表 - 不显示章节号 */}
+                                                                        {isCatExpanded && (
+                                                                            <div style={{
+                                                                                marginLeft: '34px',
+                                                                                marginTop: '6px',
+                                                                                display: 'flex',
+                                                                                flexDirection: 'column',
+                                                                                gap: '4px'
+                                                                            }}>
+                                                                                {catArticles.map(article => (
+                                                                                    <div
+                                                                                        key={article.id}
+                                                                                        onClick={() => handleArticleClick(article)}
+                                                                                        style={{
+                                                                                            padding: '10px 12px',
+                                                                                            background: 'rgba(255,255,255,0.02)',
+                                                                                            borderRadius: '8px',
+                                                                                            cursor: 'pointer',
+                                                                                            transition: 'all 0.15s',
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            gap: '12px'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => {
+                                                                                            e.currentTarget.style.background = 'rgba(255,215,0,0.08)';
+                                                                                        }}
+                                                                                        onMouseLeave={(e) => {
+                                                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                                                        }}
+                                                                                    >
+                                                                                        <FileText size={14} color="#666" />
+                                                                                        <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
+                                                                                            {article.title}
+                                                                                        </span>
+                                                                                        <ChevronRight size={14} color="#444" />
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* 最近浏览 */}
                         {recentArticles.length > 0 && (
-                            <div style={{ marginTop: '48px' }}>
+                            <div>
                                 <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    marginBottom: '20px'
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: '#666',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '16px'
                                 }}>
-                                    <ChevronLeft size={20} color="#FFD700" />
-                                    <h3 style={{
-                                        fontSize: '18px',
-                                        fontWeight: 600,
-                                        color: '#FFD700',
-                                        margin: 0
-                                    }}>
-                                        最近浏览
-                                    </h3>
+                                    RECENTLY VIEWED
                                 </div>
                                 <div style={{
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    gap: '12px'
+                                    gap: '8px'
                                 }}>
-                                    {recentArticles.map((recent) => {
+                                    {recentArticles.slice(0, 5).map((recent) => {
                                         const article = articles.find(a => a.slug === recent.slug);
                                         if (!article) return null;
 
@@ -1743,33 +2677,31 @@ export const KinefinityWiki: React.FC = () => {
                                                 key={recent.slug}
                                                 onClick={() => handleArticleClick(article)}
                                                 style={{
-                                                    background: 'rgba(255,215,0,0.05)',
-                                                    border: '1px solid rgba(255,215,0,0.15)',
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1px solid rgba(255,255,255,0.06)',
                                                     borderRadius: '10px',
-                                                    padding: '16px 20px',
+                                                    padding: '14px 18px',
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    transition: 'all 0.2s',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     gap: '12px'
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)';
-                                                    e.currentTarget.style.transform = 'translateX(0)';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
                                                 }}
                                             >
-                                                <ChevronRight size={16} color="#FFD700" style={{ flexShrink: 0 }} />
+                                                <FileText size={16} color="#666" />
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{
                                                         fontSize: '14px',
                                                         fontWeight: 500,
-                                                        color: '#FFD700',
+                                                        color: '#fff',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
                                                         whiteSpace: 'nowrap'
@@ -1779,50 +2711,20 @@ export const KinefinityWiki: React.FC = () => {
                                                     {article.product_models && article.product_models.length > 0 && (
                                                         <div style={{
                                                             fontSize: '12px',
-                                                            color: '#999',
-                                                            marginTop: '4px'
+                                                            color: '#666',
+                                                            marginTop: '2px'
                                                         }}>
                                                             {Array.isArray(article.product_models) ? article.product_models[0] : article.product_models}
                                                         </div>
                                                     )}
                                                 </div>
+                                                <ChevronRight size={16} color="#666" />
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
                         )}
-
-                        {/* 主页也显示TOC按钮 */}
-                        <button
-                            onClick={() => setTocVisible(true)}
-                            style={{
-                                position: 'fixed',
-                                top: '80px',
-                                right: '40px',
-                                background: 'rgba(255,215,0,0.1)',
-                                border: '1px solid rgba(255,215,0,0.3)',
-                                borderRadius: '50%',
-                                width: '48px',
-                                height: '48px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 12px rgba(255,215,0,0.2)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,215,0,0.2)';
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                                e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                        >
-                            <List size={24} color="#FFD700" />
-                        </button>
                     </div>
                 )}
             </div>
@@ -1846,66 +2748,78 @@ export const KinefinityWiki: React.FC = () => {
                         }}
                     />
 
-                    {/* TOC Panel */}
+                    {/* TOC Panel - Apple 支持页面风格 */}
                     <div ref={tocPanelRef} style={{
                         position: 'fixed',
                         right: 0,
                         top: 0,
                         bottom: 0,
-                        width: '320px',
-                        background: 'rgba(0,0,0,0.95)',
-                        backdropFilter: 'blur(20px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                        borderLeft: '1px solid rgba(255,255,255,0.06)',
+                        width: '360px',
+                        background: '#0a0a0a',
+                        borderLeft: '1px solid rgba(255,255,255,0.08)',
                         zIndex: 999,
                         display: 'flex',
                         flexDirection: 'column',
                         animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
                     }}>
-                        {/* Header */}
+                        {/* Header - 左上角关闭按钮 */}
                         <div style={{
-                            padding: '20px',
-                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            padding: '16px 20px',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <BookOpen size={22} color="#FFD700" />
-                                <h2 style={{
-                                    fontSize: '18px',
-                                    fontWeight: 700,
-                                    color: '#fff',
-                                    margin: 0
-                                }}>
-                                    目录
-                                </h2>
-                            </div>
                             <button
                                 onClick={() => setTocVisible(false)}
                                 style={{
-                                    background: 'transparent',
+                                    background: 'rgba(255,255,255,0.08)',
                                     border: 'none',
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
                                     cursor: 'pointer',
-                                    padding: '4px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    transition: 'transform 0.2s'
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1.1)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                                 }}
                             >
-                                <X size={20} color="#999" />
+                                <X size={18} color="#fff" />
                             </button>
                         </div>
 
+                        {/* 产品名称标题 - Apple 风格 */}
+                        <div style={{
+                            padding: '24px 28px 16px',
+                        }}>
+                            <h2 style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: '#fff',
+                                margin: 0,
+                                marginBottom: '8px'
+                            }}>
+                                Kinefinity
+                            </h2>
+                            <p style={{
+                                fontSize: '13px',
+                                color: '#888',
+                                margin: 0
+                            }}>
+                                知识库目录
+                            </p>
+                        </div>
+
                         {/* Search */}
-                        <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ padding: '0 20px 16px' }}>
                             <div style={{ position: 'relative' }}>
                                 <Search size={16} style={{
                                     position: 'absolute',
@@ -1922,31 +2836,31 @@ export const KinefinityWiki: React.FC = () => {
                                     style={{
                                         width: '100%',
                                         padding: '10px 12px 10px 38px',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
                                         borderRadius: '10px',
                                         color: '#fff',
-                                        fontSize: '13px',
+                                        fontSize: '14px',
                                         outline: 'none',
                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                     }}
                                     onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.4)';
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                                     }}
                                     onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                     }}
                                 />
                             </div>
                         </div>
 
-                        {/* Tree Navigation */}
+                        {/* Tree Navigation - Apple 风格列表 */}
                         <div style={{
                             flex: 1,
                             overflowY: 'auto',
-                            padding: '12px 8px',
+                            padding: '0 12px 20px',
                         }}>
                             {tree.map(node => renderTreeNode(node))}
                         </div>
@@ -1963,6 +2877,10 @@ export const KinefinityWiki: React.FC = () => {
                     from { transform: translateX(100%); }
                     to { transform: translateX(0); }
                 }
+                @keyframes expandSearch {
+                    from { width: 40px; opacity: 0.5; }
+                    to { width: 280px; opacity: 1; }
+                }
             `}</style>
 
             {/* Wiki Editor Modal */}
@@ -1977,6 +2895,550 @@ export const KinefinityWiki: React.FC = () => {
                     }
                 }}
             />
+
+            {/* 文章管理弹窗 */}
+            {showArticleManager && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    animation: 'fadeIn 0.2s ease-out'
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(145deg, #2a2a2a 0%, #1e1e1e 100%)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '20px',
+                        width: '90%',
+                        maxWidth: '900px',
+                        maxHeight: '80vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                    }}>
+                        {/* 头部 */}
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <div>
+                                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#fff', margin: 0 }}>
+                                    文章管理
+                                </h2>
+                                <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
+                                    共 {manageArticles.length} 篇文章，已选 {selectedArticleIds.size} 篇
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowArticleManager(false)}
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <X size={16} color="#999" />
+                            </button>
+                        </div>
+
+                        {/* 操作栏 */}
+                        <div style={{
+                            padding: '12px 24px',
+                            borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            gap: '12px',
+                            alignItems: 'center'
+                        }}>
+                            {/* 搜索框 */}
+                            <div style={{
+                                flex: 1,
+                                position: 'relative'
+                            }}>
+                                <Search size={16} color="#666" style={{
+                                    position: 'absolute',
+                                    left: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)'
+                                }} />
+                                <input
+                                    type="text"
+                                    placeholder="搜索文章标题..."
+                                    value={managerSearchQuery}
+                                    onChange={(e) => setManagerSearchQuery(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 12px 8px 36px',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            {/* 全选复选框 */}
+                            <button
+                                onClick={() => {
+                                    if (selectedArticleIds.size === manageArticles.length) {
+                                        setSelectedArticleIds(new Set());
+                                    } else {
+                                        setSelectedArticleIds(new Set(manageArticles.map(a => a.id)));
+                                    }
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px 14px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '8px',
+                                    color: '#ccc',
+                                    fontSize: '13px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <div style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    border: `2px solid ${selectedArticleIds.size === manageArticles.length ? '#FFD700' : '#666'}`,
+                                    borderRadius: '4px',
+                                    background: selectedArticleIds.size === manageArticles.length ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {selectedArticleIds.size === manageArticles.length && <Check size={12} color="#FFD700" />}
+                                </div>
+                                全选
+                            </button>
+
+                            {/* 批量删除 */}
+                            {selectedArticleIds.size > 0 && (
+                                <button
+                                    onClick={async () => {
+                                        const confirmed = await confirm(
+                                            `确定删除选中的 ${selectedArticleIds.size} 篇文章？此操作不可撤销。`,
+                                            '批量删除文章',
+                                            '确认删除',
+                                            '取消'
+                                        );
+                                        if (!confirmed) return;
+                                        
+                                        setIsDeleting(true);
+                                        const headers = { Authorization: `Bearer ${token}` };
+                                        const idsToDelete = Array.from(selectedArticleIds);
+                                        let successCount = 0;
+                                        
+                                        for (const id of idsToDelete) {
+                                            try {
+                                                await axios.delete(`/api/v1/knowledge/${id}`, { headers });
+                                                successCount++;
+                                            } catch (err) {
+                                                console.error(`Failed to delete article ${id}:`, err);
+                                            }
+                                        }
+                                        
+                                        // 刷新列表
+                                        await fetchArticles();
+                                        setManageArticles(prev => prev.filter(a => !selectedArticleIds.has(a.id)));
+                                        setSelectedArticleIds(new Set());
+                                        setIsDeleting(false);
+                                    }}
+                                    disabled={isDeleting}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '8px 14px',
+                                        background: 'rgba(255,68,68,0.15)',
+                                        border: '1px solid rgba(255,68,68,0.3)',
+                                        borderRadius: '8px',
+                                        color: '#ff6b6b',
+                                        fontSize: '13px',
+                                        cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                        opacity: isDeleting ? 0.6 : 1
+                                    }}
+                                >
+                                    <Trash2 size={14} />
+                                    {isDeleting ? '删除中...' : `删除选中 (${selectedArticleIds.size})`}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* 文章列表 */}
+                        <div style={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            padding: '12px 24px'
+                        }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
+                                        <th style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>标题</th>
+                                        <th style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>产品线</th>
+                                        <th style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>分类</th>
+                                        <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 500 }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {manageArticles
+                                        .filter(article => {
+                                            if (managerSearchQuery.trim() === '') return true;
+                                            const query = managerSearchQuery.toLowerCase();
+                                            // 搜索标题
+                                            if (article.title.toLowerCase().includes(query)) return true;
+                                            // 搜索分类
+                                            if (article.category?.toLowerCase().includes(query)) return true;
+                                            // 搜索产品线
+                                            if (article.product_line?.toLowerCase().includes(query)) return true;
+                                            // 搜索产品型号
+                                            const models = Array.isArray(article.product_models) 
+                                                ? article.product_models.join(' ') 
+                                                : article.product_models || '';
+                                            if (models.toLowerCase().includes(query)) return true;
+                                            return false;
+                                        })
+                                        .map(article => {
+                                        const isSelected = selectedArticleIds.has(article.id);
+                                        const lineLabels: Record<string, string> = {
+                                            'A': 'A类',
+                                            'B': 'B类',
+                                            'C': 'C类',
+                                            'D': 'D类'
+                                        };
+                                        
+                                        return (
+                                            <tr
+                                                key={article.id}
+                                                style={{
+                                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                    background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
+                                                }}
+                                            >
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    <button
+                                                        onClick={() => {
+                                                            const newSet = new Set(selectedArticleIds);
+                                                            if (isSelected) {
+                                                                newSet.delete(article.id);
+                                                            } else {
+                                                                newSet.add(article.id);
+                                                            }
+                                                            setSelectedArticleIds(newSet);
+                                                        }}
+                                                        style={{
+                                                            width: '18px',
+                                                            height: '18px',
+                                                            border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
+                                                            borderRadius: '4px',
+                                                            background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        {isSelected && <Check size={12} color="#FFD700" />}
+                                                    </button>
+                                                </td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
+                                                        {article.title}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    <span style={{
+                                                        padding: '4px 8px',
+                                                        background: 'rgba(255,215,0,0.1)',
+                                                        borderRadius: '6px',
+                                                        color: '#FFD700',
+                                                        fontSize: '12px'
+                                                    }}>
+                                                        {lineLabels[article.product_line] || article.product_line}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
+                                                    {article.category}
+                                                </td>
+                                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const confirmed = await confirm(
+                                                                `确定删除「${article.title}」？`,
+                                                                '删除文章',
+                                                                '确认删除',
+                                                                '取消'
+                                                            );
+                                                            if (!confirmed) return;
+                                                            
+                                                            try {
+                                                                const headers = { Authorization: `Bearer ${token}` };
+                                                                await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
+                                                                await fetchArticles();
+                                                                setManageArticles(prev => prev.filter(a => a.id !== article.id));
+                                                            } catch (err) {
+                                                                console.error('Delete article failed:', err);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 10px',
+                                                            background: 'transparent',
+                                                            border: '1px solid rgba(255,68,68,0.3)',
+                                                            borderRadius: '6px',
+                                                            color: '#ff6b6b',
+                                                            fontSize: '12px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background = 'transparent';
+                                                        }}
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 手册目录弹窗 */}
+            {showManualTocModal && selectedArticle?.category === 'Manual' && (() => {
+                const model = Array.isArray(selectedArticle.product_models) 
+                    ? selectedArticle.product_models[0] 
+                    : selectedArticle.product_models;
+                const manualArticles = articles.filter(a => 
+                    a.product_line === selectedArticle.product_line &&
+                    a.category === 'Manual' &&
+                    (Array.isArray(a.product_models) ? a.product_models.includes(model) : a.product_models === model)
+                ).sort((a, b) => {
+                    const getNum = (title: string) => {
+                        const match = title.match(/:\s*(\d+)(?:\.(\d+))?/);
+                        if (match) {
+                            const chapter = parseInt(match[1]) * 100;
+                            const section = match[2] ? parseInt(match[2]) : 0;
+                            return chapter + section;
+                        }
+                        return 9999;
+                    };
+                    return getNum(a.title) - getNum(b.title);
+                });
+                
+                // 分类标签映射
+                const categoryLabels: Record<string, string> = {
+                    'Manual': '操作手册',
+                    'Troubleshooting': '故障排查',
+                    'FAQ': '常见问题'
+                };
+                const categoryLabel = categoryLabels[selectedArticle.category] || selectedArticle.category;
+                
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.85)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        zIndex: 1000,
+                        animation: 'fadeIn 0.2s ease-out',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '40px'
+                    }}>
+                        {/* 弹窗内容 - 宽度约2/3 */}
+                        <div style={{
+                            width: '100%',
+                            maxWidth: '900px',
+                            maxHeight: '80vh',
+                            background: '#1a1a1a',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                        }}>
+                            {/* 顶部标题栏 */}
+                            <div style={{
+                                padding: '24px 32px',
+                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <div>
+                                    <h2 style={{
+                                        fontSize: '24px',
+                                        fontWeight: 700,
+                                        color: '#fff',
+                                        margin: 0
+                                    }}>
+                                        {model} · {categoryLabel}
+                                    </h2>
+                                    <p style={{
+                                        fontSize: '14px',
+                                        color: '#888',
+                                        margin: '6px 0 0 0'
+                                    }}>
+                                        共 {manualArticles.length} 章
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowManualTocModal(false)}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.08)',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '40px',
+                                        height: '40px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                    }}
+                                >
+                                    <X size={22} color="#fff" />
+                                </button>
+                            </div>
+
+                            {/* 章节列表 */}
+                            <div style={{
+                                flex: 1,
+                                overflowY: 'auto',
+                                padding: '24px 32px'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px'
+                                }}>
+                                    {manualArticles.map((article) => {
+                                        const isCurrentArticle = article.id === selectedArticle.id;
+                                        const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
+                                        const chapterNum = chapterMatch ? chapterMatch[1] : '';
+                                        const sectionNum = chapterMatch ? chapterMatch[2] : '';
+                                        const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
+                                        const cleanTitle = titleMatch ? titleMatch[1] : article.title;
+                                        const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
+                                        
+                                        return (
+                                            <div
+                                                key={article.id}
+                                                onClick={() => {
+                                                    if (!isCurrentArticle) {
+                                                        setShowManualTocModal(false);
+                                                        handleArticleClick(article);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '14px 18px',
+                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
+                                                    border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                    borderRadius: '12px',
+                                                    cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '16px',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (!isCurrentArticle) {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)';
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (!isCurrentArticle) {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                                    }
+                                                }}
+                                            >
+                                                {/* 章节号 */}
+                                                <span style={{
+                                                    minWidth: '44px',
+                                                    padding: '6px 10px',
+                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
+                                                    borderRadius: '8px',
+                                                    fontSize: '13px',
+                                                    fontWeight: 600,
+                                                    color: '#FFD700',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    {displayNum}
+                                                </span>
+                                                
+                                                {/* 标题 */}
+                                                <span style={{
+                                                    fontSize: '15px',
+                                                    fontWeight: isCurrentArticle ? 600 : 400,
+                                                    color: isCurrentArticle ? '#FFD700' : '#ccc',
+                                                    flex: 1
+                                                }}>
+                                                    {cleanTitle}
+                                                </span>
+                                                
+                                                {/* 当前阅读标记 */}
+                                                {isCurrentArticle && (
+                                                    <span style={{
+                                                        fontSize: '12px',
+                                                        color: '#FFD700',
+                                                        padding: '4px 10px',
+                                                        background: 'rgba(255,215,0,0.1)',
+                                                        borderRadius: '10px'
+                                                    }}>
+                                                        当前
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };

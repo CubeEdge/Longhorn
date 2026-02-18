@@ -111,8 +111,8 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             let searchJoin = '';
             if (search) {
                 searchJoin = `
-                    INNER JOIN knowledge_articles_fts fts ON fts.rowid = ka.id
-                    AND fts MATCH ?
+                    INNER JOIN knowledge_articles_fts ON knowledge_articles_fts.rowid = ka.id
+                    AND knowledge_articles_fts MATCH ?
                 `;
                 params.unshift(search);
             }
@@ -390,6 +390,12 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             if (images.length > 0) {
                 sections = insertImageReferences(sections, images);
             }
+            
+            // Convert sections content to HTML format
+            sections = sections.map(section => ({
+                ...section,
+                content: convertTextToHtml(section.content)
+            }));
 
             console.log(`[Knowledge Import] Split into ${sections.length} sections`);
 
@@ -542,7 +548,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
 
             const timestamp = Date.now();
             const tempDir = `/tmp/docx_import_${timestamp}`;
-            const mdPath = path.join(tempDir, 'output.md');
+            const htmlPath = path.join(tempDir, 'output.html');
             const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             
             // 创建临时目录
@@ -551,15 +557,15 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
 
-            // 步骤1: 调用Python脚本转换DOCX→MD
-            console.log('[DOCX Import] Step 1: Converting DOCX to Markdown...');
-            const convertScript = path.join(__dirname, '../../scripts/docx_to_markdown.py');
+            // 步骤1: 调用Python脚本转换DOCX→HTML
+            console.log('[DOCX Import] Step 1: Converting DOCX to HTML...');
+            const convertScript = path.join(__dirname, '../../scripts/docx_to_html.py');
             
             let stats = { image_count: 0, table_count: 0, heading_count: 0 };
             try {
                 // 使用绝对路径python3，并设置环境变量
                 const convertOutput = execSync(
-                    `/usr/bin/python3 "${convertScript}" "${docxPath}" "${mdPath}" "${imagesDir}"`,
+                    `/usr/bin/python3 "${convertScript}" "${docxPath}" "${htmlPath}" "${imagesDir}"`,
                     { 
                         encoding: 'utf-8', 
                         maxBuffer: 10 * 1024 * 1024,
@@ -590,19 +596,19 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 throw new Error(`DOCX转换失败: ${convertErr.message}`);
             }
 
-            // 步骤2: 读取Markdown内容
-            if (!fs.existsSync(mdPath)) {
-                throw new Error('Markdown文件生成失败');
+            // 步骤2: 读取HTML内容
+            if (!fs.existsSync(htmlPath)) {
+                throw new Error('HTML文件生成失败');
             }
             
-            const mdContent = fs.readFileSync(mdPath, 'utf-8');
-            console.log(`[DOCX Import] Step 2: Markdown generated (${mdContent.length} chars)`);
+            const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+            console.log(`[DOCX Import] Step 2: HTML generated (${htmlContent.length} chars)`);
 
             // 步骤3: 按章节分割
             console.log('[DOCX Import] Step 3: Splitting into chapters...');
             const productModelsArray = product_models ? JSON.parse(product_models) : [];
             const userSelectedModel = productModelsArray.length > 0 ? productModelsArray[0] : null;
-            const chapters = splitMarkdownIntoChapters(mdContent, userSelectedModel, title_prefix);
+            const chapters = splitHtmlIntoChapters(htmlContent, userSelectedModel, title_prefix);
             console.log(`[DOCX Import] Found ${chapters.length} chapters`);
             
             // 检测文档标题与用户选择是否一致
@@ -668,12 +674,24 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         continue;
                     }
 
-                    // 生成摘要（移除Markdown图片语法）
+                    // 不在导入时生成摘要，全部放到 Bokeh 优化步骤
                     const summaryText = chapter.content
-                        .replace(/!\[.*?\]\(.*?\)/g, '') // 移除图片
-                        .replace(/\n+/g, ' ') // 合并换行
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/\s+/g, ' ')
                         .trim()
-                        .substring(0, 200);
+                        .substring(0, 300);
+                    const shortSummary = summaryText.substring(0, 100);
+
+                    // 解析章节号（支持两种格式）
+                    // 格式1：带前缀 "MAVO Edge 8K: 3. SDI监看" 或 "MAVO Edge 8K: 3.1 SDI监看"
+                    // 格式2：不带前缀 "3. SDI监看" 或 "3.1 SDI监看"
+                    let chapterMatch = chapter.title.match(/:\s*(\d+)(?:\.(\d+))?/);
+                    if (!chapterMatch) {
+                        // 尝试匹配不带前缀的格式
+                        chapterMatch = chapter.title.match(/^(\d+)(?:\.(\d+))?[.\s]+/);
+                    }
+                    const chapterNumber = chapterMatch ? parseInt(chapterMatch[1]) : null;
+                    const sectionNumber = chapterMatch && chapterMatch[2] ? parseInt(chapterMatch[2]) : null;
 
                     const result = insertStmt.run({
                         title: chapter.title,
@@ -688,6 +706,15 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         source_reference: originalFilename,
                         created_by: req.user.id
                     });
+
+                    // short_summary 从详细摘要截取（导入时不调用AI）
+                    db.prepare(`
+                        UPDATE knowledge_articles SET
+                            short_summary = ?,
+                            chapter_number = ?,
+                            section_number = ?
+                        WHERE id = ?
+                    `).run(shortSummary, chapterNumber, sectionNumber, result.lastInsertRowid);
 
                     article_ids.push(result.lastInsertRowid);
                     imported_count++;
@@ -719,7 +746,10 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     skipped_count,
                     failed_count,
                     article_ids,
-                    stats
+                    chapter_count: chapters.length,
+                    image_count: stats.image_count,
+                    table_count: stats.table_count,
+                    total_size: fileSize || 0
                 }
             };
             
@@ -840,18 +870,12 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             const downloadedImages = await downloadWebImages($, url, imagesDir);
             console.log(`[Knowledge Import URL] Downloaded ${downloadedImages.length} images`);
 
-            // Convert HTML to Markdown
-            const turndownService = new TurndownService({
-                headingStyle: 'atx',
-                codeBlockStyle: 'fenced'
-            });
-            turndownService.use(gfm); // Support tables
-
-            let markdown = turndownService.turndown(extractedContent.content);
+            // Keep HTML format (no longer converting to Markdown)
+            let htmlContent = extractedContent.content;
             
             // Replace image URLs with local paths
             downloadedImages.forEach(img => {
-                markdown = markdown.replace(img.original, img.local);
+                htmlContent = htmlContent.replace(img.original, img.local);
             });
 
             // Generate article
@@ -889,8 +913,8 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             `).run({
                 title: articleTitle,
                 slug,
-                summary: extractedContent.summary || markdown.substring(0, 200),
-                content: markdown,
+                summary: extractedContent.summary || htmlContent.replace(/<[^>]+>/g, '').substring(0, 200),
+                content: htmlContent,
                 category,
                 product_line: product_line || 'General',
                 product_models: JSON.stringify(product_models),
@@ -1073,6 +1097,353 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             res.json({ success: true });
         } catch (err) {
             console.error('[Knowledge] Feedback error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/knowledge/:id/versions
+     * Get version history for an article
+     */
+    router.get('/:id/versions', authenticate, (req, res) => {
+        try {
+            const article = db.prepare('SELECT id, title FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            const versions = db.prepare(`
+                SELECT 
+                    kav.id, kav.version, kav.title, kav.change_summary, kav.created_at,
+                    u.username as created_by_name
+                FROM knowledge_article_versions kav
+                LEFT JOIN users u ON kav.created_by = u.id
+                WHERE kav.article_id = ?
+                ORDER BY kav.version DESC
+                LIMIT 20
+            `).all(req.params.id);
+
+            res.json({
+                success: true,
+                data: {
+                    article_id: article.id,
+                    article_title: article.title,
+                    versions: versions.map(v => ({
+                        id: v.id,
+                        version: v.version,
+                        title: v.title,
+                        change_summary: v.change_summary,
+                        created_at: v.created_at,
+                        created_by: v.created_by_name
+                    }))
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Get versions error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/knowledge/:id/versions/:version
+     * Get specific version content
+     */
+    router.get('/:id/versions/:version', authenticate, (req, res) => {
+        try {
+            const version = db.prepare(`
+                SELECT kav.*, u.username as created_by_name
+                FROM knowledge_article_versions kav
+                LEFT JOIN users u ON kav.created_by = u.id
+                WHERE kav.article_id = ? AND kav.version = ?
+            `).get(req.params.id, req.params.version);
+
+            if (!version) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '版本不存在' }
+                });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    id: version.id,
+                    version: version.version,
+                    title: version.title,
+                    content: version.content,
+                    change_summary: version.change_summary,
+                    created_at: version.created_at,
+                    created_by: version.created_by_name
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Get version error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/:id/rollback/:version
+     * Rollback article to a specific version
+     */
+    router.post('/:id/rollback/:version', authenticate, async (req, res) => {
+        try {
+            // Check permission
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead' && req.user.role !== 'Editor') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权执行回滚操作' }
+                });
+            }
+
+            const article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            const targetVersion = db.prepare(`
+                SELECT * FROM knowledge_article_versions 
+                WHERE article_id = ? AND version = ?
+            `).get(req.params.id, req.params.version);
+
+            if (!targetVersion) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '目标版本不存在' }
+                });
+            }
+
+            // Create a new version with current content before rollback
+            db.prepare(`
+                INSERT INTO knowledge_article_versions (article_id, version, title, content, change_summary, created_by)
+                SELECT id, COALESCE((SELECT MAX(version) FROM knowledge_article_versions WHERE article_id = ?), 0) + 1, 
+                       title, content, '回滚前自动备份', ?
+                FROM knowledge_articles WHERE id = ?
+            `).run(req.params.id, req.user.id, req.params.id);
+
+            // Rollback to target version
+            db.prepare(`
+                UPDATE knowledge_articles 
+                SET title = ?, content = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(targetVersion.title, targetVersion.content, req.user.id, req.params.id);
+
+            // Create version record for rollback
+            db.prepare(`
+                INSERT INTO knowledge_article_versions (article_id, version, title, content, change_summary, created_by)
+                VALUES (?, (SELECT COALESCE(MAX(version), 0) + 1 FROM knowledge_article_versions WHERE article_id = ?), 
+                        ?, ?, ?, ?)
+            `).run(req.params.id, req.params.id, targetVersion.title, targetVersion.content, 
+                  `回滚到版本 #${req.params.version}`, req.user.id);
+
+            res.json({
+                success: true,
+                data: {
+                    message: `已回滚到版本 #${req.params.version}`,
+                    new_version: db.prepare('SELECT MAX(version) as v FROM knowledge_article_versions WHERE article_id = ?').get(req.params.id).v
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Rollback error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * DELETE /api/v1/knowledge/:id/versions/:version
+     * Delete a specific version (not the current/latest version)
+     */
+    router.delete('/:id/versions/:version', authenticate, (req, res) => {
+        try {
+            // Check permission
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权删除版本' }
+                });
+            }
+
+            const article = db.prepare('SELECT id FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            // Check if target version exists
+            const targetVersion = db.prepare(`
+                SELECT * FROM knowledge_article_versions 
+                WHERE article_id = ? AND version = ?
+            `).get(req.params.id, req.params.version);
+
+            if (!targetVersion) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '版本不存在' }
+                });
+            }
+
+            // Cannot delete the latest version
+            const latestVersion = db.prepare(`
+                SELECT MAX(version) as v FROM knowledge_article_versions WHERE article_id = ?
+            `).get(req.params.id);
+
+            if (latestVersion && latestVersion.v === parseInt(req.params.version)) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'CANNOT_DELETE_LATEST', message: '不能删除最新版本' }
+                });
+            }
+
+            // Delete the version
+            db.prepare(`
+                DELETE FROM knowledge_article_versions 
+                WHERE article_id = ? AND version = ?
+            `).run(req.params.id, req.params.version);
+
+            res.json({
+                success: true,
+                data: {
+                    message: `已删除版本 #${req.params.version}`
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Delete version error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * DELETE /api/v1/knowledge/:idOrSlug
+     * Delete article (Admin/Lead only)
+     */
+    router.delete('/:idOrSlug', authenticate, (req, res) => {
+        try {
+            const { idOrSlug } = req.params;
+            const user = req.user;
+                
+            // Only Admin/Lead can delete articles
+            if (user.role !== 'Admin' && user.role !== 'Lead') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权删除文章' }
+                });
+            }
+                
+            console.log('[Knowledge] Deleting article:', idOrSlug);
+                
+            // Try to find by slug first (more common in frontend)
+            let article = db.prepare('SELECT * FROM knowledge_articles WHERE slug = ?').get(idOrSlug);
+                
+            // If not found, try by id
+            if (!article) {
+                article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(parseInt(idOrSlug));
+            }
+                
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+                
+            console.log('[Knowledge] Found article to delete:', article.id, article.title);
+                
+            // Log audit before deletion
+            if (logAudit) {
+                logAudit({
+                    operation: 'delete',
+                    operation_detail: `删除文章：${article.title}`,
+                    article_id: article.id,
+                    article_title: article.title,
+                    article_slug: article.slug,
+                    category: article.category,
+                    product_line: article.product_line,
+                    product_models: article.product_models ? JSON.parse(article.product_models || '[]') : [],
+                    user_id: user.id,
+                    user_name: user.username,
+                    user_role: user.role
+                });
+            }
+                
+            // Delete related records first
+            db.prepare('DELETE FROM knowledge_article_versions WHERE article_id = ?').run(article.id);
+            db.prepare('DELETE FROM knowledge_article_feedback WHERE article_id = ?').run(article.id);
+            db.prepare('DELETE FROM knowledge_article_links WHERE source_article_id = ? OR target_article_id = ?').run(article.id, article.id);
+            
+            // Delete article
+            db.prepare('DELETE FROM knowledge_articles WHERE id = ?').run(article.id);
+                
+            console.log('[Knowledge] Article deleted successfully:', article.id);
+                
+            res.json({
+                success: true,
+                message: '文章已删除',
+                data: { id: article.id, title: article.title }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Delete article error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/knowledge/:id/create-snapshot
+     * Manually create a version snapshot
+     */
+    router.post('/:id/create-snapshot', authenticate, (req, res) => {
+        try {
+            const article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(req.params.id);
+            if (!article) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '文章不存在' }
+                });
+            }
+
+            const { change_summary = '手动创建快照' } = req.body;
+
+            const result = db.prepare(`
+                INSERT INTO knowledge_article_versions (article_id, version, title, content, change_summary, created_by)
+                SELECT id, COALESCE((SELECT MAX(version) FROM knowledge_article_versions WHERE article_id = ?), 0) + 1, 
+                       title, content, ?, ?
+                FROM knowledge_articles WHERE id = ?
+            `).run(req.params.id, change_summary, req.user.id, req.params.id);
+
+            res.json({
+                success: true,
+                data: {
+                    version_id: result.lastInsertRowid,
+                    message: '快照创建成功'
+                }
+            });
+        } catch (err) {
+            console.error('[Knowledge] Create snapshot error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
@@ -1407,6 +1778,87 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      * @param {string} customPrefix - 用户自定义标题前缀(可选)
      * Supports: # Heading1, ## Heading2, numbered sections (1., 1.1, etc.)
      */
+    /**
+     * Convert plain text to HTML format
+     * Used for PDF imports to ensure uniform HTML storage
+     */
+    function convertTextToHtml(text) {
+        if (!text || typeof text !== 'string') return '';
+        
+        // Split by double newlines to get paragraphs
+        const paragraphs = text.split(/\n\s*\n/);
+        
+        return paragraphs
+            .map(p => p.trim())
+            .filter(p => p.length > 0)
+            .map(p => {
+                // Escape HTML special characters
+                const escaped = p
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+                // Replace single newlines with <br> within paragraph
+                return `<p>${escaped.replace(/\n/g, '<br>')}</p>`;
+            })
+            .join('\n');
+    }
+
+    /**
+     * Split HTML content into chapters based on heading tags
+     * Used for DOCX imports that are now converted to HTML
+     */
+    function splitHtmlIntoChapters(html, userSelectedModel, customPrefix) {
+        const chapters = [];
+        const titlePrefix = customPrefix || userSelectedModel || null;
+        
+        // 匹配 h1, h2 标签作为章节分隔
+        const headingPattern = /<h([1-2])[^>]*>([^<]+)<\/h[1-2]>/gi;
+        const matches = [...html.matchAll(headingPattern)];
+        
+        if (matches.length === 0) {
+            // 没有找到章节，将整个文档作为一章
+            if (html.trim().length > 100) {
+                chapters.push({
+                    title: titlePrefix || 'Untitled Document',
+                    content: html.trim()
+                });
+            }
+            return chapters;
+        }
+        
+        // 分割内容
+        let lastIndex = 0;
+        for (let i = 0; i < matches.length; i++) {
+            const match = matches[i];
+            const headingStart = match.index;
+            const headingEnd = headingStart + match[0].length;
+            let chapterTitle = match[2].trim();
+            
+            // 清理章节标题中可能存在的产品型号前缀
+            const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
+            // 只在用户明确要求添加前缀时才添加（customPrefix 有值时）
+            const fullTitle = customPrefix ? `${customPrefix}: ${cleanedTitle}` : cleanedTitle;
+            
+            // 找到下一个章节的起始位置
+            const nextIndex = (i < matches.length - 1) ? matches[i + 1].index : html.length;
+            const content = html.substring(headingEnd, nextIndex).trim();
+            
+            if (content.length > 100) {
+                chapters.push({
+                    title: fullTitle,
+                    content: `<h${match[1]}>${chapterTitle}</h${match[1]}>\n${content}`
+                });
+            }
+        }
+        
+        return chapters;
+    }
+
+    /**
+     * Legacy function for Markdown chapter splitting
+     * @deprecated Use splitHtmlIntoChapters for new imports
+     */
     function splitMarkdownIntoChapters(markdown, userSelectedModel, customPrefix) {
         const chapters = [];
         const lines = markdown.split('\n');
@@ -1443,11 +1895,11 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 }
                     
                 // 清理章节标题中可能存在的产品型号前缀
-                // 例如: "MAVO Edge 6K: 1. 基本说明" -> "1. 基本说明"
+                // 例如:"MAVO Edge 6K: 1. 基本说明" -> "1. 基本说明"
                 const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
-                    
-                // 添加用户选择的产品型号前缀
-                const fullTitle = titlePrefix ? `${titlePrefix}: ${cleanedTitle}` : cleanedTitle;
+                                    
+                // 只在用户明确要求添加前缀时才添加（customPrefix 有值时）
+                const fullTitle = customPrefix ? `${customPrefix}: ${cleanedTitle}` : cleanedTitle;
                     
                 currentChapter = {
                     title: fullTitle,
@@ -1758,34 +2210,51 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             const contentToOptimize = currentContent || article.formatted_content || article.content;
 
             // Build prompt based on user's instruction
+            // Detect instruction type for better context
+            const isStyleInstruction = /颜色|color|样式|style|黄色|yellow|红色|red|蓝色|blue|绿色|green/i.test(instruction);
+            const isSizeInstruction = /大小|尺寸|size|缩放|scale|宽度|width|高度|height/i.test(instruction);
+            
             const optimizePrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
 
-用户正在审阅文章「${article.title}」，并给出了以下修改意见：
+**当前上下文**：用户正在 Wiki 编辑器中编辑文章「${article.title}」，你可以直接修改编辑器中的内容。
 
-**用户修改意见**: ${instruction}
+**用户修改指令**: ${instruction}
 
-**当前文章内容**:
+**当前编辑器中的 HTML 内容**:
 ${contentToOptimize.substring(0, 8000)}
 
 **你的任务**:
-根据用户的修改意见，对文章进行调整和优化。常见修改包括：
-- 图片大小调整：在图片链接后添加 HTML 标签控制大小，如 <img src="..." style="max-width: 60%;" />
-- 段落优化：拆分长段落、调整结构
-- 内容精简：删除冗余内容
-- 格式调整：调整标题层级、列表格式
+根据用户的修改指令，直接修改上述 HTML 内容。这是编辑器中的实时内容，修改后会立即呈现给用户。
 
-**重要规则**:
-1. 保持技术准确性
-2. 保留所有关键信息
-3. 保持 Markdown 格式
-4. 图片使用 <img> 标签可以控制大小
+${isStyleInstruction ? `**样式修改指南**（用户指令涉及颜色/样式）：
+- "标题改为黄色/kine yellow" = 为所有 <h1>, <h2>, <h3> 标签添加 style="color: #FFD700;"
+- "文字改为黄色" = 为 <p>, <span> 等标签添加 style="color: #FFD700;"
+- 注意：用户说的是"改颜色"，不是"改文字内容"，不要修改标签内的文字，只添加 style 属性
+- 品牌色值：#FFD700 (Kine Yellow)
 
-请直接输出优化后的完整内容，不要添加解释。`;
+**示例**：
+输入指令："把标题改为 kine yellow"
+正确输出：<h1 style="color: #FFD700;">原标题文字</h1>（只改颜色，不改文字）
+错误输出：<h1>kine yellow</h1>（这是把标题文字改成了"kine yellow"）` : ''}
+
+${isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸）：
+- "图片改为1/2" = 为 <img> 标签添加 style="max-width: 50%;" 或 style="width: 50%;"
+- "图片居中" = 为 <img> 标签添加 style="display: block; margin: 0 auto;"` : ''}
+
+**通用规则**：
+1. 区分"改颜色"和"改文字"：用户说"标题改为黄色"是改颜色，不是把标题文字改成"黄色"
+2. 使用内联 style 属性实现样式修改
+3. 保持 HTML 格式输出
+4. 保留所有原始内容，只做请求的修改
+5. 不要添加未要求的修改
+
+**输出格式**：
+直接输出修改后的完整 HTML 内容，不要添加任何解释或说明。`;
 
             let optimizedContent;
             try {
                 optimizedContent = await aiService.generate('logic',
-                    'You are Bokeh, a professional knowledge base editor. Follow user instructions to optimize articles.',
+                    'You are Bokeh, a professional knowledge base editor. You are currently in the Wiki editor, directly editing HTML content. Follow user instructions precisely.',
                     optimizePrompt
                 );
                 console.log('[Bokeh Optimize] Optimization completed');
@@ -1847,7 +2316,7 @@ ${contentToOptimize.substring(0, 8000)}
     /**
      * POST /api/v1/knowledge/:id/format
      * AI-assisted article formatting and summary generation
-     * Uses Bokeh AI service to optimize content layout and generate summaries
+     * Bokeh优化：排版优化 + 详细摘要，完成后直接更新正文
      */
     router.post('/:id/format', authenticate, async (req, res) => {
         try {
@@ -1867,7 +2336,7 @@ ${contentToOptimize.substring(0, 8000)}
                 });
             }
 
-            const { mode = 'full' } = req.body; // 'full' | 'summary_only' | 'layout_only'
+            const { mode = 'full' } = req.body; // 'full' | 'layout' | 'summary'
 
             // Use injected aiService (from module.exports parameter)
             if (!aiService) {
@@ -1877,15 +2346,13 @@ ${contentToOptimize.substring(0, 8000)}
                 });
             }
 
-            console.log(`[Knowledge Format] Starting AI formatting for article ${article.id}: ${article.title}`);
+            console.log(`[Knowledge Format] Starting Bokeh optimization for article ${article.id}: ${article.title}`);
 
-            // Build AI prompt based on mode
             let formattedContent = article.content;
-            let shortSummary = article.summary;
-            let imageLayoutMeta = null;
+            let summaryText = article.summary;
 
-            if (mode === 'full' || mode === 'layout_only') {
-                // Analyze content and optimize layout
+            // 任务1：排版优化
+            if (mode === 'full' || mode === 'layout') {
                 const layoutPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
 请分析以下技术文章，并进行排版优化：
 
@@ -1898,10 +2365,10 @@ ${article.content.substring(0, 8000)}
 1. 识别并优化文章结构（添加缺失的小标题、将长段落拆分为短段落或列表）
 2. 保持技术准确性，不随意扩写
 3. 如有步骤操作，改为编号列表
-4. 保留所有图片引用（![...](...) 格式），不删除
-5. 保留代码块和表格格式
+4. 保留所有图片引用（<img> 标签），不删除
+5. 保留表格格式
 
-请直接输出优化后的Markdown内容，不要添加额外说明。`;
+请直接输出HTML格式的优化内容，不要添加额外说明。`;
 
                 try {
                     formattedContent = await aiService.generate('logic',
@@ -1911,76 +2378,72 @@ ${article.content.substring(0, 8000)}
                     console.log('[Knowledge Format] Layout optimization completed');
                 } catch (aiErr) {
                     console.error('[Knowledge Format] Layout AI error:', aiErr.message);
-                    // Keep original content if AI fails
                     formattedContent = article.content;
                 }
             }
 
-            if (mode === 'full' || mode === 'summary_only') {
-                // Generate short summary for chapter cards
+            // 任务2：生成详细摘要
+            if (mode === 'full' || mode === 'summary') {
                 const summaryPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
-请为以下技术文章生成一个简短摘要（1-2句话，最多80字），用于在章节目录卡片中显示：
+请为以下技术文章生成一个详细摘要（3-5句话，最多190字），概括文章的核心内容：
 
 **标题**: ${article.title}
 
 **内容片段**:
-${article.content.substring(0, 2000)}
+${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
 
 请直接输出摘要文本，不要添加引号或额外说明。`;
 
                 try {
-                    shortSummary = await aiService.generate('logic',
-                        'You are Bokeh. Generate concise summaries for technical documentation.',
+                    summaryText = await aiService.generate('logic',
+                        'You are Bokeh. Generate comprehensive summaries for technical documentation.',
                         summaryPrompt
                     );
-                    shortSummary = shortSummary.trim().substring(0, 200);
+                    summaryText = summaryText.trim().substring(0, 190);
                     console.log('[Knowledge Format] Summary generation completed');
                 } catch (aiErr) {
                     console.error('[Knowledge Format] Summary AI error:', aiErr.message);
-                    // Generate fallback summary
-                    shortSummary = article.content
-                        .replace(/!\[.*?\]\(.*?\)/g, '')
-                        .replace(/\n+/g, ' ')
+                    summaryText = formattedContent
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/\s+/g, ' ')
                         .trim()
-                        .substring(0, 100) + '...';
+                        .substring(0, 190);
                 }
             }
 
-            // Analyze images and suggest layout
-            const imageMatches = formattedContent.match(/!\[.*?\]\(.*?\)/g) || [];
-            if (imageMatches.length > 0) {
-                imageLayoutMeta = {
-                    mode: 'auto',
-                    maxWidth: 720,
-                    imageCount: imageMatches.length,
-                    rules: imageMatches.map((_, idx) => ({
-                        imageIndex: idx,
-                        align: 'center',
-                        width: imageMatches.length === 1 ? '100%' : '80%'
-                    }))
-                };
-            }
+            // 生成简短摘要（从详细摘要截取，不调用AI）
+            const shortSummary = summaryText.substring(0, 100);
+
+            // 分析图片布局
+            const imageMatches = formattedContent.match(/<img[^>]*>/g) || [];
+            const imageLayoutMeta = imageMatches.length > 0 ? {
+                mode: 'auto',
+                maxWidth: 720,
+                imageCount: imageMatches.length
+            } : null;
 
             // Parse chapter info from title
             const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
             const chapterNumber = chapterMatch ? parseInt(chapterMatch[1]) : null;
             const sectionNumber = chapterMatch && chapterMatch[2] ? parseInt(chapterMatch[2]) : null;
 
-            // Update database with draft
+            // 直接更新正文内容（不再保留草稿状态）
             db.prepare(`
                 UPDATE knowledge_articles SET
-                    formatted_content = ?,
+                    content = ?,
+                    summary = ?,
                     short_summary = ?,
                     image_layout_meta = ?,
                     chapter_number = ?,
                     section_number = ?,
-                    format_status = 'draft',
+                    format_status = 'published',
                     formatted_by = 'ai',
                     formatted_at = CURRENT_TIMESTAMP,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `).run(
                 formattedContent,
+                summaryText,
                 shortSummary,
                 imageLayoutMeta ? JSON.stringify(imageLayoutMeta) : null,
                 chapterNumber,
@@ -1992,7 +2455,7 @@ ${article.content.substring(0, 2000)}
             if (logAudit) {
                 logAudit({
                     operation: 'format',
-                    operation_detail: `Bokeh排版优化 (${mode})`,
+                    operation_detail: `Bokeh优化 (${mode})`,
                     article_id: article.id,
                     article_title: article.title,
                     article_slug: article.slug,
@@ -2002,19 +2465,16 @@ ${article.content.substring(0, 2000)}
                 });
             }
 
-            console.log(`[Knowledge Format] ✅ Article ${article.id} formatted successfully`);
+            console.log(`[Knowledge Format] ✅ Article ${article.id} optimized and published`);
 
             res.json({
                 success: true,
                 data: {
                     id: article.id,
-                    format_status: 'draft',
+                    format_status: 'published',
                     formatted_by: 'ai',
                     formatted_at: new Date().toISOString(),
-                    formatted_content: formattedContent,  // Return full content for editor
-                    short_summary: shortSummary,
-                    chapter_number: chapterNumber,
-                    section_number: sectionNumber,
+                    summary: summaryText,
                     image_count: imageMatches.length
                 }
             });
