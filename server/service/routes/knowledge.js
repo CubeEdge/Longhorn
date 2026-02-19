@@ -104,18 +104,18 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 conditions.push('ka.tags LIKE ?');
                 params.push(`%"${tag}"%`);
             }
+            
+            // Full-text search if provided - MUST be before whereClause
+            if (search) {
+                // Always try LIKE search for better compatibility with Chinese
+                const searchTerm = `%${search.trim()}%`;
+                conditions.push('(ka.title LIKE ? OR ka.summary LIKE ? OR ka.content LIKE ? OR ka.tags LIKE ?)');
+                params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+                console.log(`[Knowledge] Using LIKE search for: "${search}"`);
+            }
 
             const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
-            // Full-text search if provided
-            let searchJoin = '';
-            if (search) {
-                searchJoin = `
-                    INNER JOIN knowledge_articles_fts ON knowledge_articles_fts.rowid = ka.id
-                    AND knowledge_articles_fts MATCH ?
-                `;
-                params.unshift(search);
-            }
+            let searchJoin = ''; // No longer needed for LIKE search
 
             const countSql = `
                 SELECT COUNT(*) as total 
@@ -707,14 +707,13 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         created_by: req.user.id
                     });
 
-                    // short_summary 从详细摘要截取（导入时不调用AI）
+                    // 导入时不更新 summary（使用默认值）
                     db.prepare(`
                         UPDATE knowledge_articles SET
-                            short_summary = ?,
                             chapter_number = ?,
                             section_number = ?
                         WHERE id = ?
-                    `).run(shortSummary, chapterNumber, sectionNumber, result.lastInsertRowid);
+                    `).run(chapterNumber, sectionNumber, result.lastInsertRowid);
 
                     article_ids.push(result.lastInsertRowid);
                     imported_count++;
@@ -971,7 +970,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 'category', 'subcategory', 'tags',
                 'product_line', 'product_models', 'firmware_versions',
                 'visibility', 'department_ids', 'status',
-                'formatted_content', 'format_status', 'short_summary'  // Wiki editor fields
+                // Wiki editor fields: content, formatted_content, format_status, summary
             ];
 
             const updates = [];
@@ -1574,7 +1573,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             title: article.title,
             slug: article.slug,
             summary: article.summary,
-            short_summary: article.short_summary,
+            summary: article.summary,
             content: article.content,
             formatted_content: article.formatted_content,
             format_status: article.format_status || 'none',
@@ -2432,7 +2431,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                 UPDATE knowledge_articles SET
                     content = ?,
                     summary = ?,
-                    short_summary = ?,
+                    summary = ?,
                     image_layout_meta = ?,
                     chapter_number = ?,
                     section_number = ?,
@@ -2527,7 +2526,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
             db.prepare(`
                 UPDATE knowledge_articles SET
                     content = formatted_content,
-                    summary = COALESCE(short_summary, summary),
+                    summary = summary,
                     format_status = 'published',
                     updated_by = ?,
                     updated_at = CURRENT_TIMESTAMP
@@ -2591,7 +2590,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
 
             const articles = db.prepare(`
                 SELECT 
-                    ka.id, ka.title, ka.slug, ka.summary, ka.short_summary,
+                    ka.id, ka.title, ka.slug, ka.summary,
                     ka.chapter_number, ka.section_number,
                     ka.category, ka.product_line, ka.product_models,
                     ka.view_count, ka.helpful_count
@@ -2646,7 +2645,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                         id: mainChapter.id,
                         title: mainChapter.title,
                         slug: mainChapter.slug,
-                        summary: mainChapter.short_summary || mainChapter.summary,
+                        summary: mainChapter.summary,
                         content_preview: mainContent?.substring(0, 1000)
                     } : null,
                     sub_sections: subSections.map(s => ({
@@ -2654,7 +2653,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                         title: s.title,
                         slug: s.slug,
                         section_number: s.section_number,
-                        summary: s.short_summary || s.summary,
+                        summary: s.summary,
                         view_count: s.view_count,
                         helpful_count: s.helpful_count
                     })),

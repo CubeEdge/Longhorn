@@ -1,7 +1,7 @@
 {
   "name": "client",
   "private": true,
-  "version": "11.3.53",
+  "version": "11.5.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tiptap/extension-highlight": "^3.19.0",
+    "@tiptap/extension-image": "^3.19.0",
+    "@tiptap/extension-placeholder": "^3.19.0",
+    "@tiptap/extension-table": "^3.19.0",
+    "@tiptap/extension-table-cell": "^3.19.0",
+    "@tiptap/extension-table-header": "^3.19.0",
+    "@tiptap/extension-table-row": "^3.19.0",
+    "@tiptap/extension-text-align": "^3.19.0",
+    "@tiptap/extension-typography": "^3.19.0",
+    "@tiptap/pm": "^3.19.0",
+    "@tiptap/react": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
+    "@types/turndown": "^5.0.6",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -28,6 +41,7 @@
     "remark-gfm": "^4.0.1",
     "swr": "^2.3.8",
     "tailwind-merge": "^3.4.0",
+    "turndown": "^7.2.2",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.9"
   },

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, Settings, FileText, Trash2, Upload, Check } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -15,7 +15,6 @@ interface KnowledgeArticle {
     title: string;
     slug: string;
     summary: string;
-    short_summary?: string;
     content: string;
     formatted_content?: string;
     format_status?: 'none' | 'draft' | 'published';
@@ -114,13 +113,19 @@ export const KinefinityWiki: React.FC = () => {
     const tocPanelRef = React.useRef<HTMLDivElement>(null);
     const selectedArticleRef = React.useRef<KnowledgeArticle | null>(null);
     
-    // 分组折叠视图状态 - 从 localStorage 恢复
+    // 分组折叠视图状态 - 从 localStorage 恢复（按产品线分开存储）
     const [groupedExpandedModels, setGroupedExpandedModels] = useState<Set<string>>(() => {
-        const saved = localStorage.getItem('wiki-grouped-expanded-models');
+        const params = new URLSearchParams(location.search);
+        const productLine = params.get('line') || 'A';
+        const saved = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
+        console.log('[WIKI] Initial groupedExpandedModels for', productLine, ':', saved ? JSON.parse(saved) : 'empty');
         return saved ? new Set(JSON.parse(saved)) : new Set();
     });
     const [groupedExpandedCategories, setGroupedExpandedCategories] = useState<Set<string>>(() => {
-        const saved = localStorage.getItem('wiki-grouped-expanded-categories');
+        const params = new URLSearchParams(location.search);
+        const productLine = params.get('line') || 'A';
+        const saved = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
+        console.log('[WIKI] Initial groupedExpandedCategories for', productLine, ':', saved ? JSON.parse(saved) : 'empty');
         return saved ? new Set(JSON.parse(saved)) : new Set();
     });
     const [showSearchResults, setShowSearchResults] = useState(false);
@@ -130,8 +135,8 @@ export const KinefinityWiki: React.FC = () => {
     // 搜索栏展开/收起状态
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     
-    // 当前选中的产品族类
-    const [selectedProductLine, setSelectedProductLine] = useState<string | null>(null);
+    // 当前选中的产品族类 - 默认选中A类
+    const [selectedProductLine, setSelectedProductLine] = useState<string | null>('A');
 
     // AI formatting & chapter view states
     const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
@@ -306,6 +311,28 @@ export const KinefinityWiki: React.FC = () => {
         const productModel = params.get('model');
         const category = params.get('category');
         
+        // 如果没有任何URL参数，自动加载A类内容
+        if (!productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !showSearchResults) {
+            const filtered = articles.filter(a => a.product_line === 'A');
+            const newBreadcrumb: BreadcrumbItem[] = [{
+                label: 'WIKI',
+                type: 'home'
+            }, {
+                label: 'A 类',
+                type: 'product_line',
+                productLine: 'A',
+                viewMode: 'grouped'
+            }];
+            setBreadcrumbPath(newBreadcrumb);
+            setSearchResults(filtered);
+            setShowSearchResults(true);
+            setIsSearching(false);
+            setGroupedExpandedModels(new Set());
+            setGroupedExpandedCategories(new Set());
+            navigate('/tech-hub/wiki?line=A', { replace: true });
+            return;
+        }
+        
         // 如果有 URL 参数，构建对应的面包屑路径和筛选视图
         if (productLine || productModel || category) {
             const newBreadcrumb: BreadcrumbItem[] = [{ label: 'WIKI', type: 'home' }];
@@ -369,10 +396,6 @@ export const KinefinityWiki: React.FC = () => {
             setShowSearchResults(true);
             setGroupedExpandedModels(new Set());
             setGroupedExpandedCategories(new Set());
-        } else if (!slug) {
-            // 没有 URL 参数且没有文章 slug，返回首页
-            setBreadcrumbPath([]);
-            setShowSearchResults(false);
         }
     }, [location.search, articles]);
 
@@ -396,18 +419,30 @@ export const KinefinityWiki: React.FC = () => {
         }
     }, [slug, articles]);
 
+    // 点击面包屑WIKI按钮时，重置到A类视图
+
     useEffect(() => {
         localStorage.setItem('wiki-expanded-nodes', JSON.stringify(Array.from(expandedNodes)));
     }, [expandedNodes]);
 
-    // 保存分组展开状态到 localStorage
+    // 保存分组展开状态到 localStorage（按产品线分开存储）
     useEffect(() => {
-        localStorage.setItem('wiki-grouped-expanded-models', JSON.stringify(Array.from(groupedExpandedModels)));
-    }, [groupedExpandedModels]);
+        if (selectedProductLine) {
+            const key = `wiki-grouped-expanded-models-${selectedProductLine}`;
+            const value = JSON.stringify(Array.from(groupedExpandedModels));
+            localStorage.setItem(key, value);
+            console.log('[WIKI] Saved expanded models to', key, ':', value);
+        }
+    }, [groupedExpandedModels, selectedProductLine]);
 
     useEffect(() => {
-        localStorage.setItem('wiki-grouped-expanded-categories', JSON.stringify(Array.from(groupedExpandedCategories)));
-    }, [groupedExpandedCategories]);
+        if (selectedProductLine) {
+            const key = `wiki-grouped-expanded-categories-${selectedProductLine}`;
+            const value = JSON.stringify(Array.from(groupedExpandedCategories));
+            localStorage.setItem(key, value);
+            console.log('[WIKI] Saved expanded categories to', key, ':', value);
+        }
+    }, [groupedExpandedCategories, selectedProductLine]);
 
     // Listen for Bokeh optimization events - use ref to avoid stale closure
     useEffect(() => {
@@ -659,18 +694,20 @@ export const KinefinityWiki: React.FC = () => {
             setNavigationHistory(prev => [...prev, location.pathname]);
         }
 
+        // 返回首页时加载A类内容
         setSelectedArticle(null);
         selectedArticleRef.current = null;
-        setBreadcrumbPath([]);
-        setShowSearchResults(false);
+        setSelectedProductLine('A');
         clearContext(); // Clear Bokeh context
-        navigate('/tech-hub/wiki');
+        navigate('/tech-hub/wiki?line=A'); // 默认导航到A类
         localStorage.removeItem('wiki-last-article');
     };
 
     // 点击产品族类卡片
     const handleProductLineClick = (productLine: string) => {
+        console.log('[WIKI] handleProductLineClick - productLine:', productLine);
         const filtered = articles.filter(a => a.product_line === productLine);
+        console.log('[WIKI] handleProductLineClick - filtered articles count:', filtered.length);
         
         const lineLabels: Record<string, string> = {
             'A': 'A 类',
@@ -689,14 +726,27 @@ export const KinefinityWiki: React.FC = () => {
             viewMode: 'grouped'
         }];
         
+        // 先加载展开状态，再设置 selectedProductLine，避免 useEffect 覆盖
+        const savedModels = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
+        const savedCategories = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
+        console.log('[WIKI] handleProductLineClick - loading expanded states for', productLine, ':', { savedModels, savedCategories });
+        
+        // 直接设置展开状态
+        const newModelsSet = savedModels ? new Set(JSON.parse(savedModels)) : new Set();
+        const newCategoriesSet = savedCategories ? new Set(JSON.parse(savedCategories)) : new Set();
+        setGroupedExpandedModels(newModelsSet);
+        setGroupedExpandedCategories(newCategoriesSet);
+        
+        // 然后再设置其他状态
         setBreadcrumbPath(newBreadcrumb);
-        setSelectedProductLine(productLine); // 设置选中状态
+        setSelectedProductLine(productLine);
         setSearchResults(filtered);
         setShowSearchResults(true);
-        // 产品族类筛选不设置为搜索模式，保持分组视图显示
         setIsSearching(false);
-        setGroupedExpandedModels(new Set());
-        setGroupedExpandedCategories(new Set());
+        
+        // 清除当前文章，显示分组视图
+        setSelectedArticle(null);
+        selectedArticleRef.current = null;
         
         // 使用 URL 参数支持浏览器前进/后退
         navigate(`/tech-hub/wiki?line=${productLine}`);
@@ -714,7 +764,7 @@ export const KinefinityWiki: React.FC = () => {
             return;
         }
         
-        // 点击 WIKI 首页
+        // 点击 WIKI 首页时返回A类视图
         if (crumb.type === 'home') {
             handleHomeClick();
             return;
@@ -913,9 +963,10 @@ export const KinefinityWiki: React.FC = () => {
     // Get current display summary based on view mode
     const getDisplaySummary = () => {
         if (!selectedArticle) return null;
-        // In draft mode, show optimized summary if available
-        if (viewMode === 'draft' && selectedArticle.short_summary) {
-            return selectedArticle.short_summary;
+        // In draft mode, prefer formatted_content's summary if available
+        if (viewMode === 'draft' && selectedArticle.formatted_content) {
+            // Try to extract summary from formatted_content metadata or use article.summary
+            return selectedArticle.summary;
         }
         return selectedArticle.summary;
     };
@@ -1295,18 +1346,56 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
 
                         {/* Article Header */}
-                        <h1 style={{
-                            fontSize: '32px',
-                            fontWeight: 700,
-                            color: '#fff',
-                            marginBottom: '12px',
-                            lineHeight: '1.3'
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            marginBottom: '20px'
                         }}>
-                            {selectedArticle.title}
-                        </h1>
+                            <h1 style={{
+                                fontSize: '32px',
+                                fontWeight: 700,
+                                color: '#fff',
+                                lineHeight: '1.3',
+                                flex: 1
+                            }}>
+                                {selectedArticle.title}
+                            </h1>
+                            
+                            {/* Edit Button - Only show when no draft exists */}
+                            {canEdit && selectedArticle.format_status !== 'draft' && (
+                                <button
+                                    onClick={() => setShowEditorModal(true)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'rgba(255,215,0,0.15)',
+                                        border: '1px solid rgba(255,215,0,0.3)',
+                                        borderRadius: '8px',
+                                        color: '#FFD700',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s',
+                                        flexShrink: 0
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,215,0,0.25)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
+                                    }}
+                                >
+                                    <Edit3 size={14} />
+                                    编辑
+                                </button>
+                            )}
+                        </div>
 
-                        {/* AI Formatting Toolbar - Only for editors */}
-                        {canEdit && (
+                        {/* AI Formatting Toolbar - Only for editors and only when draft exists */}
+                        {canEdit && selectedArticle.format_status === 'draft' && (
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1317,52 +1406,50 @@ export const KinefinityWiki: React.FC = () => {
                                 border: '1px solid rgba(0, 191, 165, 0.15)',
                                 borderRadius: '12px'
                             }}>
-                                {/* View Mode Toggle - Show when draft exists */}
-                                {selectedArticle.format_status === 'draft' && (
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: '4px',
-                                        padding: '4px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        borderRadius: '8px'
-                                    }}>
-                                        <button
-                                            onClick={() => setViewMode('published')}
-                                            style={{
-                                                padding: '6px 12px',
-                                                background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                                border: 'none',
-                                                borderRadius: '6px',
-                                                color: viewMode === 'published' ? '#fff' : '#888',
-                                                fontSize: '12px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <Eye size={14} /> 发布版
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('draft')}
-                                            style={{
-                                                padding: '6px 12px',
-                                                background: viewMode === 'draft' ? '#10B981' : 'transparent',
-                                                border: 'none',
-                                                borderRadius: '6px',
-                                                color: viewMode === 'draft' ? '#fff' : '#888',
-                                                fontSize: '12px',
-                                                fontWeight: viewMode === 'draft' ? 600 : 400,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <EyeOff size={14} /> Bokeh草稿
-                                        </button>
-                                    </div>
-                                )}
+                                {/* View Mode Toggle */}
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '4px',
+                                    padding: '4px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    borderRadius: '8px'
+                                }}>
+                                    <button
+                                        onClick={() => setViewMode('published')}
+                                        style={{
+                                            padding: '6px 12px',
+                                            background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            color: viewMode === 'published' ? '#fff' : '#888',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        <Eye size={14} /> 发布版
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('draft')}
+                                        style={{
+                                            padding: '6px 12px',
+                                            background: viewMode === 'draft' ? '#10B981' : 'transparent',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            color: viewMode === 'draft' ? '#fff' : '#888',
+                                            fontSize: '12px',
+                                            fontWeight: viewMode === 'draft' ? 600 : 400,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        <EyeOff size={14} /> 草稿
+                                    </button>
+                                </div>
                                 
                                 <div style={{ flex: 1 }} />
                                 
@@ -1408,11 +1495,11 @@ export const KinefinityWiki: React.FC = () => {
                                     }}
                                 >
                                     <Edit3 size={14} />
-                                    人工编辑
+                                    编辑
                                 </button>
                                 
                                 {/* Publish Button - Only show when draft exists */}
-                                {selectedArticle.format_status === 'draft' && viewMode === 'draft' && (
+                                {viewMode === 'draft' && (
                                     <button
                                         onClick={handlePublishFormat}
                                         style={{
@@ -2039,8 +2126,37 @@ export const KinefinityWiki: React.FC = () => {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        console.log('[WIKI] Search cancel button clicked');
                                                         setSearchQuery('');
                                                         setIsSearchExpanded(false);
+                                                        setShowSearchResults(false);
+                                                        // 重新加载 A 类分组视图
+                                                        setTimeout(() => {
+                                                            console.log('[WIKI] Reloading A class grouped view...');
+                                                            const filtered = articles.filter(a => a.product_line === 'A');
+                                                            console.log('[WIKI] Filtered articles:', filtered.length);
+                                                            const newBreadcrumb: BreadcrumbItem[] = [{
+                                                                label: 'WIKI',
+                                                                type: 'home'
+                                                            }, {
+                                                                label: 'A 类',
+                                                                type: 'product_line',
+                                                                productLine: 'A',
+                                                                viewMode: 'grouped'
+                                                            }];
+                                                            setBreadcrumbPath(newBreadcrumb);
+                                                            setSearchResults(filtered);
+                                                            setShowSearchResults(true);
+                                                            setIsSearching(false);
+                                                            // 从 localStorage 恢复 A 类的展开状态
+                                                            const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
+                                                            const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
+                                                            console.log('[WIKI] Restoring expanded states for A:', { savedModels, savedCategories });
+                                                            setGroupedExpandedModels(savedModels ? new Set(JSON.parse(savedModels)) : new Set());
+                                                            setGroupedExpandedCategories(savedCategories ? new Set(JSON.parse(savedCategories)) : new Set());
+                                                            navigate('/tech-hub/wiki?line=A');
+                                                            console.log('[WIKI] A class grouped view reloaded');
+                                                        }, 0);
                                                     }}
                                                     style={{
                                                         background: 'transparent',
@@ -2057,35 +2173,6 @@ export const KinefinityWiki: React.FC = () => {
                                         )}
                                     </div>
                                 </div>
-                                
-                                {/* 目录按钮 */}
-                                <button
-                                    onClick={() => setTocVisible(true)}
-                                    style={{
-                                        padding: '10px 16px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '10px',
-                                        color: '#999',
-                                        fontSize: '14px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                        e.currentTarget.style.color = '#fff';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                        e.currentTarget.style.color = '#999';
-                                    }}
-                                >
-                                    <List size={18} />
-                                    目录
-                                </button>
                                 
                                 {/* 管理按钮 - 下拉菜单 */}
                                 {hasWikiAdminAccess && (
@@ -2198,8 +2285,8 @@ export const KinefinityWiki: React.FC = () => {
                                 )}
                             </div>
                         </div>
-
-                        {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类Tab之上） */}
+                        
+                        {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
                         {showSearchResults && searchResults.length > 0 && searchQuery.trim() !== '' && (
                             <div style={{
                                 background: 'rgba(255,255,255,0.02)',
@@ -2220,9 +2307,37 @@ export const KinefinityWiki: React.FC = () => {
                                     </span>
                                     <button
                                         onClick={() => {
-                                            setShowSearchResults(false);
+                                            console.log('[WIKI] Search results close button clicked');
                                             setSearchQuery('');
-                                            navigate('/tech-hub/wiki');
+                                            setIsSearchExpanded(false);
+                                            setShowSearchResults(false); // 先关闭搜索结果
+                                            // 重新加载 A 类分组视图
+                                            setTimeout(() => {
+                                                console.log('[WIKI] Reloading A class grouped view from results panel...');
+                                                const filtered = articles.filter(a => a.product_line === 'A');
+                                                console.log('[WIKI] Filtered articles:', filtered.length);
+                                                const newBreadcrumb: BreadcrumbItem[] = [{
+                                                    label: 'WIKI',
+                                                    type: 'home'
+                                                }, {
+                                                    label: 'A 类',
+                                                    type: 'product_line',
+                                                    productLine: 'A',
+                                                    viewMode: 'grouped'
+                                                }];
+                                                setBreadcrumbPath(newBreadcrumb);
+                                                setSearchResults(filtered);
+                                                setShowSearchResults(true); // 再打开分组视图
+                                                setIsSearching(false);
+                                                // 从 localStorage 恢复 A 类的展开状态
+                                                const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
+                                                const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
+                                                console.log('[WIKI] Restoring expanded states for A:', { savedModels, savedCategories });
+                                                setGroupedExpandedModels(savedModels ? new Set(JSON.parse(savedModels)) : new Set());
+                                                setGroupedExpandedCategories(savedCategories ? new Set(JSON.parse(savedCategories)) : new Set());
+                                                navigate('/tech-hub/wiki?line=A');
+                                                console.log('[WIKI] A class grouped view reloaded from results panel');
+                                            }, 0);
                                         }}
                                         style={{
                                             width: '28px',
@@ -2470,8 +2585,10 @@ export const KinefinityWiki: React.FC = () => {
                                                             const newSet = new Set(groupedExpandedModels);
                                                             if (isExpanded) {
                                                                 newSet.delete(model);
+                                                                console.log('[WIKI] Collapsed model:', model);
                                                             } else {
                                                                 newSet.add(model);
+                                                                console.log('[WIKI] Expanded model:', model);
                                                             }
                                                             setGroupedExpandedModels(newSet);
                                                         }}
@@ -2552,8 +2669,10 @@ export const KinefinityWiki: React.FC = () => {
                                                                                 const newSet = new Set(groupedExpandedCategories);
                                                                                 if (isCatExpanded) {
                                                                                     newSet.delete(catKey);
+                                                                                    console.log('[WIKI] Collapsed category:', catKey);
                                                                                 } else {
                                                                                     newSet.add(catKey);
+                                                                                    console.log('[WIKI] Expanded category:', catKey);
                                                                                 }
                                                                                 setGroupedExpandedCategories(newSet);
                                                                             }}
