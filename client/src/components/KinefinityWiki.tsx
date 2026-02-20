@@ -4,7 +4,8 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
-import { ChevronRight, ChevronDown, ChevronLeft, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload } from 'lucide-react';
+import { useLanguage } from '../i18n/useLanguage';
+import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -94,6 +95,7 @@ export const KinefinityWiki: React.FC = () => {
     const { token } = useAuthStore();
     const { confirm } = useConfirm();
     const { setWikiViewContext, clearContext } = useBokehContext();
+    const { t } = useLanguage();
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
     const [loading, setLoading] = useState(true);
@@ -138,7 +140,7 @@ export const KinefinityWiki: React.FC = () => {
     // 当前选中的产品族类 - 默认选中A类
     const [selectedProductLine, setSelectedProductLine] = useState<string | null>('A');
 
-    // AI formatting & chapter view states
+    // Bokeh formatting & chapter view states
     const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
     const [isFormatting, setIsFormatting] = useState(false);
     const [chapterView, setChapterView] = useState<ChapterAggregate | null>(null);
@@ -155,9 +157,16 @@ export const KinefinityWiki: React.FC = () => {
     const [selectedArticleIds, setSelectedArticleIds] = useState<Set<number>>(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
     const [managerSearchQuery, setManagerSearchQuery] = useState('');
+    const [managerSort, setManagerSort] = useState<{ field: 'title' | 'product_line' | 'product_model' | 'category'; order: 'asc' | 'desc' } | null>(null);
     
-    // 手册目录弹窗状态
     const [showManualTocModal, setShowManualTocModal] = useState(false);
+
+    // 搜索双模式状态
+    const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
+    const [aiAnswer, setAiAnswer] = useState<string>('');
+    const [isAiSearching, setIsAiSearching] = useState(false);
+    const [relatedArticles, setRelatedArticles] = useState<KnowledgeArticle[]>([]);
+    const [pendingSearchQuery, setPendingSearchQuery] = useState(''); // 待搜索的查询内容
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -327,8 +336,11 @@ export const KinefinityWiki: React.FC = () => {
             setSearchResults(filtered);
             setShowSearchResults(true);
             setIsSearching(false);
-            setGroupedExpandedModels(new Set());
-            setGroupedExpandedCategories(new Set());
+            // 从 localStorage 加载 A 类的展开状态
+            const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
+            const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
+            setGroupedExpandedModels(savedModels ? new Set<string>(JSON.parse(savedModels)) : new Set<string>());
+            setGroupedExpandedCategories(savedCategories ? new Set<string>(JSON.parse(savedCategories)) : new Set<string>());
             navigate('/tech-hub/wiki?line=A', { replace: true });
             return;
         }
@@ -394,8 +406,11 @@ export const KinefinityWiki: React.FC = () => {
             
             setSearchResults(filtered);
             setShowSearchResults(true);
-            setGroupedExpandedModels(new Set());
-            setGroupedExpandedCategories(new Set());
+            // 从 localStorage 加载该产品线的展开状态
+            const savedModels = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
+            const savedCategories = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
+            setGroupedExpandedModels(savedModels ? new Set<string>(JSON.parse(savedModels)) : new Set<string>());
+            setGroupedExpandedCategories(savedCategories ? new Set<string>(JSON.parse(savedCategories)) : new Set<string>());
         }
     }, [location.search, articles]);
 
@@ -476,33 +491,106 @@ export const KinefinityWiki: React.FC = () => {
         };
     }, [token]); // Only depends on token, not selectedArticle
 
-    // 搜索防抖 - 输入后 300ms 触发 API 调用
+    // 执行搜索（手动触发）
     useEffect(() => {
-        if (!searchQuery.trim()) {
-            setShowSearchResults(false);
-            setSearchResults([]);
+        if (!pendingSearchQuery.trim()) {
             return;
         }
         
-        const timer = setTimeout(async () => {
+        const query = pendingSearchQuery.trim();
+        const isNaturalLanguage = detectSearchType(query);
+        setSearchMode(isNaturalLanguage ? 'ai' : 'keyword');
+        
+        const doSearch = async () => {
             try {
                 setIsSearching(true);
-                const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                const res = await axios.get('/api/v1/knowledge', {
-                    headers,
-                    params: { search: searchQuery.trim(), page_size: 50 }
-                });
-                setSearchResults(res.data.data || []);
-                setShowSearchResults(true);
+                
+                if (isNaturalLanguage) {
+                    setIsAiSearching(true);
+                    await performAiSearch(query);
+                } else {
+                    await performKeywordSearch(query);
+                }
             } catch (err) {
                 console.error('[Wiki] Search error:', err);
             } finally {
                 setIsSearching(false);
+                setIsAiSearching(false);
             }
-        }, 300);
+        };
         
-        return () => clearTimeout(timer);
-    }, [searchQuery, token]);
+        doSearch();
+    }, [pendingSearchQuery, token]);
+
+    // 检测搜索类型：自然语言问题 vs 关键词
+    const detectSearchType = (query: string): boolean => {
+        // 自然语言特征：
+        // 1. 包含疑问词（如何、怎么、为什么、什么是等）
+        // 2. 以"找/查/推荐"开头
+        // 3. 长度较长且包含空格或标点
+        // 4. 包含"?"或"？"
+        
+        const questionWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?/;
+        const recommendWords = /^找|查|推荐|搜索|查找/;
+        
+        if (questionWords.test(query)) return true;
+        if (recommendWords.test(query)) return true;
+        if (query.length > 15 && (query.includes(' ') || query.includes('，') || query.includes(','))) return true;
+        
+        return false;
+    };
+
+    // 关键词搜索
+    const performKeywordSearch = async (query: string) => {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get('/api/v1/knowledge', {
+            headers,
+            params: { search: query, page_size: 50 }
+        });
+        setSearchResults(res.data.data || []);
+        setShowSearchResults(true);
+        setAiAnswer('');
+        setRelatedArticles([]);
+    };
+
+    // Bokeh 搜索
+    const performAiSearch = async (query: string) => {
+        try {
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            
+            // 1. 先获取传统搜索结果作为上下文
+            const searchRes = await axios.get('/api/v1/knowledge', {
+                headers,
+                params: { search: query, page_size: 10 }
+            });
+            const contextArticles = searchRes.data.data || [];
+            
+            // 2. 调用 Bokeh 接口获取回答
+            const messages = [
+                {
+                    role: 'system',
+                    content: `你是 Kinefinity 技术支持助手。请基于以下知识库文章回答用户问题。如果知识库中没有相关信息，请说明并提供一般性建议。\n\n知识库文章：\n${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}`).join('\n')}`
+                },
+                {
+                    role: 'user',
+                    content: query
+                }
+            ];
+            
+            const aiRes = await axios.post('/api/ai/chat', {
+                messages,
+                context: { source: 'wiki_search', articles: contextArticles.map((a: KnowledgeArticle) => a.id) }
+            }, { headers });
+            
+            setAiAnswer(aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。');
+            setRelatedArticles(contextArticles);
+            setShowSearchResults(true);
+        } catch (err) {
+            console.error('[Wiki] Bokeh search error:', err);
+            // Bokeh 失败时回退到关键词搜索
+            await performKeywordSearch(query);
+        }
+    };
 
     const fetchArticles = async () => {
         try {
@@ -544,7 +632,8 @@ export const KinefinityWiki: React.FC = () => {
                 label: model,
                 type: 'product_model',
                 productLine: article.product_line,
-                productModel: model
+                productModel: model,
+                viewMode: 'grouped'
             });
         }
     
@@ -732,8 +821,8 @@ export const KinefinityWiki: React.FC = () => {
         console.log('[WIKI] handleProductLineClick - loading expanded states for', productLine, ':', { savedModels, savedCategories });
         
         // 直接设置展开状态
-        const newModelsSet = savedModels ? new Set(JSON.parse(savedModels)) : new Set();
-        const newCategoriesSet = savedCategories ? new Set(JSON.parse(savedCategories)) : new Set();
+        const newModelsSet = savedModels ? new Set<string>(JSON.parse(savedModels)) : new Set<string>();
+        const newCategoriesSet = savedCategories ? new Set<string>(JSON.parse(savedCategories)) : new Set<string>();
         setGroupedExpandedModels(newModelsSet);
         setGroupedExpandedCategories(newCategoriesSet);
         
@@ -827,8 +916,8 @@ export const KinefinityWiki: React.FC = () => {
         }
     };
 
-    // AI formatting functions
-    const handleAIFormat = async () => {
+    // Bokeh formatting functions
+    const handleBokehFormat = async () => {
         if (!selectedArticle || !token) return;
         
         setIsFormatting(true);
@@ -845,7 +934,7 @@ export const KinefinityWiki: React.FC = () => {
                 setViewMode('draft');
             }
         } catch (err: any) {
-            console.error('[WIKI] AI format error:', err);
+            console.error('[WIKI] Bokeh format error:', err);
             alert(err.response?.data?.error?.message || 'Bokeh格式化失败');
         } finally {
             setIsFormatting(false);
@@ -1095,7 +1184,7 @@ export const KinefinityWiki: React.FC = () => {
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'rgba(0, 191, 165, 0.1)';
                             }}
-                            title="查看整章概览"
+                            title={t('wiki.chapter_overview')}
                         >
                             <Layers size={12} color="#00BFA5" />
                         </button>
@@ -1394,7 +1483,7 @@ export const KinefinityWiki: React.FC = () => {
                             )}
                         </div>
 
-                        {/* AI Formatting Toolbar - Only for editors and only when draft exists */}
+                        {/* Bokeh Formatting Toolbar - Only for editors and only when draft exists */}
                         {canEdit && selectedArticle.format_status === 'draft' && (
                             <div style={{
                                 display: 'flex',
@@ -1453,9 +1542,9 @@ export const KinefinityWiki: React.FC = () => {
                                 
                                 <div style={{ flex: 1 }} />
                                 
-                                {/* AI Format Button */}
+                                {/* Bokeh Format Button */}
                                 <button
-                                    onClick={handleAIFormat}
+                                    onClick={handleBokehFormat}
                                     disabled={isFormatting}
                                     style={{
                                         padding: '8px 16px',
@@ -2065,7 +2154,7 @@ export const KinefinityWiki: React.FC = () => {
                                     color: '#666',
                                     margin: 0
                                 }}>
-                                    Explore Technical Documentation & Knowledge Base
+                                    {t('wiki.subtitle')}
                                 </p>
                             </div>
                             
@@ -2105,9 +2194,14 @@ export const KinefinityWiki: React.FC = () => {
                                             <>
                                                 <input
                                                     type="text"
-                                                    placeholder="搜索知识库..."
+                                                    placeholder={t('wiki.search_placeholder')}
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && searchQuery.trim()) {
+                                                            setPendingSearchQuery(searchQuery.trim());
+                                                        }
+                                                    }}
                                                     autoFocus
                                                     style={{
                                                         flex: 1,
@@ -2123,6 +2217,29 @@ export const KinefinityWiki: React.FC = () => {
                                                         if (!searchQuery) setIsSearchExpanded(false);
                                                     }}
                                                 />
+                                                {searchQuery.trim() && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPendingSearchQuery(searchQuery.trim());
+                                                        }}
+                                                        style={{
+                                                            background: 'rgba(255,215,0,0.2)',
+                                                            border: '1px solid rgba(255,215,0,0.4)',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            padding: '6px 12px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            flexShrink: 0,
+                                                            color: '#FFD700',
+                                                            fontSize: '13px',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        搜索
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -2206,6 +2323,7 @@ export const KinefinityWiki: React.FC = () => {
                                             }}
                                         >
                                             <Settings size={18} />
+                                            <span>{t('wiki.manage')}</span>
                                         </button>
                                         
                                         {/* 下拉菜单 */}
@@ -2254,7 +2372,7 @@ export const KinefinityWiki: React.FC = () => {
                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         <Upload size={16} color="#4CAF50" />
-                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>导入知识</span>
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
                                                     </div>
                                                     <div
                                                         onClick={() => {
@@ -2276,7 +2394,7 @@ export const KinefinityWiki: React.FC = () => {
                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         <FileText size={16} color="#FFD700" />
-                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>管理文章</span>
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
                                                     </div>
                                                 </div>
                                             </>
@@ -2287,7 +2405,7 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
                         
                         {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
-                        {showSearchResults && searchResults.length > 0 && searchQuery.trim() !== '' && (
+                        {showSearchResults && searchQuery.trim() !== '' && (
                             <div style={{
                                 background: 'rgba(255,255,255,0.02)',
                                 border: '1px solid rgba(255,255,255,0.08)',
@@ -2295,6 +2413,71 @@ export const KinefinityWiki: React.FC = () => {
                                 padding: '20px',
                                 marginBottom: '24px'
                             }}>
+                                {/* 搜索模式标签 */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    marginBottom: '16px'
+                                }}>
+                                    <span style={{
+                                        padding: '4px 12px',
+                                        background: searchMode === 'ai' ? 'rgba(76,175,80,0.15)' : 'rgba(255,215,0,0.15)',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        color: searchMode === 'ai' ? '#4CAF50' : '#FFD700',
+                                        fontWeight: 600
+                                    }}>
+                                        {searchMode === 'ai' ? t('wiki.search.ai_answer') : t('wiki.search.keyword')}
+                                    </span>
+                                    {isAiSearching && (
+                                        <span style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                                            {t('wiki.search.thinking')}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Bokeh 回答区域 */}
+                                {searchMode === 'ai' && aiAnswer && (
+                                    <div style={{
+                                        background: 'rgba(76,175,80,0.05)',
+                                        border: '1px solid rgba(76,175,80,0.15)',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            marginBottom: '12px'
+                                        }}>
+                                            <Sparkles size={16} color="#4CAF50" />
+                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#4CAF50' }}>
+                                                {t('wiki.search.bokeh_answer')}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            fontSize: '14px',
+                                            color: '#ccc',
+                                            lineHeight: '1.7'
+                                        }}>
+                                            <ReactMarkdown 
+                                                remarkPlugins={[remarkGfm]}
+                                                rehypePlugins={[rehypeRaw]}
+                                                components={{
+                                                    a: ({node, ...props}) => (
+                                                        <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
+                                                    )
+                                                }}
+                                            >
+                                                {aiAnswer}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* 统计文案 + 关闭按钮 */}
                                 <div style={{
                                     display: 'flex',
@@ -2303,14 +2486,19 @@ export const KinefinityWiki: React.FC = () => {
                                     marginBottom: '16px'
                                 }}>
                                     <span style={{ fontSize: '14px', color: '#999' }}>
-                                        搜索结果：找到 <span style={{ color: '#fff', fontWeight: 600 }}>{searchResults.length}</span> 篇文章
+                                        {searchMode === 'ai' && relatedArticles.length > 0 
+                                            ? t('wiki.search.related_articles', { count: relatedArticles.length })
+                                            : t('wiki.search.results', { count: searchResults.length })
+                                        }
                                     </span>
                                     <button
                                         onClick={() => {
                                             console.log('[WIKI] Search results close button clicked');
                                             setSearchQuery('');
                                             setIsSearchExpanded(false);
-                                            setShowSearchResults(false); // 先关闭搜索结果
+                                            setShowSearchResults(false);
+                                            setAiAnswer('');
+                                            setRelatedArticles([]);
                                             // 重新加载 A 类分组视图
                                             setTimeout(() => {
                                                 console.log('[WIKI] Reloading A class grouped view from results panel...');
@@ -2327,9 +2515,8 @@ export const KinefinityWiki: React.FC = () => {
                                                 }];
                                                 setBreadcrumbPath(newBreadcrumb);
                                                 setSearchResults(filtered);
-                                                setShowSearchResults(true); // 再打开分组视图
+                                                setShowSearchResults(true);
                                                 setIsSearching(false);
-                                                // 从 localStorage 恢复 A 类的展开状态
                                                 const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
                                                 const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
                                                 console.log('[WIKI] Restoring expanded states for A:', { savedModels, savedCategories });
@@ -2364,7 +2551,7 @@ export const KinefinityWiki: React.FC = () => {
                                 
                                 {/* 文章列表 */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {searchResults.map(article => (
+                                    {(searchMode === 'ai' ? relatedArticles : searchResults).map(article => (
                                         <div
                                             key={article.id}
                                             onClick={() => handleArticleClick(article)}
@@ -2780,7 +2967,7 @@ export const KinefinityWiki: React.FC = () => {
                                     letterSpacing: '1px',
                                     marginBottom: '16px'
                                 }}>
-                                    RECENTLY VIEWED
+                                    {t('wiki.recently_viewed')}
                                 </div>
                                 <div style={{
                                     display: 'flex',
@@ -2933,7 +3120,7 @@ export const KinefinityWiki: React.FC = () => {
                                 color: '#888',
                                 margin: 0
                             }}>
-                                知识库目录
+                                {t('wiki.toc_title')}
                             </p>
                         </div>
 
@@ -3214,9 +3401,50 @@ export const KinefinityWiki: React.FC = () => {
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                                         <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
-                                        <th style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>标题</th>
-                                        <th style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>产品线</th>
-                                        <th style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500 }}>分类</th>
+                                        <th 
+                                            style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                            onClick={() => setManagerSort(prev => ({ field: 'title', order: prev?.field === 'title' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                标题
+                                                {managerSort?.field === 'title' && (
+                                                    managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                            onClick={() => setManagerSort(prev => ({ field: 'product_line', order: prev?.field === 'product_line' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                产品线
+                                                {managerSort?.field === 'product_line' && (
+                                                    managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                            onClick={() => setManagerSort(prev => ({ field: 'product_model', order: prev?.field === 'product_model' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                产品
+                                                {managerSort?.field === 'product_model' && (
+                                                    managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                            onClick={() => setManagerSort(prev => ({ field: 'category', order: prev?.field === 'category' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                分类
+                                                {managerSort?.field === 'category' && (
+                                                    managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                )}
+                                            </div>
+                                        </th>
                                         <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 500 }}>操作</th>
                                     </tr>
                                 </thead>
@@ -3237,6 +3465,22 @@ export const KinefinityWiki: React.FC = () => {
                                                 : article.product_models || '';
                                             if (models.toLowerCase().includes(query)) return true;
                                             return false;
+                                        })
+                                        .sort((a, b) => {
+                                            if (!managerSort) return 0;
+                                            const { field, order } = managerSort;
+                                            let valA: string, valB: string;
+                                            
+                                            if (field === 'product_model') {
+                                                valA = (Array.isArray(a.product_models) ? a.product_models[0] : a.product_models) || '';
+                                                valB = (Array.isArray(b.product_models) ? b.product_models[0] : b.product_models) || '';
+                                            } else {
+                                                valA = (a[field] || '') as string;
+                                                valB = (b[field] || '') as string;
+                                            }
+                                            
+                                            const comparison = valA.localeCompare(valB, 'zh-CN');
+                                            return order === 'asc' ? comparison : -comparison;
                                         })
                                         .map(article => {
                                         const isSelected = selectedArticleIds.has(article.id);
@@ -3296,6 +3540,11 @@ export const KinefinityWiki: React.FC = () => {
                                                     }}>
                                                         {lineLabels[article.product_line] || article.product_line}
                                                     </span>
+                                                </td>
+                                                <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
+                                                    {Array.isArray(article.product_models) 
+                                                        ? article.product_models[0] 
+                                                        : article.product_models || '-'}
                                                 </td>
                                                 <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
                                                     {article.category}
