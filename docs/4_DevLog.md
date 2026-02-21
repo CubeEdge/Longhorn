@@ -4,6 +4,19 @@
 
 ---
 
+## 会话: 2026-02-21 (Search Experience Enhancements)
+
+### 任务: 核心工单搜索增强与 UI 解耦合重构（6大项）
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **短查询处理 (Backend)**: 原有 FTS5 `trigram` 索引因依赖至少 3 字符，无法检索类似"端口"或"拍摄"等双字或单字短查询。在 `bokeh.js` 的 `search-tickets` 搜索中针对 `<3` 长度的关键词加入了自动的 `LIKE @likeQuery` 向下兼顾方案。
+    - **返回字段填充 (Backend)**: 调整后端 SQL 语句，使其能在搜索后对属于 `inquiry_tickets` 和 `rma_tickets` 类型的条目，联表检索并返回对应的 `customer_name` 和 `contact_name`。
+    - **前端加载生命周期 (Frontend)**: 重构了 `KinefinityWiki.tsx` 在处理全站模糊检索动作时的 Loading 阻塞问题。将文章与关联工单分开处理，文章优先展示渲染，而工单采取独立的 `isTicketSearching` 异步拉取。确保工单卡片区拥有完善的 `Spinner` 及 `Empty` 三态保障。
+    - **UI 精简与对齐 (Frontend)**: 在侧边栏的对话参考中清除了二级标题（文章/工单 N 篇），改为混合的无缝拼接信息流，且设定初始展示极限为3条并在右侧提供直接展开选项。TicketCard 接收展示了后台补充的客户名称以丰富上下文。
+    - **AI 关联提效**: 原有的 AI 仅通过阅读文档（Articles）作答，本次更新通过在 Prompt 系统消息内强力注入相关的 Ticket 对象（原标题、描述与解决方案），进一步使 AI 能依据前人的真实故障回复给出处理意见。
+
+---
+
 ## 会话: 2026-02-21 (Wiki Regression Hotfixes)
 
 ### 任务: 修复发版后的功能性回归与版本号规范执行
