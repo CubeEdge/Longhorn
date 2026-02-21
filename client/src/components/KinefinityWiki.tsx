@@ -169,9 +169,6 @@ export const KinefinityWiki: React.FC = () => {
     const [managerSearchQuery, setManagerSearchQuery] = useState('');
     const [managerSort, setManagerSort] = useState<{ field: 'title' | 'product_line' | 'product_model' | 'category'; order: 'asc' | 'desc' } | null>(null);
     
-    // 搜索结果展开/折叠状态
-    const [aiAnswerExpanded, setAiAnswerExpanded] = useState(true);
-    
     // 搜索结果显示控制
     const [showKeywordPanel, setShowKeywordPanel] = useState(true);
     const [showAiPanel, setShowAiPanel] = useState(true);
@@ -179,6 +176,7 @@ export const KinefinityWiki: React.FC = () => {
     
     // 搜索结果默认显示数量
     const DEFAULT_SHOW_COUNT = 3;
+    const AI_REF_SHOW_COUNT = 4; // AI 参考文章默认显示数量
     
     // 工单搜索结果
     const [keywordTickets, setKeywordTickets] = useState<any[]>([]);
@@ -2497,8 +2495,8 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             </div>
                                             <button
                                                 onClick={() => {
-                                                    // 关闭搜索，恢复到A类视图（强制刷新页面）
-                                                    window.location.href = '/tech-hub/wiki?line=A';
+                                                    // 折叠/展开关键词搜索 Panel
+                                                    setShowKeywordPanel(!showKeywordPanel);
                                                 }}
                                                 style={{
                                                     width: '28px',
@@ -2519,7 +2517,14 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                     e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                                 }}
                                             >
-                                                <X size={14} color="#999" />
+                                                <ChevronDown 
+                                                    size={14} 
+                                                    color="#999" 
+                                                    style={{
+                                                        transform: showKeywordPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s ease'
+                                                    }}
+                                                />
                                             </button>
                                         </div>
 
@@ -2665,8 +2670,8 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     </div>
                                 )}
 
-                                {/* AI 搜索 Panel - 搜索时立即显示 */}
-                                {showAiPanel && (
+                                {/* AI 搜索 Panel - 只在搜索时显示 */}
+                                {showAiPanel && isSearchMode && (
                                     <div style={{
                                         background: 'rgba(76,175,80,0.05)',
                                         border: '2px solid rgba(76,175,80,0.25)',
@@ -2674,12 +2679,11 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         padding: '20px',
                                         boxShadow: '0 4px 24px rgba(76,175,80,0.1)'
                                     }}>
-                                        {/* Panel 头部：标签 + 关闭按钮 */}
+                                        {/* Panel 头部：标签 + 折叠按钮 */}
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            marginBottom: '16px'
+                                            justifyContent: 'space-between'
                                         }}>
                                             <div style={{
                                                 display: 'flex',
@@ -2738,221 +2742,190 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             </button>
                                         </div>
 
-                                        {/* Bokeh 回答区域 */}
-                                        {isAiSearching && !aiAnswer && (
-                                            <div style={{
-                                                background: 'rgba(76,175,80,0.05)',
-                                                border: '1px solid rgba(76,175,80,0.15)',
-                                                borderRadius: '12px',
-                                                padding: '24px',
-                                                marginBottom: '20px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: '12px'
-                                            }}>
-                                                <Loader2 size={28} color="#4CAF50" style={{ animation: 'spin 1.5s linear infinite' }} />
-                                                <span style={{ fontSize: '14px', color: '#4CAF50', fontWeight: 500 }}>
-                                                    Bokeh 正在分析知识库...
-                                                </span>
-                                                <span style={{ fontSize: '12px', color: '#666' }}>
-                                                    正在检索相关技术文档和工单记录
-                                                </span>
-                                            </div>
-                                        )}
-                                        
-                                        {aiAnswer && (
-                                            <div style={{
-                                                background: 'rgba(76,175,80,0.05)',
-                                                border: '1px solid rgba(76,175,80,0.1)',
-                                                borderRadius: '12px',
-                                                marginBottom: '20px',
-                                                overflow: 'hidden'
-                                            }}>
-                                                {/* AI回答头部 - 可点击折叠 */}
-                                                <div 
-                                                    onClick={() => setAiAnswerExpanded(!aiAnswerExpanded)}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        padding: '14px 16px',
-                                                        cursor: 'pointer',
-                                                        userSelect: 'none',
-                                                        borderBottom: aiAnswerExpanded ? '1px solid rgba(76,175,80,0.1)' : 'none'
-                                                    }}
-                                                >
+                                        {/* Bokeh 回答区域 - 只在搜索时显示 */}
+                                        {(isAiSearching || aiAnswer || relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                            <div style={{ marginTop: '16px' }}>
+                                                {isAiSearching && !aiAnswer && (
                                                     <div style={{
+                                                        background: 'rgba(76,175,80,0.05)',
+                                                        border: '1px solid rgba(76,175,80,0.15)',
+                                                        borderRadius: '12px',
+                                                        padding: '24px',
+                                                        marginBottom: '20px',
                                                         display: 'flex',
+                                                        flexDirection: 'column',
                                                         alignItems: 'center',
-                                                        gap: '10px'
+                                                        gap: '12px'
                                                     }}>
-                                                        <Sparkles size={16} color="#4CAF50" />
-                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#4CAF50' }}>
-                                                            Bokeh 回答
+                                                        <Loader2 size={28} color="#4CAF50" style={{ animation: 'spin 1.5s linear infinite' }} />
+                                                        <span style={{ fontSize: '14px', color: '#4CAF50', fontWeight: 500 }}>
+                                                            Bokeh 正在分析知识库...
+                                                        </span>
+                                                        <span style={{ fontSize: '12px', color: '#666' }}>
+                                                            正在检索相关技术文档和工单记录
                                                         </span>
                                                     </div>
-                                                    <ChevronRight 
-                                                        size={16} 
-                                                        color="#4CAF50" 
-                                                        style={{
-                                                            transform: aiAnswerExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                            transition: 'transform 0.2s ease'
-                                                        }}
-                                                    />
-                                                </div>
-                                                
-                                                {/* AI回答内容 */}
-                                                {aiAnswerExpanded && (
-                                                    <div style={{ padding: '16px' }}>
-                                                        <div style={{
-                                                            fontSize: '14px',
-                                                            color: '#ccc',
-                                                            lineHeight: '1.7'
-                                                        }}>
-                                                            <ReactMarkdown 
-                                                                remarkPlugins={[remarkGfm]}
-                                                                rehypePlugins={[rehypeRaw]}
-                                                                components={{
-                                                                    a: ({node, ...props}) => (
-                                                                        <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
-                                                                    )
-                                                                }}
-                                                            >
-                                                                {aiAnswer}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                    </div>
                                                 )}
-                                            </div>
-                                        )}
                                         
-                                        {/* 参考来源 */}
-                                        {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
-                                            <div>
-                                                <div style={{
-                                                    fontSize: '13px',
-                                                    fontWeight: 700,
-                                                    color: '#888',
-                                                    marginBottom: '12px',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '1px'
-                                                }}>
-                                                    参考来源 · {relatedArticles.length + aiRelatedTickets.length}
-                                                </div>
-                                                
-                                                {/* 关联文章 */}
-                                                {relatedArticles.length > 0 && (
-                                                    <div style={{ marginBottom: aiRelatedTickets.length > 0 ? '16px' : 0 }}>
-                                                        <div style={{
-                                                            fontSize: '12px',
-                                                            color: '#666',
-                                                            marginBottom: '8px'
-                                                        }}>
-                                                            文章 · {relatedArticles.length}
+                                                {aiAnswer && (
+                                                    <div style={{
+                                                        background: 'transparent',
+                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                        borderRadius: '12px',
+                                                        marginBottom: '20px',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        {/* AI回答内容 - 直接显示，无需折叠 */}
+                                                        <div style={{ padding: '16px' }}>
+                                                            <div style={{
+                                                                fontSize: '14px',
+                                                                color: '#ccc',
+                                                                lineHeight: '1.7'
+                                                            }}>
+                                                                <ReactMarkdown 
+                                                                    remarkPlugins={[remarkGfm]}
+                                                                    rehypePlugins={[rehypeRaw]}
+                                                                    components={{
+                                                                        a: ({node, ...props}) => (
+                                                                            <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
+                                                                        )
+                                                                    }}
+                                                                >
+                                                                    {aiAnswer}
+                                                                </ReactMarkdown>
+                                                            </div>
                                                         </div>
-                                                        <div style={{
-                                                            display: 'grid',
-                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                                            gap: '10px'
-                                                        }}>
-                                                            {(showMoreAiArticles ? relatedArticles : relatedArticles.slice(0, DEFAULT_SHOW_COUNT)).map(article => (
-                                                                <ArticleCard
-                                                                    key={article.id}
-                                                                    id={article.id}
-                                                                    title={article.title}
-                                                                    summary={article.summary}
-                                                                    productLine={article.product_line}
-                                                                    productModels={article.product_models}
-                                                                    category={article.category}
-                                                                    onClick={() => handleArticleClick(article)}
-                                                                    variant="reference"
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                        {relatedArticles.length > DEFAULT_SHOW_COUNT && (
-                                                            <button
-                                                                onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
-                                                                style={{
-                                                                    width: '100%',
-                                                                    marginTop: '10px',
-                                                                    padding: '8px',
-                                                                    background: 'rgba(255,255,255,0.03)',
-                                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                                    borderRadius: '6px',
-                                                                    color: '#888',
-                                                                    fontSize: '12px',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    gap: '6px'
-                                                                }}
-                                                            >
-                                                                {showMoreAiArticles ? (
-                                                                    <>收起 <ChevronUp size={12} /></>
-                                                                ) : (
-                                                                    <>展开更多 ({relatedArticles.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
-                                                                )}
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 )}
                                                 
-                                                {/* 关联工单 */}
-                                                {aiRelatedTickets.length > 0 && (
+                                                {/* 参考来源 */}
+                                                {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
                                                     <div>
                                                         <div style={{
-                                                            fontSize: '12px',
-                                                            color: '#666',
-                                                            marginBottom: '8px'
+                                                            fontSize: '13px',
+                                                            fontWeight: 700,
+                                                            color: '#888',
+                                                            marginBottom: '12px',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '1px'
                                                         }}>
-                                                            工单 · {aiRelatedTickets.length}
+                                                            参考来源 · {relatedArticles.length + aiRelatedTickets.length}
                                                         </div>
-                                                        <div style={{
-                                                            display: 'grid',
-                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                                            gap: '10px'
-                                                        }}>
-                                                            {(showMoreAiTickets ? aiRelatedTickets : aiRelatedTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
-                                                                <TicketCard
-                                                                    key={`ai-${ticket.ticket_type}-${ticket.id}`}
-                                                                    id={ticket.id}
-                                                                    ticketNumber={ticket.ticket_number}
-                                                                    ticketType={ticket.ticket_type}
-                                                                    title={ticket.title || ticket.subject || '无标题'}
-                                                                    status={ticket.status}
-                                                                    productModel={ticket.product_model}
-                                                                    onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
-                                                                    variant="compact"
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                        {aiRelatedTickets.length > DEFAULT_SHOW_COUNT && (
-                                                            <button
-                                                                onClick={() => setShowMoreAiTickets(!showMoreAiTickets)}
-                                                                style={{
-                                                                    width: '100%',
-                                                                    marginTop: '10px',
-                                                                    padding: '8px',
-                                                                    background: 'rgba(255,255,255,0.03)',
-                                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                                    borderRadius: '6px',
-                                                                    color: '#888',
+                                                        
+                                                        {/* 关联文章 */}
+                                                        {relatedArticles.length > 0 && (
+                                                            <div style={{ marginBottom: aiRelatedTickets.length > 0 ? '16px' : 0 }}>
+                                                                <div style={{
                                                                     fontSize: '12px',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    gap: '6px'
-                                                                }}
-                                                            >
-                                                                {showMoreAiTickets ? (
-                                                                    <>收起 <ChevronUp size={12} /></>
-                                                                ) : (
-                                                                    <>展开更多 ({aiRelatedTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                    color: '#666',
+                                                                    marginBottom: '8px'
+                                                                }}>
+                                                                    文章 · {relatedArticles.length}
+                                                                </div>
+                                                                <div style={{
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                                    gap: '10px'
+                                                                }}>
+                                                                    {(showMoreAiArticles ? relatedArticles : relatedArticles.slice(0, AI_REF_SHOW_COUNT)).map(article => (
+                                                                        <ArticleCard
+                                                                            key={article.id}
+                                                                            id={article.id}
+                                                                            title={article.title}
+                                                                            summary={article.summary}
+                                                                            productLine={article.product_line}
+                                                                            productModels={article.product_models}
+                                                                            category={article.category}
+                                                                            onClick={() => handleArticleClick(article)}
+                                                                            variant="reference"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                {relatedArticles.length > AI_REF_SHOW_COUNT && (
+                                                                    <button
+                                                                        onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            marginTop: '10px',
+                                                                            padding: '8px',
+                                                                            background: 'rgba(255,255,255,0.03)',
+                                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                                            borderRadius: '6px',
+                                                                            color: '#888',
+                                                                            fontSize: '12px',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            gap: '6px'
+                                                                        }}
+                                                                    >
+                                                                        {showMoreAiArticles ? (
+                                                                            <>收起 <ChevronUp size={12} /></>
+                                                                        ) : (
+                                                                            <>展开更多 ({relatedArticles.length - AI_REF_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                        )}
+                                                                    </button>
                                                                 )}
-                                                            </button>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* 关联工单 */}
+                                                        {aiRelatedTickets.length > 0 && (
+                                                            <div>
+                                                                <div style={{
+                                                                    fontSize: '12px',
+                                                                    color: '#666',
+                                                                    marginBottom: '8px'
+                                                                }}>
+                                                                    工单 · {aiRelatedTickets.length}
+                                                                </div>
+                                                                <div style={{
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                                    gap: '10px'
+                                                                }}>
+                                                                    {(showMoreAiTickets ? aiRelatedTickets : aiRelatedTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                                        <TicketCard
+                                                                            key={`ai-${ticket.ticket_type}-${ticket.id}`}
+                                                                            id={ticket.id}
+                                                                            ticketNumber={ticket.ticket_number}
+                                                                            ticketType={ticket.ticket_type}
+                                                                            title={ticket.title || ticket.subject || '无标题'}
+                                                                            status={ticket.status}
+                                                                            productModel={ticket.product_model}
+                                                                            onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                            variant="compact"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                {aiRelatedTickets.length > DEFAULT_SHOW_COUNT && (
+                                                                    <button
+                                                                        onClick={() => setShowMoreAiTickets(!showMoreAiTickets)}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            marginTop: '10px',
+                                                                            padding: '8px',
+                                                                            background: 'rgba(255,255,255,0.03)',
+                                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                                            borderRadius: '6px',
+                                                                            color: '#888',
+                                                                            fontSize: '12px',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            gap: '6px'
+                                                                        }}
+                                                                    >
+                                                                        {showMoreAiTickets ? (
+                                                                            <>收起 <ChevronUp size={12} /></>
+                                                                        ) : (
+                                                                            <>展开更多 ({aiRelatedTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )}
