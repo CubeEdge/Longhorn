@@ -4,6 +4,20 @@
 
 ---
 
+## 会话: 2026-02-21 (Knowledge Base Search Optimization)
+
+### 任务: 修复知识库搜索与编译问题
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **折叠面板**: 修复 `!showKeywordPanel` 导致 DOM 卸载的问题，改为仅控制内容区域和样式的折叠展开。
+    - **关键字提取**: 重新实现 `extractKeywords`，通过细化正则保留如 Edge 8K、fps 等复合和技术短语，提升向后端（`/api/v1/bokeh/search-tickets` FTS5）查询的准确性。
+    - **编译异常**: 
+        - 内联重写了由版本更新遗失的 `ArticleCard` 和 `TicketCard` 组件。
+        - 修复 `useBokehContext` 变量名称变更相关的 TypeScript 类型错误。
+        - 针对四个语种（zh, en, de, ja）在 `translations.ts` 末尾节点补充了关联 `wiki.*` 与 `common.*` 等翻译缺失键值。
+
+---
+
 ## 会话: 2026-02-21 (Git Sync)
 
 ### 任务: 执行 Git Pull 并同步远程更改

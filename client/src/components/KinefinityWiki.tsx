@@ -10,8 +10,28 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import WikiEditorModal from './Knowledge/WikiEditorModal';
-import { ArticleCard } from './Knowledge/ArticleCard';
-import { TicketCard } from './Knowledge/TicketCard';
+// Legacy components missing after version upgrade, inline replacements
+const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onClick }) => (
+    <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'rgba(255,255,255,0.05)' } } as any}>
+        <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
+        {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
+        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
+            {category && <span>{category}</span>}
+            {productLine && <span>· {productLine}</span>}
+        </div>
+    </div>
+);
+
+const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, productModel, onClick }) => (
+    <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace' }}>{ticketNumber || `TICKET-${Math.floor(Math.random() * 1000)}`}</span>
+            <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: '#aaa' }}>{status || ticketType}</span>
+        </div>
+        <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+        {productModel && <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>{productModel}</div>}
+    </div>
+);
 
 interface KnowledgeArticle {
     id: number;
@@ -96,7 +116,7 @@ export const KinefinityWiki: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const { token } = useAuthStore();
     const { confirm } = useConfirm();
-    const { setWikiViewContext, clearContext } = useBokehContext();
+    const { setWikiContext, clearContext } = useBokehContext();
     const { t } = useLanguage();
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
@@ -116,7 +136,7 @@ export const KinefinityWiki: React.FC = () => {
     });
     const tocPanelRef = React.useRef<HTMLDivElement>(null);
     const selectedArticleRef = React.useRef<KnowledgeArticle | null>(null);
-    
+
     // 分组折叠视图状态 - 从 localStorage 恢复（按产品线分开存储）
     const [groupedExpandedModels, setGroupedExpandedModels] = useState<Set<string>>(() => {
         const params = new URLSearchParams(location.search);
@@ -132,7 +152,7 @@ export const KinefinityWiki: React.FC = () => {
     });
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false); // 区分搜索模式和分组视图模式
-    
+
     // 简化调试信息输出
     useEffect(() => {
         // 只在状态异常时输出警告
@@ -142,11 +162,11 @@ export const KinefinityWiki: React.FC = () => {
     }, [showSearchResults, isSearchMode, searchQuery]);
     const [searchResults, setSearchResults] = useState<KnowledgeArticle[]>([]);
     const [, setIsSearching] = useState(false);
-    
+
     // 搜索栏状态 - 当前始终展开
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_isSearchExpanded, _setIsSearchExpanded] = useState(true);
-    
+
     // 当前选中的产品族类 - 默认选中A类
     const [selectedProductLine, setSelectedProductLine] = useState<string | null>('A');
 
@@ -159,7 +179,7 @@ export const KinefinityWiki: React.FC = () => {
     const [showFullChapter, setShowFullChapter] = useState(false);
     const [loadingFullChapter, setLoadingFullChapter] = useState(false);
     const [showEditorModal, setShowEditorModal] = useState(false);
-    
+
     // 管理菜单状态
     const [showAdminMenu, setShowAdminMenu] = useState(false);
     const [showArticleManager, setShowArticleManager] = useState(false);
@@ -168,16 +188,16 @@ export const KinefinityWiki: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [managerSearchQuery, setManagerSearchQuery] = useState('');
     const [managerSort, setManagerSort] = useState<{ field: 'title' | 'product_line' | 'product_model' | 'category'; order: 'asc' | 'desc' } | null>(null);
-    
+
     // 搜索结果显示控制
     const [showKeywordPanel, setShowKeywordPanel] = useState(true);
     const [showAiPanel, setShowAiPanel] = useState(true);
     const [extractedKeywords, setExtractedKeywords] = useState('');
-    
+
     // 搜索结果默认显示数量
     const DEFAULT_SHOW_COUNT = 3;
     const AI_REF_SHOW_COUNT = 4; // AI 参考文章默认显示数量
-    
+
     // 工单搜索结果
     const [keywordTickets, setKeywordTickets] = useState<any[]>([]);
     const [aiRelatedTickets, setAiRelatedTickets] = useState<any[]>([]);
@@ -186,11 +206,11 @@ export const KinefinityWiki: React.FC = () => {
     const [showMoreAiArticles, setShowMoreAiArticles] = useState(false);
     const [showMoreAiTickets, setShowMoreAiTickets] = useState(false);
     const [showMoreRecent, setShowMoreRecent] = useState(false);
-    
+
     // 最近浏览展开/折叠状态
     const [recentExpanded, setRecentExpanded] = useState(true);
     const RECENT_SHOW_COUNT = 3;
-    
+
     const [showManualTocModal, setShowManualTocModal] = useState(false);
 
     // AI搜索状态
@@ -351,14 +371,14 @@ export const KinefinityWiki: React.FC = () => {
         const productModel = params.get('model');
         const category = params.get('category');
         const searchParam = params.get('search');
-        
+
         // 如果URL中有search参数，恢复搜索状态
         if (searchParam && articles.length > 0) {
             setSearchQuery(searchParam);
             setPendingSearchQuery(searchParam);
             return;
         }
-        
+
         // 如果没有任何URL参数，自动加载A类内容
         if (!productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !isSearchMode) {
             const filtered = articles.filter(a => a.product_line === 'A');
@@ -383,11 +403,11 @@ export const KinefinityWiki: React.FC = () => {
             navigate('/tech-hub/wiki?line=A', { replace: true });
             return;
         }
-        
+
         // 如果有 URL 参数，构建对应的面包屑路径和筛选视图
         if (productLine || productModel || category) {
             const newBreadcrumb: BreadcrumbItem[] = [{ label: 'WIKI', type: 'home' }];
-            
+
             if (productLine) {
                 const lineLabels: Record<string, string> = {
                     'A': 'A 类',
@@ -402,7 +422,7 @@ export const KinefinityWiki: React.FC = () => {
                     viewMode: 'grouped'
                 });
             }
-            
+
             if (productModel && productLine) {
                 newBreadcrumb.push({
                     label: productModel,
@@ -412,7 +432,7 @@ export const KinefinityWiki: React.FC = () => {
                     viewMode: 'grouped'
                 });
             }
-            
+
             if (category && productModel && productLine) {
                 const categoryLabels: Record<string, string> = {
                     'Manual': '操作手册',
@@ -428,9 +448,9 @@ export const KinefinityWiki: React.FC = () => {
                     viewMode: 'grouped'
                 });
             }
-            
+
             setBreadcrumbPath(newBreadcrumb);
-            
+
             // 筛选文章
             const filtered = articles.filter(a => {
                 let match = true;
@@ -442,7 +462,7 @@ export const KinefinityWiki: React.FC = () => {
                 if (category) match = match && a.category === category;
                 return match;
             });
-            
+
             setSearchResults(filtered);
             setShowSearchResults(true);
             // 从 localStorage 加载该产品线的展开状态
@@ -501,7 +521,7 @@ export const KinefinityWiki: React.FC = () => {
         const handleBokehOptimized = async (event: Event) => {
             const customEvent = event as CustomEvent;
             const { articleId } = customEvent.detail;
-            
+
             // Use ref to get current article (avoids stale closure)
             const currentArticle = selectedArticleRef.current;
             if (currentArticle && currentArticle.id === articleId) {
@@ -531,20 +551,20 @@ export const KinefinityWiki: React.FC = () => {
         if (!pendingSearchQuery.trim()) {
             return;
         }
-        
+
         const query = pendingSearchQuery.trim();
-        
+
         // 提取关键词用于显示
         const keywords = extractKeywords(query);
         setExtractedKeywords(keywords);
-        
+
         const doSearch = async () => {
             try {
                 setIsSearching(true);
                 setIsSearchMode(true); // 尽早设置搜索模式
                 setShowKeywordPanel(true);
                 setShowAiPanel(true);
-                
+
                 // 同时执行关键词搜索和AI搜索
                 await Promise.all([
                     performKeywordSearch(query),
@@ -557,14 +577,14 @@ export const KinefinityWiki: React.FC = () => {
                 setIsAiSearching(false);
             }
         };
-        
+
         doSearch();
     }, [pendingSearchQuery, token]);
 
     // 关键词搜索 - 同时搜索文章和工单
     const performKeywordSearch = async (query: string) => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        
+
         // 1. 搜索知识库文章
         const articleRes = await axios.get('/api/v1/knowledge', {
             headers,
@@ -572,7 +592,7 @@ export const KinefinityWiki: React.FC = () => {
         });
         const articleResults = articleRes.data.data || [];
         setSearchResults(articleResults);
-        
+
         // 2. 搜索工单
         let ticketResults: any[] = [];
         try {
@@ -585,13 +605,13 @@ export const KinefinityWiki: React.FC = () => {
             // 工单搜索失败不影响关键词搜索结果
         }
         setKeywordTickets(ticketResults);
-        
+
         setShowSearchResults(true);
         setIsSearchMode(true);
-        
+
         // 更新URL，支持分享和浏览器回退
         navigate(`/tech-hub/wiki?search=${encodeURIComponent(query)}`, { replace: false });
-        
+
         // 重置展开状态
         setShowMoreArticles(false);
         setShowMoreTickets(false);
@@ -599,33 +619,22 @@ export const KinefinityWiki: React.FC = () => {
 
     // 从自然语言问题中提取关键词
     const extractKeywords = (query: string): string => {
-        // 1. 首先提取技术术语：大写缩写（如SDI、HDMI）、数字+单位（如3G、4K）、产品型号
-        const technicalTerms = query.match(/[A-Z]{2,}|\d+[KG]|[A-Z]\d+|Edge\s*\d+K|TERRA|MAVO|KineMON/g) || [];
-        
-        // 2. 提取英文单词（可能包含技术术语）
-        const englishWords = query.match(/[a-zA-Z]+/g) || [];
-        
-        // 3. 移除常见的疑问词和停用词
-        const stopWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?|的|是|有|什么|参数|功能|方法|步骤|介绍|说明|关于|支持|吗/g;
-        
-        // 4. 清理后的查询（移除停用词）
-        let cleaned = query.replace(stopWords, ' ').trim();
-        
-        // 5. 如果提取到了技术术语，优先使用技术术语
-        if (technicalTerms.length > 0) {
-            // 去重并保持顺序
-            const uniqueTerms = [...new Set(technicalTerms)];
-            return uniqueTerms.join(' ');
+        // 1. 移除常见的疑问词和无意义词汇（增加更多常见标点符号和停用词）
+        const stopWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?|的|是|有|什么|介绍|说明|关于|支持|可以|能|会|，|。|、|！|！/g;
+
+        // 2. 清理停用词，保留有实际意义的中文词语（如：帧率、分辨率）和连贯的英文术语（如 Edge 8K）
+        let cleaned = query.replace(stopWords, ' ').replace(/\s+/g, ' ').trim();
+
+        // 3. 如果清理后的词完全为空或太长（作为页面显示的关键词不合适），尝试提取技术术语
+        if (!cleaned || cleaned.length > 30) {
+            const technicalTerms = query.match(/([A-Za-z0-9]+(?:\s*(?:8K|6K|4K|LF|S35|SDI|HDMI|LUT|ISO|fps))?|[A-Z]{2,})/gi) || [];
+            if (technicalTerms.length > 0) {
+                return [...new Set(technicalTerms.map(t => t.trim()))].join(' ');
+            }
+            return query.slice(0, 20);
         }
-        
-        // 6. 如果有英文单词，使用英文单词
-        const meaningfulEnglish = englishWords.filter(w => w.length > 1 && !['吗', '呢', '的', '是'].includes(w));
-        if (meaningfulEnglish.length > 0) {
-            return meaningfulEnglish.join(' ');
-        }
-        
-        // 7. 返回清理后的查询或原始查询的前20个字符
-        return cleaned || query.slice(0, 20);
+
+        return cleaned;
     };
 
     // Bokeh 搜索 - 同时获取关联文章和工单
@@ -633,7 +642,7 @@ export const KinefinityWiki: React.FC = () => {
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             setIsAiSearching(true);
-            
+
             // 并行获取知识库文章和工单（使用原始query进行搜索）
             const [articleRes, ticketRes] = await Promise.all([
                 axios.get('/api/v1/knowledge', {
@@ -645,10 +654,10 @@ export const KinefinityWiki: React.FC = () => {
                     top_k: 10
                 }, { headers }).catch(() => ({ data: { results: [] } }))
             ]);
-            
+
             const contextArticles = articleRes.data.data || [];
             const contextTickets = ticketRes.data?.results || [];
-            
+
             // 3. 调用 Bokeh 接口获取回答
             const messages = [
                 {
@@ -669,16 +678,16 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     content: query
                 }
             ];
-            
+
             const aiRes = await axios.post('/api/ai/chat', {
                 messages,
                 context: { source: 'wiki_search', articles: contextArticles.map((a: KnowledgeArticle) => a.id) }
             }, { headers });
-            
+
             setAiAnswer(aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。');
             setRelatedArticles(contextArticles);
             setAiRelatedTickets(contextTickets);
-            
+
             // 重置展开状态
             setShowMoreAiArticles(false);
             setShowMoreAiTickets(false);
@@ -708,7 +717,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
         const crumbs: BreadcrumbItem[] = [
             { label: 'WIKI', type: 'home' }
         ];
-    
+
         const lineLabels: Record<string, string> = {
             'A': 'A 类',
             'B': 'B 类',
@@ -716,16 +725,16 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             'D': 'D 类'
         };
         if (article.product_line && lineLabels[article.product_line]) {
-            crumbs.push({ 
+            crumbs.push({
                 label: lineLabels[article.product_line],
                 type: 'product_line',
                 productLine: article.product_line
             });
         }
-    
+
         if (article.product_models && article.product_models.length > 0) {
             const model = Array.isArray(article.product_models) ? article.product_models[0] : article.product_models;
-            crumbs.push({ 
+            crumbs.push({
                 label: model,
                 type: 'product_model',
                 productLine: article.product_line,
@@ -733,14 +742,14 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 viewMode: 'grouped'
             });
         }
-    
+
         if (article.category) {
             const categoryLabels: Record<string, string> = {
                 'Manual': '操作手册',
                 'Troubleshooting': '故障排查',
                 'FAQ': '常见问题'
             };
-            crumbs.push({ 
+            crumbs.push({
                 label: categoryLabels[article.category] || article.category,
                 type: 'category',
                 productLine: article.product_line,
@@ -748,13 +757,13 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 category: article.category
             });
         }
-    
-        crumbs.push({ 
-            label: article.title, 
+
+        crumbs.push({
+            label: article.title,
             articleSlug: article.slug,
             type: 'article'
         });
-    
+
         setBreadcrumbPath(crumbs);
     };
 
@@ -777,20 +786,18 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 setSelectedArticle(detailed);
                 selectedArticleRef.current = detailed;
                 // Set Bokeh context for this article
-                setWikiViewContext({
+                setWikiContext({
                     id: detailed.id,
                     title: detailed.title,
-                    slug: detailed.slug,
-                    summary: detailed.summary
+                    slug: detailed.slug
                 });
             } else {
                 setSelectedArticle(article);
                 selectedArticleRef.current = article;
-                setWikiViewContext({
+                setWikiContext({
                     id: article.id,
                     title: article.title,
-                    slug: article.slug,
-                    summary: article.summary
+                    slug: article.slug
                 });
             }
         } catch (err) {
@@ -835,7 +842,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             setShowManualTocModal(true);
             return;
         }
-        
+
         // 否则显示标准目录面板
         setTocVisible(true);
 
@@ -892,14 +899,14 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
     // 点击产品族类卡片
     const handleProductLineClick = (productLine: string) => {
         const filtered = articles.filter(a => a.product_line === productLine);
-        
+
         const lineLabels: Record<string, string> = {
             'A': 'A 类',
             'B': 'B 类',
             'C': 'C 类',
             'D': 'D 类'
         };
-        
+
         const newBreadcrumb: BreadcrumbItem[] = [{
             label: 'WIKI',
             type: 'home'
@@ -909,35 +916,35 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             productLine,
             viewMode: 'grouped'
         }];
-        
+
         // 先加载展开状态，再设置 selectedProductLine，避免 useEffect 覆盖
         const savedModels = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
         const savedCategories = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
-        
+
         // 直接设置展开状态
         const newModelsSet = savedModels ? new Set<string>(JSON.parse(savedModels)) : new Set<string>();
         const newCategoriesSet = savedCategories ? new Set<string>(JSON.parse(savedCategories)) : new Set<string>();
         setGroupedExpandedModels(newModelsSet);
         setGroupedExpandedCategories(newCategoriesSet);
-        
+
         // 然后再设置其他状态
         setBreadcrumbPath(newBreadcrumb);
         setSelectedProductLine(productLine);
         setSearchResults(filtered);
         setShowSearchResults(true);
         setIsSearching(false);
-        
+
         // 清除当前文章，显示分组视图
         setSelectedArticle(null);
         selectedArticleRef.current = null;
-        
+
         // 使用 URL 参数支持浏览器前进/后退
         navigate(`/tech-hub/wiki?line=${productLine}`);
     };
 
     const handleBreadcrumbClick = async (index: number) => {
         const crumb = breadcrumbPath[index];
-        
+
         // 点击文章节点
         if (crumb.type === 'article' && crumb.articleSlug) {
             const article = articles.find(a => a.slug === crumb.articleSlug);
@@ -946,13 +953,13 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             }
             return;
         }
-        
+
         // 点击 WIKI 首页时返回A类视图
         if (crumb.type === 'home') {
             handleHomeClick();
             return;
         }
-        
+
         // 点击产品线、产品型号或分类节点，加载对应的分组视图
         const filterParams: any = {};
         if (crumb.type === 'product_line') {
@@ -965,27 +972,27 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             filterParams.product_models = crumb.productModel;
             filterParams.category = crumb.category;
         }
-        
+
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             const res = await axios.get('/api/v1/knowledge', {
                 headers,
                 params: { ...filterParams, page_size: 1000 }
             });
-            
+
             const filteredArticles = res.data.data || [];
             const newBreadcrumb = breadcrumbPath.slice(0, index + 1);
-            
+
             setBreadcrumbPath(newBreadcrumb);
             setSearchResults(filteredArticles);
             setShowSearchResults(true);
             setIsSearching(false);
             setSelectedArticle(null);
             selectedArticleRef.current = null;
-            
+
             setGroupedExpandedModels(new Set());
             setGroupedExpandedCategories(new Set());
-            
+
             // 构建 URL 参数
             let url = '/tech-hub/wiki';
             const params = new URLSearchParams();
@@ -993,7 +1000,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             if (crumb.productModel) params.set('model', crumb.productModel);
             if (crumb.category) params.set('category', crumb.category);
             if (params.toString()) url += `?${params.toString()}`;
-            
+
             navigate(url);
         } catch (err) {
             console.error('[WIKI] Failed to load category articles:', err);
@@ -1013,7 +1020,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
     // Bokeh formatting functions
     const handleBokehFormat = async () => {
         if (!selectedArticle || !token) return;
-        
+
         setIsFormatting(true);
         try {
             const res = await axios.post(
@@ -1021,7 +1028,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 { mode: 'full' },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
+
             if (res.data.success) {
                 // Reload article to get formatted content
                 await loadArticleDetail(selectedArticle);
@@ -1037,7 +1044,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
 
     const handlePublishFormat = async () => {
         if (!selectedArticle || !token) return;
-        
+
         const confirmed = await confirm(
             '发布后将覆盖原有内容，此操作不可撤销。',
             '发布 Bokeh 优化内容',
@@ -1045,14 +1052,14 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             '取消'
         );
         if (!confirmed) return;
-        
+
         try {
             const res = await axios.post(
                 `/api/v1/knowledge/${selectedArticle.id}/publish-format`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            
+
             if (res.data.success) {
                 await loadArticleDetail(selectedArticle);
                 setViewMode('published');
@@ -1066,7 +1073,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
     // Chapter aggregation functions
     const loadChapterAggregate = async (chapterNum: number, productLine: string, productModel: string) => {
         if (!token) return;
-        
+
         try {
             const res = await axios.get('/api/v1/knowledge/chapter-aggregate', {
                 headers: { Authorization: `Bearer ${token}` },
@@ -1077,7 +1084,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     chapter_number: chapterNum
                 }
             });
-            
+
             if (res.data.success) {
                 setChapterView(res.data.data);
                 setShowChapterView(true);
@@ -1094,20 +1101,20 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
     // Load full chapter content for "Read entire chapter" feature
     const loadFullChapter = async () => {
         if (!token || !chapterView) return;
-        
+
         // Find product info from first article
         const firstSection = chapterView.sub_sections[0] || chapterView.main_chapter;
         if (!firstSection) return;
-        
+
         const article = articles.find(a => a.slug === firstSection.slug);
         if (!article) return;
-        
+
         setLoadingFullChapter(true);
         try {
-            const productModel = Array.isArray(article.product_models) 
-                ? article.product_models[0] 
+            const productModel = Array.isArray(article.product_models)
+                ? article.product_models[0]
                 : article.product_models;
-            
+
             const res = await axios.get('/api/v1/knowledge/chapter-full', {
                 headers: { Authorization: `Bearer ${token}` },
                 params: {
@@ -1117,7 +1124,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     chapter_number: chapterView.chapter_number
                 }
             });
-            
+
             if (res.data.success) {
                 setFullChapterContent(res.data.data.full_content);
                 setShowFullChapter(true);
@@ -1156,7 +1163,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
 
     // Check if user can edit (Admin/Lead/Editor)
     const canEdit = selectedArticle?.permissions?.can_edit || false;
-    
+
     // Check if user has wiki admin access (Admin/Lead can access Wiki admin)
     const { user } = useAuthStore();
     const hasWikiAdminAccess = user?.role === 'Admin' || user?.role === 'Lead';
@@ -1178,30 +1185,30 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             const idParts = node.id.split('-');
             let productLine = '';
             let productModel = '';
-            
+
             // Try to find from the tree context
             if (idParts[0]?.toUpperCase().match(/^[A-D]$/)) {
                 productLine = idParts[0].toUpperCase();
             }
-            
+
             // Find product model from articles
             if (node.articles && node.articles.length > 0) {
                 const firstArticle = node.articles[0];
                 productLine = firstArticle.product_line || productLine;
                 if (firstArticle.product_models && firstArticle.product_models.length > 0) {
-                    productModel = Array.isArray(firstArticle.product_models) 
-                        ? firstArticle.product_models[0] 
+                    productModel = Array.isArray(firstArticle.product_models)
+                        ? firstArticle.product_models[0]
                         : firstArticle.product_models;
                 }
             }
-            
+
             return { productLine, productModel };
         };
 
         const handleChapterClick = async (e: React.MouseEvent) => {
             e.stopPropagation();
             if (chapterNum === null) return;
-            
+
             const { productLine, productModel } = getProductInfo();
             if (productLine && productModel) {
                 await loadChapterAggregate(chapterNum, productLine, productModel);
@@ -1235,18 +1242,18 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 >
                     {/* 展开/收起箭头 - Apple 风格 */}
                     {isClickable && (
-                        <ChevronRight 
-                            size={16} 
-                            color="#FFD700" 
-                            style={{ 
+                        <ChevronRight
+                            size={16}
+                            color="#FFD700"
+                            style={{
                                 transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                                 transition: 'transform 0.2s ease',
                                 flexShrink: 0
-                            }} 
+                            }}
                         />
                     )}
                     {!isClickable && <div style={{ width: 16 }} />}
-                    
+
                     <span style={{
                         fontSize: level === 0 ? '15px' : '14px',
                         fontWeight: level === 0 ? 600 : 400,
@@ -1255,7 +1262,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     }}>
                         {node.label}
                     </span>
-                    
+
                     {/* Chapter Aggregate Button */}
                     {isChapterNode && hasArticles && node.articles && node.articles.length > 1 && (
                         <button
@@ -1319,7 +1326,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                 const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
                                 const cleanTitle = titleMatch ? titleMatch[1] : article.title;
                                 const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
-                                
+
                                 return (
                                     <div
                                         key={article.id}
@@ -1544,7 +1551,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                             }}>
                                 {selectedArticle.title}
                             </h1>
-                            
+
                             {/* Edit Button - Only show when no draft exists */}
                             {canEdit && selectedArticle.format_status !== 'draft' && (
                                 <button
@@ -1633,9 +1640,9 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         <EyeOff size={14} /> 草稿
                                     </button>
                                 </div>
-                                
+
                                 <div style={{ flex: 1 }} />
-                                
+
                                 {/* Bokeh Format Button */}
                                 <button
                                     onClick={handleBokehFormat}
@@ -1658,7 +1665,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     <Sparkles size={14} />
                                     {isFormatting ? 'Bokeh 处理中...' : 'Bokeh 优化排版'}
                                 </button>
-                                
+
                                 {/* Manual Edit Button */}
                                 <button
                                     onClick={() => setShowEditorModal(true)}
@@ -1680,7 +1687,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     <Edit3 size={14} />
                                     编辑
                                 </button>
-                                
+
                                 {/* Publish Button - Only show when draft exists */}
                                 {viewMode === 'draft' && (
                                     <button
@@ -2008,8 +2015,8 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                 disabled={loadingFullChapter}
                                 style={{
                                     padding: '10px 20px',
-                                    background: showFullChapter 
-                                        ? 'rgba(255,255,255,0.1)' 
+                                    background: showFullChapter
+                                        ? 'rgba(255,255,255,0.1)'
                                         : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
                                     border: 'none',
                                     borderRadius: '8px',
@@ -2123,99 +2130,99 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     本章内容
                                 </h2>
 
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                            gap: '16px'
-                        }}>
-                            {chapterView.sub_sections.map((section) => (
-                                <div
-                                    key={section.id}
-                                    onClick={() => {
-                                        const article = articles.find(a => a.slug === section.slug);
-                                        if (article) {
-                                            setShowChapterView(false);
-                                            handleArticleClick(article);
-                                        }
-                                    }}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.02)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: '12px',
-                                        padding: '20px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }}
-                                >
-                                    {/* Section Number Badge */}
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '10px',
-                                        marginBottom: '12px'
-                                    }}>
-                                        <span style={{
-                                            background: 'rgba(255,215,0,0.15)',
-                                            color: '#FFD700',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: 600
-                                        }}>
-                                            {chapterView.chapter_number}.{section.section_number}
-                                        </span>
-                                    </div>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                    gap: '16px'
+                                }}>
+                                    {chapterView.sub_sections.map((section) => (
+                                        <div
+                                            key={section.id}
+                                            onClick={() => {
+                                                const article = articles.find(a => a.slug === section.slug);
+                                                if (article) {
+                                                    setShowChapterView(false);
+                                                    handleArticleClick(article);
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'rgba(255,255,255,0.02)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                borderRadius: '12px',
+                                                padding: '20px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
+                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                            }}
+                                        >
+                                            {/* Section Number Badge */}
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                marginBottom: '12px'
+                                            }}>
+                                                <span style={{
+                                                    background: 'rgba(255,215,0,0.15)',
+                                                    color: '#FFD700',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {chapterView.chapter_number}.{section.section_number}
+                                                </span>
+                                            </div>
 
-                                    {/* Section Title */}
-                                    <h3 style={{
-                                        fontSize: '15px',
-                                        fontWeight: 600,
-                                        color: '#fff',
-                                        marginBottom: '8px',
-                                        lineHeight: '1.4'
-                                    }}>
-                                        {section.title.split(':').pop()?.split('.').slice(1).join('.') || section.title}
-                                    </h3>
+                                            {/* Section Title */}
+                                            <h3 style={{
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: '#fff',
+                                                marginBottom: '8px',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {section.title.split(':').pop()?.split('.').slice(1).join('.') || section.title}
+                                            </h3>
 
-                                    {/* Section Summary */}
-                                    {section.summary && (
-                                        <p style={{
-                                            fontSize: '13px',
-                                            color: '#888',
-                                            lineHeight: '1.5',
-                                            marginBottom: '12px',
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 3,
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden'
-                                        }}>
-                                            {section.summary}
-                                        </p>
-                                    )}
+                                            {/* Section Summary */}
+                                            {section.summary && (
+                                                <p style={{
+                                                    fontSize: '13px',
+                                                    color: '#888',
+                                                    lineHeight: '1.5',
+                                                    marginBottom: '12px',
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 3,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden'
+                                                }}>
+                                                    {section.summary}
+                                                </p>
+                                            )}
 
-                                    {/* Stats */}
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: '16px',
-                                        fontSize: '12px',
-                                        color: '#666'
-                                    }}>
-                                        <span>👁 {section.view_count}</span>
-                                        <span>👍 {section.helpful_count}</span>
-                                    </div>
+                                            {/* Stats */}
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '16px',
+                                                fontSize: '12px',
+                                                color: '#666'
+                                            }}>
+                                                <span>👁 {section.view_count}</span>
+                                                <span>👍 {section.helpful_count}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
                             </>
                         )}
                     </div>
@@ -2251,7 +2258,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     {t('wiki.subtitle')}
                                 </p>
                             </div>
-                            
+
                             {/* 右侧：搜索栏 + 目录 + 管理 */}
                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                 {/* 可展开搜索栏 */}
@@ -2340,7 +2347,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 {/* 管理按钮 - 下拉菜单 */}
                                 {hasWikiAdminAccess && (
                                     <div style={{ position: 'relative' }}>
@@ -2375,7 +2382,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             <Settings size={18} />
                                             <span>{t('wiki.manage')}</span>
                                         </button>
-                                        
+
                                         {/* 下拉菜单 */}
                                         {showAdminMenu && (
                                             <>
@@ -2453,12 +2460,12 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                 )}
                             </div>
                         </div>
-                        
+
                         {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
                         {showSearchResults && searchQuery.trim() !== '' && (
                             <div style={{ marginBottom: '24px' }}>
                                 {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
-                                {showKeywordPanel && isSearchMode && (
+                                {isSearchMode && (
                                     <div style={{
                                         background: 'rgba(255,255,255,0.03)',
                                         border: '2px solid rgba(255,215,0,0.25)',
@@ -2472,7 +2479,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'space-between',
-                                            marginBottom: '16px'
+                                            marginBottom: showKeywordPanel ? '16px' : '0'
                                         }}>
                                             <div style={{
                                                 display: 'flex',
@@ -2517,9 +2524,9 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                     e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                                 }}
                                             >
-                                                <ChevronDown 
-                                                    size={14} 
-                                                    color="#999" 
+                                                <ChevronDown
+                                                    size={14}
+                                                    color="#999"
                                                     style={{
                                                         transform: showKeywordPanel ? 'rotate(180deg)' : 'rotate(0deg)',
                                                         transition: 'transform 0.2s ease'
@@ -2528,150 +2535,154 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             </button>
                                         </div>
 
-                                        {/* 搜索结果统计 + 展开更多按钮 */}
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            marginBottom: '16px',
-                                            paddingBottom: '12px',
-                                            borderBottom: '1px solid rgba(255,255,255,0.06)'
-                                        }}>
-                                            <div style={{ fontSize: '14px', color: '#999' }}>
-                                                {searchResults.length === 0 && keywordTickets.length === 0 ? (
-                                                    <span style={{ color: '#666' }}>未找到相关文章或工单</span>
-                                                ) : (
-                                                    <>
-                                                        搜索结果：找到 {searchResults.length} 篇文章
-                                                        {keywordTickets.length > 0 && ` · ${keywordTickets.length} 个工单`}
-                                                    </>
-                                                )}
-                                            </div>
-                                            {searchResults.length > DEFAULT_SHOW_COUNT && (
-                                                <button
-                                                    onClick={() => setShowMoreArticles(!showMoreArticles)}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: '6px',
-                                                        color: '#888',
-                                                        fontSize: '12px',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                        transition: 'all 0.15s'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    }}
-                                                >
-                                                    {showMoreArticles ? (
-                                                        <>收起 <ChevronUp size={12} /></>
-                                                    ) : (
-                                                        <>展开更多 ({searchResults.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
-                                                    )}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* 关键词结果内容 - 文章列表 */}
-                                        <div>
-                                            {/* 文章列表 */}
-                                            {searchResults.length > 0 && (
-                                                <div style={{ marginBottom: keywordTickets.length > 0 ? '20px' : 0 }}>
-                                                    <div style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                                        gap: '12px'
-                                                    }}>
-                                                        {(showMoreArticles ? searchResults : searchResults.slice(0, DEFAULT_SHOW_COUNT)).map(article => (
-                                                            <ArticleCard
-                                                                key={article.id}
-                                                                id={article.id}
-                                                                title={article.title}
-                                                                summary={article.summary}
-                                                                productLine={article.product_line}
-                                                                productModels={article.product_models}
-                                                                category={article.category}
-                                                                onClick={() => handleArticleClick(article)}
-                                                                variant="default"
-                                                            />
-                                                        ))}
+                                        {showKeywordPanel && (
+                                            <>
+                                                {/* 搜索结果统计 + 展开更多按钮 */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: '16px',
+                                                    paddingBottom: '12px',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                                }}>
+                                                    <div style={{ fontSize: '14px', color: '#999' }}>
+                                                        {searchResults.length === 0 && keywordTickets.length === 0 ? (
+                                                            <span style={{ color: '#666' }}>未找到相关文章或工单</span>
+                                                        ) : (
+                                                            <>
+                                                                搜索结果：找到 {searchResults.length} 篇文章
+                                                                {keywordTickets.length > 0 && ` · ${keywordTickets.length} 个工单`}
+                                                            </>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            )}
-                                            
-                                            {/* 工单列表 */}
-                                            {keywordTickets.length > 0 && (
-                                                <div>
-                                                    <div style={{
-                                                        fontSize: '12px',
-                                                        fontWeight: 600,
-                                                        color: '#888',
-                                                        marginBottom: '12px',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.5px'
-                                                    }}>
-                                                        相关工单 · {keywordTickets.length}
-                                                    </div>
-                                                    <div style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                                        gap: '12px'
-                                                    }}>
-                                                        {(showMoreTickets ? keywordTickets : keywordTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
-                                                            <TicketCard
-                                                                key={`${ticket.ticket_type}-${ticket.id}`}
-                                                                id={ticket.id}
-                                                                ticketNumber={ticket.ticket_number}
-                                                                ticketType={ticket.ticket_type}
-                                                                title={ticket.title || ticket.subject || '无标题'}
-                                                                status={ticket.status}
-                                                                productModel={ticket.product_model}
-                                                                onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
-                                                                variant="compact"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    {keywordTickets.length > DEFAULT_SHOW_COUNT && (
+                                                    {searchResults.length > DEFAULT_SHOW_COUNT && (
                                                         <button
-                                                            onClick={() => setShowMoreTickets(!showMoreTickets)}
+                                                            onClick={() => setShowMoreArticles(!showMoreArticles)}
                                                             style={{
-                                                                width: '100%',
-                                                                marginTop: '12px',
-                                                                padding: '10px',
-                                                                background: 'rgba(255,255,255,0.03)',
-                                                                border: '1px solid rgba(255,255,255,0.08)',
-                                                                borderRadius: '8px',
+                                                                padding: '6px 12px',
+                                                                background: 'rgba(255,255,255,0.05)',
+                                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                                borderRadius: '6px',
                                                                 color: '#888',
-                                                                fontSize: '13px',
+                                                                fontSize: '12px',
                                                                 cursor: 'pointer',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                gap: '6px'
+                                                                gap: '4px',
+                                                                transition: 'all 0.15s'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                                             }}
                                                         >
-                                                            {showMoreTickets ? (
-                                                                <>收起 <ChevronUp size={14} /></>
+                                                            {showMoreArticles ? (
+                                                                <>收起 <ChevronUp size={12} /></>
                                                             ) : (
-                                                                <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                                                <>展开更多 ({searchResults.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
                                                             )}
                                                         </button>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                {/* 关键词结果内容 - 文章列表 */}
+                                                <div>
+                                                    {/* 文章列表 */}
+                                                    {searchResults.length > 0 && (
+                                                        <div style={{ marginBottom: keywordTickets.length > 0 ? '20px' : 0 }}>
+                                                            <div style={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                                gap: '12px'
+                                                            }}>
+                                                                {(showMoreArticles ? searchResults : searchResults.slice(0, DEFAULT_SHOW_COUNT)).map(article => (
+                                                                    <ArticleCard
+                                                                        key={article.id}
+                                                                        id={article.id}
+                                                                        title={article.title}
+                                                                        summary={article.summary}
+                                                                        productLine={article.product_line}
+                                                                        productModels={article.product_models}
+                                                                        category={article.category}
+                                                                        onClick={() => handleArticleClick(article)}
+                                                                        variant="default"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 工单列表 */}
+                                                    {keywordTickets.length > 0 && (
+                                                        <div>
+                                                            <div style={{
+                                                                fontSize: '12px',
+                                                                fontWeight: 600,
+                                                                color: '#888',
+                                                                marginBottom: '12px',
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                相关工单 · {keywordTickets.length}
+                                                            </div>
+                                                            <div style={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                                gap: '12px'
+                                                            }}>
+                                                                {(showMoreTickets ? keywordTickets : keywordTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                                    <TicketCard
+                                                                        key={`${ticket.ticket_type}-${ticket.id}`}
+                                                                        id={ticket.id}
+                                                                        ticketNumber={ticket.ticket_number}
+                                                                        ticketType={ticket.ticket_type}
+                                                                        title={ticket.title || ticket.subject || '无标题'}
+                                                                        status={ticket.status}
+                                                                        productModel={ticket.product_model}
+                                                                        onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                        variant="compact"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                            {keywordTickets.length > DEFAULT_SHOW_COUNT && (
+                                                                <button
+                                                                    onClick={() => setShowMoreTickets(!showMoreTickets)}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        marginTop: '12px',
+                                                                        padding: '10px',
+                                                                        background: 'rgba(255,255,255,0.03)',
+                                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                                        borderRadius: '8px',
+                                                                        color: '#888',
+                                                                        fontSize: '13px',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '6px'
+                                                                    }}
+                                                                >
+                                                                    {showMoreTickets ? (
+                                                                        <>收起 <ChevronUp size={14} /></>
+                                                                    ) : (
+                                                                        <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
 
                                 {/* AI 搜索 Panel - 只在搜索时显示 */}
-                                {showAiPanel && isSearchMode && (
+                                {isSearchMode && (
                                     <div style={{
                                         background: 'rgba(76,175,80,0.05)',
                                         border: '2px solid rgba(76,175,80,0.25)',
@@ -2683,7 +2694,8 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'space-between'
+                                            justifyContent: 'space-between',
+                                            marginBottom: '0'
                                         }}>
                                             <div style={{
                                                 display: 'flex',
@@ -2731,9 +2743,9 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                     e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                                 }}
                                             >
-                                                <ChevronDown 
-                                                    size={14} 
-                                                    color="#999" 
+                                                <ChevronDown
+                                                    size={14}
+                                                    color="#999"
                                                     style={{
                                                         transform: showAiPanel ? 'rotate(180deg)' : 'rotate(0deg)',
                                                         transition: 'transform 0.2s ease'
@@ -2743,7 +2755,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         </div>
 
                                         {/* Bokeh 回答区域 - 只在搜索时显示 */}
-                                        {(isAiSearching || aiAnswer || relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                        {showAiPanel && (isAiSearching || aiAnswer || relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
                                             <div style={{ marginTop: '16px' }}>
                                                 {isAiSearching && !aiAnswer && (
                                                     <div style={{
@@ -2766,7 +2778,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         </span>
                                                     </div>
                                                 )}
-                                        
+
                                                 {aiAnswer && (
                                                     <div style={{
                                                         background: 'transparent',
@@ -2782,12 +2794,12 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                                 color: '#ccc',
                                                                 lineHeight: '1.7'
                                                             }}>
-                                                                <ReactMarkdown 
+                                                                <ReactMarkdown
                                                                     remarkPlugins={[remarkGfm]}
                                                                     rehypePlugins={[rehypeRaw]}
                                                                     components={{
-                                                                        a: ({node, ...props}) => (
-                                                                            <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
+                                                                        a: ({ node, ...props }) => (
+                                                                            <a {...props} style={{ color: '#4CAF50', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer" />
                                                                         )
                                                                     }}
                                                                 >
@@ -2797,7 +2809,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         </div>
                                                     </div>
                                                 )}
-                                                
+
                                                 {/* 参考来源 */}
                                                 {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
                                                     <div>
@@ -2811,7 +2823,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         }}>
                                                             参考来源 · {relatedArticles.length + aiRelatedTickets.length}
                                                         </div>
-                                                        
+
                                                         {/* 关联文章 */}
                                                         {relatedArticles.length > 0 && (
                                                             <div style={{ marginBottom: aiRelatedTickets.length > 0 ? '16px' : 0 }}>
@@ -2869,7 +2881,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                                 )}
                                                             </div>
                                                         )}
-                                                        
+
                                                         {/* 关联工单 */}
                                                         {aiRelatedTickets.length > 0 && (
                                                             <div>
@@ -2938,72 +2950,72 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
 
                         {/* 产品族类 Tab 栏 - 只在非搜索模式下显示 */}
                         {!isSearchMode && (
-                        <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            padding: '12px 0',
-                            borderBottom: '1px solid rgba(255,255,255,0.08)',
-                            marginBottom: '32px'
-                        }}>
-                            {[
-                                { line: 'A', label: 'A类 · 在售机型' },
-                                { line: 'B', label: 'B类 · 历史机型' },
-                                { line: 'C', label: 'C类 · 寻像器' },
-                                { line: 'D', label: 'D类 · 配件' }
-                            ].map(item => {
-                                const lineArticles = articles.filter(a => a.product_line === item.line);
-                                const count = lineArticles.length;
-                                const isSelected = selectedProductLine === item.line;
-                                
-                                return (
-                                    <button
-                                        key={item.line}
-                                        onClick={() => handleProductLineClick(item.line)}
-                                        style={{
-                                            padding: '10px 18px',
-                                            background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
-                                            border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                            borderRadius: '10px',
-                                            color: isSelected ? '#FFD700' : '#888',
-                                            fontSize: '14px',
-                                            fontWeight: isSelected ? 600 : 400,
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!isSelected) {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
-                                                e.currentTarget.style.color = '#ccc';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isSelected) {
-                                                e.currentTarget.style.background = 'transparent';
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                                e.currentTarget.style.color = '#888';
-                                            }
-                                        }}
-                                    >
-                                        {item.label}
-                                        {count > 0 && (
-                                            <span style={{
-                                                padding: '2px 8px',
-                                                background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                            <div style={{
+                                display: 'flex',
+                                gap: '8px',
+                                padding: '12px 0',
+                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                marginBottom: '32px'
+                            }}>
+                                {[
+                                    { line: 'A', label: 'A类 · 在售机型' },
+                                    { line: 'B', label: 'B类 · 历史机型' },
+                                    { line: 'C', label: 'C类 · 寻像器' },
+                                    { line: 'D', label: 'D类 · 配件' }
+                                ].map(item => {
+                                    const lineArticles = articles.filter(a => a.product_line === item.line);
+                                    const count = lineArticles.length;
+                                    const isSelected = selectedProductLine === item.line;
+
+                                    return (
+                                        <button
+                                            key={item.line}
+                                            onClick={() => handleProductLineClick(item.line)}
+                                            style={{
+                                                padding: '10px 18px',
+                                                background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
+                                                border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
                                                 borderRadius: '10px',
-                                                fontSize: '12px',
-                                                color: isSelected ? '#FFD700' : '#666'
-                                            }}>
-                                                {count}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                                color: isSelected ? '#FFD700' : '#888',
+                                                fontSize: '14px',
+                                                fontWeight: isSelected ? 600 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.color = '#ccc';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.color = '#888';
+                                                }
+                                            }}
+                                        >
+                                            {item.label}
+                                            {count > 0 && (
+                                                <span style={{
+                                                    padding: '2px 8px',
+                                                    background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                                                    borderRadius: '10px',
+                                                    fontSize: '12px',
+                                                    color: isSelected ? '#FFD700' : '#666'
+                                                }}>
+                                                    {count}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
 
                         {/* 分组折叠视图 - 只在非搜索模式下显示 */}
@@ -3016,7 +3028,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                             });
                             const modelCount = modelSet.size;
                             const articleCount = searchResults.length;
-                            
+
                             // 按产品型号分组
                             const groupedByModel = new Map<string, KnowledgeArticle[]>();
                             searchResults.forEach(a => {
@@ -3027,7 +3039,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                 }
                                 groupedByModel.get(model)!.push(a);
                             });
-                            
+
                             return (
                                 <div style={{
                                     background: 'rgba(255,255,255,0.02)',
@@ -3073,15 +3085,15 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             <X size={14} color="#999" />
                                         </button>
                                     </div>
-                                    
+
                                     {/* 产品型号分组列表 */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {Array.from(groupedByModel.entries()).map(([model, modelArticles]) => {
                                             const isExpanded = groupedExpandedModels.has(model);
-                                            
+
                                             // 获取该产品型号的产品线（从第一篇文章获取）
                                             const productLine = modelArticles[0]?.product_line || '';
-                                            
+
                                             // 按分类分组
                                             const byCategory = new Map<string, KnowledgeArticle[]>();
                                             modelArticles.forEach(a => {
@@ -3089,7 +3101,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 if (!byCategory.has(cat)) byCategory.set(cat, []);
                                                 byCategory.get(cat)!.push(a);
                                             });
-                                            
+
                                             return (
                                                 <div key={model}>
                                                     {/* 产品型号行 */}
@@ -3130,11 +3142,11 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         }}>
                                                             {productLine}
                                                         </span>
-                                                        
+
                                                         <span style={{ flex: 1, fontWeight: 600, color: '#fff', fontSize: '15px' }}>
                                                             {model}
                                                         </span>
-                                                        
+
                                                         <span style={{
                                                             padding: '4px 10px',
                                                             background: 'rgba(255,255,255,0.05)',
@@ -3144,7 +3156,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         }}>
                                                             {modelArticles.length}篇
                                                         </span>
-                                                        
+
                                                         <ChevronDown
                                                             size={18}
                                                             color="#666"
@@ -3154,7 +3166,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                             }}
                                                         />
                                                     </div>
-                                                    
+
                                                     {/* 展开的分类列表 */}
                                                     {isExpanded && (
                                                         <div style={{
@@ -3172,7 +3184,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                                     'Troubleshooting': '故障排查',
                                                                     'FAQ': '常见问题'
                                                                 };
-                                                                
+
                                                                 return (
                                                                     <div key={catKey}>
                                                                         <div
@@ -3211,11 +3223,11 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                                             }}>
                                                                                 {catArticles.length}
                                                                             </span>
-                                                                            
+
                                                                             <span style={{ flex: 1, color: '#ccc', fontSize: '14px' }}>
                                                                                 {categoryLabels[category] || category} {catArticles.length}篇
                                                                             </span>
-                                                                            
+
                                                                             <ChevronDown
                                                                                 size={16}
                                                                                 color="#666"
@@ -3225,7 +3237,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                                                 }}
                                                                             />
                                                                         </div>
-                                                                        
+
                                                                         {/* 文章列表 - 不显示章节号 */}
                                                                         {isCatExpanded && (
                                                                             <div style={{
@@ -3281,7 +3293,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                         {/* 最近浏览 - 卡片式 + 可折叠 */}
                         {recentArticles.length > 0 && (
                             <div style={{ marginBottom: '24px' }}>
-                                <div 
+                                <div
                                     onClick={() => setRecentExpanded(!recentExpanded)}
                                     style={{
                                         display: 'flex',
@@ -3314,9 +3326,9 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 {recentExpanded ? t('common.collapse') : t('common.expand')}
                                             </span>
                                         )}
-                                        <ChevronRight 
-                                            size={16} 
-                                            color="#666" 
+                                        <ChevronRight
+                                            size={16}
+                                            color="#666"
                                             style={{
                                                 transform: recentExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                                                 transition: 'transform 0.2s ease'
@@ -3324,7 +3336,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         />
                                     </div>
                                 </div>
-                                
+
                                 {recentExpanded && (
                                     <div style={{
                                         display: 'grid',
@@ -3351,7 +3363,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         })}
                                     </div>
                                 )}
-                                
+
                                 {recentExpanded && recentArticles.length > RECENT_SHOW_COUNT && (
                                     <button
                                         onClick={() => setShowMoreRecent(!showMoreRecent)}
@@ -3705,12 +3717,12 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             '取消'
                                         );
                                         if (!confirmed) return;
-                                        
+
                                         setIsDeleting(true);
                                         const headers = { Authorization: `Bearer ${token}` };
                                         const idsToDelete = Array.from(selectedArticleIds);
                                         let successCount = 0;
-                                        
+
                                         for (const id of idsToDelete) {
                                             try {
                                                 await axios.delete(`/api/v1/knowledge/${id}`, { headers });
@@ -3719,7 +3731,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 console.error(`Failed to delete article ${id}:`, err);
                                             }
                                         }
-                                        
+
                                         // 刷新列表
                                         await fetchArticles();
                                         setManageArticles(prev => prev.filter(a => !selectedArticleIds.has(a.id)));
@@ -3757,7 +3769,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                                         <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
-                                        <th 
+                                        <th
                                             style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                             onClick={() => setManagerSort(prev => ({ field: 'title', order: prev?.field === 'title' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                         >
@@ -3768,7 +3780,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 )}
                                             </div>
                                         </th>
-                                        <th 
+                                        <th
                                             style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                             onClick={() => setManagerSort(prev => ({ field: 'product_line', order: prev?.field === 'product_line' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                         >
@@ -3779,7 +3791,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 )}
                                             </div>
                                         </th>
-                                        <th 
+                                        <th
                                             style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                             onClick={() => setManagerSort(prev => ({ field: 'product_model', order: prev?.field === 'product_model' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                         >
@@ -3790,7 +3802,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 )}
                                             </div>
                                         </th>
-                                        <th 
+                                        <th
                                             style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                             onClick={() => setManagerSort(prev => ({ field: 'category', order: prev?.field === 'category' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                         >
@@ -3816,8 +3828,8 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             // 搜索产品线
                                             if (article.product_line?.toLowerCase().includes(query)) return true;
                                             // 搜索产品型号
-                                            const models = Array.isArray(article.product_models) 
-                                                ? article.product_models.join(' ') 
+                                            const models = Array.isArray(article.product_models)
+                                                ? article.product_models.join(' ')
                                                 : article.product_models || '';
                                             if (models.toLowerCase().includes(query)) return true;
                                             return false;
@@ -3826,7 +3838,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                             if (!managerSort) return 0;
                                             const { field, order } = managerSort;
                                             let valA: string, valB: string;
-                                            
+
                                             if (field === 'product_model') {
                                                 valA = (Array.isArray(a.product_models) ? a.product_models[0] : a.product_models) || '';
                                                 valB = (Array.isArray(b.product_models) ? b.product_models[0] : b.product_models) || '';
@@ -3834,120 +3846,120 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 valA = (a[field] || '') as string;
                                                 valB = (b[field] || '') as string;
                                             }
-                                            
+
                                             const comparison = valA.localeCompare(valB, 'zh-CN');
                                             return order === 'asc' ? comparison : -comparison;
                                         })
                                         .map(article => {
-                                        const isSelected = selectedArticleIds.has(article.id);
-                                        const lineLabels: Record<string, string> = {
-                                            'A': 'A类',
-                                            'B': 'B类',
-                                            'C': 'C类',
-                                            'D': 'D类'
-                                        };
-                                        
-                                        return (
-                                            <tr
-                                                key={article.id}
-                                                style={{
-                                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                                    background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
-                                                }}
-                                            >
-                                                <td style={{ padding: '12px 8px' }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            const newSet = new Set(selectedArticleIds);
-                                                            if (isSelected) {
-                                                                newSet.delete(article.id);
-                                                            } else {
-                                                                newSet.add(article.id);
-                                                            }
-                                                            setSelectedArticleIds(newSet);
-                                                        }}
-                                                        style={{
-                                                            width: '18px',
-                                                            height: '18px',
-                                                            border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
-                                                            borderRadius: '4px',
-                                                            background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center'
-                                                        }}
-                                                    >
-                                                        {isSelected && <Check size={12} color="#FFD700" />}
-                                                    </button>
-                                                </td>
-                                                <td style={{ padding: '12px 8px' }}>
-                                                    <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
-                                                        {article.title}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '12px 8px' }}>
-                                                    <span style={{
-                                                        padding: '4px 8px',
-                                                        background: 'rgba(255,215,0,0.1)',
-                                                        borderRadius: '6px',
-                                                        color: '#FFD700',
-                                                        fontSize: '12px'
-                                                    }}>
-                                                        {lineLabels[article.product_line] || article.product_line}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
-                                                    {Array.isArray(article.product_models) 
-                                                        ? article.product_models[0] 
-                                                        : article.product_models || '-'}
-                                                </td>
-                                                <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
-                                                    {article.category}
-                                                </td>
-                                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                                                    <button
-                                                        onClick={async () => {
-                                                            const confirmed = await confirm(
-                                                                `确定删除「${article.title}」？`,
-                                                                '删除文章',
-                                                                '确认删除',
-                                                                '取消'
-                                                            );
-                                                            if (!confirmed) return;
-                                                            
-                                                            try {
-                                                                const headers = { Authorization: `Bearer ${token}` };
-                                                                await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
-                                                                await fetchArticles();
-                                                                setManageArticles(prev => prev.filter(a => a.id !== article.id));
-                                                            } catch (err) {
-                                                                console.error('Delete article failed:', err);
-                                                            }
-                                                        }}
-                                                        style={{
-                                                            padding: '6px 10px',
-                                                            background: 'transparent',
-                                                            border: '1px solid rgba(255,68,68,0.3)',
+                                            const isSelected = selectedArticleIds.has(article.id);
+                                            const lineLabels: Record<string, string> = {
+                                                'A': 'A类',
+                                                'B': 'B类',
+                                                'C': 'C类',
+                                                'D': 'D类'
+                                            };
+
+                                            return (
+                                                <tr
+                                                    key={article.id}
+                                                    style={{
+                                                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                        background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
+                                                    }}
+                                                >
+                                                    <td style={{ padding: '12px 8px' }}>
+                                                        <button
+                                                            onClick={() => {
+                                                                const newSet = new Set(selectedArticleIds);
+                                                                if (isSelected) {
+                                                                    newSet.delete(article.id);
+                                                                } else {
+                                                                    newSet.add(article.id);
+                                                                }
+                                                                setSelectedArticleIds(newSet);
+                                                            }}
+                                                            style={{
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
+                                                                borderRadius: '4px',
+                                                                background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            {isSelected && <Check size={12} color="#FFD700" />}
+                                                        </button>
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px' }}>
+                                                        <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
+                                                            {article.title}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px' }}>
+                                                        <span style={{
+                                                            padding: '4px 8px',
+                                                            background: 'rgba(255,215,0,0.1)',
                                                             borderRadius: '6px',
-                                                            color: '#ff6b6b',
-                                                            fontSize: '12px',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.15s'
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = 'transparent';
-                                                        }}
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                            color: '#FFD700',
+                                                            fontSize: '12px'
+                                                        }}>
+                                                            {lineLabels[article.product_line] || article.product_line}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
+                                                        {Array.isArray(article.product_models)
+                                                            ? article.product_models[0]
+                                                            : article.product_models || '-'}
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
+                                                        {article.category}
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                                        <button
+                                                            onClick={async () => {
+                                                                const confirmed = await confirm(
+                                                                    `确定删除「${article.title}」？`,
+                                                                    '删除文章',
+                                                                    '确认删除',
+                                                                    '取消'
+                                                                );
+                                                                if (!confirmed) return;
+
+                                                                try {
+                                                                    const headers = { Authorization: `Bearer ${token}` };
+                                                                    await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
+                                                                    await fetchArticles();
+                                                                    setManageArticles(prev => prev.filter(a => a.id !== article.id));
+                                                                } catch (err) {
+                                                                    console.error('Delete article failed:', err);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                padding: '6px 10px',
+                                                                background: 'transparent',
+                                                                border: '1px solid rgba(255,68,68,0.3)',
+                                                                borderRadius: '6px',
+                                                                color: '#ff6b6b',
+                                                                fontSize: '12px',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'transparent';
+                                                            }}
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                 </tbody>
                             </table>
                         </div>
@@ -3957,10 +3969,10 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
 
             {/* 手册目录弹窗 */}
             {showManualTocModal && selectedArticle?.category === 'Manual' && (() => {
-                const model = Array.isArray(selectedArticle.product_models) 
-                    ? selectedArticle.product_models[0] 
+                const model = Array.isArray(selectedArticle.product_models)
+                    ? selectedArticle.product_models[0]
                     : selectedArticle.product_models;
-                const manualArticles = articles.filter(a => 
+                const manualArticles = articles.filter(a =>
                     a.product_line === selectedArticle.product_line &&
                     a.category === 'Manual' &&
                     (Array.isArray(a.product_models) ? a.product_models.includes(model) : a.product_models === model)
@@ -3976,7 +3988,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     };
                     return getNum(a.title) - getNum(b.title);
                 });
-                
+
                 // 分类标签映射
                 const categoryLabels: Record<string, string> = {
                     'Manual': '操作手册',
@@ -3984,7 +3996,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                     'FAQ': '常见问题'
                 };
                 const categoryLabel = categoryLabels[selectedArticle.category] || selectedArticle.category;
-                
+
                 return (
                     <div style={{
                         position: 'fixed',
@@ -4084,7 +4096,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
                                         const cleanTitle = titleMatch ? titleMatch[1] : article.title;
                                         const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
-                                        
+
                                         return (
                                             <div
                                                 key={article.id}
@@ -4131,7 +4143,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 }}>
                                                     {displayNum}
                                                 </span>
-                                                
+
                                                 {/* 标题 */}
                                                 <span style={{
                                                     fontSize: '15px',
@@ -4141,7 +4153,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 }}>
                                                     {cleanTitle}
                                                 </span>
-                                                
+
                                                 {/* 当前阅读标记 */}
                                                 {isCurrentArticle && (
                                                     <span style={{

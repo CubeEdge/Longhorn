@@ -1,5 +1,10 @@
 # Prompt Log 更新记录
 
+### 2026-02-21 11:46
+- **User Prompt**: "Fixing Wiki Search Bugs"
+- **Agent Response**: 修改了前端搜索面板的折叠逻辑，修复了搜索时过度清洗关键字导致无法检索工单的问题，补全了遗漏的内联卡片组件，并补充了多语言字典以解决打包编译错误。
+- **Result**: 修复了知识库搜索的多个问题，前端构建通过。
+
 ### 2026-02-21 10:35
 - **User Prompt**: "git pull"
 - **Agent Response**: 成功执行 `git pull`。处理了初次的 SSL 连接错误，并通过 `fetch` + `merge` 策略同步了远程代码。
