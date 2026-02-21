@@ -41,9 +41,9 @@ export const useLanguage = () => {
         };
     }, []);
 
-    const t = (key: keyof typeof translations['zh'], params?: { [key: string]: string | number }) => {
+    const t = (key: keyof typeof translations['zh'] | string, params?: { [key: string]: string | number }) => {
         const dict = translations[lang] || translations['zh'];
-        let text: string = dict[key as keyof typeof dict] || translations['zh'][key] || key;
+        let text: string = (dict as any)[key] || (translations['zh'] as any)[key] || key;
 
         if (params) {
             Object.entries(params).forEach(([k, v]) => {

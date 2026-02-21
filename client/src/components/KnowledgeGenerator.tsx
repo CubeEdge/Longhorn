@@ -22,7 +22,7 @@ interface ImportResult {
 interface ProgressStep {
     id: string;
     label: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial';
     progress?: number;
     details?: string;
 }
@@ -55,9 +55,13 @@ export default function KnowledgeGenerator() {
     const [visibility, setVisibility] = useState<'Public' | 'Dealer' | 'Internal' | 'Department'>('Public');
     const [tags, setTags] = useState('');
     
+    // 导入方式选项：直接导入 or Bokeh优化
+    const [bokehOptimize, setBokehOptimize] = useState(true);
+    
     // UI state
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<ImportResult | null>(null);
+    // result 状态保留用于 handleCancel 中的 setResult 调用
+    const [, setResult] = useState<ImportResult | null>(null);
     const [error, setError] = useState('');
     const [progress, setProgress] = useState<ImportProgress | null>(null);
     const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -154,21 +158,34 @@ export default function KnowledgeGenerator() {
         }
     };
 
-    const handleModelToggle = (model: string) => {
-        setProductModels(prev => 
-            prev.includes(model) 
-                ? prev.filter(m => m !== model)
-                : [...prev, model]
-        );
-    };
-
     const handleCancel = () => {
         if (abortController) {
             abortController.abort();
             setAbortController(null);
             setLoading(false);
-            setProgress(null);
-            setError('导入已取消');
+            // 不要清空progress，保留当前状态显示部分完成
+            // 如果正在Bokeh优化阶段，标记为部分完成
+            setProgress(prev => {
+                if (!prev) return null;
+                const currentOptimizeStep = prev.steps.find(s => s.id === 'optimize');
+                const optimizeProgress = currentOptimizeStep?.progress || 0;
+                return {
+                    ...prev,
+                    steps: prev.steps.map(s => 
+                        s.status === 'processing' 
+                            ? { ...s, status: 'partial', details: `已停止优化（完成了 ${optimizeProgress}%）` } 
+                            : s
+                    )
+                };
+            });
+            // 不设置错误，而是显示部分完成的结果
+            setResult(prev => prev || {
+                success: true,
+                imported_count: progress?.stats.chapters || 0,
+                skipped_count: 0,
+                failed_count: 0,
+                article_ids: []
+            });
         }
     };
 
@@ -178,13 +195,11 @@ export default function KnowledgeGenerator() {
         setError('');
         setResult(null);
         
-        // 初始化进度
+        // 初始化进度 - 简化为3个步骤
         const initialSteps: ProgressStep[] = [
             { id: 'upload', label: '上传文件', status: 'pending' },
-            { id: 'parse', label: '解析DOCX结构', status: 'pending' },
-            { id: 'extract_images', label: '提取图片', status: 'pending' },
-            { id: 'convert_md', label: '转换Markdown', status: 'pending' },
-            { id: 'generate', label: '生成知识条目', status: 'pending' }
+            { id: 'process', label: '处理文档', status: 'pending', details: '解析DOCX、提取内容、生成摘要' },
+            ...(bokehOptimize ? [{ id: 'optimize', label: 'Bokeh优化', status: 'pending' as const, details: 'AI优化排版和内容格式' }] : [])
         ];
         
         console.log('[Import] Setting initial progress...');
@@ -382,7 +397,9 @@ export default function KnowledgeGenerator() {
                 });
 
                 if (!mergeResponse.ok) {
-                    throw new Error('Failed to merge chunks');
+                    const mergeError = await mergeResponse.json();
+                    console.error('[Upload] Merge failed:', mergeError);
+                    throw new Error(mergeError.error || mergeError.details || 'Failed to merge chunks');
                 }
 
                 const mergedFile = await mergeResponse.json();
@@ -477,31 +494,53 @@ export default function KnowledgeGenerator() {
                 });
             }
 
-            // 步骤2-5: 服务器处理中 - 按顺序显示
-            const processingSteps = ['parse', 'extract_images', 'convert_md', 'generate'];
-            for (const stepId of processingSteps) {
-                setProgress(prev => prev ? {
-                    ...prev,
-                    currentStep: stepId,
-                    steps: prev.steps.map(s => s.id === stepId ? { ...s, status: 'processing' } : s)
-                } : null);
-                
-                // 模拟每个步骤的处理时间（实际上是后端处理，这里只是视觉效果）
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                setProgress(prev => prev ? {
-                    ...prev,
-                    steps: prev.steps.map(s => s.id === stepId ? { ...s, status: 'completed' } : s)
-                } : null);
+            // 步骤2: 处理文档 - 调用后端API
+            setProgress(prev => prev ? {
+                ...prev,
+                currentStep: 'process',
+                steps: prev.steps.map(s => s.id === 'process' ? { ...s, status: 'processing' } : s)
+            } : null);
+            
+            // 检查响应
+            const contentType = response.headers.get('content-type');
+            let data;
+            
+            if (!response.ok) {
+                // 尝试解析错误信息
+                try {
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const textError = await response.text();
+                        console.error('[Import] Server returned non-JSON:', textError.substring(0, 500));
+                        throw new Error(`服务器错误 (${response.status}): 请稍后重试`);
+                    }
+                } catch (parseErr) {
+                    console.error('[Import] Failed to parse response:', parseErr);
+                    throw new Error(`服务器错误 (${response.status}): 请检查服务器状态`);
+                }
+            } else {
+                data = await response.json();
             }
-
-            const data = await response.json();
+            
             console.log('[Import] Response data:', data);
             
-            if (!response.ok || !data.success) {
+            if (!data.success) {
                 console.error('[Import] API error:', data.error);
                 throw new Error(data.error?.message || '导入失败');
             }
+            
+            // 标记处理步骤完成
+            setProgress(prev => prev ? {
+                ...prev,
+                steps: prev.steps.map(s => s.id === 'process' ? { ...s, status: 'completed' } : s),
+                stats: {
+                    chapters: data.data?.chapter_count || data.data?.imported_count || 0,
+                    images: data.data?.image_count || 0,
+                    tables: data.data?.table_count || 0,
+                    totalSize: data.data?.total_size ? formatSize(data.data.total_size) : '0KB'
+                }
+            } : null);
 
             // 检查是否有警告
             if (data.warning && data.warning.type === 'title_mismatch') {
@@ -512,25 +551,72 @@ export default function KnowledgeGenerator() {
                 });
             }
 
+            const articleIds = data.data?.article_ids || [data.data?.id];
+
+            // 如果选择了Bokeh优化，调用format API
+            if (bokehOptimize && articleIds && articleIds.length > 0) {
+                setProgress(prev => prev ? {
+                    ...prev,
+                    currentStep: 'optimize',
+                    steps: prev.steps.map(s => 
+                        s.id === 'optimize' ? { ...s, status: 'processing' } : s
+                    )
+                } : null);
+
+                console.log('[Import] Starting Bokeh optimization for', articleIds.length, 'articles');
+                
+                const totalArticles = articleIds.length;
+                let optimizedCount = 0;
+                
+                for (let i = 0; i < articleIds.length; i++) {
+                    if (controller.signal.aborted) {
+                        console.log('[Import] Bokeh optimization cancelled by user');
+                        break;
+                    }
+                    
+                    const articleId = articleIds[i];
+                    try {
+                        console.log(`[Import] Optimizing article ${i + 1}/${articleIds.length}: ID=${articleId}`);
+                        
+                        await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`, 
+                            { mode: 'full' },
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        optimizedCount++;
+                        
+                        // 更新进度（优化完成后更新一次）
+                        const finalPercent = Math.round((optimizedCount / totalArticles) * 100);
+                        setProgress(prev => prev ? {
+                            ...prev,
+                            steps: prev.steps.map(s => 
+                                s.id === 'optimize' 
+                                    ? { ...s, progress: finalPercent, details: `${optimizedCount}/${totalArticles} 篇` } 
+                                    : s
+                            )
+                        } : null);
+                    } catch (err) {
+                        console.warn(`[Import] Failed to optimize article ${articleId}:`, err);
+                        // 不中断整个流程，继续优化其他文章
+                    }
+                }
+
+                setProgress(prev => prev ? {
+                    ...prev,
+                    steps: prev.steps.map(s => 
+                        s.id === 'optimize' ? { ...s, status: 'completed' } : s
+                    )
+                } : null);
+            }
+
             // 标记所有步骤完成
             setProgress(prev => prev ? {
                 ...prev,
-                steps: prev.steps.map(s => ({ ...s, status: 'completed' })),
-                stats: {
-                    chapters: data.data?.chapter_count || data.data?.imported_count || 0,
-                    images: data.data?.image_count || 0,
-                    tables: data.data?.table_count || 0,
-                    totalSize: data.data?.total_size || '0KB'
-                }
+                steps: prev.steps.map(s => ({ ...s, status: 'completed' }))
             } : null);
 
-            setResult({
-                success: true,
-                imported_count: data.data?.imported_count || 1,
-                skipped_count: data.data?.skipped_count || 0,
-                failed_count: data.data?.failed_count || 0,
-                article_ids: data.data?.article_ids || [data.data?.id]
-            });
+            // 导入完成，不显示成功panel，直接完成
+            // setResult({...});
 
         } catch (err: any) {
             console.error('Import error:', err);
@@ -539,6 +625,8 @@ export default function KnowledgeGenerator() {
             } else {
                 setError(err.message || '导入失败');
             }
+            // 清空成功的result，避免显示之前的成功状态
+            setResult(null);
             // 标记失败的步骤
             setProgress(prev => prev ? {
                 ...prev,
@@ -552,9 +640,8 @@ export default function KnowledgeGenerator() {
         }
     };
 
-    const handleViewImported = () => {
-        navigate('/tech-hub/wiki');
-    };
+    // handleViewImported 已移除 - 导入完成后直接点击完成按钮返回
+
 
     return (
         <div style={{
@@ -575,22 +662,20 @@ export default function KnowledgeGenerator() {
                         <h1 style={{ 
                             fontSize: '32px', 
                             fontWeight: 700, 
-                            marginBottom: '12px', 
-                            color: '#FFD700',
+                            marginBottom: '8px', 
+                            color: '#fff',
                             letterSpacing: '-0.5px'
                         }}>
                             知识库导入器
                         </h1>
                         <p style={{ 
-                            color: '#999', 
-                            fontSize: '15px', 
+                            color: '#666', 
+                            fontSize: '16px',
                             lineHeight: '1.6',
-                            maxWidth: '600px'
+                            maxWidth: '600px',
+                            margin: 0
                         }}>
-                            导入Word文档、网页内容或手动输入知识到知识库
-                            <span style={{ display: 'block', fontSize: '13px', color: '#666', marginTop: '4px' }}>
-                                DOCX → Markdown → 知识库（准确率99%+）
-                            </span>
+                            Import Word Documents, Web Content or Manual Knowledge to Database
                         </p>
                     </div>
                     <button
@@ -623,21 +708,23 @@ export default function KnowledgeGenerator() {
             {/* Import Mode Selector - macOS26 Style */}
             {/* 移除独立的大横条，改为放在左侧内容框内 */}
 
-            {/* Main Content: Left 1/3 Content, Right 2/3 Metadata */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+            {/* Main Content: Left 2/5 Content, Right 3/5 Metadata */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px', alignItems: 'start' }}>
                 {/* Left: Content Input */}
                 <div style={{
                     background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
                     border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: '16px',
-                    padding: '24px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                    padding: '20px',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
                     <h3 style={{ 
                         fontSize: '16px', 
                         fontWeight: 600, 
                         marginBottom: '16px', 
-                        color: '#FFD700',
+                        color: '#fff',
                         letterSpacing: '0.3px'
                     }}>
                         内容来源
@@ -762,6 +849,59 @@ export default function KnowledgeGenerator() {
                                     </button>
                                 </div>
                             )}
+
+                            {/* 导入方式选项 - 紧凑单选 */}
+                            <div style={{
+                                marginTop: '16px',
+                                padding: '12px',
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255,255,255,0.06)'
+                            }}>
+                                <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
+                                    导入方式
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        onClick={() => setBokehOptimize(true)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px 12px',
+                                            background: bokehOptimize ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${bokehOptimize ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: bokehOptimize ? '#4CAF50' : '#ccc', textAlign: 'center' }}>
+                                            Bokeh优化
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px', textAlign: 'center' }}>
+                                            优化排版+摘要
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => setBokehOptimize(false)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px 12px',
+                                            background: !bokehOptimize ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${!bokehOptimize ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: !bokehOptimize ? '#4CAF50' : '#ccc', textAlign: 'center' }}>
+                                            直接导入
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px', textAlign: 'center' }}>
+                                            保持原始格式
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -816,7 +956,7 @@ export default function KnowledgeGenerator() {
                     background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
                     border: '1px solid rgba(255,255,255,0.08)',
                     borderRadius: '16px',
-                    padding: '24px',
+                    padding: '20px',
                     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                     display: 'flex',
                     flexDirection: 'column'
@@ -826,7 +966,7 @@ export default function KnowledgeGenerator() {
                         <h3 style={{ 
                             fontSize: '16px', 
                             fontWeight: 600, 
-                            color: '#FFD700',
+                            color: '#fff',
                             letterSpacing: '0.3px',
                             margin: 0
                         }}>
@@ -839,7 +979,7 @@ export default function KnowledgeGenerator() {
                                 padding: '12px 28px',
                                 background: loading 
                                     ? 'rgba(255,255,255,0.05)' 
-                                    : 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                    : '#FFD700',
                                 border: 'none',
                                 borderRadius: '10px',
                                 color: loading ? '#666' : '#000',
@@ -870,29 +1010,6 @@ export default function KnowledgeGenerator() {
 
                     {/* Metadata Form */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-                        {/* Title */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                标题 {importMode !== 'text' && '(可选)'}
-                            </label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder={importMode === 'docx' ? "自动从DOCX提取" : "知识标题"}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    transition: 'all 0.2s'
-                                }}
-                            />
-                        </div>
-
                         {/* Category */}
                         <div>
                             <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
@@ -948,60 +1065,44 @@ export default function KnowledgeGenerator() {
                             </select>
                         </div>
 
-                        {/* Product Models */}
-                        {productModelOptions[productLine].length > 0 && (
-                            <div>
-                                <label style={{ 
-                                    display: 'block', 
-                                    fontSize: '13px', 
-                                    color: '#999', 
-                                    marginBottom: '8px', 
-                                    fontWeight: 500 
+                        {/* Product Models - Dropdown */}
+                        <div>
+                            <label style={{ 
+                                display: 'block', 
+                                fontSize: '13px', 
+                                color: '#999', 
+                                marginBottom: '8px', 
+                                fontWeight: 500 
+                            }}>
+                                产品型号 *
+                                <span style={{ 
+                                    color: '#ff6b6b', 
+                                    marginLeft: '4px',
+                                    fontSize: '12px'
                                 }}>
-                                    产品型号 *
-                                    <span style={{ 
-                                        color: '#ff6b6b', 
-                                        marginLeft: '4px',
-                                        fontSize: '12px'
-                                    }}>
-                                        (必选)
-                                    </span>
-                                </label>
-                                <div style={{
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: '8px',
-                                    padding: '12px',
+                                    (必选)
+                                </span>
+                            </label>
+                            <select
+                                value={productModels[0] || ''}
+                                onChange={(e) => setProductModels(e.target.value ? [e.target.value] : [])}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
                                     background: 'rgba(255,255,255,0.03)',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     borderRadius: '8px',
-                                    minHeight: '80px'
-                                }}>
-                                    {productModelOptions[productLine].map(model => (
-                                        <button
-                                            key={model}
-                                            onClick={() => handleModelToggle(model)}
-                                            style={{
-                                                padding: '6px 12px',
-                                                background: productModels.includes(model) 
-                                                    ? 'rgba(255,215,0,0.15)' 
-                                                    : 'rgba(255,255,255,0.05)',
-                                                border: `1px solid ${productModels.includes(model) ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                                                borderRadius: '6px',
-                                                color: productModels.includes(model) ? '#FFD700' : '#999',
-                                                fontSize: '12px',
-                                                fontWeight: 500,
-                                                cursor: 'pointer',
-                                                whiteSpace: 'nowrap',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {model}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                                    color: '#fff',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <option value="">请选择产品型号</option>
+                                {productModelOptions[productLine].map(model => (
+                                    <option key={model} value={model}>{model}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         {/* Visibility */}
                         <div>
@@ -1024,7 +1125,7 @@ export default function KnowledgeGenerator() {
                             >
                                 {visibilityOptions.map(opt => (
                                     <option key={opt.value} value={opt.value}>
-                                        {opt.label} - {opt.desc}
+                                        {opt.label}
                                     </option>
                                 ))}
                             </select>
@@ -1086,7 +1187,7 @@ export default function KnowledgeGenerator() {
                             <h3 style={{ 
                                 fontSize: '20px', 
                                 fontWeight: 600, 
-                                color: '#FFD700',
+                                color: '#fff',
                                 margin: 0,
                                 letterSpacing: '0.5px'
                             }}>
@@ -1102,12 +1203,14 @@ export default function KnowledgeGenerator() {
                                     alignItems: 'center',
                                     gap: '14px',
                                     padding: '16px',
-                                    background: step.status === 'processing' ? 'rgba(255,215,0,0.08)' : 
-                                               step.status === 'completed' ? 'rgba(255,215,0,0.05)' :
+                                    background: step.status === 'processing' 
+                                               ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.03)') 
+                                               : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
                                                step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${step.status === 'processing' ? 'rgba(255,215,0,0.4)' :
-                                                         step.status === 'completed' ? 'rgba(255,215,0,0.2)' :
-                                                         step.status === 'failed' ? 'rgba(255,68,68,0.4)' : 'rgba(255,255,255,0.05)'}`,
+                                    border: `1px solid ${step.status === 'processing' 
+                                                         ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.08)') :
+                                                         step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
+                                                         step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
                                     borderRadius: '12px',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}>
@@ -1116,61 +1219,192 @@ export default function KnowledgeGenerator() {
                                         minWidth: '32px',
                                         height: '32px',
                                         borderRadius: '50%',
-                                        background: step.status === 'completed' ? '#FFD700' :
-                                                   step.status === 'processing' ? 'rgba(255,215,0,0.2)' :
+                                        background: step.status === 'processing' 
+                                                   ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.08)') :
                                                    step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         fontSize: '14px',
                                         fontWeight: 700,
-                                        color: step.status === 'completed' ? '#000' :
-                                               step.status === 'processing' ? '#FFD700' :
+                                        color: step.status === 'processing' 
+                                               ? (step.id === 'bokeh_optimize' ? '#4CAF50' : '#fff') :
                                                step.status === 'failed' ? '#fff' : '#666'
                                     }}>
-                                        {step.status === 'completed' ? '✓' : index + 1}
+                                        {index + 1}
                                     </div>
 
                                     {/* Step Info */}
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ 
-                                            fontSize: '15px', 
-                                            fontWeight: 600, 
-                                            color: step.status === 'processing' ? '#FFD700' :
-                                                   step.status === 'completed' ? '#fff' : '#999',
-                                            marginBottom: step.id === 'upload' && step.status === 'processing' ? '8px' : '0'
-                                        }}>
-                                            {step.label}
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ 
+                                                fontSize: '15px', 
+                                                fontWeight: 600, 
+                                                color: step.status === 'processing' 
+                                                       ? (step.id === 'optimize' ? '#4CAF50' : '#fff') :
+                                                       step.status === 'completed' ? '#fff' : '#999'
+                                            }}>
+                                                {step.label}
+                                            </div>
+                                            {/* Step details */}
+                                            {step.details && step.status === 'processing' && (
+                                                <div style={{ 
+                                                    fontSize: '12px', 
+                                                    color: '#666',
+                                                    marginTop: '4px'
+                                                }}>
+                                                    {step.details}
+                                                </div>
+                                            )}
+                                            {/* Processing progress bar - indeterminate */}
+                                            {step.id === 'process' && step.status === 'processing' && (
+                                                <div style={{ marginTop: '10px' }}>
+                                                    <div style={{
+                                                        width: '100%',
+                                                        height: '4px',
+                                                        background: 'rgba(255,215,0,0.1)',
+                                                        borderRadius: '2px',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <div style={{
+                                                            width: '30%',
+                                                            height: '100%',
+                                                            background: 'linear-gradient(90deg, #FFD700, #FFA500)',
+                                                            animation: 'indeterminate 1.5s infinite ease-in-out',
+                                                            borderRadius: '2px'
+                                                        }} />
+                                                    </div>
+                                                    <div style={{ 
+                                                        fontSize: '11px', 
+                                                        color: '#888', 
+                                                        marginTop: '6px' 
+                                                    }}>
+                                                        正在解析文档结构、提取图片、生成AI摘要...
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Bokeh optimize progress bar */}
+                                            {step.id === 'optimize' && step.status === 'processing' && (
+                                                <div style={{ marginTop: '10px' }}>
+                                                    <div style={{
+                                                        width: '100%',
+                                                        height: '4px',
+                                                        background: 'rgba(76,175,80,0.1)',
+                                                        borderRadius: '2px',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <div style={{
+                                                            width: `${step.progress || 0}%`,
+                                                            height: '100%',
+                                                            background: 'linear-gradient(90deg, #4CAF50, #81C784)',
+                                                            transition: 'width 0.3s ease-out',
+                                                            borderRadius: '2px'
+                                                        }} />
+                                                    </div>
+                                                    <div style={{ 
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        fontSize: '11px', 
+                                                        color: '#888', 
+                                                        marginTop: '6px' 
+                                                    }}>
+                                                        <span>{step.details || 'AI优化中...'}</span>
+                                                        <span style={{ color: '#4CAF50', fontWeight: 600 }}>{step.progress || 0}%</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Upload Progress Bar and Info */}
+                                            {step.id === 'upload' && step.status === 'processing' && (
+                                                <div style={{ marginTop: '8px' }}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        fontSize: '12px',
+                                                        color: '#999'
+                                                    }}>
+                                                        <span>{formatSize(uploadedSize)} / {formatSize(totalFileSize)}</span>
+                                                        <span style={{ color: '#FFD700' }}>{uploadSpeed}</span>
+                                                    </div>
+                                                    <div style={{
+                                                        width: '100%',
+                                                        height: '4px',
+                                                        background: 'rgba(255,255,255,0.1)',
+                                                        borderRadius: '2px',
+                                                        overflow: 'hidden',
+                                                        marginTop: '6px'
+                                                    }}>
+                                                        <div style={{
+                                                            width: `${step.progress || 0}%`,
+                                                            height: '100%',
+                                                            background: 'linear-gradient(90deg, #FFD700, #FFA500)',
+                                                            transition: 'width 0.3s ease-out'
+                                                        }} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                         
-                                        {/* Upload Progress Bar and Info */}
-                                        {step.id === 'upload' && step.status === 'processing' && (
-                                            <>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
+                                        {/* Completed Checkmark - Right side */}
+                                        {step.status === 'completed' && (
+                                            <div style={{
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '50%',
+                                                background: '#4CAF50',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '14px',
+                                                color: '#000',
+                                                fontWeight: 700
+                                            }}>
+                                                ✓
+                                            </div>
+                                        )}
+                                        
+                                        {/* Bokeh Optimize Stop Button - Right side */}
+                                        {step.id === 'optimize' && step.status === 'processing' && (
+                                            <button
+                                                onClick={handleCancel}
+                                                style={{
+                                                    padding: '6px 14px',
+                                                    background: 'rgba(255,68,68,0.15)',
+                                                    border: '1px solid rgba(255,68,68,0.4)',
+                                                    borderRadius: '8px',
+                                                    color: '#ff4444',
                                                     fontSize: '12px',
-                                                    color: '#999',
-                                                    marginBottom: '6px'
-                                                }}>
-                                                    <span>{formatSize(uploadedSize)} / {formatSize(totalFileSize)}</span>
-                                                    <span style={{ color: '#FFD700' }}>{uploadSpeed}</span>
-                                                </div>
-                                                <div style={{
-                                                    width: '100%',
-                                                    height: '4px',
-                                                    background: 'rgba(255,255,255,0.1)',
-                                                    borderRadius: '2px',
-                                                    overflow: 'hidden'
-                                                }}>
-                                                    <div style={{
-                                                        width: `${step.progress || 0}%`,
-                                                        height: '100%',
-                                                        background: 'linear-gradient(90deg, #FFD700, #FFA500)',
-                                                        transition: 'width 0.3s ease-out'
-                                                    }} />
-                                                </div>
-                                            </>
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    marginLeft: '12px'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.25)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                }}
+                                            >
+                                                停止优化
+                                            </button>
+                                        )}
+                                        
+                                        {/* Failed indicator */}
+                                        {step.status === 'failed' && (
+                                            <div style={{
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '50%',
+                                                background: '#EF4444',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '14px',
+                                                color: '#fff',
+                                                fontWeight: 700
+                                            }}>
+                                                ✗
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -1184,41 +1418,41 @@ export default function KnowledgeGenerator() {
                                 gridTemplateColumns: 'repeat(4, 1fr)',
                                 gap: '12px',
                                 padding: '20px',
-                                background: 'rgba(255,215,0,0.03)',
+                                background: 'rgba(255,255,255,0.02)',
                                 borderRadius: '12px',
-                                border: '1px solid rgba(255,215,0,0.1)',
+                                border: '1px solid rgba(255,255,255,0.06)',
                                 marginBottom: '20px'
                             }}>
                                 <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFD700', marginBottom: '4px' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
                                         {progress.stats.chapters}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#999', fontWeight: 500 }}>
+                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
                                         知识章节
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFD700', marginBottom: '4px' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
                                         {progress.stats.images}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#999', fontWeight: 500 }}>
+                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
                                         提取图片
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFD700', marginBottom: '4px' }}>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
                                         {progress.stats.tables}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#999', fontWeight: 500 }}>
+                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
                                         转换表格
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#FFD700', marginBottom: '4px' }}>
-                                        {progress.stats.totalSize}
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                        {progress.stats.totalSize.split(' ')[0]}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#999', fontWeight: 500 }}>
-                                        文件大小
+                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                        文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
                                     </div>
                                 </div>
                             </div>
@@ -1257,23 +1491,23 @@ export default function KnowledgeGenerator() {
                                     onClick={() => setProgress(null)}
                                     style={{
                                         padding: '12px 32px',
-                                        background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                        background: '#4CAF50',
                                         border: 'none',
                                         borderRadius: '10px',
-                                        color: '#000',
+                                        color: '#fff',
                                         fontSize: '14px',
                                         fontWeight: 700,
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
-                                        boxShadow: '0 4px 12px rgba(255,215,0,0.3)'
+                                        boxShadow: '0 4px 12px rgba(76,175,80,0.3)'
                                     }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,215,0,0.4)';
+                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(76,175,80,0.4)';
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(76,175,80,0.3)';
                                     }}
                                 >
                                     完成
@@ -1359,7 +1593,10 @@ export default function KnowledgeGenerator() {
 
                         {/* 按钮 */}
                         <button
-                            onClick={() => setError('')}
+                            onClick={() => {
+                                setError('');
+                                setProgress(null); // 清空进度状态，避免显示之前的成功状态
+                            }}
                             style={{
                                 width: '100%',
                                 padding: '14px',
@@ -1385,60 +1622,6 @@ export default function KnowledgeGenerator() {
                             我知道了
                         </button>
                     </div>
-                </div>
-            )}
-
-            {/* Success Result */}
-            {result && result.success && (
-                <div style={{
-                    marginTop: '16px',
-                    padding: '16px',
-                    background: 'rgba(0,255,0,0.1)',
-                    border: '1px solid rgba(0,255,0,0.3)',
-                    borderRadius: '8px'
-                }}>
-                    <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: '#0f0' }}>
-                        ✅ 导入成功！
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
-                        <div style={{ padding: '12px', background: '#1a1a1a', borderRadius: '6px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '24px', fontWeight: 600, color: '#0f0' }}>{result.imported_count}</div>
-                            <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>成功导入</div>
-                        </div>
-                        <div style={{ padding: '12px', background: '#1a1a1a', borderRadius: '6px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '24px', fontWeight: 600, color: '#ff0' }}>{result.skipped_count}</div>
-                            <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>跳过重复</div>
-                        </div>
-                        <div style={{ padding: '12px', background: '#1a1a1a', borderRadius: '6px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '24px', fontWeight: 600, color: '#f00' }}>{result.failed_count}</div>
-                            <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>导入失败</div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleViewImported}
-                        style={{
-                            width: '100%',
-                            padding: '12px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            border: 'none',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}
-                    >
-                        📚 前往 Kinefinity WIKI 查看
-                    </button>
                 </div>
             )}
 
@@ -1593,5 +1776,9 @@ export default function KnowledgeGenerator() {
             opacity: 1;
             transform: translateY(0);
         }
+    }
+    @keyframes indeterminate {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(400%); }
     }
 `}</style>

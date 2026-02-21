@@ -234,13 +234,14 @@ Output raw JSON only, no markdown formatting blocks.`;
         // Extract last user message for searches
         const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
 
-        // Detect if user query needs search (keywords-based heuristic)
-        const needsSearch = this._detectTicketSearchIntent(lastUserMessage);
+        // Detect if user query needs ticket search (keywords-based heuristic)
+        // Only ticket search needs keyword detection - knowledge search should always be enabled
+        const needsTicketSearch = this._detectTicketSearchIntent(lastUserMessage);
 
         let contextSections = [];
 
-        // Search Tickets if enabled
-        if (needsSearch && dataSources.includes('tickets') && this.db) {
+        // Search Tickets if enabled - only when fault-related keywords detected
+        if (needsTicketSearch && dataSources.includes('tickets') && this.db) {
             try {
                 const tickets = await this._searchRelatedTickets(lastUserMessage, user);
                 if (tickets && tickets.length > 0) {
@@ -263,8 +264,8 @@ Output raw JSON only, no markdown formatting blocks.`;
             }
         }
 
-        // Search Knowledge Base if enabled
-        if (needsSearch && dataSources.includes('knowledge') && this.db) {
+        // Search Knowledge Base if enabled - ALWAYS search knowledge base for better RAG
+        if (dataSources.includes('knowledge') && this.db) {
             try {
                 const articles = await this._searchRelatedKnowledge(lastUserMessage, user);
                 if (articles && articles.length > 0) {
@@ -290,22 +291,29 @@ Output raw JSON only, no markdown formatting blocks.`;
 
         const enhancedContext = contextSections.join('');
 
-        const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
-You have access to the Kinefinity Service Database.
-Current Context:
-- Page: ${context.path || 'Unknown'}
-- Title: ${context.title || 'Unknown'}
-- Strict Work Mode: ${settings.ai_work_mode ? 'ENABLED (Refuse casual chat, only answer work-related questions)' : 'DISABLED'}
-- Web Search: ${provider.allow_search ? 'ENABLED' : 'DISABLED'}
-- Active Data Sources: ${dataSources.join(', ')}
+        // 获取自定义系统提示词或使用默认提示词
+        const customPrompt = settings.ai_system_prompt;
+        const defaultPrompt = `你是 Bokeh，Kinefinity 的专业技术支持助手。
+你拥有访问 Kinefinity 服务数据库的权限。
+当前上下文：
+- 页面：${context.path || 'Unknown'}
+- 标题：${context.title || 'Unknown'}
+- 严格工作模式：${settings.ai_work_mode ? '已启用（拒绝闲聊，仅回答工作相关问题）' : '已禁用'}
+- 网络搜索：${provider.allow_search ? '已启用' : '已禁用'}
+- 活跃数据源：${dataSources.join(', ')}
 
-Guidelines:
-- Be helpful, concise, and professional.
-- If Strict Work Mode is ON, politely refuse to answer questions about movies, jokes, or general trivia unrelated to Kinefinity/Filmmaking.
-- Your persona: "Ethereal, Calm, Responsive". Use "we" when referring to Kinefinity support.
-- When historical tickets are provided, cite them using their ticket numbers (e.g., [K2602-0001]).
-- When knowledge articles are provided, cite them with titles and provide links (e.g., "根据[MAVO Edge 6K: 1.1 端口说明](/tech-hub/wiki/mavo-edge-6k-1-1-端口说明)...").
+**重要规则：**
+1. **必须完全基于下方提供的知识库文章和工单数据回答**。如果提供的内容中没有相关信息，明确告知用户"根据现有知识库资料，暂未找到相关信息"。
+2. 禁止编造知识库中没有的信息，禁止依赖训练数据中的通用知识。
+3. 回答时引用知识库文章标题和链接（如"根据[MAVO Edge 6K: 1.1 端口说明](/tech-hub/wiki/mavo-edge-6k-1-1-端口说明)..."）。
+4. 如果历史工单中有相关信息，引用工单编号（如 [K2602-0001]）。
+5. 保持回答简洁、专业、有帮助。
+6. 如果严格工作模式开启，礼貌拒绝回答与 Kinefinity/电影制作无关的电影、笑话或一般性 trivia 问题。
+7. 人设："空灵、冷静、响应迅速"。提及 Kinefinity 支持时用"我们"。
+
 ${enhancedContext}`;
+
+        const systemPrompt = customPrompt ? customPrompt.replace('{{context}}', enhancedContext).replace('{{dataSources}}', dataSources.join(', ')).replace('{{path}}', context.path || 'Unknown').replace('{{title}}', context.title || 'Unknown') : defaultPrompt;
 
         const model = this._getModel('chat');
 
@@ -338,6 +346,7 @@ ${enhancedContext}`;
 
     /**
      * Detect if user query needs ticket search (keyword-based heuristic)
+     * Used only for ticket search - knowledge base search is always enabled
      * @param {string} query - User query
      * @returns {boolean}
      */
@@ -346,10 +355,15 @@ ${enhancedContext}`;
             '问题', '故障', '死机', '无法', '不能', '错误', '异常',
             'issue', 'problem', 'error', 'crash', 'fail', 'not working',
             '如何解决', '怎么办', '解决方案', 'how to fix', 'solution',
-            '历史', '以前', '案例', 'history', 'previous', 'case'
+            '历史', '以前', '案例', 'history', 'previous', 'case',
+            // 技术/产品相关关键词
+            'SDI', 'HDMI', '端口', '接口', '屏幕', '显示', '录制', '播放',
+            'sdi', 'hdmi', 'port', 'screen', 'display', 'record', 'playback',
+            '黑屏', '花屏', '闪屏', '卡顿', '掉帧', '过热', '电池', '充电',
+            '固件', '升级', '更新', 'firmware', 'upgrade', 'update'
         ];
         const lowerQuery = query.toLowerCase();
-        return keywords.some(kw => lowerQuery.includes(kw));
+        return keywords.some(kw => lowerQuery.includes(kw.toLowerCase()));
     }
 
     /**
@@ -367,7 +381,7 @@ ${enhancedContext}`;
         const safeQuery = '"' + query.replace(/"/g, '""') + '"';
         let params = { query: safeQuery, limit: 3 }; // Top 3 tickets
 
-        // Permission Filter
+        // Permission Filter - dealers can only see their own tickets
         if (user && user.department === 'Dealer' && user.dealer_id) {
             whereConditions.push('tsi.dealer_id = @dealer_id');
             params.dealer_id = user.dealer_id;
@@ -395,10 +409,61 @@ ${enhancedContext}`;
             LIMIT @limit
         `;
 
+        // Try FTS5 first, fallback to LIKE search
+        let results = [];
+        
         try {
-            const results = this.db.prepare(searchQuery).all(params);
+            // FTS5 Search Query
+            const ftsQuery = `
+                SELECT 
+                    tsi.ticket_number,
+                    tsi.ticket_type,
+                    tsi.ticket_id,
+                    tsi.title,
+                    tsi.resolution,
+                    tsi.product_model,
+                    tsi.account_id,
+                    fts.rank
+                FROM ticket_search_index tsi
+                INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
+                WHERE fts MATCH @query
+                ${whereClause}
+                ORDER BY fts.rank
+                LIMIT @limit
+            `;
+            results = this.db.prepare(ftsQuery).all(params);
+        } catch (ftsErr) {
+            console.warn('[AIService] FTS5 ticket search failed, using LIKE fallback:', ftsErr.message);
+        }
 
-            // Enrich with account names
+        // If FTS5 returns no results, try LIKE search
+        if (results.length === 0) {
+            try {
+                const likePattern = `%${query}%`;
+                const likeQuery = `
+                    SELECT 
+                        tsi.ticket_number,
+                        tsi.ticket_type,
+                        tsi.ticket_id,
+                        tsi.title,
+                        tsi.resolution,
+                        tsi.product_model,
+                        tsi.account_id,
+                        1.0 as rank
+                    FROM ticket_search_index tsi
+                    WHERE (tsi.title LIKE @likePattern OR tsi.resolution LIKE @likePattern)
+                    ${whereClause}
+                    ORDER BY tsi.updated_at DESC
+                    LIMIT @limit
+                `;
+                results = this.db.prepare(likeQuery).all({ ...params, likePattern });
+            } catch (likeErr) {
+                console.error('[AIService] LIKE ticket search also failed:', likeErr.message);
+            }
+        }
+
+        // Enrich with account names
+        try {
             return results.map(r => {
                 let customer_name = null;
                 if (r.account_id) {
@@ -411,8 +476,8 @@ ${enhancedContext}`;
                 };
             });
         } catch (err) {
-            console.error('[AIService] Ticket search query failed:', err);
-            return [];
+            console.error('[AIService] Ticket search enrichment failed:', err);
+            return results;
         }
     }
 
@@ -472,22 +537,70 @@ ${enhancedContext}`;
         `;
 
         try {
-            const results = this.db.prepare(searchQuery).all(params);
-            return results.map(r => ({
-                id: r.id,
-                title: r.title,
-                slug: r.slug,
-                summary: r.summary,
-                content: r.content?.substring(0, 300), // Truncate content
-                category: r.category,
-                product_line: r.product_line,
-                source_reference: r.source_reference,
-                relevance_score: r.rank
-            }));
-        } catch (err) {
-            console.error('[AIService] Knowledge search query failed:', err);
-            return [];
+            // FTS5 Search Query for knowledge base
+            const ftsQuery = `
+                SELECT 
+                    ka.id,
+                    ka.title,
+                    ka.slug,
+                    ka.summary,
+                    ka.content,
+                    ka.category,
+                    ka.product_line,
+                    ka.visibility,
+                    ka.source_reference,
+                    fts.rank
+                FROM knowledge_articles ka
+                INNER JOIN knowledge_articles_fts fts ON ka.id = fts.rowid
+                WHERE fts MATCH @query
+                  AND ${whereClause}
+                ORDER BY fts.rank
+                LIMIT @limit
+            `;
+            results = this.db.prepare(ftsQuery).all(params);
+        } catch (ftsErr) {
+            console.warn('[AIService] FTS5 knowledge search failed, using LIKE fallback:', ftsErr.message);
         }
+
+        // If FTS5 returns no results, try LIKE search
+        if (results.length === 0) {
+            try {
+                const likePattern = `%${query}%`;
+                const likeQuery = `
+                    SELECT 
+                        ka.id,
+                        ka.title,
+                        ka.slug,
+                        ka.summary,
+                        ka.content,
+                        ka.category,
+                        ka.product_line,
+                        ka.visibility,
+                        ka.source_reference,
+                        1.0 as rank
+                    FROM knowledge_articles ka
+                    WHERE (ka.title LIKE @likePattern OR ka.summary LIKE @likePattern OR ka.content LIKE @likePattern)
+                      AND ${whereClause}
+                    ORDER BY ka.updated_at DESC
+                    LIMIT @limit
+                `;
+                results = this.db.prepare(likeQuery).all({ ...params, likePattern });
+            } catch (likeErr) {
+                console.error('[AIService] LIKE knowledge search also failed:', likeErr.message);
+            }
+        }
+
+        return results.map(r => ({
+            id: r.id,
+            title: r.title,
+            slug: r.slug,
+            summary: r.summary,
+            content: r.content?.substring(0, 300), // Truncate content
+            category: r.category,
+            product_line: r.product_line,
+            source_reference: r.source_reference,
+            relevance_score: r.rank
+        }));
     }
 }
 

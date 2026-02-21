@@ -1,61 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    Bold, Italic, List, ListOrdered, Heading2, Quote, Code, Sparkles, Save, Send, ArrowLeft,
-    Loader2, Image as ImageIcon
+    Sparkles, Save, Send, ArrowLeft,
+    Loader2, History, ChevronDown, FileText, Trash2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
-
-// Convert content to editable HTML (preserve existing HTML, convert markdown parts)
-const contentToHtml = (content: string): string => {
-    if (!content) return '<p>Click here to start editing...</p>';
-    
-    // The content may already contain HTML (like <img> tags)
-    // We need to:
-    // 1. Convert markdown syntax to HTML
-    // 2. Wrap images with resize handles
-    // 3. Add proper styling
-    
-    let html = content
-        // Markdown images: ![alt](url) -> <img src="url" alt="alt">
-        // IMPORTANT: This must be before links to avoid conflict
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-        // Headers (only if line starts with #)
-        .replace(/^### (.*)$/gm, '<h3 style="font-size:18px;font-weight:600;color:#FFD700;margin:20px 0 12px;">$1</h3>')
-        .replace(/^## (.*)$/gm, '<h2 style="font-size:22px;font-weight:600;color:#fff;margin:24px 0 14px;">$1</h2>')
-        .replace(/^# (.*)$/gm, '<h1 style="font-size:28px;font-weight:700;color:#fff;margin:28px 0 16px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:12px;">$1</h1>')
-        // Bold
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        // Italic
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        // Inline code
-        .replace(/`([^`]+)`/g, '<code style="background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:4px;color:#FFD700;font-size:13px;">$1</code>')
-        // Links
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:#FFD700;text-decoration:none;border-bottom:1px solid rgba(255,215,0,0.3);">$1</a>')
-        // Blockquotes
-        .replace(/^> (.*)$/gm, '<blockquote style="border-left:3px solid #FFD700;padding-left:20px;margin:16px 0;color:#999;font-style:italic;">$1</blockquote>')
-        // Line breaks - convert newlines to <br> but preserve paragraph structure
-        .replace(/\n\n/g, '</p><p style="margin-bottom:16px;line-height:1.8;">')
-        .replace(/\n/g, '<br>');
-    
-    // Wrap images with resize handles (handle both <img> and self-closing <img />)
-    html = html.replace(/<img\s+([^>]*)\/?>/gi, (_match, attrs) => {
-        // Extract existing style if any
-        const styleMatch = attrs.match(/style="([^"]*)"/i);
-        const existingStyle = styleMatch ? styleMatch[1] : '';
-        const attrsWithoutStyle = attrs.replace(/style="[^"]*"/i, '').trim();
-        
-        // Use width:fit-content to ensure wrapper matches image size exactly
-        return `<div class="wiki-image-wrapper" style="position:relative;display:block;width:fit-content;margin:16px 0;" contenteditable="false"><img ${attrsWithoutStyle} style="${existingStyle};max-width:800px;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;cursor:pointer;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;opacity:0.8;"></div></div>`;    });
-    
-    // Wrap in paragraph if not already wrapped
-    if (!html.startsWith('<')) {
-        html = `<p style="margin-bottom:16px;line-height:1.8;">${html}</p>`;
-    }
-    
-    return html;
-};
+import TipTapEditor from './WikiEditor/TipTapEditor';
+import type { TipTapEditorRef } from './WikiEditor/TipTapEditor';
+import BokehEditorPanel from '../Bokeh/BokehEditorPanel';
+import VersionHistory from './VersionHistory';
+import PublishPreviewModal from './PublishPreviewModal';
+import { useConfirm } from '../../store/useConfirm';
+import { useBokehContext } from '../../store/useBokehContext';
 
 interface Article {
     id: number;
@@ -64,6 +21,7 @@ interface Article {
     slug: string;
     formatted_content?: string;
     format_status?: string;
+    summary?: string;
 }
 
 interface WikiEditorModalProps {
@@ -75,115 +33,77 @@ interface WikiEditorModalProps {
 
 const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, article, onSaved }) => {
     const { token } = useAuthStore();
+    const { confirm } = useConfirm();
+    const { setWikiEditContext, clearContext } = useBokehContext();
     const [isSaving, setIsSaving] = useState(false);
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [editorContent, setEditorContent] = useState('');
+    const [currentMarkdown, setCurrentMarkdown] = useState('');
+    const [showVersionHistory, setShowVersionHistory] = useState(false);
+    const [showPublishPreview, setShowPublishPreview] = useState(false);
     
-    const editorRef = useRef<HTMLDivElement>(null);
+    // 摘要编辑状态
+    const [summary, setSummary] = useState('');
+    const [showSummaryDropdown, setShowSummaryDropdown] = useState(false);
+    const SUMMARY_MAX_LENGTH = 200;
+    
+    // Bokeh 优化下拉菜单
+    const [showBokehDropdown, setShowBokehDropdown] = useState(false);
+    
+    // 删除草稿状态
+    const [isDeleting, setIsDeleting] = useState(false);
+    
+    // TipTap 编辑器引用 - 用于直接获取编辑器内容
+    const editorRef = useRef<TipTapEditorRef>(null);
+    const summaryDropdownRef = useRef<HTMLDivElement>(null);
+    const bokehDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Load article content into editor when modal opens or article changes
+    // Load article content when modal opens
     useEffect(() => {
-        if (isOpen && article && editorRef.current) {
-            // Get the best available content
+        if (isOpen && article) {
+            // Priority: formatted_content (draft) > content (published)
             const rawContent = article.formatted_content || article.content || '';
-            console.log('[WikiEditor] Loading content:', rawContent.substring(0, 200) + '...');
+            console.log('[WikiEditor] Article data:', {
+                id: article.id,
+                title: article.title,
+                hasContent: !!article.content,
+                contentLen: article.content?.length || 0,
+                hasFormatted: !!article.formatted_content,
+                formattedLen: article.formatted_content?.length || 0,
+                rawContentLen: rawContent.length
+            });
+            console.log('[WikiEditor] Loading content preview:', rawContent.substring(0, 200) + '...');
+            setEditorContent(rawContent);
+            // Initialize currentMarkdown so publish button is enabled
+            setCurrentMarkdown(rawContent);
+            // 加载摘要 - 统一使用 summary 字段
+            setSummary(article.summary || '');
             
-            if (rawContent) {
-                const html = contentToHtml(rawContent);
-                editorRef.current.innerHTML = html;
-            } else {
-                editorRef.current.innerHTML = '<p style="color:#666;">点击此处开始编辑...</p>';
-            }
+            // 设置 Bokeh 编辑器上下文
+            setWikiEditContext({
+                id: article.id,
+                title: article.title,
+                slug: article.slug,
+                content: rawContent,
+                hasDraft: !!article.formatted_content
+            });
         }
-    }, [isOpen, article]);
-
-    // Handle editor input - just track changes (WYSIWYG)
-    const handleEditorInput = useCallback(() => {
-        // Content is directly in the editor, no conversion needed
-    }, []);
-
-    // Handle image resize - must rebind when modal opens
+    }, [isOpen, article, setWikiEditContext]);
+    
+    // 清除 Bokeh 上下文当编辑器关闭
     useEffect(() => {
-        if (!isOpen || !editorRef.current) return;
-
-        const editor = editorRef.current;
-        let resizingImage: HTMLImageElement | null = null;
-        let startX = 0;
-        let startWidth = 0;
-
-        const handleMouseDown = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.classList.contains('resize-handle')) {
-                e.preventDefault();
-                e.stopPropagation();
-                const wrapper = target.parentElement;
-                if (wrapper) {
-                    resizingImage = wrapper.querySelector('img');
-                    if (resizingImage) {
-                        startX = e.clientX;
-                        startWidth = resizingImage.offsetWidth;
-                        console.log('[WikiEditor] Start resize, width:', startWidth);
-                    }
-                }
-            }
-        };
-
-        const handleMouseMove = (e: MouseEvent) => {
-            if (resizingImage) {
-                e.preventDefault();
-                const deltaX = e.clientX - startX;
-                const newWidth = Math.max(100, startWidth + deltaX);
-                resizingImage.style.width = `${newWidth}px`;
-                resizingImage.style.maxWidth = 'none';
-            }
-        };
-
-        const handleMouseUp = () => {
-            if (resizingImage) {
-                console.log('[WikiEditor] End resize, new width:', resizingImage.style.width);
-                resizingImage = null;
-            }
-        };
-
-        editor.addEventListener('mousedown', handleMouseDown);
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            editor.removeEventListener('mousedown', handleMouseDown);
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isOpen]);
-
-    // Toolbar actions
-    const toolbarActions = [
-        { icon: <Bold size={16} />, label: '粗体', action: () => document.execCommand('bold') },
-        { icon: <Italic size={16} />, label: '斜体', action: () => document.execCommand('italic') },
-        { icon: <Heading2 size={16} />, label: '标题', action: () => document.execCommand('formatBlock', false, 'h2') },
-        { icon: <List size={16} />, label: '无序列表', action: () => document.execCommand('insertUnorderedList') },
-        { icon: <ListOrdered size={16} />, label: '有序列表', action: () => document.execCommand('insertOrderedList') },
-        { icon: <Quote size={16} />, label: '引用', action: () => document.execCommand('formatBlock', false, 'blockquote') },
-        { icon: <Code size={16} />, label: '代码', action: () => document.execCommand('formatBlock', false, 'pre') },
-        { 
-            icon: <ImageIcon size={16} />, 
-            label: '插入图片', 
-            action: () => {
-                const url = prompt('请输入图片URL:');
-                if (url) {
-                    const html = `<div class="wiki-image-wrapper" style="position:relative;display:block;width:fit-content;margin:16px 0;" contenteditable="false"><img src="${url}" alt="" style="max-width:800px;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.1);display:block;" class="resizable-image"><div class="resize-handle" style="position:absolute;bottom:4px;right:4px;width:20px;height:20px;background:#FFD700;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 8px rgba(0,0,0,0.5);z-index:10;opacity:0.8;"></div></div><br>`;
-                    document.execCommand('insertHTML', false, html);
-                }
-            }
-        },
-    ];
+        if (!isOpen) {
+            clearContext();
+        }
+    }, [isOpen, clearContext]);
 
     // Use conditional rendering instead of early return to avoid React Hooks violation
     if (!isOpen || !article || !article.id) {
         return null;
     }
 
-    // Save as draft
+    // Save as draft - 直接保存 HTML 格式
     const handleSaveDraft = async () => {
         if (!token) {
             setError('请先登录');
@@ -197,19 +117,30 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
         setIsSaving(true);
         setError(null);
         try {
-            // Get current HTML content from editor and clean up for saving
-            let htmlContent = editorRef.current?.innerHTML || '';
-            // Remove resize handles before saving
-            htmlContent = htmlContent.replace(/<div class="resize-handle"[^>]*><\/div>/gi, '');
-            // Unwrap wiki-image-wrapper divs - keep img with its style
-            htmlContent = htmlContent.replace(/<div class="wiki-image-wrapper"[^>]*>\s*(<img[^>]*>)\s*<\/div>/gi, '$1');
+            // 直接从 TipTap 编辑器获取 HTML 内容
+            let htmlContent: string;
+            if (editorRef.current) {
+                htmlContent = editorRef.current.getContent();
+                console.log('[WikiEditor] Got HTML content from editor ref, length:', htmlContent.length);
+            } else {
+                // 降级：使用 state 中的内容
+                htmlContent = currentMarkdown || editorContent;
+                console.log('[WikiEditor] Editor ref not available, using state');
+            }
             
-            console.log('[WikiEditor] Saving HTML content:', htmlContent.substring(0, 200) + '...');
+            if (!htmlContent || htmlContent.trim() === '') {
+                setError('内容不能为空');
+                return;
+            }
+            
+            console.log('[WikiEditor] Saving HTML content preview:', htmlContent.substring(0, 200) + '...');
             
             const res = await axios.patch(`/api/v1/knowledge/${article.id}`, {
-                // Only save to formatted_content (draft), don't touch content (published)
+                // 直接保存 HTML 格式，不转换为 Markdown
                 formatted_content: htmlContent,
-                format_status: 'draft'
+                format_status: 'draft',
+                // 保存摘要 - 统一保存到summary字段
+                summary: summary || undefined
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -226,54 +157,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
         }
     };
 
-    // Publish
-    const handlePublish = async () => {
-        if (!token) {
-            setError('请先登录');
-            return;
-        }
-        if (!article?.id) {
-            setError('文章ID无效');
-            return;
-        }
-        
-        setIsSaving(true);
-        setError(null);
-        try {
-            // First, save current editor content to formatted_content
-            let htmlContent = editorRef.current?.innerHTML || '';
-            htmlContent = htmlContent.replace(/<div class="resize-handle"[^>]*><\/div>/gi, '');
-            htmlContent = htmlContent.replace(/<div class="wiki-image-wrapper"[^>]*>\s*(<img[^>]*>)\s*<\/div>/gi, '$1');
-            
-            console.log('[WikiEditor] Saving before publish:', htmlContent.substring(0, 200) + '...');
-            
-            // Save to formatted_content first
-            await axios.patch(`/api/v1/knowledge/${article.id}`, {
-                formatted_content: htmlContent,
-                format_status: 'draft'
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            // Then publish
-            const res = await axios.post(`/api/v1/knowledge/${article.id}/publish-format`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (res.data.success && onSaved) {
-                onSaved();
-            }
-            onClose();
-        } catch (err: any) {
-            console.error('Publish error:', err);
-            setError(err.response?.data?.message || '发布失败');
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    // AI Optimize
-    const handleAIOptimize = async () => {
+    // AI Optimize with mode support
+    const handleAIOptimize = async (mode: 'summary' | 'content' | 'full' = 'content') => {
         if (!token) {
             setError('请先登录');
             return;
@@ -285,22 +170,94 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
         
         setIsOptimizing(true);
         setError(null);
+        setShowBokehDropdown(false);
         try {
             const res = await axios.post(`/api/v1/knowledge/${article.id}/format`, 
-                { mode: 'full' },
+                { mode },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            if (res.data.success && editorRef.current) {
+            if (res.data.success) {
                 // Update editor content with AI-optimized result
-                const newContent = res.data.data.formatted_content || '';
-                editorRef.current.innerHTML = contentToHtml(newContent);
+                if (mode === 'summary' || mode === 'full') {
+                    // 使用 summary 字段
+                    const newSummary = res.data.data.summary || '';
+                    if (newSummary) setSummary(newSummary);
+                }
+                if (mode === 'content' || mode === 'full') {
+                    const newContent = res.data.data.formatted_content || '';
+                    if (newContent) setEditorContent(newContent);
+                }
             }
         } catch (err: any) {
             console.error('AI optimize error:', err);
             setError(err.response?.data?.message || 'AI优化失败');
         } finally {
             setIsOptimizing(false);
+        }
+    };
+
+    // Handle Bokeh panel changes
+    const handleBokehChanges = (newContent: string) => {
+        setEditorContent(newContent);
+        setCurrentMarkdown(newContent);
+        
+        // 更新 Bokeh 上下文中的当前内容
+        if (article) {
+            setWikiEditContext({
+                id: article.id,
+                title: article.title,
+                slug: article.slug,
+                content: newContent,
+                hasDraft: true
+            });
+        }
+    };
+
+    // Handle version rollback
+    const handleVersionRollback = () => {
+        // Refresh article content after rollback
+        if (onSaved) onSaved();
+    };
+
+    // Handle publish completed
+    const handlePublishComplete = () => {
+        if (onSaved) onSaved();
+        onClose();
+    };
+
+    // 删除草稿
+    const handleDeleteDraft = async () => {
+        if (!token) {
+            setError('请先登录');
+            return;
+        }
+        if (!article?.id) {
+            setError('文章ID无效');
+            return;
+        }
+        
+        setIsDeleting(true);
+        setError(null);
+        try {
+            // 将草稿内容清空，状态设为 none
+            const res = await axios.patch(`/api/v1/knowledge/${article.id}`, {
+                formatted_content: '',
+                format_status: 'none',
+                change_summary: '删除草稿'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data.success && onSaved) {
+                onSaved();
+            }
+            onClose();
+        } catch (err: any) {
+            console.error('Delete draft error:', err);
+            setError(err.response?.data?.message || '删除草稿失败');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -330,7 +287,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         exit={{ scale: 0.9, opacity: 0 }}
                         style={{
                             width: '100%',
-                            maxWidth: '1000px',
+                            maxWidth: '1100px',
                             height: '90vh',
                             background: 'rgba(28, 28, 30, 0.95)',
                             borderRadius: '20px',
@@ -365,7 +322,6 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             </button>
                             
                             <h2 style={{ 
-                                flex: 1, 
                                 fontSize: '18px', 
                                 fontWeight: 600, 
                                 color: '#fff',
@@ -373,6 +329,88 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             }}>
                                 {article?.title || '编辑文章'}
                             </h2>
+                            
+                            {/* 摘要下拉按钮 */}
+                            <div ref={summaryDropdownRef} style={{ position: 'relative' }}>
+                                <button
+                                    onClick={() => setShowSummaryDropdown(!showSummaryDropdown)}
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: summary ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255,255,255,0.05)',
+                                        border: summary ? '1px solid rgba(76, 175, 80, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '6px',
+                                        color: summary ? '#4CAF50' : 'rgba(255,255,255,0.6)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    <FileText size={13} />
+                                    摘要
+                                    {summary && <span style={{ fontSize: '10px', opacity: 0.7 }}>({summary.length})</span>}
+                                    <ChevronDown size={12} />
+                                </button>
+                                
+                                {/* 摘要下拉面板 */}
+                                {showSummaryDropdown && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        marginTop: '4px',
+                                        width: '640px',
+                                        background: 'rgba(30, 30, 35, 0.98)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                                        padding: '12px',
+                                        zIndex: 100
+                                    }}>
+                                        <textarea
+                                            value={summary}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val.length <= SUMMARY_MAX_LENGTH) {
+                                                    setSummary(val);
+                                                }
+                                            }}
+                                            placeholder="输入文章摘要..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '6px',
+                                                color: '#fff',
+                                                fontSize: '12px',
+                                                resize: 'none',
+                                                height: '80px',
+                                                outline: 'none',
+                                                lineHeight: '1.5'
+                                            }}
+                                            autoFocus
+                                        />
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            marginTop: '8px',
+                                            fontSize: '10px',
+                                            color: 'rgba(255,255,255,0.4)'
+                                        }}>
+                                            <span>用于列表和SEO</span>
+                                            <span style={{
+                                                color: summary.length >= SUMMARY_MAX_LENGTH ? '#f87171' : 'rgba(255,255,255,0.4)'
+                                            }}>
+                                                {summary.length}/{SUMMARY_MAX_LENGTH}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div style={{ flex: 1 }} />
 
                             {/* Error Display */}
                             {error && (
@@ -388,154 +426,251 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 </div>
                             )}
 
-                            {/* View Mode Toggle - Hidden since we now use split view */}
-                        </div>
-
-                        {/* Toolbar - Always visible */}
-                        <div style={{
-                            padding: '12px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            flexWrap: 'wrap'
-                        }}>
-                            {toolbarActions.map((action, idx) => (
+                            {/* Bokeh 优化下拉菜单 */}
+                            <div ref={bokehDropdownRef} style={{ position: 'relative' }}>
                                 <button
-                                    key={idx}
-                                    onClick={action.action}
-                                    title={action.label}
+                                    onClick={() => setShowBokehDropdown(!showBokehDropdown)}
+                                    disabled={isOptimizing}
                                     style={{
-                                        width: '36px',
-                                        height: '36px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        padding: '8px 14px',
+                                        background: isOptimizing ? 'rgba(142, 36, 170, 0.3)' : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                        border: 'none',
                                         borderRadius: '8px',
-                                        color: '#ccc',
-                                        cursor: 'pointer',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: isOptimizing ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'all 0.2s'
+                                        gap: '6px'
                                     }}
                                 >
-                                    {action.icon}
+                                    {isOptimizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                    Bokeh 优化
+                                    <ChevronDown size={12} />
                                 </button>
-                            ))}
+                                
+                                {/* Bokeh 下拉菜单选项 */}
+                                {showBokehDropdown && !isOptimizing && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        right: 0,
+                                        marginTop: '4px',
+                                        width: '160px',
+                                        background: 'rgba(30, 30, 35, 0.98)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                                        overflow: 'hidden',
+                                        zIndex: 100
+                                    }}>
+                                        {[
+                                            { label: '优化摘要', mode: 'summary' as const },
+                                            { label: '优化正文', mode: 'content' as const },
+                                            { label: '同时优化', mode: 'full' as const }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.mode}
+                                                onClick={() => handleAIOptimize(option.mode)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 14px',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    borderBottom: option.mode !== 'full' ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                                                    color: '#fff',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
+                                                    transition: 'background 0.15s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                }}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
 
-                            <div style={{ flex: 1 }} />
-
-                            {/* AI Optimize Button */}
+                            {/* Version History Button */}
                             <button
-                                onClick={handleAIOptimize}
-                                disabled={isOptimizing}
+                                onClick={() => setShowVersionHistory(true)}
                                 style={{
                                     padding: '8px 16px',
-                                    background: isOptimizing ? 'rgba(142, 36, 170, 0.3)' : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
-                                    border: 'none',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
                                     borderRadius: '8px',
-                                    color: '#fff',
+                                    color: 'rgba(255,255,255,0.7)',
                                     fontSize: '13px',
-                                    fontWeight: 600,
-                                    cursor: isOptimizing ? 'not-allowed' : 'pointer',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px'
                                 }}
                             >
-                                {isOptimizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                Bokeh 优化
+                                <History size={14} />
+                                版本历史
                             </button>
                         </div>
 
-                        {/* WYSIWYG Editor - Single Column */}
-                        <div 
-                            ref={editorRef}
-                            style={{
-                                flex: 1,
-                                overflow: 'auto',
-                                padding: '32px',
-                                background: '#1a1a1d',
-                                fontSize: '15px',
-                                lineHeight: '1.8',
-                                color: '#ccc'
-                            }}
-                            contentEditable
-                            suppressContentEditableWarning
-                            onInput={handleEditorInput}
-                            onBlur={handleEditorInput}
-                        />
+                        {/* TipTap Editor */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <TipTapEditor
+                                ref={editorRef}
+                                content={editorContent}
+                                onChange={(markdown) => {
+                                    console.log('[WikiEditor] onChange called, markdown length:', markdown?.length || 0);
+                                    setCurrentMarkdown(markdown);
+                                }}
+                                onSave={(markdown) => {
+                                    setCurrentMarkdown(markdown);
+                                    handleSaveDraft();
+                                }}
+                                placeholder="开始编辑文章内容..."
+                            />
+                        </div>
 
-                        {/* Footer Actions */}
+                        {/* Footer Actions - 包含 Bokeh 助手和操作按钮 */}
                         <div style={{
-                            padding: '20px 24px',
+                            padding: '12px 24px',
                             borderTop: '1px solid rgba(255,255,255,0.08)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'flex-end',
+                            justifyContent: 'space-between',
                             gap: '12px',
                             background: 'rgba(0,0,0,0.2)'
                         }}>
-                            <button
-                                onClick={onClose}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: 'transparent',
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    borderRadius: '8px',
-                                    color: '#ccc',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                取消
-                            </button>
-                            
-                            <button
-                                onClick={handleSaveDraft}
-                                disabled={isSaving}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: 'rgba(255,255,255,0.1)',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    cursor: isSaving ? 'not-allowed' : 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}
-                            >
-                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                存草稿
-                            </button>
-                            
-                            <button
-                                onClick={handlePublish}
-                                disabled={isSaving}
-                                style={{
-                                    padding: '10px 20px',
-                                    background: 'linear-gradient(135deg, #FFD700, #D4A017)',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    color: '#000',
-                                    fontSize: '14px',
-                                    fontWeight: 600,
-                                    cursor: isSaving ? 'not-allowed' : 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}
-                            >
-                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                                发布
-                            </button>
+                            {/* 左侧: Bokeh 助手按钮 */}
+                            <BokehEditorPanel
+                                articleId={article.id}
+                                articleTitle={article.title}
+                                currentContent={currentMarkdown || editorContent}
+                                onApplyChanges={handleBokehChanges}
+                            />
+                            {/* 右侧: 操作按钮 */}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={onClose}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'transparent',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        borderRadius: '6px',
+                                        color: '#ccc',
+                                        fontSize: '13px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    取消
+                                </button>
+                                
+                                <button
+                                    onClick={async () => {
+                                        const confirmed = await confirm(
+                                            '确定要删除当前草稿吗？此操作不可恢复，将会清空所有草稿内容。',
+                                            '删除草稿',
+                                            '删除',
+                                            '取消'
+                                        );
+                                        if (confirmed) {
+                                            await handleDeleteDraft();
+                                        }
+                                    }}
+                                    disabled={isDeleting}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'rgba(239, 68, 68, 0.15)',
+                                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                                        borderRadius: '6px',
+                                        color: '#ef4444',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                    删除草稿
+                                </button>
+                                
+                                <button
+                                    onClick={handleSaveDraft}
+                                    disabled={isSaving}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'rgba(255,255,255,0.1)',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: isSaving ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    存草稿
+                                </button>
+                                
+                                <button
+                                    onClick={() => setShowPublishPreview(true)}
+                                    disabled={isSaving || !currentMarkdown}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: 'rgba(255, 215, 0, 0.15)',
+                                        border: '1px solid #FFD700',
+                                        borderRadius: '6px',
+                                        color: '#FFD700',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: isSaving || !currentMarkdown ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        opacity: !currentMarkdown ? 0.5 : 1
+                                    }}
+                                >
+                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                    发布草稿
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </motion.div>
             )}
+
+            {/* Version History Panel */}
+            <AnimatePresence>
+                {showVersionHistory && (
+                    <VersionHistory
+                        articleId={article.id}
+                        onClose={() => setShowVersionHistory(false)}
+                        onRollback={handleVersionRollback}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Publish Preview Modal */}
+            <PublishPreviewModal
+                isOpen={showPublishPreview}
+                onClose={() => setShowPublishPreview(false)}
+                articleId={article.id}
+                articleTitle={article.title}
+                draftContent={currentMarkdown || editorContent}
+                onPublished={handlePublishComplete}
+            />
         </AnimatePresence>
     );
 };

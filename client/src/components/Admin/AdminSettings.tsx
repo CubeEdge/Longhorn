@@ -25,6 +25,7 @@ interface SystemSettings {
     ai_enabled: boolean;
     ai_work_mode: boolean;
     ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
+    ai_system_prompt?: string;  // 自定义 Bokeh 系统提示词
     // Primary Backup
     backup_enabled: boolean;
     backup_frequency: number;
@@ -160,6 +161,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         type: 'primary' | 'secondary';
         selectedBackup: string | null;
     }>({ isOpen: false, type: 'primary', selectedBackup: null });
+
+    // Prompt editor modal state
+    const [showPromptModal, setShowPromptModal] = useState(false);
 
     useEffect(() => {
         if (initialTab) setActiveTab(initialTab);
@@ -558,6 +562,45 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         />
                                         实时网络搜索 (待开放)
                                     </label>
+                                </div>
+                            </div>
+
+                            <div className="divider" />
+                            
+                            {/* Bokeh 回答策略设置 */}
+                            <div style={{ paddingLeft: 8 }}>
+                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>Bokeh 回答策略</div>
+                                <button
+                                    onClick={() => setShowPromptModal(true)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: 'rgba(255,215,0,0.1)',
+                                        border: '1px solid rgba(255,215,0,0.3)',
+                                        borderRadius: '8px',
+                                        color: '#FFD700',
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.5)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)';
+                                    }}
+                                >
+                                    <Bot size={14} />
+                                    {settings.ai_system_prompt ? '已自定义' : '使用默认策略'}
+                                </button>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: 6, lineHeight: 1.4 }}>
+                                    自定义 Bokeh 的系统提示词，控制回答风格和数据引用规则
                                 </div>
                             </div>
                         </div>
@@ -1387,6 +1430,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 )}
             </div>
 
+            {/* Prompt Editor Modal */}
+            <PromptEditorModal
+                isOpen={showPromptModal}
+                currentPrompt={settings?.ai_system_prompt || ''}
+                onClose={() => setShowPromptModal(false)}
+                onSave={(prompt) => {
+                    setSettings({ ...settings!, ai_system_prompt: prompt });
+                    setShowPromptModal(false);
+                }}
+            />
+
             <style>{`
                 .provider-item {
                     display: flex;
@@ -1490,6 +1544,155 @@ const StatCard: React.FC<{ label: string, value: string, subtext?: string, icon:
         {subtext && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>{subtext}</div>}
     </div>
 );
+
+// Prompt Editor Modal Component
+interface PromptEditorModalProps {
+    isOpen: boolean;
+    currentPrompt: string;
+    onClose: () => void;
+    onSave: (prompt: string) => void;
+}
+
+const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPrompt, onClose, onSave }) => {
+    const [prompt, setPrompt] = useState(currentPrompt || '');
+    
+    useEffect(() => {
+        setPrompt(currentPrompt || '');
+    }, [currentPrompt, isOpen]);
+    
+    if (!isOpen) return null;
+    
+    const defaultPrompt = `你是 Bokeh，Kinefinity 的专业技术支持助手。
+你拥有访问 Kinefinity 服务数据库的权限。
+当前上下文：
+- 页面：{{path}}
+- 标题：{{title}}
+- 活跃数据源：{{dataSources}}
+
+**重要规则：**
+1. **必须完全基于下方提供的知识库文章和工单数据回答**。如果提供的内容中没有相关信息，明确告知用户"根据现有知识库资料，暂未找到相关信息"。
+2. 禁止编造知识库中没有的信息，禁止依赖训练数据中的通用知识。
+3. 回答时引用知识库文章标题和链接（如"根据[MAVO Edge 6K: 1.1 端口说明](/tech-hub/wiki/mavo-edge-6k-1-1-端口说明)..."）。
+4. 如果历史工单中有相关信息，引用工单编号（如 [K2602-0001]）。
+5. 保持回答简洁、专业、有帮助。
+6. 人设："空灵、冷静、响应迅速"。提及 Kinefinity 支持时用"我们"。
+
+{{context}}`;
+
+    const handleReset = () => {
+        if (confirm('确定要重置为默认提示词吗？')) {
+            setPrompt('');
+        }
+    };
+
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+                animation: 'fadeIn 0.2s ease-out'
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width: 720, maxHeight: '85vh',
+                    background: 'rgba(28,28,30,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 20, padding: 28,
+                    boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                    display: 'flex', flexDirection: 'column'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Bot size={22} color="#FFD700" />
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'white', margin: 0 }}>
+                            Bokeh 回答策略设置
+                        </h3>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 4 }}>
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: 8, lineHeight: 1.5 }}>
+                        自定义系统提示词，控制 Bokeh 的回答风格和数据引用规则。
+                        <br />支持变量：{'{{context}}'} - 检索到的知识库/工单内容, {'{{dataSources}}'} - 数据源列表, {'{{path}}'} - 当前页面路径, {'{{title}}'} - 页面标题
+                    </div>
+                </div>
+
+                <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder={defaultPrompt}
+                    style={{
+                        flex: 1, minHeight: 320,
+                        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 12, padding: 16,
+                        color: 'white', fontSize: '0.85rem', lineHeight: 1.6,
+                        fontFamily: 'monospace',
+                        resize: 'none', outline: 'none'
+                    }}
+                />
+                
+                {!prompt && (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,215,0,0.7)', marginTop: 8 }}>
+                        留空将使用默认提示词
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={handleReset}
+                        style={{
+                            padding: '10px 20px',
+                            borderRadius: 10,
+                            background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: 'rgba(255,255,255,0.7)',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        重置默认
+                    </button>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            padding: '10px 20px',
+                            borderRadius: 10,
+                            background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: 'white',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        取消
+                    </button>
+                    <button
+                        onClick={() => onSave(prompt)}
+                        style={{
+                            padding: '10px 24px',
+                            borderRadius: 10,
+                            background: '#FFD700',
+                            border: 'none',
+                            color: 'black',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const BackupResultModal: React.FC<{ result: { success: boolean, message: string, path?: string }, onClose: () => void }> = ({ result, onClose }) => {
     return (

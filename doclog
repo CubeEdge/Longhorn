@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# 简化的文档更新命令 - doclog
-# 更新核心文档 (Backlog/PromptLog/DevLog)
-
-echo "🚀 执行核心文档更新..."
-./scripts/update_docs.sh core
-echo "✅ 核心文档更新完成！"

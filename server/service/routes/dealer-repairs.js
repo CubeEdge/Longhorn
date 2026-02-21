@@ -151,6 +151,105 @@ module.exports = function (db, authenticate, serviceUpload) {
         };
     }
 
+    /**
+     * Consume parts from dealer inventory
+     * @param {number} dealerId - Dealer ID
+     * @param {Array} parts - Array of {part_id, quantity}
+     * @param {number} repairId - Repair ticket ID for reference
+     * @returns {Object} Result with consumed parts and any warnings
+     */
+    function consumePartsFromInventory(dealerId, parts, repairId) {
+        const results = { consumed: [], warnings: [] };
+        
+        for (const part of parts) {
+            if (!part.part_id) continue;
+            
+            const quantity = part.quantity || 1;
+            
+            // Check current inventory
+            const inventory = db.prepare(`
+                SELECT quantity FROM dealer_inventory 
+                WHERE dealer_id = ? AND part_id = ?
+            `).get(dealerId, part.part_id);
+            
+            if (!inventory || inventory.quantity < quantity) {
+                // Log warning but allow operation (some repairs may need out-of-stock parts)
+                results.warnings.push({
+                    part_id: part.part_id,
+                    part_name: part.part_name,
+                    requested: quantity,
+                    available: inventory ? inventory.quantity : 0,
+                    message: `库存不足: ${part.part_name}`
+                });
+            }
+            
+            // Deduct from inventory (allow negative for tracking purposes)
+            if (inventory) {
+                db.prepare(`
+                    UPDATE dealer_inventory 
+                    SET quantity = quantity - ?, 
+                        last_outbound_date = date('now'),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE dealer_id = ? AND part_id = ?
+                `).run(quantity, dealerId, part.part_id);
+            } else {
+                // Create inventory record with negative balance
+                db.prepare(`
+                    INSERT INTO dealer_inventory (dealer_id, part_id, quantity, last_outbound_date)
+                    VALUES (?, ?, ?, date('now'))
+                `).run(dealerId, part.part_id, -quantity);
+            }
+            
+            // Record inventory transaction
+            db.prepare(`
+                INSERT INTO inventory_transactions 
+                (dealer_id, part_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
+                VALUES (?, ?, 'Outbound', ?, 'DealerRepair', ?, '维修工单配件消耗', NULL)
+            `).run(dealerId, part.part_id, quantity, repairId);
+            
+            results.consumed.push({
+                part_id: part.part_id,
+                part_name: part.part_name,
+                quantity: quantity
+            });
+        }
+        
+        return results;
+    }
+
+    /**
+     * Restore parts to dealer inventory (for repair updates/deletions)
+     * @param {number} repairId - Repair ticket ID
+     */
+    function restorePartsToInventory(repairId) {
+        // Get existing parts from this repair
+        const existingParts = db.prepare(`
+            SELECT drp.part_id, drp.quantity, dr.dealer_id
+            FROM dealer_repair_parts drp
+            JOIN dealer_repairs dr ON drp.dealer_repair_id = dr.id
+            WHERE drp.dealer_repair_id = ?
+        `).all(repairId);
+        
+        for (const part of existingParts) {
+            if (!part.part_id) continue;
+            
+            // Add back to inventory
+            db.prepare(`
+                UPDATE dealer_inventory 
+                SET quantity = quantity + ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE dealer_id = ? AND part_id = ?
+            `).run(part.quantity || 1, part.dealer_id, part.part_id);
+            
+            // Record reversal transaction
+            db.prepare(`
+                INSERT INTO inventory_transactions 
+                (dealer_id, part_id, transaction_type, quantity, reference_type, reference_id, notes, created_by)
+                VALUES (?, ?, 'Adjustment', ?, 'DealerRepair', ?, '维修工单配件回退', NULL)
+            `).run(part.dealer_id, part.part_id, part.quantity || 1, repairId);
+        }
+    }
+
     // ==============================
     // Routes
     // ==============================
@@ -488,8 +587,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 }
             }
 
-            // Insert parts used
+            // Insert parts used and consume from inventory
             const partsConsumed = [];
+            let inventoryWarnings = [];
             if (parts_used && Array.isArray(parts_used)) {
                 for (const part of parts_used) {
                     db.prepare(`
@@ -503,6 +603,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                         price_usd: part.unit_price || 0
                     });
                 }
+                
+                // Consume parts from dealer inventory
+                const consumeResult = consumePartsFromInventory(dealer_id, parts_used, repairId);
+                inventoryWarnings = consumeResult.warnings;
             }
 
             if (inquiry_ticket_id) {
@@ -525,6 +629,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     dealer_id: dealer_id,
                     status: 'Completed',
                     parts_consumed: partsConsumed,
+                    inventory_warnings: inventoryWarnings,
                     created_at: new Date().toISOString()
                 }
             });
@@ -557,9 +662,13 @@ module.exports = function (db, authenticate, serviceUpload) {
                 db.prepare(`UPDATE dealer_repairs SET ${updates.join(', ')} WHERE id = ?`).run(...params);
             }
 
-            // Update parts if provided
+            // Update parts if provided (with inventory management)
+            let inventoryWarnings = [];
             if (parts_used && Array.isArray(parts_used)) {
-                // Delete existing parts
+                // First restore old parts to inventory
+                restorePartsToInventory(id);
+                
+                // Delete existing parts records
                 db.prepare('DELETE FROM dealer_repair_parts WHERE dealer_repair_id = ?').run(id);
 
                 // Insert new parts
@@ -569,10 +678,21 @@ module.exports = function (db, authenticate, serviceUpload) {
                         VALUES (?, ?, ?, ?, ?)
                     `).run(id, part.part_id, part.part_name, part.quantity || 1, part.unit_price || 0);
                 }
+                
+                // Get dealer_id for inventory consumption
+                const repair = db.prepare('SELECT dealer_id FROM dealer_repairs WHERE id = ?').get(id);
+                if (repair && repair.dealer_id) {
+                    const consumeResult = consumePartsFromInventory(repair.dealer_id, parts_used, id);
+                    inventoryWarnings = consumeResult.warnings;
+                }
             }
 
             const updated = db.prepare('SELECT * FROM dealer_repairs WHERE id = ?').get(id);
-            res.json({ success: true, data: formatDetail(updated) });
+            const response = { success: true, data: formatDetail(updated) };
+            if (inventoryWarnings.length > 0) {
+                response.inventory_warnings = inventoryWarnings;
+            }
+            res.json(response);
         } catch (error) {
             console.error('Error updating dealer repair:', error);
             res.status(500).json({ success: false, error: { message: error.message } });
@@ -589,7 +709,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(403).json({ success: false, error: { message: 'Permission denied' } });
             }
 
-            // Delete parts first
+            // Restore parts to inventory before deletion
+            restorePartsToInventory(req.params.id);
+            
+            // Delete parts records
             db.prepare('DELETE FROM dealer_repair_parts WHERE dealer_repair_id = ?').run(req.params.id);
 
             const result = db.prepare('DELETE FROM dealer_repairs WHERE id = ?').run(req.params.id);
@@ -598,7 +721,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(404).json({ success: false, error: { message: 'Repair record not found' } });
             }
 
-            res.json({ success: true, data: { deleted: true } });
+            res.json({ success: true, data: { deleted: true, inventory_restored: true } });
         } catch (error) {
             console.error('Error deleting dealer repair:', error);
             res.status(500).json({ success: false, error: { message: error.message } });

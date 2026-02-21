@@ -23,7 +23,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
-const DISK_A = path.resolve(__dirname, process.env.DISK_A || 'data/DiskA');
+const DISK_A = '/Volumes/fileserver/Files';
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads');
@@ -68,6 +68,7 @@ db.exec(`
         ai_allow_search BOOLEAN DEFAULT 0,
         ai_provider TEXT DEFAULT 'DeepSeek',
         ai_data_sources TEXT DEFAULT '["tickets","knowledge"]',  -- JSON array: ["tickets", "knowledge", "web_search"]
+        ai_system_prompt TEXT,  -- 自定义 Bokeh 系统提示词
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -280,6 +281,10 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN backup_retention_days I
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_frequency INTEGER DEFAULT 4320").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_retention_days INTEGER DEFAULT 30").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_system_prompt TEXT").run(); } catch (e) { }
+
+// Migration for inquiry_tickets: add knowledge_article_id
+try { db.prepare("ALTER TABLE inquiry_tickets ADD COLUMN knowledge_article_id INTEGER REFERENCES knowledge_articles(id)").run(); } catch (e) { }
 
 // [DEPRECATED] Migration: customers table extra columns
 // customers 表已废弃，以下迁移代码保留仅作为历史参考
@@ -764,8 +769,8 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
         const { messages, context } = req.body;
         if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Missing messages array' });
 
-        const reply = await aiService.chat(messages, context, req.user);  // Pass user for ticket search permission
-        res.json({ success: true, data: reply });
+        const result = await aiService.chat(messages, context, req.user);  // Pass user for ticket search permission
+        res.json({ success: true, data: { content: result } });  // 返回格式统一为 { content: string }
     } catch (err) {
         console.error('[AI] Chat Error:', err);
         res.status(500).json({ error: 'AI processing failed', details: err.message });
@@ -1410,14 +1415,18 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         // Clean up chunk directory ONLY after successful merge
         fs.removeSync(chunkDir);
 
-        // Update database
+        // Update database (skip file_stats for Service module - table may not exist)
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
-
-        db.prepare(`
-            INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
-            VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
-        `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
+        
+        try {
+            db.prepare(`
+                INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
+                VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
+            `).run(normalizedPath, new Date().toISOString(), req.user.id, normalizedPath, normalizedPath);
+        } catch (statsErr) {
+            console.log('[Merge] file_stats update skipped (OK for Service uploads):', statsErr.message);
+        }
 
         console.log(`[Merge] ✓ Completed ${fileName} (${totalChunks} chunks) to ${subPath} by ${req.user.username}`);
         res.json({ success: true, path: normalizedPath });

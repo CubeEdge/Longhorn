@@ -5,6 +5,9 @@ interface User {
     username: string;
     role: 'Admin' | 'Lead' | 'Member' | 'Dealer';
     department_name?: string;
+    user_type?: 'Internal' | 'Dealer' | 'Customer';
+    dealer_id?: number;
+    dealer_name?: string;
 }
 
 interface AuthState {

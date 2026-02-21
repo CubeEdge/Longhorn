@@ -1769,7 +1769,48 @@
 
 **PATCH** `/api/v1/knowledge/{id}`
 
-### 10.5 发布知识条目
+### 10.5 删除知识条目
+
+**DELETE** `/api/v1/knowledge/{idOrSlug}`
+
+**权限**: Admin/Lead only
+
+**说明**: 删除文章及其所有版本历史，操作会被记录到审计日志
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "文章已删除",
+  "data": {
+    "id": 123,
+    "title": "MAVO Edge 6K操作说明书: 1. 产品概述"
+  }
+}
+```
+
+**错误响应**:
+```json
+// 403 Forbidden - 无权删除
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "无权删除文章"
+  }
+}
+
+// 404 Not Found - 文章不存在
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "文章不存在"
+  }
+}
+```
+
+### 10.6 发布知识条目
 
 **POST** `/api/v1/knowledge/{id}/publish`
 

@@ -44,7 +44,8 @@ if (fs.existsSync(SEED_PATH)) {
             if (!exists) {
                 insert.run({
                     ...item,
-                    examples: JSON.stringify(item.examples)
+                    examples: JSON.stringify(item.examples),
+                    image: item.image || null
                 });
             }
         }

@@ -34,6 +34,7 @@ const SERVICE_ROUTES = [
   '/service/knowledge',
   '/service-records',
   '/context',
+  '/tech-hub',
 ];
 
 // Files module routes

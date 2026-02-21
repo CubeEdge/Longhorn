@@ -123,7 +123,7 @@ export const useDailyWordStore = create<DailyWordState>()(
             }
         }),
         {
-            name: 'daily-word-storage-v2', // Version bump to invalidate old garbage cache (Fix V5)
+            name: 'daily-word-storage-v3', // Version bump to invalidate old empty cache
             partialize: (state) => ({
                 targetLang: state.targetLang,
                 level: state.level,

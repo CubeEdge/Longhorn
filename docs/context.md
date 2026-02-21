@@ -5,13 +5,12 @@
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 
 ## 0. 核心开发规则 (Critical Rules)
-1. **远程服务器** 是利用 Cloudflare Tunnel 穿透的，没有固定IP。
+1. **远程服务器** 是利用 Cloudflare Tunnel 穿透的，没有固定IP，域名是opware.kinefinity.com。
 2. **Remote Ops (远程执行)**：所有远程命令必须使用 `ssh mini "cd /Users/admin/Documents/server/Longhorn/server && <命令>"` 格式执行，SSH别名 `mini` 已通过 Cloudflare tunnel 配置，数据库路径为 `/Users/admin/Documents/server/Longhorn/server/longhorn.db`，执行迁移用 `sqlite3 longhorn.db < migrations/xxx.sql`。
-3. **Deployment**：必须关闭 `longhorn-watcher` 自动同步，统一使用 `./scripts/deploy.sh` 进行全部署。
+3. **Deployment**：必须关闭 `longhorn-watcher` 自动同步，统一使用 `./scripts/deploy.sh` 进行全部署。部署脚本应在同步代码后自动执行 `pm2 reload` 而非仅 `pm2 restart`，确保新代码被加载。
 4. **构建完整性**：远程构建必须强制使用登录 Shell (`zsh -l`)。部署前**必须物理删除**旧 `dist` 目录且严禁忽略构建报错。
 5. **构建产物校验**：凡修改前端源码（`.tsx`, `.ts`, `.css`），部署时**必须**执行 `npm run build` 并通过 `ls dist/index.html` 验证产物生成，确保护理修改后生产环境不加载旧产物或空目录。
 6. **Verification Proof (交付必验)**：每次构建后必须立即核对退出码及产物时间戳，并使用 `grep` 验证关键代码已进入生产混淆包，确保 TypeScript 零报错且产物非旧版缓存，严禁未经验证即请求用户刷新。
-7. **部署前强制清理**：部署前必须执行 `rm -rf client/dist` 强制删除旧构建产物，避免 Vite 增量构建导致旧代码残留。
 7. **命令行确认**对于只读操作（如curl -I检查HTTP状态、ls、cat、grep等）不需要和我确认，直接运行就可以。
 9. **版本管理**：
    - **软件版本号**：在 `client/package.json` 中维护，格式为 `X.Y.Z`

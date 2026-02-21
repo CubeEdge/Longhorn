@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# 简化的文档更新命令 - docall
-# 更新所有文档
-
-echo "🚀 执行全部文档更新..."
-./scripts/update_docs.sh all
-echo "✅ 全部文档更新完成！"

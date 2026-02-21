@@ -772,6 +772,127 @@ module.exports = function (db, authenticate, serviceUpload) {
     });
 
     /**
+     * POST /api/v1/inquiry-tickets/:id/convert-to-knowledge
+     * Convert resolved ticket to knowledge article draft
+     * AI-assisted content generation
+     */
+    router.post('/:id/convert-to-knowledge', authenticate, async (req, res) => {
+        try {
+            // Check permission
+            if (req.user.role !== 'Admin' && req.user.role !== 'Lead' && req.user.role !== 'Employee') {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权执行此操作' }
+                });
+            }
+
+            const ticket = db.prepare(`
+                SELECT t.*, p.name as product_name, p.family as product_family
+                FROM inquiry_tickets t
+                LEFT JOIN products p ON t.product_id = p.id
+                WHERE t.id = ?
+            `).get(req.params.id);
+
+            if (!ticket) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '工单不存在' }
+                });
+            }
+
+            if (ticket.status !== 'Resolved') {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'INVALID_STATUS', message: '只有已解决的工单才能转换为知识库文章' }
+                });
+            }
+
+            if (!ticket.resolution) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'NO_RESOLUTION', message: '工单没有解决方案，无法转换' }
+                });
+            }
+
+            const { title, category = 'FAQ', visibility = 'Internal', ai_optimize = true } = req.body;
+
+            // Generate title from problem summary
+            const articleTitle = title || ticket.problem_summary || `工单 ${ticket.ticket_number} 解决方案`;
+
+            // Build content from ticket
+            let content = '';
+            if (ticket.problem_summary) {
+                content += `## 问题描述\n\n${ticket.problem_summary}\n\n`;
+            }
+            if (ticket.product_name) {
+                content += `**相关产品**: ${ticket.product_name}\n\n`;
+            }
+            if (ticket.serial_number) {
+                content += `**序列号**: ${ticket.serial_number}\n\n`;
+            }
+            content += `## 解决方案\n\n${ticket.resolution}`;
+
+            // Generate slug
+            const slug = articleTitle
+                .toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 50) + '-' + Date.now().toString(36);
+
+            // Create knowledge article draft
+            const result = db.prepare(`
+                INSERT INTO knowledge_articles (
+                    title, slug, content, formatted_content,
+                    category, visibility, status, format_status,
+                    product_line, product_models, source_type, source_reference,
+                    created_by, updated_by
+                ) VALUES (?, ?, ?, ?, ?, ?, 'Draft', 'draft', ?, ?, 'ticket', ?, ?, ?)
+            `).run(
+                articleTitle,
+                slug,
+                content,
+                content, // formatted_content same as content initially
+                category,
+                visibility,
+                ticket.product_family || 'General',
+                ticket.product_name ? JSON.stringify([ticket.product_name]) : '[]',
+                JSON.stringify({ ticket_id: ticket.id, ticket_number: ticket.ticket_number }),
+                req.user.id,
+                req.user.id
+            );
+
+            const articleId = result.lastInsertRowid;
+
+            // Link ticket to knowledge article
+            db.prepare(`
+                UPDATE inquiry_tickets 
+                SET knowledge_article_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(articleId, ticket.id);
+
+            // If AI optimize is requested, we can trigger the format API
+            // This would be handled by a separate call from the frontend
+
+            res.json({
+                success: true,
+                data: {
+                    article_id: articleId,
+                    article_slug: slug,
+                    article_title: articleTitle,
+                    message: '知识库文章草稿已创建',
+                    ai_optimize_requested: ai_optimize
+                }
+            });
+        } catch (error) {
+            console.error('Error converting ticket to knowledge:', error);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: error.message }
+            });
+        }
+    });
+
+    /**
      * DELETE /api/v1/inquiry-tickets/:id
      * Delete inquiry ticket (admin only)
      */

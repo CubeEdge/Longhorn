@@ -11,13 +11,61 @@ interface Message {
     timestamp: number;
 }
 
-interface WikiArticleContext {
-    type: 'wiki_article';
+// Extended context types matching useBokehContext
+type EditorMode = 'editor';
+type AssistantMode = 'assistant';
+
+interface WikiArticleEditContext {
+    type: 'wiki_article_edit';
+    mode: EditorMode;
     articleId: number;
     articleTitle: string;
     articleSlug: string;
+    currentContent: string;
     hasDraft: boolean;
 }
+
+interface WikiArticleViewContext {
+    type: 'wiki_article_view';
+    mode: AssistantMode;
+    articleId: number;
+    articleTitle: string;
+    articleSlug: string;
+    articleSummary?: string;
+}
+
+interface WikiHomeContext {
+    type: 'wiki_home';
+    mode: AssistantMode;
+}
+
+interface FileManagerContext {
+    type: 'file_manager';
+    mode: AssistantMode;
+    currentPath?: string;
+    selectedFiles?: string[];
+}
+
+interface TicketSystemContext {
+    type: 'ticket_system';
+    mode: AssistantMode;
+    viewType?: 'inquiry' | 'rma' | 'dealer_repair' | 'dashboard';
+}
+
+interface GenericPageContext {
+    type: 'generic';
+    mode: AssistantMode;
+    path: string;
+    title: string;
+}
+
+type BokehContext = 
+    | WikiArticleEditContext 
+    | WikiArticleViewContext 
+    | WikiHomeContext 
+    | FileManagerContext 
+    | TicketSystemContext 
+    | GenericPageContext;
 
 interface BokehPanelProps {
     isOpen: boolean;
@@ -26,10 +74,11 @@ interface BokehPanelProps {
     messages: Message[];
     onSendMessage: (text: string) => void;
     loading: boolean;
-    wikiContext?: WikiArticleContext | null;
+    wikiContext?: BokehContext | null;
+    suggestedActions?: string[];
 }
 
-const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, messages, onSendMessage, loading, wikiContext }) => {
+const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, messages, onSendMessage, loading, wikiContext, suggestedActions }) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -225,28 +274,82 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
 
                 {/* CHAT AREA */}
                 <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Context Banner - Show when viewing a Wiki article */}
-                    {messages.length === 0 && wikiContext && wikiContext.type === 'wiki_article' && (
-                        <div style={{
-                            background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(142, 36, 170, 0.1))',
-                            border: '1px solid rgba(255, 215, 0, 0.2)',
-                            borderRadius: '12px',
-                            padding: '14px 16px',
-                            marginBottom: '8px'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <FileText size={14} color="#FFD700" />
-                                <span style={{ color: '#FFD700', fontWeight: 500, fontSize: '12px' }}>正在审阅文章</span>
-                            </div>
-                            <div style={{ color: 'white', fontSize: '13px', lineHeight: '1.4' }}>
-                                {wikiContext.articleTitle}
-                            </div>
-                            {wikiContext.hasDraft && (
-                                <div style={{ marginTop: '6px', fontSize: '11px', color: '#00BFA5' }}>
-                                    有待发布的Bokeh优化草稿
+                    {/* Context Banner - Show based on context type */}
+                    {messages.length === 0 && wikiContext && (
+                        (() => {
+                            const getBannerContent = () => {
+                                switch (wikiContext.type) {
+                                    case 'wiki_article_edit':
+                                        return {
+                                            icon: <FileText size={14} color="#FFD700" />,
+                                            label: '正在编辑文章',
+                                            title: wikiContext.articleTitle,
+                                            subtitle: wikiContext.hasDraft ? '有待发布的Bokeh优化草稿' : null,
+                                            color: '#FFD700'
+                                        };
+                                    case 'wiki_article_view':
+                                        return {
+                                            icon: <FileText size={14} color="#00BFA5" />,
+                                            label: '正在浏览文章',
+                                            title: wikiContext.articleTitle,
+                                            subtitle: null,
+                                            color: '#00BFA5'
+                                        };
+                                    case 'wiki_home':
+                                        return {
+                                            icon: <Sparkles size={14} color="#8E24AA" />,
+                                            label: 'Wiki 首页',
+                                            title: '浏览知识库',
+                                            subtitle: null,
+                                            color: '#8E24AA'
+                                        };
+                                    case 'file_manager':
+                                        return {
+                                            icon: <Box size={14} color="#2196F3" />,
+                                            label: '文件管理',
+                                            title: wikiContext.currentPath || '根目录',
+                                            subtitle: null,
+                                            color: '#2196F3'
+                                        };
+                                    case 'ticket_system':
+                                        return {
+                                            icon: <FileText size={14} color="#FF9800" />,
+                                            label: '工单系统',
+                                            title: wikiContext.viewType || '工单列表',
+                                            subtitle: null,
+                                            color: '#FF9800'
+                                        };
+                                    default:
+                                        return null;
+                                }
+                            };
+                            
+                            const banner = getBannerContent();
+                            if (!banner) return null;
+                            
+                            return (
+                                <div style={{
+                                    background: `linear-gradient(135deg, ${banner.color}15, ${banner.color}08)`,
+                                    border: `1px solid ${banner.color}30`,
+                                    borderRadius: '12px',
+                                    padding: '14px 16px',
+                                    marginBottom: '8px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        {banner.icon}
+                                        <span style={{ color: banner.color, fontWeight: 500, fontSize: '12px' }}>{banner.label}</span>
+                                    </div>
+                                    <div style={{ color: 'white', fontSize: '13px', lineHeight: '1.4' }}>
+                                        {banner.title}
+                                    </div>
+                                    {banner.subtitle && (
+                                        <div style={{ marginTop: '6px', fontSize: '11px', color: '#00BFA5' }}>
+                                            {banner.subtitle}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            );
+                        })()
                     )}
 
                     {/* Welcome Message */}
@@ -301,15 +404,73 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     )}
                 </div>
 
-                {/* QUICK ACTIONS */}
+                {/* QUICK ACTIONS - Context-aware suggestions */}
                 {messages.length === 0 && (
                     <div style={{ padding: '0 20px 20px', display: 'flex', gap: '8px', overflowX: 'auto' }}>
-                        {wikiContext && wikiContext.type === 'wiki_article' ? (
-                            <>
-                                <QuickAction icon={<Sparkles size={14} />} label="重新优化文章" onClick={() => onSendMessage("请重新优化这篇文章，我想要的效果是：")} />
-                                <QuickAction icon={<FileText size={14} />} label="优化摘要" onClick={() => onSendMessage("请为这篇文章生成更好的摘要")} />
-                            </>
+                        {suggestedActions && suggestedActions.length > 0 ? (
+                            // Use provided suggested actions
+                            suggestedActions.slice(0, 4).map((action, idx) => (
+                                <QuickAction 
+                                    key={idx}
+                                    icon={<Sparkles size={14} />} 
+                                    label={action} 
+                                    onClick={() => onSendMessage(action)} 
+                                />
+                            ))
+                        ) : wikiContext ? (
+                            // Fallback based on context type
+                            (() => {
+                                switch (wikiContext.type) {
+                                    case 'wiki_article_edit':
+                                        return (
+                                            <>
+                                                <QuickAction icon={<Sparkles size={14} />} label="优化排版" onClick={() => onSendMessage("优化排版")} />
+                                                <QuickAction icon={<FileText size={14} />} label="精简内容" onClick={() => onSendMessage("精简内容")} />
+                                                <QuickAction icon={<Box size={14} />} label="调整图片" onClick={() => onSendMessage("把图片尺寸改为原来的1/2")} />
+                                                <QuickAction icon={<Sparkles size={14} />} label="标题改黄色" onClick={() => onSendMessage("把标题颜色改为 kine yellow")} />
+                                            </>
+                                        );
+                                    case 'wiki_article_view':
+                                        return (
+                                            <>
+                                                <QuickAction icon={<FileText size={14} />} label="文章摘要" onClick={() => onSendMessage("这篇文章讲了什么？")} />
+                                                <QuickAction icon={<Sparkles size={14} />} label="查找相关" onClick={() => onSendMessage("查找相关内容")} />
+                                                <QuickAction icon={<Box size={14} />} label="如何编辑" onClick={() => onSendMessage("如何编辑这篇文章？")} />
+                                            </>
+                                        );
+                                    case 'wiki_home':
+                                        return (
+                                            <>
+                                                <QuickAction icon={<FileText size={14} />} label="创建文章" onClick={() => onSendMessage("如何创建新文章？")} />
+                                                <QuickAction icon={<Sparkles size={14} />} label="MAVO文档" onClick={() => onSendMessage("查找关于 MAVO Edge 的文档")} />
+                                                <QuickAction icon={<Box size={14} />} label="导入文档" onClick={() => onSendMessage("如何导入文档？")} />
+                                            </>
+                                        );
+                                    case 'file_manager':
+                                        return (
+                                            <>
+                                                <QuickAction icon={<Box size={14} />} label="分享文件" onClick={() => onSendMessage("如何分享文件？")} />
+                                                <QuickAction icon={<FileText size={14} />} label="创建文件夹" onClick={() => onSendMessage("如何创建文件夹？")} />
+                                            </>
+                                        );
+                                    case 'ticket_system':
+                                        return (
+                                            <>
+                                                <QuickAction icon={<FileText size={14} />} label="创建工单" onClick={() => onSendMessage("如何创建新工单？")} />
+                                                <QuickAction icon={<Sparkles size={14} />} label="工单流程" onClick={() => onSendMessage("工单处理流程")} />
+                                            </>
+                                        );
+                                    default:
+                                        return (
+                                            <>
+                                                <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
+                                                <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
+                                            </>
+                                        );
+                                }
+                            })()
                         ) : (
+                            // Default actions when no context
                             <>
                                 <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
                                 <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
@@ -332,7 +493,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={wikiContext ? "输入您的修改意见或问题..." : "Type your question..."}
+                            placeholder={wikiContext?.mode === 'editor' ? "输入修改指令，如：把标题改为黄色..." : "输入您的问题..."}
                             style={{
                                 flex: 1,
                                 background: 'transparent',

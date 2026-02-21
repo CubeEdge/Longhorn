@@ -1,5 +1,0 @@
-#!/bin/bash
-echo "🤖 启动Service文档智能更新..."
-echo "执行智能分析脚本..."
-./scripts/update_service_docs_smart.sh
-echo "✅ Service文档智能更新完成！"

@@ -36,13 +36,21 @@ CREATE TABLE IF NOT EXISTS ticket_search_index (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     
     -- Indexes
+<<<<<<< HEAD
     FOREIGN KEY(dealer_id) REFERENCES accounts(id),
+=======
+    FOREIGN KEY(dealer_id) REFERENCES dealers(id),
+>>>>>>> 76dc4ba (wiki editor和知识库导入的修改)
     FOREIGN KEY(account_id) REFERENCES accounts(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tsi_type_id ON ticket_search_index(ticket_type, ticket_id);
 CREATE INDEX IF NOT EXISTS idx_tsi_dealer ON ticket_search_index(dealer_id);
+<<<<<<< HEAD
 CREATE INDEX IF NOT EXISTS idx_tsi_customer ON ticket_search_index(account_id);
+=======
+CREATE INDEX IF NOT EXISTS idx_tsi_account ON ticket_search_index(account_id);
+>>>>>>> 76dc4ba (wiki editor和知识库导入的修改)
 CREATE INDEX IF NOT EXISTS idx_tsi_closed ON ticket_search_index(closed_at);
 CREATE INDEX IF NOT EXISTS idx_tsi_visibility ON ticket_search_index(visibility);
 
@@ -88,7 +96,11 @@ CREATE VIEW IF NOT EXISTS v_inquiry_tickets_ready_for_index AS
 SELECT 
     id,
     ticket_number,
+<<<<<<< HEAD
     account_id AS customer_id,
+=======
+    account_id,
+>>>>>>> 76dc4ba (wiki editor和知识库导入的修改)
     dealer_id,
     product_id,
     serial_number,
@@ -105,7 +117,11 @@ CREATE VIEW IF NOT EXISTS v_rma_tickets_ready_for_index AS
 SELECT 
     id,
     ticket_number,
+<<<<<<< HEAD
     account_id AS customer_id,
+=======
+    account_id,
+>>>>>>> 76dc4ba (wiki editor和知识库导入的修改)
     dealer_id,
     product_id,
     serial_number,
@@ -124,7 +140,11 @@ CREATE VIEW IF NOT EXISTS v_dealer_repairs_ready_for_index AS
 SELECT 
     id,
     ticket_number,
+<<<<<<< HEAD
     account_id AS customer_id,
+=======
+    account_id,
+>>>>>>> 76dc4ba (wiki editor和知识库导入的修改)
     dealer_id,
     product_id,
     serial_number,

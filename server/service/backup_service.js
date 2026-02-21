@@ -11,7 +11,7 @@ class BackupService {
         // Primary Backup Config (fileserver)
         this.primaryConfig = {
             enabled: true,
-            frequency: 1440, // Minutes (24h)
+            frequency: 180, // Minutes (3h)
             retention: 7,    // Days
             path: '/Volumes/fileserver/System/Backups/db',
             label: '主备份'
@@ -20,7 +20,7 @@ class BackupService {
         // Secondary Backup Config (local server directory)
         this.secondaryConfig = {
             enabled: true,
-            frequency: 4320, // Minutes (72h = 3 days)
+            frequency: 1440, // Minutes (24h = 1 day)
             retention: 30,   // Days
             path: path.join(__dirname, '../backups/secondary'),
             label: '次级备份'
@@ -41,12 +41,12 @@ class BackupService {
             if (row) {
                 // Primary backup settings
                 if (row.backup_enabled !== undefined) this.primaryConfig.enabled = Boolean(row.backup_enabled);
-                if (row.backup_frequency) this.primaryConfig.frequency = parseInt(row.backup_frequency) || 1440;
+                if (row.backup_frequency) this.primaryConfig.frequency = parseInt(row.backup_frequency) || 180;
                 if (row.backup_retention_days) this.primaryConfig.retention = parseInt(row.backup_retention_days) || 7;
                 
                 // Secondary backup settings
                 if (row.secondary_backup_enabled !== undefined) this.secondaryConfig.enabled = Boolean(row.secondary_backup_enabled);
-                if (row.secondary_backup_frequency) this.secondaryConfig.frequency = parseInt(row.secondary_backup_frequency) || 4320;
+                if (row.secondary_backup_frequency) this.secondaryConfig.frequency = parseInt(row.secondary_backup_frequency) || 1440;
                 if (row.secondary_backup_retention_days) this.secondaryConfig.retention = parseInt(row.secondary_backup_retention_days) || 30;
             }
 

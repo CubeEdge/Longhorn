@@ -1,8 +1,0 @@
-#!/bin/bash
-
-# 简化的文档更新命令 - docs
-# 更新Service模块文档（PRD/API）
-
-echo "🚀 执行Service文档更新..."
-./scripts/update_docs.sh service
-echo "✅ Service文档更新完成！"

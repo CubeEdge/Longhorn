@@ -18,7 +18,7 @@ const BokehContainer: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
     const { token } = useAuthStore();
-    const { currentContext, getContextSummary } = useBokehContext();
+    const { currentContext, getContextSummary, getSuggestedActions, isEditorMode } = useBokehContext();
 
     // Global Shortcut Cmd+K / Ctrl+K
     useEffect(() => {
@@ -45,8 +45,8 @@ const BokehContainer: React.FC = () => {
         setLoading(true);
 
         try {
-            // Check if this is an article optimization request when viewing a wiki article
-            const isOptimizationRequest = currentContext?.type === 'wiki_article' && (
+            // Check if this is an editor mode request (direct content modification)
+            const isEditorModeRequest = isEditorMode() && (
                 text.includes('优化') ||
                 text.includes('修改') ||
                 text.includes('调整') ||
@@ -59,13 +59,17 @@ const BokehContainer: React.FC = () => {
                 text.includes('太小') ||
                 text.includes('重写') ||
                 text.includes('精简') ||
-                text.includes('缩短')
+                text.includes('缩短') ||
+                text.includes('颜色') ||
+                text.includes('样式') ||
+                text.includes('标题')
             );
 
-            if (isOptimizationRequest && currentContext) {
-                // Call the bokeh-optimize API
+            if (isEditorModeRequest && currentContext?.type === 'wiki_article_edit') {
+                // Call the bokeh-optimize API for editor mode
                 const res = await axios.post(`/api/v1/knowledge/${currentContext.articleId}/bokeh-optimize`, {
-                    instruction: text
+                    instruction: text,
+                    currentContent: currentContext.currentContent
                 }, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -79,9 +83,12 @@ const BokehContainer: React.FC = () => {
                     };
                     setMessages(prev => [...prev, aiMsg]);
                     
-                    // Dispatch event to notify KinefinityWiki to refresh
+                    // Dispatch event to notify editor to refresh with new content
                     window.dispatchEvent(new CustomEvent('bokeh-article-optimized', {
-                        detail: { articleId: currentContext.articleId }
+                        detail: { 
+                            articleId: currentContext.articleId,
+                            optimizedContent: res.data.data.optimized_content
+                        }
                     }));
                 }
             } else {
@@ -141,6 +148,7 @@ const BokehContainer: React.FC = () => {
                         onSendMessage={sendMessage}
                         loading={loading}
                         wikiContext={currentContext}
+                        suggestedActions={getSuggestedActions()}
                     />
                 )}
             </AnimatePresence>

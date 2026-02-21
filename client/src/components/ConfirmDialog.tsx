@@ -35,7 +35,7 @@ export const ConfirmDialog: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                zIndex: 9999,
+                zIndex: 99999,  // Must be higher than all modals (WikiEditorModal: 10000, VersionHistory: 10001)
                 animation: 'fadeIn 0.2s ease'
             }}
         >

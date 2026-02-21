@@ -37,12 +37,12 @@ module.exports = (db, authenticate, backupService) => {
 
                 // Normalize Primary Backup Settings
                 settings.backup_enabled = Boolean(settings.backup_enabled);
-                settings.backup_frequency = parseInt(settings.backup_frequency) || 1440;
+                settings.backup_frequency = parseInt(settings.backup_frequency) || 180;
                 settings.backup_retention_days = parseInt(settings.backup_retention_days) || 7;
 
                 // Normalize Secondary Backup Settings
                 settings.secondary_backup_enabled = Boolean(settings.secondary_backup_enabled);
-                settings.secondary_backup_frequency = parseInt(settings.secondary_backup_frequency) || 4320;
+                settings.secondary_backup_frequency = parseInt(settings.secondary_backup_frequency) || 1440;
                 settings.secondary_backup_retention_days = parseInt(settings.secondary_backup_retention_days) || 30;
             }
 
@@ -83,6 +83,7 @@ module.exports = (db, authenticate, backupService) => {
                         ai_enabled = @ai_enabled,
                         ai_work_mode = @ai_work_mode,
                         ai_data_sources = @ai_data_sources,
+                        ai_system_prompt = @ai_system_prompt,
 
                         system_name = @system_name,
                         backup_enabled = @backup_enabled,
@@ -99,11 +100,12 @@ module.exports = (db, authenticate, backupService) => {
                     ai_enabled: settings.ai_enabled ? 1 : 0,
                     ai_work_mode: settings.ai_work_mode ? 1 : 0,
                     ai_data_sources: dataSources,
+                    ai_system_prompt: settings.ai_system_prompt || null,
                     backup_enabled: settings.backup_enabled ? 1 : 0,
-                    backup_frequency: parseInt(settings.backup_frequency) || 1440,
+                    backup_frequency: parseInt(settings.backup_frequency) || 180,
                     backup_retention_days: parseInt(settings.backup_retention_days) || 7,
                     secondary_backup_enabled: settings.secondary_backup_enabled ? 1 : 0,
-                    secondary_backup_frequency: parseInt(settings.secondary_backup_frequency) || 4320,
+                    secondary_backup_frequency: parseInt(settings.secondary_backup_frequency) || 1440,
                     secondary_backup_retention_days: parseInt(settings.secondary_backup_retention_days) || 30
                 });
 

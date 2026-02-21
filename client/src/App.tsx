@@ -21,7 +21,8 @@ import {
   Settings,
   Users,
   Building,
-  Wrench
+  Wrench,
+  Package
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -43,6 +44,7 @@ import { DailyWordBadge } from './components/DailyWord';
 import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
 import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
 import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
+import { DealerInventoryListPage, RestockOrderListPage, RestockOrderDetailPage, RestockOrderCreatePage } from './components/DealerInventory';
 import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
 import ProductManagement from './components/ProductManagement';
@@ -190,11 +192,21 @@ const App: React.FC = () => {
             user?.role === 'Admin' ? <KnowledgeAuditLog /> : <Navigate to="/" />
           } />
           <Route path="/knowledge" element={<Navigate to="/service/knowledge" replace />} />
+          {/* Knowledge Import Route (for Wiki management menu) */}
+          <Route path="/tech-hub/knowledge-import" element={
+            ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
+          } />
           <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />
           <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
 
           {/* Parts Management (placeholder) */}
           <Route path="/service/parts" element={<InquiryTicketListPage />} />
+
+          {/* Dealer Inventory Management */}
+          <Route path="/service/inventory" element={<DealerInventoryListPage />} />
+          <Route path="/service/inventory/restock" element={<RestockOrderListPage />} />
+          <Route path="/service/inventory/restock/new" element={<RestockOrderCreatePage />} />
+          <Route path="/service/inventory/restock/:id" element={<RestockOrderDetailPage />} />
 
           {/* Service Admin Settings */}
           <Route path="/service/admin/*" element={user?.role === 'Admin' ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
@@ -379,6 +391,12 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''} `} onClick={onClose}>
               <Box size={18} />
               <span>{t('sidebar.archives_assets') || '产品管理'}</span>
+            </Link>
+
+            {/* 4. 配件库存 (第四入口) - 经销商可见 */}
+            <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''} `} onClick={onClose}>
+              <Package size={18} />
+              <span>{t('sidebar.parts_inventory') || '配件库存'}</span>
             </Link>
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
@@ -844,9 +862,9 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
 
       </div>
 
-      {/* Center: Daily Word - only visible in FILES module */}
+      {/* Center: Daily Word - visible in FILES and SERVICE modules */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        {(currentModule === 'files' || location.pathname.startsWith('/tech-hub/wiki')) && <DailyWordBadge />}
+        {(currentModule === 'files' || currentModule === 'service') && <DailyWordBadge />}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>

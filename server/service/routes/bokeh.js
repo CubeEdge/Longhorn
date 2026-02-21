@@ -21,7 +21,7 @@ module.exports = (db, authenticate, aiService) => {
             }
 
             // Build WHERE clause based on user role
-            let whereConditions = []; // 允许搜索所有工单，不再限制 closed_at
+            let whereConditions = []; // Search all tickets (both open and closed)
             let params = {};
 
             // Permission Filter
@@ -53,9 +53,33 @@ module.exports = (db, authenticate, aiService) => {
                 params.end_date = filters.date_range.end;
             }
 
-            const whereClause = whereConditions.length > 0 ? whereConditions.join(' AND ') : '1=1';
+            const whereClause = whereConditions.length > 0 ? 'AND ' + whereConditions.join(' AND ') : '';
 
-            let results;
+            // FTS5 Search Query
+            // Use MATCH for full-text search on title, description, resolution, tags
+            const searchQuery = `
+                SELECT 
+                    tsi.id,
+                    tsi.ticket_number,
+                    tsi.ticket_type,
+                    tsi.ticket_id,
+                    tsi.title,
+                    tsi.description,
+                    tsi.resolution,
+                    tsi.product_model,
+                    tsi.serial_number,
+                    tsi.category,
+                    tsi.status,
+                    tsi.closed_at,
+                    tsi.account_id,
+                    fts.rank
+                FROM ticket_search_index tsi
+                INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
+                WHERE fts MATCH @query
+                  ${whereClause}
+                ORDER BY fts.rank
+                LIMIT @limit
+            `;
 
             // 短查询（<3字符）用 LIKE fallback — trigram tokenizer 要求 ≥3 字符
             if (query.trim().length < 3) {
