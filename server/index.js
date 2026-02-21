@@ -31,7 +31,7 @@ const BACKUP_DIR = '/Volumes/fileserver/System/Backups/db';
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
-const chunkUpload = multer({ 
+const chunkUpload = multer({
     dest: path.join(DISK_A, '.chunks'),
     limits: {
         fileSize: 6 * 1024 * 1024 // 6MB per chunk (5MB + buffer)
@@ -168,7 +168,7 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         issue_number TEXT UNIQUE NOT NULL,
         product_id INTEGER,
-        account_id INTEGER,
+        dealer_id INTEGER,
         contact_id INTEGER,
         issue_category TEXT NOT NULL CHECK(issue_category IN ('Hardware', 'Software', 'Consultation', 'Return', 'Complaint')),
         issue_source TEXT NOT NULL CHECK(issue_source IN ('OnlineFeedback', 'OfflineReturn', 'DealerFeedback', 'InternalTest')),
@@ -186,7 +186,7 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(product_id) REFERENCES products(id),
-        FOREIGN KEY(account_id) REFERENCES accounts(id),
+        FOREIGN KEY(dealer_id) REFERENCES dealers(id),
         FOREIGN KEY(contact_id) REFERENCES contacts(id),
         FOREIGN KEY(assigned_to) REFERENCES users(id),
         FOREIGN KEY(created_by) REFERENCES users(id),
@@ -196,7 +196,7 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(issue_category);
     CREATE INDEX IF NOT EXISTS idx_issues_assigned ON issues(assigned_to);
     CREATE INDEX IF NOT EXISTS idx_issues_product ON issues(product_id);
-    CREATE INDEX IF NOT EXISTS idx_issues_account ON issues(account_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_dealer ON issues(dealer_id);
     CREATE INDEX IF NOT EXISTS idx_issues_created ON issues(created_at);
 
     -- Issue Comments / Activity Log
@@ -1296,11 +1296,11 @@ app.post('/api/upload/check-chunks', authenticate, async (req, res) => {
         }
 
         console.log(`[Check Chunks] Upload ${uploadId}: ${existingChunks.length}/${totalChunks} chunks exist`);
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             existingChunks,
             totalChunks: parseInt(totalChunks),
-            uploadId 
+            uploadId
         });
     } catch (err) {
         console.error('[Check Chunks] Error:', err);
@@ -1337,7 +1337,7 @@ app.post('/api/upload/chunk', authenticate, chunkUpload.single('chunk'), async (
 app.post('/api/upload/merge', authenticate, async (req, res) => {
     try {
         const { uploadId, fileName, totalChunks, path: uploadPath } = req.body;
-        
+
         console.log('[Merge] Request received:', {
             uploadId,
             fileName,
@@ -1354,7 +1354,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
 
         let subPath = resolvePath(uploadPath || '');
         console.log('[Merge] Resolved path:', subPath);
-        
+
         if (!subPath || subPath === '') {
             subPath = `Members/${req.user.username}`;
             console.log('[Merge] Using default personal path:', subPath);
@@ -1368,7 +1368,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         const hasFull = hasPermission(req.user, subPath, 'Full');
         const hasContrib = hasPermission(req.user, subPath, 'Contributor');
         console.log('[Merge] Permission check result:', { hasFull, hasContrib, isAdmin: req.user.role === 'Admin' });
-        
+
         if (!hasFull && !hasContrib) {
             console.error('[Merge] Permission denied for user', req.user.username, 'on path', subPath);
             return res.status(403).json({ error: 'No write permission for this folder' });
@@ -1377,7 +1377,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         const chunkDir = path.join(DISK_A, '.chunks', uploadId);
         const targetDir = path.join(DISK_A, subPath);
         console.log('[Merge] Directories:', { chunkDir, targetDir });
-        
+
         fs.ensureDirSync(targetDir);
 
         const finalPath = path.join(targetDir, fileName);
@@ -1409,7 +1409,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         // Update database
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
-        
+
         db.prepare(`
             INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)
             VALUES (?, ?, ?, COALESCE((SELECT accessed_count FROM file_stats WHERE path = ?), 0), COALESCE((SELECT last_accessed FROM file_stats WHERE path = ?), CURRENT_TIMESTAMP))
@@ -3563,7 +3563,7 @@ async function cleanupRecycleBin() {
 async function cleanupOrphanedChunks() {
     console.log('🧹 Running orphaned chunks cleanup...');
     const chunksDir = path.join(DISK_A, '.chunks');
-    
+
     if (!fs.existsSync(chunksDir)) {
         return;
     }
