@@ -4,6 +4,94 @@
 
 ---
 
+## 会话: 2026-02-21 (Synonym Manager & Search Leniency)
+
+### 任务: 同义词字典管理与工单搜索宽泛化
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **数据库层**: 创建 `018_search_synonyms.sql` 迁移，支持行业专属同义词（如 录音/拾音/麦克风 等）。
+    - **后端服务**: `synonyms.js` 提供 CRUD 接口并维护进程内 `synonymMap` 高速缓存，通过 `expandWithSynonyms` 实时查询扩展。
+    - **前端 UI 面板**: 实现独立 `SynonymManager.tsx`，支持颜色分类和 Inline 编辑，嵌入 Wiki 主页面以统一入口。
+    - **停用词扩展**: 结合前端 `extractKeywords` 及后端 `splitSearchKeywords` 移除了常见的中文疑问及口语修饰（常见、问题、请问等共计17个）。
+    - **工单搜索 OR 匹配**: `bokeh.js` 的 FTS5 引擎行为重写：应用同义词扩展并改用 `OR` 横向模糊匹配，大幅缓解工单搜不到的问题。
+    - **UI 一致性**: 重构了 Wiki 工单搜索结果下落区的 "展开更多" 结构，向 AI 面板风格看齐。
+- **发版**: 本次所有代码变更均已同步上线 mini 生产环境。
+
+---
+## 会话: 2026-02-21 (Search Quality & RMA Card Styling)
+
+### 任务: 提升 Wiki 搜索召回率 & RMA 工单特征色
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **后端搜索重构**: `knowledge.js` 新增 `splitSearchKeywords` 函数，将整串 LIKE 匹配拆为多关键词 AND 匹配。中文停用词（的、相关、如何等）自动剥离。
+    - **前端关键词优化**: `extractKeywords` 增加中文核心词提取（≥2 字符），与英文术语合并去重。
+    - **RMA 卡片修复**: 升级 `isTicket` 正则 `/([A-Z]+-)*[A-Z]?\d{4}-\d{4}/`，支持 `RMA-C-` 等多段前缀。
+    - **效果**: 搜索"音频的相关设置"从 0 → 4 篇召回，AI 给出基于知识库的结构化回答。
+- **版本**: v12.0.4 (e208fab)
+
+---
+
+## 会话: 2026-02-21 (Global Schema Alignment)
+
+### 任务: 将全栈 `customer_id` 对齐为 `account_id`
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **数据库视图重构**: 更新了所有核心工单视图，移除 `customer_id` 物理列名，统一暴露 `account_id`。
+    - **后端逻辑清理**: 移除了 `inquiry-tickets.js` 和 `rma-tickets.js` 中的旧字段 fallback 逻辑，确保 `POST` 载荷只识别新字段。
+    - **iOS 模型对齐**: 完成 `Issue.swift` 的重命名与 `CodingKeys` 同步。
+    - **前端组件重构**: 
+        - 修复了 `DealerRepairDetailPage` 等详情页的重复字段干扰。
+        - 彻底重塑 `CustomerContextSidebar` 接口，移除遗留 Prop。
+        - 修正了 5+ 处由于属性名变更导致的 TS 类型报错。
+    - **文档同步**: 同步更新 `Service_API.md` 和 `Service_DataModel.md` 的示例 Block。
+- **版本**: Root v1.5.21 / Client v12.0.5
+
+---
+
+## 会话: 2026-02-21 (Search Indexing & FTS5 Fix)
+
+### 任务: 修复 Wiki 搜索无法召回工单的问题 (Legacy Field & FTS5 Syntax)
+- **状态**: ✅ 已完成
+- **根本原因分析**:
+    - **Schema 不一致**: 后端 `bokeh.js` 代码已重构使用 `account_id`，但 `ticket_search_index` 索引表及全量同步脚本仍在使用旧的 `customer_id` 字段，导致 SQL 报错。
+    - **FTS5 匹配失效**: `bokeh.js` 中通配符 `*` 被错误包裹在双引号内 (`"HDMI*"`)，导致针对非空格分割的混合中英文前缀匹配失败。
+    - **富化逻辑报错**: 在结果富化阶段，代码仍尝试从 `rma_tickets` 表读取不存在的 `customer_name` 列（实为 `reporter_name`），导致搜索接口返回 500。
+- **技术细节**:
+    - **Schema 统一**: 对 `011_ticket_search_index.sql` 进行重构，将 `customer_id` 物理更名为 `account_id`，同步修正外键引用。
+    - **FTS5 语法修正**: 将 `safeQuery` 构建逻辑调整为 `*` 在引号外 (`"word"*`)。
+    - **全量索引重建**: 清理线上 FTS 缓存，重新灌入 43 条工单记录，覆盖 Inquiry/RMA/DealerRepair。
+    - **健壮性增强**: 为 `bokeh.js` 富化逻辑添加了 `try-catch` 保护和字段 fallback。
+- **验证**:
+    - ✅ “HDMI”搜索成功召回 `K2601-0019` 等工单。
+    - ✅ “音频”搜索成功召回 `RMA-C-2601-0002` 工单。
+- **版本**: Root v1.5.21 / Client v12.0.4
+
+---
+
+## 会话: 2026-02-21 (Search & UI Regression Fixes v12.0.1)
+
+### 任务: 核心搜索范围扩容、SQL 容错与 Wiki 顶栏 UI 恢复
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **搜索过滤层级解除 (Backend)**: 在 `bokeh.js` 与 SQL 视图层级彻底移除了 `closed_at IS NOT NULL` 与 `status` 过滤条件。使得处于任何状态的工单（特别是处理中的故障案例）均能被 FTS5 并入检索流。针对非搜索态导致的空 `whereClause` 加入了 `1=1` 兜底，解决了 500 崩溃错误。
+    - **跨模块 UI 穿透 (Frontend)**: 优化 `App.tsx` 顶栏渲染门禁，成功将 `DailyWordBadge`（每日一词）的有效期扩展至 `/tech-hub/wiki` 路径，解决了 Wiki 模块下该勋章缺失的功能性回归。
+    - **状态同步与交互标准化 (Frontend)**: 重构 `handleSearchBackClick` 方法，实现对 `showSearchResults`、`setIsSearchMode` 及查询参数的全量重置，并利用 `window.open` 取代子应用内的 `navigate` 跳转，保证了工单/文章的独立查阅能力不破坏当前导航树。
+- **版本**: Root v1.5.21 / Client v12.0.1
+
+---
+
+## 会话: 2026-02-21 (Wiki UI & Interaction Optimization)
+
+### 任务: 导航交互优化与视觉样式对齐
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **导航流重塑**: 将 Wiki 主页中所有文章卡片和工单卡片的 `onClick` 逻辑从单页应用内部跳转（`navigate`）升级为通过原生 `window.open` 打开独立浏览器 TAB。有效保持了用户的搜索上下文。
+    - **引用卡片化组件**: 在渲染 AI 回答时，针对 Markdown 的 `a` 标签进行了组件化重叠。当检测到链接文本为引用格式（如包含 `[]`）时，自动渲染出一个 `inline-flex` 的小型圆角背景卡片，并带有品牌绿色彩和 `Lucide` 类型图标（工单或文档）。
+    - **UI 视觉统一**: 优化了“最近浏览”顶部的折叠逻辑。使用了与“关键词搜索”区块完全一致的 `background: rgba(255,255,255,0.05)` 的方框按钮，从而摒弃了原本简陋的纯图标模式。
+- **版本**: Root v1.5.21 / Client v11.8.12
+
+---
+
 ## 会话: 2026-02-21 (Search Experience Enhancements)
 
 ### 任务: 核心工单搜索增强与 UI 解耦合重构（6大项）

@@ -1,6 +1,6 @@
 # 产品服务闭环系统 - 需求文档 (PRD)
 
-**版本**: 0.12.0
+**版本**: 0.13.0
 **状态**: 待确认
 **最后更新**: 2026-02-21 (Deployed v1.5.17)
 
@@ -1072,11 +1072,21 @@ Kinefinity Wiki
 - 支持版本管理（固件版本对应）
 - 支持多语言（中/英）
 
-#### 2.2.2 智能搜索与问答 (Smart Search & Q&A)
+#### 2.2.2 知识库管理后台 (Knowledge Admin)
+
+- **批量操作**: 支持跨文章的批量删除、批量修改可见性、批量关联产品。
+- **高级排序**: 支持按点击量、反馈率、更新时间及 AI 优化状态排序。
+- **多语言维护**: 快速切换中英德日预览及翻译状态。
+- **同义词字典管理**:
+  - 支持 Admin/Lead 维护领域同义词（如录音/拾音/麦克风）
+  - 搜索时基于内存缓存进行查询词自动横向扩展，提升模糊查询匹配率
+  - 界面支持 UI 交互式的同义词组 CRUD 及分类多色标记
+
+#### 2.2.3 智能搜索与问答 (Smart Search & Q&A)
 
 **功能入口**：全局搜索框及 `Cmd/Ctrl + K` 快捷键
 
-##### 2.2.2.1 混合搜索机制 (Hybrid Search)
+##### 2.2.3.1 混合搜索机制 (Hybrid Search)
 
 系统采用“关键词 + AI 语义”双引擎搜索，结果聚合展示：
 
@@ -1628,10 +1638,6 @@ TAT分解（Burbank vs 北京）：
 
 ##### B. SLA达标率
 
-##### C. 知识库管理台 (Knowledge Admin)
-- **批量操作**: 支持跨文章的批量删除、批量修改可见性、批量关联产品。
-- **高级排序**: 支持按点击量、反馈率、更新时间及 AI 优化状态排序。
-- **多语言维护**: 快速切换中英德日预览及翻译状态。
 2026 Q1 SLA达标情况：
 
 维修中心        总工单   达标   超时   达标率   平均超时天数
@@ -1857,7 +1863,7 @@ feature_requests (需求流)
 │
 ├── // 来源追溯
 ├── source_records: 所有相关工单/反馈记录ID列表
-├── customer_ids: 所有提出客户ID列表
+├── account_ids: 所有提出账户ID列表
 ├── dealer_ids: 提出该需求的经销商列表
 │
 ├── // 产品规划
@@ -1967,7 +1973,7 @@ customer_voices (原声流)
 ├── // 来源信息
 ├── source_type: 来源 (咨询工单/RMA工单/社交媒体/邮件)
 ├── source_id: 来源记录ID
-├── customer_id: 客户ID
+├── account_id: 账户ID
 ├── customer_name: 客户姓名
 ├── customer_title: 客户头衔 (如: "BBC纪录片导演")
 ├── customer_consent: 客户同意公开引用 (Y/N)
@@ -2236,7 +2242,7 @@ Supporting (支持表):
 
 **核心索引**：
 - 工单编号 (ticket_number) - UNIQUE
-- 客户ID (customer_id) - INDEX
+- 账户ID (account_id) - INDEX
 - 经销商ID (dealer_id) - INDEX
 - 序列号 (serial_number) - INDEX
 - 状态 (status) - INDEX

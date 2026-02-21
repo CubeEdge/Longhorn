@@ -274,7 +274,7 @@
   // 客户信息 (可选)
   "customer_name": "Max Mueller",  // 不填显示"匿名客户"
   "customer_contact": "max@example.uk",
-  "customer_id": "cust_001",  // 关联已有客户
+  "account_id": "cust_001",  // 关联已有客户 account_id
   "dealer_id": "dealer_proav",  // 经销商ID
   
   // 产品信息 (建议填写)
@@ -294,7 +294,7 @@
 }
 
 // 字段说明补充：
-// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将工单归档到具体客户名下。
+// - account_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将工单归档到具体客户名下。
 // - dealer_id: 工单的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
 //   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
 
@@ -332,7 +332,7 @@
 | page_size | int | 每页数量，默认20 |
 | status | string | 状态筛选: 处理中/待客户反馈/已解决/自动关闭/已升级 |
 | service_type | string | 服务类型筛选 |
-| customer_id | string | 客户筛选 |
+| account_id | string | 客户/账户筛选 |
 | dealer_id | string | 经销商筛选 |
 | serial_number | string | 按SN筛选 |
 | handler_id | string | 处理人筛选 |
@@ -465,7 +465,7 @@
 
 | 参数 | 类型 | 说明 |
 |-----|------|------|
-| customer_id | string | 客户ID |
+| account_id | string | 账户ID |
 | customer_name | string | 客户姓名 (模糊匹配) |
 | customer_contact | string | 联系方式 |
 
@@ -565,13 +565,13 @@
     },
     "ownership_history": [
       {
-        "customer_id": "cust_001",
+        "account_id": "cust_001",
         "customer_name": "John Smith",
         "period": "2025-03-15 ~ 2025-12-01",
         "status": "已转让"
       },
       {
-        "customer_id": "cust_002",
+        "account_id": "cust_002",
         "customer_name": "Max Mueller",
         "period": "2025-12-01 ~ 至今",
         "status": "当前"
@@ -720,7 +720,7 @@
   
   // 关联人员
   "reporter_name": "张先生",
-  "customer_id": "cust_001",
+  "account_id": "cust_001",
   "dealer_id": "dealer_proav",
   
   // 关联咨询工单 (如从咨询工单升级)
@@ -728,7 +728,7 @@
 }
 
 // 字段说明补充：
-// - customer_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将 RMA 归档到具体客户名下。
+// - account_id: 关联已有客户账户，通常为 account_type = END_USER 或 CORPORATE，用于将 RMA 归档到具体客户名下。
 // - dealer_id: RMA 的服务经销商。经销商用户登录创建时由系统自动填入当前经销商；
 //   市场部创建时可选择服务经销商，默认等于客户的 parent_dealer_id，如需跨区支援可例外指定其他经销商。
 // - 当 product_family = "C" (电子寻像器，如 Eagle/KineMON 等) 且 host_device_type = "THIRD_PARTY_CAMERA" 时，后台应将该RMA标记为「兼容性排查」类别，便于研发统计和分析。
@@ -2010,6 +2010,24 @@
 - 永久保留所有审计日志
 - 建议按季度归档历史数据
 - 支持按日期范围导出CSV/Excel
+
+#### 10.8.4 同义词字典管理 API
+> 用于维护知识库与工单搜索的同义词扩展字典，支持实时内存缓存更新。
+
+**GET** `/api/v1/synonyms`
+获取所有同义词组列表。
+- **Response**: `[{"id": 1, "category": "名称", "words": ["词1", "词2"]}]`
+
+**POST** `/api/v1/synonyms`
+新建同义词组（仅限Admin/Lead）。
+- **Body**: `{"category": "分类名", "words": ["同义词1", "同义词2"]}`
+
+**PUT** `/api/v1/synonyms/:id`
+更新同义词组（仅限Admin/Lead）。
+- **Body**: 同POST
+
+**DELETE** `/api/v1/synonyms/:id`
+删除指定同义词组（仅限Admin/Lead）。
 
 ---
 

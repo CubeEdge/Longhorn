@@ -147,7 +147,7 @@ struct Issue: Codable, Identifiable {
     let category: IssueCategory
     let source: IssueSource
     let productId: Int?
-    let customerId: Int?
+    let accountId: Int?
     let serialNumber: String?
     let batchNumber: String?
     let assignedTo: Int?
@@ -167,7 +167,7 @@ struct Issue: Codable, Identifiable {
         case id, title, description, status, severity, category, source
         case issueNumber = "issue_number"
         case productId = "product_id"
-        case customerId = "customer_id"
+        case accountId = "account_id"
         case serialNumber = "serial_number"
         case batchNumber = "batch_number"
         case assignedTo = "assigned_to"
@@ -342,14 +342,14 @@ struct CreateIssueRequest: Codable {
     let category: String
     let source: String
     let productId: Int?
-    let customerId: Int?
+    let accountId: Int?
     let serialNumber: String?
     let batchNumber: String?
     
     enum CodingKeys: String, CodingKey {
         case title, description, severity, category, source
         case productId = "product_id"
-        case customerId = "customer_id"
+        case accountId = "account_id"
         case serialNumber = "serial_number"
         case batchNumber = "batch_number"
     }

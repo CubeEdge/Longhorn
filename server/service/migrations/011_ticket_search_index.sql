@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS ticket_search_index (
     
     -- Permission Control
     dealer_id INTEGER,  -- NULL = internal/direct customer ticket
-    customer_id INTEGER,
+    account_id INTEGER,
     visibility TEXT DEFAULT 'internal',  -- 'internal', 'dealer', 'public'
     
     -- Timeline
@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS ticket_search_index (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     
     -- Indexes
-    FOREIGN KEY(dealer_id) REFERENCES dealers(id),
-    FOREIGN KEY(customer_id) REFERENCES customers(id)
+    FOREIGN KEY(dealer_id) REFERENCES accounts(id),
+    FOREIGN KEY(account_id) REFERENCES accounts(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tsi_type_id ON ticket_search_index(ticket_type, ticket_id);
 CREATE INDEX IF NOT EXISTS idx_tsi_dealer ON ticket_search_index(dealer_id);
-CREATE INDEX IF NOT EXISTS idx_tsi_customer ON ticket_search_index(customer_id);
+CREATE INDEX IF NOT EXISTS idx_tsi_customer ON ticket_search_index(account_id);
 CREATE INDEX IF NOT EXISTS idx_tsi_closed ON ticket_search_index(closed_at);
 CREATE INDEX IF NOT EXISTS idx_tsi_visibility ON ticket_search_index(visibility);
 
@@ -83,12 +83,12 @@ END;
 -- 4. Helper Functions (via Views)
 -- ============================================
 
--- View: Ready-to-Index Inquiry Tickets (Closed Only)
+-- View: Ready-to-Index Inquiry Tickets
 CREATE VIEW IF NOT EXISTS v_inquiry_tickets_ready_for_index AS
 SELECT 
     id,
     ticket_number,
-    customer_id,
+    account_id AS customer_id,
     dealer_id,
     product_id,
     serial_number,
@@ -98,16 +98,14 @@ SELECT
     status,
     resolved_at,
     created_at
-FROM inquiry_tickets
-WHERE status IN ('Resolved', 'AutoClosed') 
-  AND resolved_at IS NOT NULL;
+FROM inquiry_tickets;
 
--- View: Ready-to-Index RMA Tickets (Completed Only)
+-- View: Ready-to-Index RMA Tickets
 CREATE VIEW IF NOT EXISTS v_rma_tickets_ready_for_index AS
 SELECT 
     id,
     ticket_number,
-    customer_id,
+    account_id AS customer_id,
     dealer_id,
     product_id,
     serial_number,
@@ -119,16 +117,14 @@ SELECT
     status,
     completed_date,
     created_at
-FROM rma_tickets
-WHERE status IN ('Completed', 'Closed')
-  AND completed_date IS NOT NULL;
+FROM rma_tickets;
 
--- View: Ready-to-Index Dealer Repairs (Completed Only)
+-- View: Ready-to-Index Dealer Repairs
 CREATE VIEW IF NOT EXISTS v_dealer_repairs_ready_for_index AS
 SELECT 
     id,
     ticket_number,
-    customer_id,
+    account_id AS customer_id,
     dealer_id,
     product_id,
     serial_number,

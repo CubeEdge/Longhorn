@@ -20,9 +20,7 @@ interface InquiryTicket {
     id: number;
     ticket_number: string;
     customer_name: string;
-    customer_contact?: string;
-    customer_id: number | null;
-    account_id?: number | null;
+    account_id: number | null;
     contact_id?: number | null;
     // 新架构字段 - 联系人信息
     contact?: { id: number; name: string; email?: string; job_title?: string } | null;
@@ -452,8 +450,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
-                        customerId={ticket.customer_id ?? undefined}
-                        customerName={ticket.customer_name}
+                        accountName={ticket.customer_name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
                         dealerName={ticket.dealer_name ?? undefined}

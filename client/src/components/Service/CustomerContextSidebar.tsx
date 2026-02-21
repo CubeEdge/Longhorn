@@ -7,8 +7,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 // import { useLanguage } from '../../i18n/useLanguage';
 
 interface CustomerContextSidebarProps {
-    customerId?: number;
-    customerName?: string;
     accountId?: number;
     accountName?: string;
     serialNumber?: string;
@@ -21,7 +19,7 @@ interface CustomerContextSidebarProps {
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
-    customerId, customerName, accountId, accountName, serialNumber, 
+    accountId, accountName, serialNumber,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
     onClose
 }) => {
@@ -35,7 +33,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
     useEffect(() => {
         fetchContext();
-    }, [customerId, customerName, accountId, accountName, serialNumber]);
+    }, [accountId, accountName, serialNumber]);
 
     const fetchContext = async () => {
         setLoading(true);
@@ -43,9 +41,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             // Fetch customer data
             let customerUrl = '';
             if (accountId) customerUrl = `/api/v1/context/by-account?account_id=${accountId}`;
-            else if (customerId) customerUrl = `/api/v1/context/by-customer?customer_id=${customerId}`;
             else if (accountName) customerUrl = `/api/v1/context/by-account?account_name=${encodeURIComponent(accountName)}`;
-            else if (customerName) customerUrl = `/api/v1/context/by-customer?customer_name=${encodeURIComponent(customerName)}`;
 
             // Fetch device data
             let deviceUrl = '';
@@ -199,7 +195,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             <div style={contentStyle}>
                 {/* ===== Card 1: 经销商卡片 ===== */}
                 {(dealerId || dealerName) && (
-                    <div 
+                    <div
                         style={{
                             ...cardStyle,
                             background: 'rgba(255, 215, 0, 0.06)',
@@ -225,11 +221,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             </div>
                             {dealerId && <ChevronRight size={14} style={{ color: 'rgba(255, 215, 0, 0.5)' }} />}
                         </div>
-                        
+
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
                             {dealerName || '未知经销商'}
                         </div>
-                        
+
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
                             {dealerCode && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -252,7 +248,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                 {/* ===== Card 2: 客户卡片 ===== */}
                 {data?.account && (
-                    <div 
+                    <div
                         style={{
                             ...cardStyle,
                             cursor: 'pointer',
@@ -318,11 +314,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 {(() => {
                                     const primaryContact = data.contacts.find((c: any) => c.status === 'PRIMARY' || c.is_primary) || data.contacts[0];
                                     const otherContacts = data.contacts.filter((c: any) => c.id !== primaryContact.id);
-                                    
+
                                     return (
                                         <>
                                             {/* 标题行 - 如果有多个联系人则可点击展开 */}
-                                            <div 
+                                            <div
                                                 style={{
                                                     ...labelStyle,
                                                     display: 'flex',
@@ -342,7 +338,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                     </div>
                                                 )}
                                             </div>
-                                            
+
                                             {/* 主要联系人 - 始终显示，只显示姓名 */}
                                             <div style={{ ...rowStyle, marginBottom: contactsExpanded && otherContacts.length > 0 ? '8px' : 0 }}>
                                                 <div style={iconColStyle}><User size={12} /></div>
@@ -362,7 +358,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* 其他联系人 - 展开时显示，只显示姓名 */}
                                             {contactsExpanded && otherContacts.map((contact: any, idx: number) => (
                                                 <div key={contact.id} style={{
@@ -414,7 +410,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                 {/* ===== Card 3: 设备详情卡片 ===== */}
                 {data?.device && (
-                    <div 
+                    <div
                         style={{
                             ...cardStyle,
                             cursor: 'pointer',

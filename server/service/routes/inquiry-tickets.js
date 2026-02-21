@@ -113,14 +113,14 @@ module.exports = function (db, authenticate, serviceUpload) {
             account_id: ticket.account_id,
             contact_id: ticket.contact_id,
             reporter_name: ticket.reporter_name || ticket.customer_name || '匿名客户',
-            
+
             // 经销商信息
             dealer_id: ticket.dealer_id,
             dealer_name: ticket.dealer_name,
             dealer_code: ticket.dealer_code,
             dealer_contact_name: ticket.dealer_contact_name,
             dealer_contact_title: ticket.dealer_contact_title,
-            
+
             // 联系人信息（如果已关联）
             contact: ticket.contact_name ? {
                 id: ticket.contact_id,
@@ -180,7 +180,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 channel,
                 dealer_id,
                 handler_id,
-                customer_id,
+                account_id,
                 serial_number,
                 created_from,
                 created_to,
@@ -199,7 +199,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('dealer_id = ?');
                 params.push(user.dealer_id);
             } else if (user.user_type === 'Customer') {
-                conditions.push('customer_id = ?');
+                conditions.push('account_id = ?');
                 params.push(user.id);
             } else if (user.role === 'Member') {
                 conditions.push('(handler_id = ? OR created_by = ?)');
@@ -255,9 +255,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('handler_id = ?');
                 params.push(parseInt(handler_id));
             }
-            if (customer_id) {
-                conditions.push('customer_id = ?');
-                params.push(customer_id);
+            if (account_id) {
+                conditions.push('account_id = ?');
+                params.push(account_id);
             }
             if (serial_number) {
                 conditions.push('serial_number LIKE ?');
@@ -323,7 +323,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 channel,
                 dealer_id,
                 handler_id,
-                customer_id,
+                account_id,
                 serial_number,
                 created_from,
                 created_to,
@@ -342,7 +342,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.dealer_id = ?');
                 params.push(user.dealer_id);
             } else if (user.user_type === 'Customer') {
-                conditions.push('t.customer_id = ?');
+                conditions.push('t.account_id = ?');
                 params.push(user.id);
             } else if (user.role === 'Member') {
                 conditions.push('(t.handler_id = ? OR t.created_by = ?)');
@@ -383,14 +383,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.handler_id = ?');
                 params.push(parseInt(handler_id));
             }
-            if (customer_id) {
-                conditions.push('t.customer_id = ?');
-                params.push(customer_id);
-            }
-            // 新架构：支持 account_id 筛选
-            if (req.query.account_id) {
+            if (account_id) {
                 conditions.push('t.account_id = ?');
-                params.push(req.query.account_id);
+                params.push(account_id);
             }
             if (req.query.contact_id) {
                 conditions.push('t.contact_id = ?');
@@ -545,13 +540,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 account_id,
                 contact_id,
                 reporter_name,
-                
-                // 向后兼容字段
-                customer_name,
-                customer_contact,
-                customer_id,
                 dealer_id,
-                
+
                 product_id,
                 serial_number,
                 service_type = 'Consultation',
@@ -569,35 +559,27 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             const ticketNumber = generateTicketNumber(db);
 
-            // 优先使用新架构字段，但保持向后兼容
-            const finalAccountId = account_id || customer_id;
-            const finalReporterName = reporter_name || customer_name;
-            const finalContactInfo = customer_contact;
-
             const result = db.prepare(`
                 INSERT INTO inquiry_tickets (
                     ticket_number, 
                     account_id, contact_id, reporter_name,
-                    customer_name, customer_contact, customer_id, dealer_id,
+                    dealer_id,
                     product_id, serial_number, service_type, channel, problem_summary,
                     communication_log, status, created_by, handler_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'InProgress', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'InProgress', ?, ?)
             `).run(
-                ticketNumber, 
-                finalAccountId || null, 
-                contact_id || null, 
-                finalReporterName || null,
-                customer_name || finalReporterName || null, 
-                finalContactInfo || null, 
-                customer_id || finalAccountId || null, 
+                ticketNumber,
+                account_id || null,
+                contact_id || null,
+                reporter_name || null,
                 dealer_id || null,
-                product_id || null, 
-                serial_number || null, 
-                service_type, 
-                channel || null, 
+                product_id || null,
+                serial_number || null,
+                service_type,
+                channel || null,
                 problem_summary,
-                communication_log || null, 
-                req.user.id, 
+                communication_log || null,
+                req.user.id,
                 req.user.id
             );
 

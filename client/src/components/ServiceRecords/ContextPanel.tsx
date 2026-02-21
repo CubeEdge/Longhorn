@@ -25,7 +25,7 @@ interface ContextResult {
   } | null;
   current_owner: {
     owner_name: string;
-    customer_id: number;
+    account_id: number;
     first_seen: string;
     last_seen: string;
     service_count: number;
@@ -66,7 +66,7 @@ interface ContextResult {
   }[];
   ownership_history: {
     owner_name: string;
-    customer_id: number;
+    account_id: number;
     first_seen: string;
     last_seen: string;
     service_count: number;
@@ -89,7 +89,7 @@ const ContextPanel: React.FC = () => {
   const { token } = useAuthStore();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  
+
   const [searchMode, setSearchMode] = useState<SearchMode>('customer');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -99,20 +99,20 @@ const ContextPanel: React.FC = () => {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    
+
     setLoading(true);
     setError('');
     setResult(null);
-    
+
     try {
-      const endpoint = searchMode === 'customer' 
+      const endpoint = searchMode === 'customer'
         ? `/api/v1/context/customer/${encodeURIComponent(searchQuery)}`
         : `/api/v1/context/serial/${encodeURIComponent(searchQuery)}`;
-      
+
       const res = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         setResult(res.data.data);
       } else {
@@ -127,10 +127,10 @@ const ContextPanel: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('zh-CN', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return new Date(dateStr).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -160,9 +160,9 @@ const ContextPanel: React.FC = () => {
       </div>
 
       {/* Search Form */}
-      <div style={{ 
-        background: 'var(--bg-card)', 
-        borderRadius: '12px', 
+      <div style={{
+        background: 'var(--bg-card)',
+        borderRadius: '12px',
         padding: '20px',
         marginBottom: '24px',
         border: '1px solid var(--border-color)'
@@ -226,8 +226,8 @@ const ContextPanel: React.FC = () => {
               style={{ paddingLeft: '40px' }}
             />
           </div>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading || !searchQuery.trim()}
             className="btn btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -263,9 +263,9 @@ const ContextPanel: React.FC = () => {
           <div>
             {/* Customer Info (for customer search) */}
             {searchMode === 'customer' && result.customer && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '16px',
                 border: '1px solid var(--border-color)'
@@ -292,9 +292,9 @@ const ContextPanel: React.FC = () => {
 
             {/* Product Info (for serial search) */}
             {searchMode === 'serial' && result.product && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '16px',
                 border: '1px solid var(--border-color)'
@@ -318,9 +318,9 @@ const ContextPanel: React.FC = () => {
 
             {/* Current Owner (for serial search) */}
             {searchMode === 'serial' && result.current_owner && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '16px',
                 border: '1px solid var(--border-color)'
@@ -334,9 +334,9 @@ const ContextPanel: React.FC = () => {
             )}
 
             {/* Summary Stats */}
-            <div style={{ 
-              background: 'var(--bg-card)', 
-              borderRadius: '12px', 
+            <div style={{
+              background: 'var(--bg-card)',
+              borderRadius: '12px',
               padding: '20px',
               border: '1px solid var(--border-color)'
             }}>
@@ -386,9 +386,9 @@ const ContextPanel: React.FC = () => {
           <div>
             {/* Service Records */}
             {result.service_records.length > 0 && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 marginBottom: '16px',
                 border: '1px solid var(--border-color)',
                 overflow: 'hidden'
@@ -398,7 +398,7 @@ const ContextPanel: React.FC = () => {
                 </div>
                 <div>
                   {result.service_records.slice(0, 5).map(sr => (
-                    <div 
+                    <div
                       key={sr.id}
                       onClick={() => navigate(`/service-records/${sr.id}`)}
                       style={{
@@ -435,11 +435,11 @@ const ContextPanel: React.FC = () => {
                   ))}
                 </div>
                 {result.service_records.length > 5 && (
-                  <div 
+                  <div
                     onClick={() => navigate('/service-records')}
-                    style={{ 
-                      padding: '12px 20px', 
-                      textAlign: 'center', 
+                    style={{
+                      padding: '12px 20px',
+                      textAlign: 'center',
                       color: 'var(--accent-color)',
                       cursor: 'pointer',
                       display: 'flex',
@@ -456,9 +456,9 @@ const ContextPanel: React.FC = () => {
 
             {/* Issues */}
             {result.issues.length > 0 && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 border: '1px solid var(--border-color)',
                 overflow: 'hidden'
               }}>
@@ -467,7 +467,7 @@ const ContextPanel: React.FC = () => {
                 </div>
                 <div>
                   {result.issues.slice(0, 5).map(issue => (
-                    <div 
+                    <div
                       key={issue.id}
                       onClick={() => navigate(`/issues/${issue.id}`)}
                       style={{
@@ -511,11 +511,11 @@ const ContextPanel: React.FC = () => {
                   ))}
                 </div>
                 {result.issues.length > 5 && (
-                  <div 
+                  <div
                     onClick={() => navigate('/issues')}
-                    style={{ 
-                      padding: '12px 20px', 
-                      textAlign: 'center', 
+                    style={{
+                      padding: '12px 20px',
+                      textAlign: 'center',
                       color: 'var(--accent-color)',
                       cursor: 'pointer',
                       display: 'flex',
@@ -532,9 +532,9 @@ const ContextPanel: React.FC = () => {
 
             {/* No Records */}
             {result.service_records.length === 0 && result.issues.length === 0 && (
-              <div style={{ 
-                background: 'var(--bg-card)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
                 padding: '48px',
                 border: '1px solid var(--border-color)',
                 textAlign: 'center'

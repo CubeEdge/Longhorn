@@ -128,7 +128,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
             account_id: ticket.account_id,
             contact_id: ticket.contact_id,
             reporter_name: ticket.reporter_name,
-            
+
             // 账户/联系人详情
             account: ticket.account_id ? {
                 id: ticket.account_id,
@@ -142,7 +142,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 email: ticket.contact_email,
                 job_title: ticket.contact_job_title
             } : null,
-            
+
             // 经销商信息
             dealer: ticket.dealer_id ? { id: ticket.dealer_id, name: ticket.dealer_name, code: ticket.dealer_code } : null,
             dealer_id: ticket.dealer_id,
@@ -284,7 +284,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 severity,
                 product_id,
                 dealer_id,
-                customer_id,
+                account_id,
                 assigned_to,
                 is_warranty,
                 created_from,
@@ -342,9 +342,9 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 conditions.push('t.dealer_id = ?');
                 params.push(parseInt(dealer_id));
             }
-            if (customer_id) {
-                conditions.push('t.customer_id = ?');
-                params.push(customer_id);
+            if (account_id) {
+                conditions.push('t.account_id = ?');
+                params.push(account_id);
             }
             if (assigned_to === 'me') {
                 conditions.push('t.assigned_to = ?');
@@ -509,16 +509,14 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
                 firmware_version,
                 problem_description,
                 is_warranty = true,
-                
+
                 // 新架构字段
                 account_id,
                 contact_id,
                 reporter_name,
-                
-                // 向后兼容字段
-                customer_id,
+
                 dealer_id,
-                
+
                 inquiry_ticket_id
             } = req.body;
 
@@ -531,26 +529,21 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule, servi
 
             const ticketNumber = generateTicketNumber(db, channel_code);
 
-            // 优先使用新架构字段，但保持向后兼容
-            const finalAccountId = account_id || customer_id;
-            const finalReporterName = reporter_name || req.body.reporter_name;
-
             const result = db.prepare(`
                 INSERT INTO rma_tickets (
                     ticket_number, channel_code, issue_type, issue_category, issue_subcategory,
                     severity, product_id, serial_number, firmware_version, problem_description,
-                    is_warranty, reporter_name, account_id, contact_id, customer_id, dealer_id, 
+                    is_warranty, reporter_name, account_id, contact_id, dealer_id, 
                     submitted_by, inquiry_ticket_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')
             `).run(
                 ticketNumber, channel_code, issue_type, issue_category, issue_subcategory,
                 severity, product_id, serial_number, firmware_version, problem_description,
-                is_warranty ? 1 : 0, 
-                finalReporterName || null,
-                finalAccountId || null,
+                is_warranty ? 1 : 0,
+                reporter_name || null,
+                account_id || null,
                 contact_id || null,
-                customer_id || finalAccountId || null, 
-                dealer_id || null, 
+                dealer_id || null,
                 req.user.id,
                 inquiry_ticket_id || null
             );

@@ -51,7 +51,6 @@ interface RMATicket {
     dealer_contact_title?: string | null;
     // 向后兼容字段
     customer: { id: number; name: string } | null;
-    customer_id: number | null;
     submitted_by: { id: number; name: string } | null;
     assigned_to: { id: number; name: string } | null;
     inquiry_ticket: { id: number; ticket_number: string } | null;
@@ -405,38 +404,38 @@ const RMATicketDetailPage: React.FC = () => {
                             </div>
                         </div>
 
-                            {/* Attachments */}
-                            {ticket.attachments && ticket.attachments.length > 0 && (
-                                <div style={{ marginTop: '16px' }}>
-                                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Attachments</h3>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                                        {ticket.attachments.map(att => (
-                                            <a
-                                                key={att.id}
-                                                href={`/api/uploads/${att.file_path}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                                    padding: '8px 12px',
-                                                    background: 'rgba(255,255,255,0.05)',
-                                                    borderRadius: '8px',
-                                                    textDecoration: 'none',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '0.85rem',
-                                                    border: '1px solid rgba(255,255,255,0.1)'
-                                                }}
-                                            >
-                                                <FileText size={14} />
-                                                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {att.file_path.split('/').pop()}
-                                                </span>
-                                                <Download size={12} style={{ opacity: 0.5 }} />
-                                            </a>
-                                        ))}
-                                    </div>
+                        {/* Attachments */}
+                        {ticket.attachments && ticket.attachments.length > 0 && (
+                            <div style={{ marginTop: '16px' }}>
+                                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Attachments</h3>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                    {ticket.attachments.map(att => (
+                                        <a
+                                            key={att.id}
+                                            href={`/api/uploads/${att.file_path}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                padding: '8px 12px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                borderRadius: '8px',
+                                                textDecoration: 'none',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '0.85rem',
+                                                border: '1px solid rgba(255,255,255,0.1)'
+                                            }}
+                                        >
+                                            <FileText size={14} />
+                                            <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {att.file_path.split('/').pop()}
+                                            </span>
+                                            <Download size={12} style={{ opacity: 0.5 }} />
+                                        </a>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -444,9 +443,7 @@ const RMATicketDetailPage: React.FC = () => {
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
-                        accountName={ticket.account?.name}
-                        customerId={ticket.customer_id ?? undefined}
-                        customerName={ticket.customer?.name}
+                        accountName={ticket.account?.name || ticket.customer?.name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
                         dealerName={ticket.dealer_name ?? undefined}

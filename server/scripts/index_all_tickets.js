@@ -67,12 +67,12 @@ function indexTicket(ticket_type, ticket_id) {
             ticket_type, ticket_id, ticket_number,
             title, description, resolution, tags,
             product_model, serial_number, category, status,
-            dealer_id, customer_id, visibility, closed_at
+            dealer_id, account_id, visibility, closed_at
         ) VALUES (
             @ticket_type, @ticket_id, @ticket_number,
             @title, @description, @resolution, @tags,
             @product_model, @serial_number, @category, @status,
-            @dealer_id, @customer_id, @visibility, @closed_at
+            @dealer_id, @account_id, @visibility, @closed_at
         )
     `).run({
         ticket_type,
@@ -86,8 +86,8 @@ function indexTicket(ticket_type, ticket_id) {
         serial_number,
         category,
         status: ticketData.status,
-        dealer_id: ticketData.dealer_id || null,
-        customer_id: ticketData.customer_id || null,
+        dealer_id: ticketData.dealer_id ? (db.prepare('SELECT id FROM dealers WHERE id = ?').get(ticketData.dealer_id) ? ticketData.dealer_id : null) : null,
+        account_id: ticketData.account_id ? (db.prepare('SELECT id FROM accounts WHERE id = ?').get(ticketData.account_id) ? ticketData.account_id : null) : null,
         visibility,
         closed_at
     });

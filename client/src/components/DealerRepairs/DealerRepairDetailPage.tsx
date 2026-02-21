@@ -26,7 +26,7 @@ interface DealerRepair {
     created_at: string;
     customer_name: string;
     customer_contact: string;
-    customer_id?: number;
+    account_id?: number;
     technician?: {
         name: string;
     };
@@ -44,7 +44,6 @@ interface DealerRepair {
     dealer_contact_title?: string;
 
     // Account/Contact Info (新架构)
-    account_id?: number;
     contact_id?: number;
     account?: {
         id: number;
@@ -482,20 +481,18 @@ const DealerRepairDetailPage: React.FC = () => {
 
                 {/* Right Sidebar - Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <CustomerContextSidebar
-                    accountId={repair.account_id}
-                    accountName={repair.account?.name}
-                    customerId={repair.customer_id}
-                    customerName={repair.customer_name}
-                    serialNumber={repair.serial_number}
-                    dealerId={repair.dealer_id || repair.dealer?.id}
-                    dealerName={repair.dealer_name || repair.dealer?.name}
-                    dealerCode={repair.dealer_code || repair.dealer?.code}
-                    dealerContactName={repair.dealer_contact_name}
-                    dealerContactTitle={repair.dealer_contact_title}
-                />
+                    <CustomerContextSidebar
+                        accountId={repair.account_id}
+                        accountName={repair.account?.name || repair.customer_name}
+                        serialNumber={repair.serial_number}
+                        dealerId={repair.dealer_id || repair.dealer?.id}
+                        dealerName={repair.dealer_name || repair.dealer?.name}
+                        dealerCode={repair.dealer_code || repair.dealer?.code}
+                        dealerContactName={repair.dealer_contact_name}
+                        dealerContactTitle={repair.dealer_contact_title}
+                    />
+                </div>
             </div>
-        </div>
         </div>
     );
 };

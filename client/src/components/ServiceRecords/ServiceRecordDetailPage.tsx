@@ -11,7 +11,7 @@ interface ServiceRecordDetail {
   service_mode: string;
   customer_name: string;
   customer_contact: string;
-  customer_id: number | null;
+  account_id: number | null;
   product_id: number | null;
   product_name: string;
   serial_number: string;
@@ -76,12 +76,12 @@ const ServiceRecordDetailPage: React.FC = () => {
   const [record, setRecord] = useState<ServiceRecordDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Comment form
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Upgrade modal
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeData, setUpgradeData] = useState({
@@ -97,7 +97,7 @@ const ServiceRecordDetailPage: React.FC = () => {
       const res = await axios.get(`/api/v1/service-records/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         setRecord(res.data.data);
       } else {
@@ -128,7 +128,7 @@ const ServiceRecordDetailPage: React.FC = () => {
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    
+
     setSubmitting(true);
     try {
       await axios.post(`/api/v1/service-records/${id}/comments`, {
@@ -138,7 +138,7 @@ const ServiceRecordDetailPage: React.FC = () => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setNewComment('');
       setIsInternal(false);
       fetchRecord();
@@ -155,7 +155,7 @@ const ServiceRecordDetailPage: React.FC = () => {
       const res = await axios.post(`/api/v1/service-records/${id}/upgrade`, upgradeData, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         navigate(`/issues/${res.data.data.issue_id}`);
       }
@@ -252,7 +252,7 @@ const ServiceRecordDetailPage: React.FC = () => {
             {getServiceTypeLabel(record.service_type)} · {record.channel} · 创建于 {formatDate(record.created_at)}
           </p>
         </div>
-        
+
         {record.permissions.can_upgrade && record.status !== 'UpgradedToTicket' && (
           <button
             onClick={() => setShowUpgradeModal(true)}
@@ -269,9 +269,9 @@ const ServiceRecordDetailPage: React.FC = () => {
         {/* Main Content */}
         <div>
           {/* Problem Summary */}
-          <div style={{ 
-            background: 'var(--bg-card)', 
-            borderRadius: '12px', 
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
             padding: '20px',
             marginBottom: '16px',
             border: '1px solid var(--border-color)'
@@ -282,15 +282,15 @@ const ServiceRecordDetailPage: React.FC = () => {
 
           {/* Linked Issue */}
           {record.linked_issue && (
-            <div style={{ 
-              background: 'var(--bg-card)', 
-              borderRadius: '12px', 
+            <div style={{
+              background: 'var(--bg-card)',
+              borderRadius: '12px',
               padding: '16px',
               marginBottom: '16px',
               border: '1px solid #06b6d4',
               cursor: 'pointer'
             }}
-            onClick={() => navigate(`/issues/${record.linked_issue!.id}`)}
+              onClick={() => navigate(`/issues/${record.linked_issue!.id}`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <ArrowUpCircle size={16} style={{ color: '#06b6d4' }} />
@@ -307,14 +307,14 @@ const ServiceRecordDetailPage: React.FC = () => {
           )}
 
           {/* Comments */}
-          <div style={{ 
-            background: 'var(--bg-card)', 
-            borderRadius: '12px', 
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
             padding: '20px',
             border: '1px solid var(--border-color)'
           }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.communication_log')}</h3>
-            
+
             {record.comments.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>{t('service_record.no_communication')}</p>
             ) : (
@@ -379,9 +379,9 @@ const ServiceRecordDetailPage: React.FC = () => {
         {/* Sidebar */}
         <div>
           {/* Customer Info */}
-          <div style={{ 
-            background: 'var(--bg-card)', 
-            borderRadius: '12px', 
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
             padding: '20px',
             marginBottom: '16px',
             border: '1px solid var(--border-color)'
@@ -400,9 +400,9 @@ const ServiceRecordDetailPage: React.FC = () => {
           </div>
 
           {/* Product Info */}
-          <div style={{ 
-            background: 'var(--bg-card)', 
-            borderRadius: '12px', 
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
             padding: '20px',
             marginBottom: '16px',
             border: '1px solid var(--border-color)'
@@ -430,9 +430,9 @@ const ServiceRecordDetailPage: React.FC = () => {
 
           {/* Status Actions */}
           {record.permissions.can_edit && record.status !== 'UpgradedToTicket' && (
-            <div style={{ 
-              background: 'var(--bg-card)', 
-              borderRadius: '12px', 
+            <div style={{
+              background: 'var(--bg-card)',
+              borderRadius: '12px',
               padding: '20px',
               marginBottom: '16px',
               border: '1px solid var(--border-color)'
@@ -489,9 +489,9 @@ const ServiceRecordDetailPage: React.FC = () => {
           )}
 
           {/* Time Metrics */}
-          <div style={{ 
-            background: 'var(--bg-card)', 
-            borderRadius: '12px', 
+          <div style={{
+            background: 'var(--bg-card)',
+            borderRadius: '12px',
             padding: '20px',
             border: '1px solid var(--border-color)'
           }}>
@@ -545,7 +545,7 @@ const ServiceRecordDetailPage: React.FC = () => {
             border: '1px solid var(--border-color)'
           }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '20px' }}>{t('service_record.upgrade_modal.title')}</h2>
-            
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                 {t('service_record.upgrade_modal.ticket_type')}

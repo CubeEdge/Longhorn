@@ -21,7 +21,7 @@ module.exports = (db, authenticate, aiService) => {
             }
 
             // Build WHERE clause based on user role
-            let whereConditions = ['tsi.closed_at IS NOT NULL']; // Only search closed tickets
+            let whereConditions = []; // 允许搜索所有工单，不再限制 closed_at
             let params = {};
 
             // Permission Filter
@@ -53,7 +53,7 @@ module.exports = (db, authenticate, aiService) => {
                 params.end_date = filters.date_range.end;
             }
 
-            const whereClause = whereConditions.join(' AND ');
+            const whereClause = whereConditions.length > 0 ? whereConditions.join(' AND ') : '1=1';
 
             let results;
 
@@ -110,10 +110,17 @@ module.exports = (db, authenticate, aiService) => {
                     LIMIT @limit
                 `;
 
-                // Sanitize query for FTS5 (escape quotes and wrap in double quotes)
-                const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+                // Sanitize query for FTS5 — split by space, expand with synonyms, use OR for lenient matching
+                const { expandWithSynonyms } = require('./synonyms');
+                const words = query.trim().split(/\s+/).filter(w => w.length > 0);
+                const allTerms = new Set();
+                words.forEach(w => {
+                    expandWithSynonyms(w).forEach(syn => allTerms.add(syn));
+                });
+                const safeQuery = Array.from(allTerms).map(w => '"' + w.replace(/"/g, '""') + '"*').join(' OR ');
                 params.query = safeQuery;
                 params.limit = top_k;
+                console.log(`[Bokeh] Ticket FTS5 query: ${safeQuery} (from: "${query}")`);
                 results = db.prepare(searchQuery).all(params);
             }
 
@@ -146,12 +153,20 @@ module.exports = (db, authenticate, aiService) => {
                     customer_name = account?.name;
                 }
                 // 获取联系人姓名（从源工单表）
-                if (r.ticket_type === 'inquiry' && r.ticket_id) {
-                    const ticket = db.prepare('SELECT customer_name, customer_contact FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
-                    contact_name = ticket?.customer_contact || ticket?.customer_name || null;
-                } else if (r.ticket_type === 'rma' && r.ticket_id) {
-                    const ticket = db.prepare('SELECT customer_name FROM rma_tickets WHERE id = ?').get(r.ticket_id);
-                    contact_name = ticket?.customer_name || null;
+                try {
+                    if (r.ticket_type === 'inquiry' && r.ticket_id) {
+                        const ticket = db.prepare('SELECT reporter_name FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
+                        contact_name = ticket?.reporter_name || null;
+                    } else if (r.ticket_type === 'rma' && r.ticket_id) {
+                        // RMA table uses reporter_name instead of customer_name
+                        const ticket = db.prepare('SELECT reporter_name FROM rma_tickets WHERE id = ?').get(r.ticket_id);
+                        contact_name = ticket?.reporter_name || null;
+                    } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
+                        const ticket = db.prepare('SELECT customer_name FROM dealer_repairs WHERE id = ?').get(r.ticket_id);
+                        contact_name = ticket?.customer_name || null;
+                    }
+                } catch (enrichErr) {
+                    console.warn(`[Bokeh Enrichment] Failed to fetch contact for ${r.ticket_type}:${r.ticket_id}`, enrichErr.message);
                 }
                 return {
                     ticket_number: r.ticket_number,

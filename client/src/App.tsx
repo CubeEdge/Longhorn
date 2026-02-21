@@ -601,8 +601,8 @@ const ServiceTopBarStats: React.FC = () => {
       // Use saved filters from store based on context
       const savedFilters = context === 'inquiry' ? inquiryFilters
         : context === 'rma' ? rmaFilters
-        : context === 'dealer' ? dealerFilters
-        : { time_scope: '7d', product_family: 'all', keyword: '' };
+          : context === 'dealer' ? dealerFilters
+            : { time_scope: '7d', product_family: 'all', keyword: '' };
       return {
         timeScope: savedFilters.time_scope,
         productFamily: savedFilters.product_family,
@@ -672,7 +672,7 @@ const ServiceTopBarStats: React.FC = () => {
     // If so, navigate to the list page instead of staying on detail page
     const pathSegments = location.pathname.split('/').filter(Boolean);
     const isDetailPage = pathSegments.length >= 3 && !isNaN(Number(pathSegments[pathSegments.length - 1]));
-    
+
     let targetPathname = location.pathname;
     if (isDetailPage) {
       // Navigate to list page
@@ -846,7 +846,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
 
       {/* Center: Daily Word - only visible in FILES module */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        {currentModule === 'files' && <DailyWordBadge />}
+        {(currentModule === 'files' || location.pathname.startsWith('/tech-hub/wiki')) && <DailyWordBadge />}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>

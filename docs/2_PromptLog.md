@@ -1,5 +1,28 @@
 # Prompt Log 更新记录
 
+### 2026-02-21 22:45
+- **User Prompt**: "实现同义词管理器。搜索诸如'录制常见的问题是什么？'查无结果，需宽泛化并使得 UI 逻辑保持一致。"
+- **Agent Response**: 
+  1. **同义词字典**: 创建 `018_search_synonyms.sql` 迁移，后端口开发 `/api/v1/synonyms` 并用进程内存作为高速缓存实时更新；前端实装 `SynonymManager.tsx` 面板并支持 i18n 多语言，默认初始化 50 组行业词汇。
+  2. **搜索宽泛化**: 补充大量常用中文停用词（常见/一般/通常/问题等），并修改了后台工单 `bokeh.js` 的 FTS5 引擎行为（由严格 AND 匹配修改为 OR 匹配 + 同义词列举横向扩展）。
+  3. **UI 一致性**: 调整工单区域的折叠按钮至标题行，看齐核心检索面板。
+- **Result**: "录制常见问题"已能宽泛检索出关联内容，后台 Admin/Lead 能够自主可视化管理各类词汇关联，所有文档更新完成并部署生效。
+
+### 2026-02-21 21:25
+- **User Prompt**: "搜索'音频的相关设置'什么都找不到，如何提高搜索质量？关键词定义太严？AI 搜索如何基于知识库关联推理但不乱说？"
+- **Agent Response**: 分析后端 LIKE 整串匹配的根因，实现 `splitSearchKeywords` 多关键词 AND 拆分。优化前端 `extractKeywords` 停用词处理。同时修复 AI 搜索结果中 RMA 小卡片的特征色问题。
+- **Result**: 搜索"音频的相关设置"从 0 篇召回提升至 4 篇，AI 基于召回文章给出结构化回答。已部署验证通过。
+
+### 2026-02-21 21:05
+- **User Prompt**: "Schema Alignment Finalization. 确保所有 `customer_id` 引用被替换为 `account_id`。"
+- **Agent Response**: 完成了数据库视图、后端路由、iOS 模型及 React 前端组件的全面重写。修复了详情页重复字段定义及侧边栏 Prop 类型冲突。同步更新了 API 与 DataModel 文档。
+- **Result**: 全系统实现了 `account_id` 的统一对齐，解决了详情页的 Lint 报错，并清理了侧边栏的兼容性逻辑。
+
+### 2026-02-21 16:50
+- **User Prompt**: Wiki UI & Interaction Optimization. 包含 1. 文章和工单卡片点击新页签打开；2. AI 回答引用（如 [K2601-0002]）采用卡片样式超链接并支持新页签打开；3. 最近浏览折叠按钮样式对齐。
+- **Agent Response**: 制定实施计划并获得 LGTM 审批。修改了 `ArticleCard`、`TicketCard` 及其点击逻辑（`window.open`），通过重塑 `ReactMarkdown` 的 `a` 组件实现了引用链接的“卡片化”渲染。统一了最近浏览区的 `Chevron` 按钮样式。
+- **Result**: UI 更加统一且富有现代感，跨页签跳转极大地提升了 Wiki 与工单系统的并行查阅效率。发版 v1.5.21 / v11.8.12 并在 mini 服务器成功上线。
+
 ### 2026-02-21 16:35
 - **User Prompt**: "继续" (承接前文：实现搜索体验极致优化的 6 项改进指标，包含全文字段补充和UI视觉卡片改造)
 - **Agent Response**: 根据之前商定的 6 项优化需求和实施指南（Implementation Plan），分析受波及的前后端文件（`bokeh.js`、`KinefinityWiki.tsx`）。随后一次性落实处理好了 FTS5 trigram 无法召回短词的 SQLite 后备查询方案、重写前端视图并完成服务器上线测试工作。

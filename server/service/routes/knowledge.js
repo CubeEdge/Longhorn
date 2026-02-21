@@ -46,16 +46,16 @@ const docxUpload = multer({
     }
 });
 
-module.exports = function(db, authenticate, multerInstance, aiService) {
+module.exports = function (db, authenticate, multerInstance, aiService) {
     const router = express.Router();
-    
+
     // AI Service 注入（从 index.js 传入）
     // 用于文章排版优化和摘要生成
-    
+
     // 审计日志函数（从 knowledge_audit 路由注入）
     let logAudit = null;
     let generateBatchId = null;
-    
+
     // 设置审计日志函数（由 service/index.js 调用）
     router.setAuditLogger = (logFn, batchIdFn) => {
         logAudit = logFn;
@@ -104,14 +104,33 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 conditions.push('ka.tags LIKE ?');
                 params.push(`%"${tag}"%`);
             }
-            
+
             // Full-text search if provided - MUST be before whereClause
             if (search) {
-                // Always try LIKE search for better compatibility with Chinese
-                const searchTerm = `%${search.trim()}%`;
-                conditions.push('(ka.title LIKE ? OR ka.summary LIKE ? OR ka.content LIKE ? OR ka.tags LIKE ?)');
-                params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-                console.log(`[Knowledge] Using LIKE search for: "${search}"`);
+                // 将搜索词拆分为核心关键词，每个独立 LIKE 匹配，用 AND 连接
+                const keywords = splitSearchKeywords(search);
+                if (keywords.length > 0) {
+                    const expandedLog = [];
+                    keywords.forEach(kw => {
+                        const synonyms = expandWithSynonyms(kw);
+                        expandedLog.push(`${kw}→[${synonyms.join('|')}]`);
+                        // 构建 OR 组：(title LIKE '%音频%' OR title LIKE '%声音%' OR ...)
+                        const orParts = [];
+                        synonyms.forEach(syn => {
+                            const term = `%${syn}%`;
+                            orParts.push('ka.title LIKE ?', 'ka.summary LIKE ?', 'ka.content LIKE ?', 'ka.tags LIKE ?');
+                            params.push(term, term, term, term);
+                        });
+                        conditions.push(`(${orParts.join(' OR ')})`);
+                    });
+                    console.log(`[Knowledge] Synonym-expanded search: ${expandedLog.join(' AND ')} (from: "${search}")`);
+                } else {
+                    // Fallback: 如果拆分后无有效关键词，用原始查询
+                    const searchTerm = `%${search.trim()}%`;
+                    conditions.push('(ka.title LIKE ? OR ka.summary LIKE ? OR ka.content LIKE ? OR ka.tags LIKE ?)');
+                    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+                    console.log(`[Knowledge] Fallback LIKE search for: "${search}"`);
+                }
             }
 
             const whereClause = `WHERE ${conditions.join(' AND ')}`;
@@ -378,19 +397,19 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
-            
+
             console.log('[Knowledge Import] Extracting images...');
             const images = await extractPDFImages(req.file.path, imagesDir);
             console.log(`[Knowledge Import] Extracted ${images.length} images`);
 
             // Split content into sections (simple version - by page breaks or size)
             let sections = splitPDFContent(pdfData.text, title_prefix || req.file.originalname);
-            
+
             // Insert image references into sections
             if (images.length > 0) {
                 sections = insertImageReferences(sections, images);
             }
-            
+
             // Convert sections content to HTML format
             sections = sections.map(section => ({
                 ...section,
@@ -503,14 +522,14 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             let docxPath;
             let originalFilename;
             let fileSize;
-            
+
             if (req.body.mergedFilePath) {
                 // 分块上传后合并的文件
                 const DISK_A = '/Volumes/fileserver/Files';
                 docxPath = path.join(DISK_A, req.body.mergedFilePath);
-                
+
                 console.log('[DOCX Import] Merged file path:', docxPath);
-                
+
                 if (!fs.existsSync(docxPath)) {
                     console.error('[DOCX Import] File not found at:', docxPath);
                     return res.status(400).json({
@@ -518,7 +537,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         error: { code: 'FILE_NOT_FOUND', message: '合并的文件不存在' }
                     });
                 }
-                
+
                 originalFilename = path.basename(docxPath);
                 fileSize = fs.statSync(docxPath).size;
                 console.log(`[DOCX Import] Using merged file: ${docxPath}`);
@@ -550,7 +569,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             const tempDir = `/tmp/docx_import_${timestamp}`;
             const htmlPath = path.join(tempDir, 'output.html');
             const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
-            
+
             // 创建临时目录
             fs.mkdirSync(tempDir, { recursive: true });
             if (!fs.existsSync(imagesDir)) {
@@ -560,37 +579,37 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             // 步骤1: 调用Python脚本转换DOCX→HTML
             console.log('[DOCX Import] Step 1: Converting DOCX to HTML...');
             const convertScript = path.join(__dirname, '../../scripts/docx_to_html.py');
-            
+
             let stats = { image_count: 0, table_count: 0, heading_count: 0 };
             try {
                 // 使用绝对路径python3，并设置环境变量
                 const convertOutput = execSync(
                     `/usr/bin/python3 "${convertScript}" "${docxPath}" "${htmlPath}" "${imagesDir}"`,
-                    { 
-                        encoding: 'utf-8', 
+                    {
+                        encoding: 'utf-8',
                         maxBuffer: 10 * 1024 * 1024,
-                        env: { 
-                            ...process.env, 
+                        env: {
+                            ...process.env,
                             PYTHONPATH: '/Users/admin/Library/Python/3.9/lib/python/site-packages',
                             PATH: process.env.PATH + ':/usr/bin:/usr/local/bin'
                         }
                     }
                 );
                 console.log('[DOCX Import] Conversion output:', convertOutput);
-                
+
                 // 解析转换统计数据
                 const imageMatch = convertOutput.match(/图片数[:|：]\s*(\d+)/);
                 const tableMatch = convertOutput.match(/表格数[:|：]\s*(\d+)/);
                 const headingMatch = convertOutput.match(/标题数[:|：]\s*(\d+)/);
-                
+
                 stats = {
                     image_count: imageMatch ? parseInt(imageMatch[1]) : 0,
                     table_count: tableMatch ? parseInt(tableMatch[1]) : 0,
                     heading_count: headingMatch ? parseInt(headingMatch[1]) : 0
                 };
-                
+
                 console.log('[DOCX Import] Statistics:', stats);
-                
+
             } catch (convertErr) {
                 console.error('[DOCX Import] Conversion failed:', convertErr.message);
                 throw new Error(`DOCX转换失败: ${convertErr.message}`);
@@ -600,7 +619,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             if (!fs.existsSync(htmlPath)) {
                 throw new Error('HTML文件生成失败');
             }
-            
+
             const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
             console.log(`[DOCX Import] Step 2: HTML generated (${htmlContent.length} chars)`);
 
@@ -610,19 +629,19 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             const userSelectedModel = productModelsArray.length > 0 ? productModelsArray[0] : null;
             const chapters = splitHtmlIntoChapters(htmlContent, userSelectedModel, title_prefix);
             console.log(`[DOCX Import] Found ${chapters.length} chapters`);
-            
+
             // 检测文档标题与用户选择是否一致
             let titleMismatch = null;
             if (chapters.length > 0 && userSelectedModel) {
                 const firstChapterTitle = chapters[0].title.toLowerCase();
                 const selectedModelLower = userSelectedModel.toLowerCase();
-                
+
                 // 检查是否包含其他产品型号关键词
                 const allModels = ['edge 6k', 'edge 8k', 'mark2 lf', 'mark2 s35', 'mavo lf', 'mavo s35', 'terra 4k', 'terra 6k'];
-                const detectedModels = allModels.filter(model => 
+                const detectedModels = allModels.filter(model =>
                     firstChapterTitle.includes(model) && !selectedModelLower.includes(model)
                 );
-                
+
                 if (detectedModels.length > 0) {
                     titleMismatch = {
                         selected: userSelectedModel,
@@ -751,7 +770,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     total_size: fileSize || 0
                 }
             };
-            
+
             if (titleMismatch) {
                 responseData.warning = {
                     type: 'title_mismatch',
@@ -764,7 +783,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             if (logAudit && generateBatchId && imported_count > 0) {
                 const batchId = generateBatchId();
                 const productModelsArray = product_models ? JSON.parse(product_models) : [];
-                
+
                 // 为每篇成功导入的文章记录日志
                 for (let i = 0; i < Math.min(article_ids.length, chapters.length); i++) {
                     const articleId = article_ids[i];
@@ -772,7 +791,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     if (chapter) {
                         logAudit({
                             operation: 'import',
-                            operation_detail: `DOCX导入 - 批次${batchId.substring(0,8)}`,
+                            operation_detail: `DOCX导入 - 批次${batchId.substring(0, 8)}`,
                             article_id: articleId,
                             article_title: chapter.title,
                             article_slug: generateSlug(chapter.title),
@@ -858,20 +877,20 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     error: { code: 'NO_CONTENT', message: '无法提取有效内容' }
                 });
             }
-            
+
             // Download images from webpage
             console.log('[Knowledge Import URL] Downloading images...');
             const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
-            
+
             const downloadedImages = await downloadWebImages($, url, imagesDir);
             console.log(`[Knowledge Import URL] Downloaded ${downloadedImages.length} images`);
 
             // Keep HTML format (no longer converting to Markdown)
             let htmlContent = extractedContent.content;
-            
+
             // Replace image URLs with local paths
             downloadedImages.forEach(img => {
                 htmlContent = htmlContent.replace(img.original, img.local);
@@ -1015,7 +1034,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
             if (logAudit) {
                 const old_status = article.status;
                 const new_status = req.body.status !== undefined ? req.body.status : article.status;
-                
+
                 // 构建更改摘要
                 const changedFields = [];
                 if (req.body.title) changedFields.push('标题');
@@ -1024,7 +1043,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 if (req.body.product_line) changedFields.push('产品线');
                 if (req.body.visibility) changedFields.push('可见性');
                 if (req.body.status) changedFields.push('状态');
-                
+
                 logAudit({
                     operation: 'update',
                     operation_detail: req.body.change_summary || `修改: ${changedFields.join(', ')}`,
@@ -1247,8 +1266,8 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                 INSERT INTO knowledge_article_versions (article_id, version, title, content, change_summary, created_by)
                 VALUES (?, (SELECT COALESCE(MAX(version), 0) + 1 FROM knowledge_article_versions WHERE article_id = ?), 
                         ?, ?, ?, ?)
-            `).run(req.params.id, req.params.id, targetVersion.title, targetVersion.content, 
-                  `回滚到版本 #${req.params.version}`, req.user.id);
+            `).run(req.params.id, req.params.id, targetVersion.title, targetVersion.content,
+                `回滚到版本 #${req.params.version}`, req.user.id);
 
             res.json({
                 success: true,
@@ -1342,7 +1361,7 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
         try {
             const { idOrSlug } = req.params;
             const user = req.user;
-                
+
             // Only Admin/Lead can delete articles
             if (user.role !== 'Admin' && user.role !== 'Lead') {
                 return res.status(403).json({
@@ -1350,26 +1369,26 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     error: { code: 'FORBIDDEN', message: '无权删除文章' }
                 });
             }
-                
+
             console.log('[Knowledge] Deleting article:', idOrSlug);
-                
+
             // Try to find by slug first (more common in frontend)
             let article = db.prepare('SELECT * FROM knowledge_articles WHERE slug = ?').get(idOrSlug);
-                
+
             // If not found, try by id
             if (!article) {
                 article = db.prepare('SELECT * FROM knowledge_articles WHERE id = ?').get(parseInt(idOrSlug));
             }
-                
+
             if (!article) {
                 return res.status(404).json({
                     success: false,
                     error: { code: 'NOT_FOUND', message: '文章不存在' }
                 });
             }
-                
+
             console.log('[Knowledge] Found article to delete:', article.id, article.title);
-                
+
             // Log audit before deletion
             if (logAudit) {
                 logAudit({
@@ -1386,17 +1405,17 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                     user_role: user.role
                 });
             }
-                
+
             // Delete related records first
             db.prepare('DELETE FROM knowledge_article_versions WHERE article_id = ?').run(article.id);
             db.prepare('DELETE FROM knowledge_article_feedback WHERE article_id = ?').run(article.id);
             db.prepare('DELETE FROM knowledge_article_links WHERE source_article_id = ? OR target_article_id = ?').run(article.id, article.id);
-            
+
             // Delete article
             db.prepare('DELETE FROM knowledge_articles WHERE id = ?').run(article.id);
-                
+
             console.log('[Knowledge] Article deleted successfully:', article.id);
-                
+
             res.json({
                 success: true,
                 message: '文章已删除',
@@ -1481,6 +1500,26 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
     });
 
     // Helper functions
+
+    // 同义词扩展：从 synonyms.js 的数据库缓存中获取
+    const { expandWithSynonyms } = require('./synonyms');
+
+    /**
+     * 将搜索查询拆分为核心关键词列表
+     * 移除中文停用词，按空格/标点拆分
+     * 例: "音频的相关设置" → ["音频", "设置"]
+     */
+    function splitSearchKeywords(query) {
+        const stopWords = /的|是|有|了|在|和|与|或|也|都|被|把|对|从|到|给|让|着|过|不|没|会|能|可以|应该|关于|如何|什么|怎么|怎样|这个|那个|一些|相关|哪些|哪个|为什么|什么是|介绍|说明|支持|常见|一般|通常|经常|平时|总是|容易|可能|需要|建议|推荐|比较|正确|正常|具体|应当|请问|告诉|问题/g;
+        const cleaned = query.replace(stopWords, ' ').replace(/[，。、！？；：""''（）【】\s]+/g, ' ').trim();
+        const keywords = cleaned.split(' ').filter(w => {
+            if (!w) return false;
+            if (/^[\u4e00-\u9fff]+$/.test(w)) return w.length >= 2;
+            return w.length >= 1;
+        });
+        return keywords;
+    }
+
     function buildVisibilityConditions(user) {
         if (user.role === 'Admin') {
             return { sql: '1=1', params: [] };
@@ -1536,8 +1575,8 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
     function formatArticleListItem(article) {
         let tags = [];
         let productModels = [];
-        try { tags = JSON.parse(article.tags || '[]'); } catch (e) {}
-        try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) {}
+        try { tags = JSON.parse(article.tags || '[]'); } catch (e) { }
+        try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) { }
 
         return {
             id: article.id,
@@ -1562,11 +1601,11 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
     function formatArticleDetail(article) {
         let tags = [], productModels = [], firmwareVersions = [], departmentIds = [];
         let imageLayoutMeta = null;
-        try { tags = JSON.parse(article.tags || '[]'); } catch (e) {}
-        try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) {}
-        try { firmwareVersions = JSON.parse(article.firmware_versions || '[]'); } catch (e) {}
-        try { departmentIds = JSON.parse(article.department_ids || '[]'); } catch (e) {}
-        try { imageLayoutMeta = article.image_layout_meta ? JSON.parse(article.image_layout_meta) : null; } catch (e) {}
+        try { tags = JSON.parse(article.tags || '[]'); } catch (e) { }
+        try { productModels = JSON.parse(article.product_models || '[]'); } catch (e) { }
+        try { firmwareVersions = JSON.parse(article.firmware_versions || '[]'); } catch (e) { }
+        try { departmentIds = JSON.parse(article.department_ids || '[]'); } catch (e) { }
+        try { imageLayoutMeta = article.image_layout_meta ? JSON.parse(article.image_layout_meta) : null; } catch (e) { }
 
         return {
             id: article.id,
@@ -1613,14 +1652,14 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
     async function downloadWebImages($, baseUrl, outputDir) {
         const downloadedImages = [];
         const images = $('img');
-        
+
         for (let i = 0; i < images.length; i++) {
             try {
                 const $img = $(images[i]);
                 let src = $img.attr('src');
-                
+
                 if (!src) continue;
-                
+
                 // Convert relative URL to absolute
                 if (!src.startsWith('http')) {
                     const base = new URL(baseUrl);
@@ -1630,10 +1669,10 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         src = `${base.origin}/${src}`;
                     }
                 }
-                
+
                 // Skip data URLs and very small images
                 if (src.startsWith('data:')) continue;
-                
+
                 // Download image
                 const response = await axios.get(src, {
                     responseType: 'arraybuffer',
@@ -1642,21 +1681,21 @@ module.exports = function(db, authenticate, multerInstance, aiService) {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
                     }
                 });
-                
+
                 const buffer = Buffer.from(response.data);
-                
+
                 // Skip small images (< 1KB, likely icons)
                 if (buffer.length < 1024) continue;
-                
+
                 // Generate filename (WebP format)
                 const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 12);
                 const filename = `web_${hash}.webp`;
                 const filepath = path.join(outputDir, filename);
-                
+
                 // Convert to WebP using Python script
                 const tempPngPath = filepath.replace('.webp', '.png');
                 fs.writeFileSync(tempPngPath, buffer);
-                
+
                 try {
                     execSync(`python3 -c "
 import sys
@@ -1672,7 +1711,7 @@ elif img.mode != 'RGB':
 img.save('${filepath}', 'WEBP', quality=85, method=6)
 "
 `, { encoding: 'utf8', timeout: 5000 });
-                    
+
                     // Delete temp PNG
                     fs.unlinkSync(tempPngPath);
                 } catch (convertErr) {
@@ -1680,20 +1719,20 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                     // Keep PNG if conversion fails
                     fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
                 }
-                
+
                 const localPath = `/data/knowledge_images/${filename}`;
                 downloadedImages.push({
                     original: src,
                     local: localPath
                 });
-                
+
                 console.log(`[Web Images] ✓ Downloaded: ${filename}`);
             } catch (err) {
                 // Skip images that fail to download
                 console.log(`[Web Images] ⚠ Failed to download image: ${err.message}`);
             }
         }
-        
+
         return downloadedImages;
     }
 
@@ -1710,15 +1749,15 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
         let summary = '';
 
         // Try to extract title
-        title = $('h1').first().text().trim() || 
-                $('title').text().trim() || 
-                $('meta[property="og:title"]').attr('content') || 
-                '';
+        title = $('h1').first().text().trim() ||
+            $('title').text().trim() ||
+            $('meta[property="og:title"]').attr('content') ||
+            '';
 
         // Try to extract meta description as summary
-        summary = $('meta[name="description"]').attr('content') || 
-                  $('meta[property="og:description"]').attr('content') || 
-                  '';
+        summary = $('meta[name="description"]').attr('content') ||
+            $('meta[property="og:description"]').attr('content') ||
+            '';
 
         // Try to find main content area (prioritized selectors)
         const contentSelectors = [
@@ -1783,10 +1822,10 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      */
     function convertTextToHtml(text) {
         if (!text || typeof text !== 'string') return '';
-        
+
         // Split by double newlines to get paragraphs
         const paragraphs = text.split(/\n\s*\n/);
-        
+
         return paragraphs
             .map(p => p.trim())
             .filter(p => p.length > 0)
@@ -1810,11 +1849,11 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
     function splitHtmlIntoChapters(html, userSelectedModel, customPrefix) {
         const chapters = [];
         const titlePrefix = customPrefix || userSelectedModel || null;
-        
+
         // 匹配 h1, h2 标签作为章节分隔
         const headingPattern = /<h([1-2])[^>]*>([^<]+)<\/h[1-2]>/gi;
         const matches = [...html.matchAll(headingPattern)];
-        
+
         if (matches.length === 0) {
             // 没有找到章节，将整个文档作为一章
             if (html.trim().length > 100) {
@@ -1825,7 +1864,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             }
             return chapters;
         }
-        
+
         // 分割内容
         let lastIndex = 0;
         for (let i = 0; i < matches.length; i++) {
@@ -1833,16 +1872,16 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             const headingStart = match.index;
             const headingEnd = headingStart + match[0].length;
             let chapterTitle = match[2].trim();
-            
+
             // 清理章节标题中可能存在的产品型号前缀
             const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
             // 只在用户明确要求添加前缀时才添加（customPrefix 有值时）
             const fullTitle = customPrefix ? `${customPrefix}: ${cleanedTitle}` : cleanedTitle;
-            
+
             // 找到下一个章节的起始位置
             const nextIndex = (i < matches.length - 1) ? matches[i + 1].index : html.length;
             const content = html.substring(headingEnd, nextIndex).trim();
-            
+
             if (content.length > 100) {
                 chapters.push({
                     title: fullTitle,
@@ -1850,7 +1889,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 });
             }
         }
-        
+
         return chapters;
     }
 
@@ -1861,19 +1900,19 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
     function splitMarkdownIntoChapters(markdown, userSelectedModel, customPrefix) {
         const chapters = [];
         const lines = markdown.split('\n');
-            
+
         // 确定标题前缀：优先使用用户选择的产品型号
         const titlePrefix = customPrefix || userSelectedModel || null;
-            
+
         let currentChapter = null;
         let currentContent = [];
-            
+
         // 章节标题模式：# 标题 或 1. 标题 或 1.1 标题
         const chapterPattern = /^(#{1,2})\s+(.+)$|^(\d+(?:\.\d+)*)[.\s]+(.+)$/;
-            
+
         for (const line of lines) {
             const match = line.match(chapterPattern);
-                
+
             if (match) {
                 // 保存上一章
                 if (currentChapter && currentContent.length > 0) {
@@ -1882,7 +1921,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                         chapters.push(currentChapter);
                     }
                 }
-                    
+
                 // 开始新章
                 let chapterTitle;
                 if (match[1]) {
@@ -1892,14 +1931,14 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                     // 数字编号标题
                     chapterTitle = match[4].trim();
                 }
-                    
+
                 // 清理章节标题中可能存在的产品型号前缀
                 // 例如:"MAVO Edge 6K: 1. 基本说明" -> "1. 基本说明"
                 const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
-                                    
+
                 // 只在用户明确要求添加前缀时才添加（customPrefix 有值时）
                 const fullTitle = customPrefix ? `${customPrefix}: ${cleanedTitle}` : cleanedTitle;
-                    
+
                 currentChapter = {
                     title: fullTitle,
                     content: ''
@@ -1912,7 +1951,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 }
             }
         }
-            
+
         // 保存最后一章
         if (currentChapter && currentContent.length > 0) {
             currentChapter.content = currentContent.join('\n').trim();
@@ -1920,7 +1959,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 chapters.push(currentChapter);
             }
         }
-            
+
         // 如果没有找到章节，将整个文档作为一章
         if (chapters.length === 0 && markdown.trim().length > 100) {
             chapters.push({
@@ -1928,7 +1967,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 content: markdown.trim()
             });
         }
-            
+
         return chapters;
     }
 
@@ -1938,47 +1977,47 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      */
     function splitPDFContent(text, titlePrefix) {
         const sections = [];
-        
+
         // Enhanced chapter detection patterns (ordered by priority)
         const chapterPatterns = [
             // Chinese chapter patterns
             { regex: /^第[一二三四五六七八九十百千]+章[\s:：](.+)$/m, priority: 1 },
             { regex: /^第\s*\d+\s*章[\s:：](.+)$/m, priority: 1 },
-            
+
             // Numbered sections (1., 1.1, etc.)
             { regex: /^(\d+\.\d+\.?\d*)\s+(.+)$/m, priority: 2 },
             { regex: /^(\d+\.)\s+(.+)$/m, priority: 2 },
-            
+
             // Markdown-style headers
             { regex: /^#{1,3}\s+(.+)$/m, priority: 1 },
-            
+
             // All caps titles
             { regex: /^([A-Z][A-Z\s]{2,})$/m, priority: 3 },
-            
+
             // Chinese numbered items
             { regex: /^[一二三四五六七八九十]+[、.]\s*(.+)$/m, priority: 2 }
         ];
-        
+
         const lines = text.split('\n');
         let currentTitle = '';
         let currentContent = [];
         let sectionIndex = 0;
-        
+
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
-            
+
             let isChapterStart = false;
             let detectedTitle = '';
             let matchPriority = 999;
-            
+
             // Try each pattern
             for (const pattern of chapterPatterns) {
                 const match = line.match(pattern.regex);
                 if (match && pattern.priority <= matchPriority) {
                     isChapterStart = true;
                     matchPriority = pattern.priority;
-                    
+
                     // Extract title
                     if (match[2]) {
                         detectedTitle = match[2].trim();
@@ -1987,20 +2026,20 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                     } else {
                         detectedTitle = line;
                     }
-                    
+
                     // Validate title
                     if (detectedTitle.length < 2 || /^[\d\.\s]+$/.test(detectedTitle)) {
                         isChapterStart = false;
                     }
                 }
             }
-            
+
             // Additional heuristic: detect potential headers
             if (!isChapterStart && currentContent.length > 50) {
-                if (line.length > 3 && line.length < 80 && 
+                if (line.length > 3 && line.length < 80 &&
                     !line.match(/[。！？；,，]$/) &&
                     (line[0] === line[0].toUpperCase() || /^[一-龥]/.test(line))) {
-                    
+
                     // Look ahead
                     let nextLinesAreContent = false;
                     for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
@@ -2010,14 +2049,14 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                             break;
                         }
                     }
-                    
+
                     if (nextLinesAreContent) {
                         isChapterStart = true;
                         detectedTitle = line;
                     }
                 }
             }
-            
+
             // Save section
             if (isChapterStart && currentContent.length > 30) {
                 if (currentTitle) {
@@ -2036,7 +2075,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 currentContent.push(line);
             }
         }
-        
+
         // Save last section
         if (currentTitle && currentContent.length > 30) {
             const content = currentContent.join('\n').trim();
@@ -2047,21 +2086,21 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 });
             }
         }
-        
+
         // Fallback: semantic chunking if no chapters detected
         if (sections.length === 0) {
             const paragraphs = text.split(/\n\s*\n/);
             let chunk = [];
             let chunkIndex = 1;
             const targetSize = 1500;
-            
+
             for (const para of paragraphs) {
                 const trimmed = para.trim();
                 if (!trimmed || trimmed.length < 10) continue;
-                
+
                 chunk.push(trimmed);
                 const currentSize = chunk.join('\n\n').length;
-                
+
                 if (currentSize > targetSize) {
                     const content = chunk.join('\n\n').trim();
                     if (content.length > 100) {
@@ -2069,14 +2108,14 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                         const title = firstLine.length < 60 && !firstLine.match(/[。！？]$/)
                             ? `${titlePrefix}: ${firstLine}`
                             : `${titlePrefix} - Part ${chunkIndex}`;
-                        
+
                         sections.push({ title, content });
                         chunkIndex++;
                     }
                     chunk = [];
                 }
             }
-            
+
             // Save last chunk
             if (chunk.length > 0) {
                 const content = chunk.join('\n\n').trim();
@@ -2089,7 +2128,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 }
             }
         }
-        
+
         return sections;
     }
 
@@ -2100,21 +2139,21 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
     async function extractPDFImages(pdfPath, outputDir) {
         try {
             const scriptPath = path.join(__dirname, '../../scripts/extract_pdf_images.py');
-            
+
             // Call Python script
             const result = execSync(
                 `python3 "${scriptPath}" "${pdfPath}" "${outputDir}"`,
                 { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
             );
-            
+
             // Parse JSON output
             const data = JSON.parse(result);
-            
+
             if (data.success && data.images) {
                 console.log(`[PDF Images] ✅ Extracted ${data.images.length} images`);
                 return data.images;
             }
-            
+
             return [];
         } catch (err) {
             console.error('[PDF Images] Extraction error:', err.message);
@@ -2128,7 +2167,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      */
     function insertImageReferences(sections, images) {
         if (!images || images.length === 0) return sections;
-        
+
         // Group images by page
         const imagesByPage = {};
         images.forEach(img => {
@@ -2137,22 +2176,22 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             }
             imagesByPage[img.page].push(img);
         });
-        
+
         // Insert images into sections
         // Note: This is a simple heuristic - assumes sections are roughly sequential by page
         const pagesPerSection = Math.ceil(Object.keys(imagesByPage).length / sections.length);
-        
+
         sections.forEach((section, idx) => {
             const startPage = idx * pagesPerSection + 1;
             const endPage = (idx + 1) * pagesPerSection;
-            
+
             let sectionImages = [];
             for (let page = startPage; page <= endPage; page++) {
                 if (imagesByPage[page]) {
                     sectionImages = sectionImages.concat(imagesByPage[page]);
                 }
             }
-            
+
             if (sectionImages.length > 0) {
                 // Append images at the end of section content
                 section.content += '\n\n---\n\n**相关图片**：\n\n';
@@ -2161,7 +2200,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
                 });
             }
         });
-        
+
         return sections;
     }
 
@@ -2212,7 +2251,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             // Detect instruction type for better context
             const isStyleInstruction = /颜色|color|样式|style|黄色|yellow|红色|red|蓝色|blue|绿色|green/i.test(instruction);
             const isSizeInstruction = /大小|尺寸|size|缩放|scale|宽度|width|高度|height/i.test(instruction);
-            
+
             const optimizePrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
 
 **当前上下文**：用户正在 Wiki 编辑器中编辑文章「${article.title}」，你可以直接修改编辑器中的内容。
@@ -2718,7 +2757,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
             articles.forEach((article, idx) => {
                 const content = article.formatted_content || article.content || '';
                 const anchor = `section-${article.section_number || 'main'}`;
-                
+
                 // Add to TOC
                 toc.push({
                     id: article.id,

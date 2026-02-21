@@ -82,7 +82,7 @@ const IssueCreatePage: React.FC = () => {
       issue_source: source,
       severity,
       product_id: selectedProductId,
-      customer_id: selectedCustomerId
+      account_id: selectedCustomerId
     });
 
     try {
@@ -93,7 +93,7 @@ const IssueCreatePage: React.FC = () => {
         issue_source: source,
         severity,
         product_id: selectedProductId,
-        customer_id: selectedCustomerId
+        account_id: selectedCustomerId
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

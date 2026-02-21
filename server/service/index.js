@@ -46,7 +46,7 @@ function initService(app, db, options = {}) {
     const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate, serviceUpload);
     const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer, serviceUpload);
     const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate, serviceUpload);
-    
+
     // Account-Contact Architecture (账户-联系人双层架构)
     const accountsRoutes = require('./routes/accounts')(db, authenticate);
     const contactsRoutes = require('./routes/contacts')(db, authenticate);
@@ -62,6 +62,11 @@ function initService(app, db, options = {}) {
     const knowledgeRoutes = require('./routes/knowledge')(db, authenticate, null, aiService);
     const compatibilityRoutes = require('./routes/compatibility')(db, authenticate);
     const knowledgeAuditRoutes = require('./routes/knowledge_audit')(db, authenticate);
+    const synonymsRoutes = require('./routes/synonyms')(db, authenticate);
+
+    // Initialize synonym cache from database
+    const { rebuildSynonymCache } = require('./routes/synonyms');
+    rebuildSynonymCache(db);
 
     // Phase 4: Repair management
     const partsRoutes = require('./routes/parts')(db, authenticate);
@@ -86,7 +91,7 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/inquiry-tickets', inquiryTicketsRoutes);
     app.use('/api/v1/rma-tickets', rmaTicketsRoutes);
     app.use('/api/v1/dealer-repairs', dealerRepairsRoutes);
-    
+
     // Account-Contact Architecture routes (账户-联系人双层架构)
     app.use('/api/v1/accounts', accountsRoutes);
     app.use('/api/v1/contacts', contactsRoutes);
@@ -101,6 +106,9 @@ function initService(app, db, options = {}) {
 
     // 将审计日志函数注入到 knowledgeRoutes
     knowledgeRoutes.setAuditLogger(knowledgeAuditRoutes.logAudit, knowledgeAuditRoutes.generateBatchId);
+
+    // Synonym dictionary management
+    app.use('/api/v1/synonyms', synonymsRoutes);
 
     // Phase 4 routes
     app.use('/api/v1/parts', partsRoutes);
@@ -139,6 +147,7 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/proforma-invoices');
     console.log('  - /api/v1/bokeh (Bokeh AI工单检索)');
     console.log('  - /api/v1/internal/tickets (工单索引化)');
+    console.log('  - /api/v1/synonyms (同义词字典管理)');
 
     return {
         generateRmaNumber: (productCode, channelCode) => generateRmaNumber(db, productCode, channelCode),
