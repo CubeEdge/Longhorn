@@ -4,6 +4,22 @@
 
 ---
 
+## 会话: 2026-02-21 (Wiki Regression Hotfixes)
+
+### 任务: 修复发版后的功能性回归与版本号规范执行
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **Backend 500 Error (AI Dialog & Search)**: 
+        - **根本原因**: 前置部署启用了系统设置对应的数据库表 `ai_providers` 以管理 AI 配置，但初始化数据未写入有效的 `api_key`（为 NULL）。代码中原逻辑覆盖了走 `.env` 环境变量的策略。此外，生产环境的 `authenticate` 仍旧关联了废弃的 `departments` 表发生 LEFT JOIN 错误。
+        - **修复**: 在 `service/ai_service.js` 的 `_getActiveProvider` 方法内，如果查到的 provider 无明确的 `api_key`，强制向后 fallback 到 `process.env.AI_API_KEY`；精简 `server/index.js` 的 `authenticate` 纯净读取 `users`。
+    - **Frontend Rendering Regression**:
+        - **根本原因**: 重构期间误将 `KinefinityWiki.tsx` 主视图区（包括A/B/C/D产品族列表与最近文章）包裹进了 `showSearchResults` 条件，致使非搜索态下内容整体隐匿。
+        - **修复**: 拆除不合理的门控逻辑，重写 `!isSearchMode` 视图。
+    - **Deployment Standard**: 
+        - 遵照用户指示的《协作规范》，严格在补丁修复后（哪怕非强功能迭代）全面 bump `package.json`（Root->v1.5.18, Client->v11.8.9），并实施强制的客户端远端重新 `build` 与 `scp` / `rsync` 投递，以确立生产环境验证标识。
+
+---
+
 ## 会话: 2026-02-21 (Knowledge Base Search Optimization)
 
 ### 任务: 修复知识库搜索与编译问题
