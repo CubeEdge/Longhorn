@@ -15,6 +15,8 @@ class AIService {
             const provider = this.db.prepare('SELECT * FROM ai_providers WHERE is_active = 1 LIMIT 1').get();
             if (provider) {
                 provider.allow_search = Boolean(provider.allow_search);
+                if (!provider.api_key) provider.api_key = process.env.AI_API_KEY;
+                if (!provider.base_url) provider.base_url = process.env.AI_BASE_URL || 'https://api.deepseek.com';
                 return provider;
             }
         } catch (e) {
