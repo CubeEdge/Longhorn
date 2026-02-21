@@ -305,10 +305,10 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 return false;
             }
         },
-        onUpdate: ({ editor }) => {
+        onUpdate: ({ editor }: any) => {
             // 确保 editor 和 onChange 都存在
             if (!onChange || !editor) return;
-            
+
             try {
                 // 直接从 DOM 获取 HTML 内容，不再转换为 Markdown
                 const domElement = editor.view?.dom;
@@ -318,12 +318,12 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 } else {
                     html = editor.getHTML();
                 }
-                
+
                 if (!html) {
                     console.warn('[TipTap] getHTML returned empty');
                     return;
                 }
-                
+
                 // 直接返回 HTML，不转换为 Markdown
                 onChange(html);
             } catch (err) {
@@ -336,7 +336,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 }
             }
         },
-        onCreate: ({ editor }) => {
+        onCreate: ({ editor }: any) => {
             console.log('[TipTap] Editor created');
             editorInstanceRef.current = editor;
             setIsReady(true);
@@ -355,14 +355,14 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 console.log('[TipTap] No content to load, skipping');
                 return;
             }
-            
+
             try {
                 console.log('[TipTap] Loading content, length:', content.length);
                 let htmlContent = '';
-                
+
                 // 检测是否为 HTML 内容
                 const isHtmlContent = content.includes('<') && content.includes('>');
-                
+
                 if (isHtmlContent) {
                     // HTML内容：清理可能存在的控件残留
                     // 移除 select/option 标签和其内容
@@ -379,7 +379,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     htmlContent = `<p>${content.replace(/\n/g, '</p><p>')}</p>`;
                     console.log('[TipTap] Loading as Markdown, converted to HTML');
                 }
-                
+
                 console.log('[TipTap] Setting HTML content, length:', htmlContent.length);
                 editor.commands.setContent(htmlContent);
             } catch (err) {
@@ -462,12 +462,12 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 hasCurrentEditor: !!currentEditor,
                 isReady: isReady
             });
-            
+
             if (!currentEditor) {
                 console.warn('[TipTap] getContent: editor not ready');
                 return '';
             }
-            
+
             try {
                 // 【关键】直接从 DOM 提取内容，避免 getHTML() 的递归问题
                 const domElement = currentEditor.view?.dom;
@@ -475,18 +475,18 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     console.warn('[TipTap] getContent: DOM element not found');
                     return '';
                 }
-                
+
                 // 克隆 DOM 内容进行清理
                 const clone = domElement.cloneNode(true) as HTMLElement;
-                
+
                 // 移除所有控件元素（不包括图片容器）
                 const controlsToRemove = clone.querySelectorAll('select, option, button:not(.image-container button), .resize-handle');
                 controlsToRemove.forEach(el => el.remove());
-                
+
                 // 移除尺寸提示
                 const sizeHints = clone.querySelectorAll('div[style*="font-size: 11px"][style*="color: rgba(255,255,255,0.5)"]');
                 sizeHints.forEach(el => el.remove());
-                
+
                 // 移除工具栏（绝对定位的div）
                 const toolbars = clone.querySelectorAll('div[style*="position: absolute"]');
                 toolbars.forEach(el => {
@@ -495,7 +495,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                         el.remove();
                     }
                 });
-                
+
                 // 清理图片容器，只保留 img 标签
                 const imageContainers = clone.querySelectorAll('.image-container');
                 imageContainers.forEach(container => {
@@ -504,7 +504,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                         // 从容器获取宽度和对齐属性
                         const widthAttr = container.getAttribute('data-width');
                         const alignAttr = container.getAttribute('data-align');
-                        
+
                         // 设置图片样式
                         let style = 'height: auto; border-radius: 12px; display: block;';
                         if (widthAttr) {
@@ -512,33 +512,33 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                         } else {
                             style += ' width: 100%;';
                         }
-                        
+
                         if (alignAttr === 'center') {
                             style += ' margin-left: auto; margin-right: auto;';
                         } else if (alignAttr === 'right') {
                             style += ' margin-left: auto; margin-right: 0;';
                         }
-                        
+
                         img.setAttribute('style', style);
-                        
+
                         // 复制容器的属性到图片
                         if (widthAttr) img.setAttribute('data-width', widthAttr);
                         if (alignAttr) img.setAttribute('data-align', alignAttr);
-                        
+
                         container.parentNode?.replaceChild(img, container);
                     } else {
                         container.remove();
                     }
                 });
-                
+
                 const html = clone.innerHTML;
                 console.log('[TipTap] getContent: got cleaned DOM HTML, length:', html?.length || 0);
-                
+
                 if (!html || html.trim() === '' || html === '<p></p>') {
                     console.warn('[TipTap] getContent: HTML is empty or default');
                     return '';
                 }
-                
+
                 return html;
             } catch (err: any) {
                 console.error('[TipTap] getContent error:', err?.message || err);

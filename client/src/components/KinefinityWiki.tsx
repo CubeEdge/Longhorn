@@ -188,7 +188,7 @@ export const KinefinityWiki: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const { token } = useAuthStore();
     const { confirm } = useConfirm();
-    const { setWikiContext, clearContext } = useBokehContext();
+    const { setWikiViewContext, clearContext } = useBokehContext();
     const { t } = useLanguage();
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
@@ -893,7 +893,7 @@ ${contextTickets.map((t: any) => {
                 setSelectedArticle(detailed);
                 selectedArticleRef.current = detailed;
                 // Set Bokeh context for this article
-                setWikiContext({
+                setWikiViewContext({
                     id: detailed.id,
                     title: detailed.title,
                     slug: detailed.slug
@@ -901,7 +901,7 @@ ${contextTickets.map((t: any) => {
             } else {
                 setSelectedArticle(article);
                 selectedArticleRef.current = article;
-                setWikiContext({
+                setWikiViewContext({
                     id: article.id,
                     title: article.title,
                     slug: article.slug
