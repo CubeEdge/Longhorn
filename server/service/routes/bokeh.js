@@ -55,36 +55,67 @@ module.exports = (db, authenticate, aiService) => {
 
             const whereClause = whereConditions.join(' AND ');
 
-            // FTS5 Search Query
-            // Use MATCH for full-text search on title, description, resolution, tags
-            const searchQuery = `
-                SELECT 
-                    tsi.id,
-                    tsi.ticket_number,
-                    tsi.ticket_type,
-                    tsi.ticket_id,
-                    tsi.title,
-                    tsi.description,
-                    tsi.resolution,
-                    tsi.product_model,
-                    tsi.serial_number,
-                    tsi.category,
-                    tsi.status,
-                    tsi.closed_at,
-                    tsi.account_id,
-                    fts.rank
-                FROM ticket_search_index tsi
-                INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
-                WHERE fts MATCH @query
-                  AND ${whereClause}
-                ORDER BY fts.rank
-                LIMIT @limit
-            `;
+            let results;
 
-            params.query = query;
-            params.limit = top_k;
+            // 短查询（<3字符）用 LIKE fallback — trigram tokenizer 要求 ≥3 字符
+            if (query.trim().length < 3) {
+                const likeQuery = `
+                    SELECT 
+                        tsi.id,
+                        tsi.ticket_number,
+                        tsi.ticket_type,
+                        tsi.ticket_id,
+                        tsi.title,
+                        tsi.description,
+                        tsi.resolution,
+                        tsi.product_model,
+                        tsi.serial_number,
+                        tsi.category,
+                        tsi.status,
+                        tsi.closed_at,
+                        tsi.account_id
+                    FROM ticket_search_index tsi
+                    WHERE (tsi.title LIKE @likeQuery OR tsi.description LIKE @likeQuery OR tsi.resolution LIKE @likeQuery OR tsi.tags LIKE @likeQuery)
+                    AND ${whereClause}
+                    ORDER BY tsi.updated_at DESC
+                    LIMIT @limit
+                `;
+                params.likeQuery = `%${query.trim()}%`;
+                params.limit = top_k;
+                results = db.prepare(likeQuery).all(params);
+            } else {
+                // FTS5 Search Query — use subquery pattern (FTS5 virtual tables don't support JOIN alias)
+                const searchQuery = `
+                    SELECT 
+                        tsi.id,
+                        tsi.ticket_number,
+                        tsi.ticket_type,
+                        tsi.ticket_id,
+                        tsi.title,
+                        tsi.description,
+                        tsi.resolution,
+                        tsi.product_model,
+                        tsi.serial_number,
+                        tsi.category,
+                        tsi.status,
+                        tsi.closed_at,
+                        tsi.account_id,
+                        fts_match.rank AS rank
+                    FROM ticket_search_index tsi
+                    INNER JOIN (
+                        SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
+                    ) fts_match ON tsi.id = fts_match.rowid
+                    WHERE ${whereClause}
+                    ORDER BY fts_match.rank
+                    LIMIT @limit
+                `;
 
-            const results = db.prepare(searchQuery).all(params);
+                // Sanitize query for FTS5 (escape quotes and wrap in double quotes)
+                const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+                params.query = safeQuery;
+                params.limit = top_k;
+                results = db.prepare(searchQuery).all(params);
+            }
 
             // Generate AI Summary if results found
             let aiSummary = '';
@@ -106,12 +137,21 @@ module.exports = (db, authenticate, aiService) => {
                 }
             }
 
-            // Enrich results with account names
+            // Enrich results with account names and contact names
             const enrichedResults = results.map(r => {
                 let customer_name = null;
+                let contact_name = null;
                 if (r.account_id) {
                     const account = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
                     customer_name = account?.name;
+                }
+                // 获取联系人姓名（从源工单表）
+                if (r.ticket_type === 'inquiry' && r.ticket_id) {
+                    const ticket = db.prepare('SELECT customer_name, customer_contact FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
+                    contact_name = ticket?.customer_contact || ticket?.customer_name || null;
+                } else if (r.ticket_type === 'rma' && r.ticket_id) {
+                    const ticket = db.prepare('SELECT customer_name FROM rma_tickets WHERE id = ?').get(r.ticket_id);
+                    contact_name = ticket?.customer_name || null;
                 }
                 return {
                     ticket_number: r.ticket_number,
@@ -123,6 +163,7 @@ module.exports = (db, authenticate, aiService) => {
                     product_model: r.product_model,
                     serial_number: r.serial_number,
                     customer_name: customer_name,
+                    contact_name: contact_name,
                     category: r.category,
                     status: r.status,
                     closed_at: r.closed_at,

@@ -22,14 +22,23 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
     </div>
 );
 
-const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, productModel, onClick }) => (
+const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, productModel, customerName, contactName, onClick }) => (
     <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace' }}>{ticketNumber || `TICKET-${Math.floor(Math.random() * 1000)}`}</span>
             <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: '#aaa' }}>{status || ticketType}</span>
         </div>
         <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        {productModel && <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>{productModel}</div>}
+        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {productModel && <span style={{ fontSize: '11px', color: '#666' }}>{productModel}</span>}
+            {(customerName || contactName) && (
+                <span style={{ fontSize: '11px', color: '#888' }}>
+                    {productModel && '·'} {contactName && contactName !== customerName
+                        ? `${customerName} · ${contactName}`
+                        : customerName || contactName}
+                </span>
+            )}
+        </div>
     </div>
 );
 
@@ -196,7 +205,7 @@ export const KinefinityWiki: React.FC = () => {
 
     // 搜索结果默认显示数量
     const DEFAULT_SHOW_COUNT = 3;
-    const AI_REF_SHOW_COUNT = 4; // AI 参考文章默认显示数量
+    const AI_REF_SHOW_COUNT = 3; // AI 参考文章默认显示数量
 
     // 工单搜索结果
     const [keywordTickets, setKeywordTickets] = useState<any[]>([]);
@@ -204,7 +213,6 @@ export const KinefinityWiki: React.FC = () => {
     const [showMoreArticles, setShowMoreArticles] = useState(false);
     const [showMoreTickets, setShowMoreTickets] = useState(false);
     const [showMoreAiArticles, setShowMoreAiArticles] = useState(false);
-    const [showMoreAiTickets, setShowMoreAiTickets] = useState(false);
     const [showMoreRecent, setShowMoreRecent] = useState(false);
 
     // 最近浏览展开/折叠状态
@@ -216,6 +224,7 @@ export const KinefinityWiki: React.FC = () => {
     // AI搜索状态
     const [aiAnswer, setAiAnswer] = useState<string>('');
     const [isAiSearching, setIsAiSearching] = useState(false);
+    const [isTicketSearching, setIsTicketSearching] = useState(false);
     const [relatedArticles, setRelatedArticles] = useState<KnowledgeArticle[]>([]);
     const [pendingSearchQuery, setPendingSearchQuery] = useState(''); // 待搜索的查询内容
 
@@ -565,6 +574,13 @@ export const KinefinityWiki: React.FC = () => {
                 setShowKeywordPanel(true);
                 setShowAiPanel(true);
 
+                // 清除上一次搜索的 AI 结果，让 AI 面板显示"思考中"
+                setAiAnswer('');
+                setRelatedArticles([]);
+                setAiRelatedTickets([]);
+                setKeywordTickets([]);
+                setSearchResults([]);
+
                 // 同时执行关键词搜索和AI搜索
                 await Promise.all([
                     performKeywordSearch(query),
@@ -581,30 +597,17 @@ export const KinefinityWiki: React.FC = () => {
         doSearch();
     }, [pendingSearchQuery, token]);
 
-    // 关键词搜索 - 同时搜索文章和工单
+    // 关键词搜索 - 文章优先渲染，工单异步加载
     const performKeywordSearch = async (query: string) => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        // 1. 搜索知识库文章
+        // 1. 搜索知识库文章（优先渲染）
         const articleRes = await axios.get('/api/v1/knowledge', {
             headers,
             params: { search: query, page_size: 50 }
         });
         const articleResults = articleRes.data.data || [];
         setSearchResults(articleResults);
-
-        // 2. 搜索工单
-        let ticketResults: any[] = [];
-        try {
-            const ticketRes = await axios.post('/api/v1/bokeh/search-tickets', {
-                query,
-                top_k: 50
-            }, { headers });
-            ticketResults = ticketRes.data.results || [];
-        } catch (err) {
-            // 工单搜索失败不影响关键词搜索结果
-        }
-        setKeywordTickets(ticketResults);
 
         setShowSearchResults(true);
         setIsSearchMode(true);
@@ -615,20 +618,37 @@ export const KinefinityWiki: React.FC = () => {
         // 重置展开状态
         setShowMoreArticles(false);
         setShowMoreTickets(false);
+
+        // 2. 工单搜索独立异步（不阻塞文章渲染）
+        setIsTicketSearching(true);
+        try {
+            const ticketRes = await axios.post('/api/v1/bokeh/search-tickets', {
+                query,
+                top_k: 50
+            }, { headers });
+            setKeywordTickets(ticketRes.data.results || []);
+        } catch (err) {
+            // 工单搜索失败不影响关键词搜索结果
+            setKeywordTickets([]);
+        } finally {
+            setIsTicketSearching(false);
+        }
     };
 
     // 从自然语言问题中提取关键词
     const extractKeywords = (query: string): string => {
-        // 1. 移除常见的疑问词和无意义词汇（增加更多常见标点符号和停用词）
+        // 1. 移除常见的疑问词和无意义词汇
         const stopWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?|的|是|有|什么|介绍|说明|关于|支持|可以|能|会|，|。|、|！|！/g;
 
-        // 2. 清理停用词，保留有实际意义的中文词语（如：帧率、分辨率）和连贯的英文术语（如 Edge 8K）
+        // 2. 清理停用词，保留有实际意义的中文词语和连贯的英文术语
         let cleaned = query.replace(stopWords, ' ').replace(/\s+/g, ' ').trim();
 
-        // 3. 如果清理后的词完全为空或太长（作为页面显示的关键词不合适），尝试提取技术术语
-        if (!cleaned || cleaned.length > 30) {
-            const technicalTerms = query.match(/([A-Za-z0-9]+(?:\s*(?:8K|6K|4K|LF|S35|SDI|HDMI|LUT|ISO|fps))?|[A-Z]{2,})/gi) || [];
+        // 3. 始终优先尝试提取明显的相机/配件型号特征（不限制过短清洗）
+        const technicalTerms = query.match(/([A-Za-z0-9]+(?:\s*(?:8K|6K|4K|LF|S35|SDI|HDMI|LUT|ISO|fps))?|[A-Z]{2,})/gi) || [];
+
+        if (!cleaned || cleaned.length > 30 || technicalTerms.length > 0) {
             if (technicalTerms.length > 0) {
+                // 将提取到的字母组合与原中文字符混合返回展示
                 return [...new Set(technicalTerms.map(t => t.trim()))].join(' ');
             }
             return query.slice(0, 20);
@@ -662,16 +682,20 @@ export const KinefinityWiki: React.FC = () => {
             const messages = [
                 {
                     role: 'system',
-                    content: `你是 Kinefinity 技术支持助手。请严格基于以下知识库文章回答用户问题。
+                    content: `你是 Kinefinity 技术支持助手。请严格基于以下知识库文章和历史工单回答用户问题。
 
 重要规则：
 1. 只使用知识库中明确提供的信息，不要添加、推测或发挥任何知识库中没有的内容
 2. 如果知识库中没有相关信息，明确说明"根据现有知识库资料，暂未找到相关信息"
 3. 不要编造具体的技术参数、规格或功能描述
 4. 回答应简洁准确，不要过度解释
+5. 如果引用了工单案例，请注明工单编号
 
 知识库文章：
-${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}`).join('\n')}`
+${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}`).join('\n')}${contextTickets.length > 0 ? `
+
+历史工单：
+${contextTickets.map((t: any) => `- [${t.ticket_number}] ${t.title}: ${t.description || ''} → ${t.resolution || '处理中'}`).join('\n')}` : ''}`
                 },
                 {
                     role: 'user',
@@ -684,13 +708,12 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                 context: { source: 'wiki_search', articles: contextArticles.map((a: KnowledgeArticle) => a.id) }
             }, { headers });
 
-            setAiAnswer(aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。');
+            setAiAnswer(typeof aiRes.data.data === 'string' ? aiRes.data.data : (aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。'));
             setRelatedArticles(contextArticles);
             setAiRelatedTickets(contextTickets);
 
             // 重置展开状态
             setShowMoreAiArticles(false);
-            setShowMoreAiTickets(false);
         } catch (err) {
             console.error('[Wiki] Bokeh search error:', err);
         } finally {
@@ -808,9 +831,10 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
     };
 
     const handleArticleClick = async (article: KnowledgeArticle) => {
-        // 保存当前路径到历史
-        if (location.pathname && location.pathname !== `/tech-hub/wiki/${article.slug}`) {
-            setNavigationHistory(prev => [...prev, location.pathname]);
+        // 保存当前完整路径（含 search params）到历史
+        const currentFullPath = location.pathname + location.search;
+        if (currentFullPath && location.pathname !== `/tech-hub/wiki/${article.slug}`) {
+            setNavigationHistory(prev => [...prev, currentFullPath]);
         }
 
         // 更新最近浏览历史
@@ -1013,8 +1037,28 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
             setNavigationHistory(prev => prev.slice(0, -1));
             navigate(previousPath);
         } else {
-            handleHomeClick();
+            // 如果在搜索模式下，先返回搜索结果；否则返回首页
+            if (isSearchMode && selectedArticle) {
+                setSelectedArticle(null);
+                selectedArticleRef.current = null;
+                navigate(`/tech-hub/wiki?search=${encodeURIComponent(searchQuery)}`);
+            } else {
+                handleHomeClick();
+            }
         }
+    };
+
+    // 搜索结果页返回首页
+    const handleSearchBackClick = () => {
+        setIsSearchMode(false);
+        setShowSearchResults(false);
+        setSearchQuery('');
+        setPendingSearchQuery('');
+        setSelectedArticle(null);
+        selectedArticleRef.current = null;
+        setSelectedProductLine('A');
+        clearContext();
+        navigate('/tech-hub/wiki?line=A');
     };
 
     // Bokeh formatting functions
@@ -2464,6 +2508,69 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                         {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
                         {showSearchResults && searchQuery.trim() !== '' && (
                             <div style={{ marginBottom: '24px' }}>
+                                {/* 搜索结果导航栏 - 面包屑 + 返回按钮 */}
+                                {isSearchMode && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        marginBottom: '20px',
+                                        paddingBottom: '16px',
+                                        borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                    }}>
+                                        {/* Back Button - 圆形设计，与文章页一致 */}
+                                        <button
+                                            onClick={handleSearchBackClick}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.1)',
+                                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                                borderRadius: '50%',
+                                                width: '40px',
+                                                height: '40px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                flexShrink: 0
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = '#FFD700';
+                                                e.currentTarget.style.borderColor = '#FFD700';
+                                                e.currentTarget.style.transform = 'scale(1.1)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                                e.currentTarget.style.transform = 'scale(1)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            <ChevronLeft size={20} color="#fff" strokeWidth={2.5} />
+                                        </button>
+                                        {/* Breadcrumb: WIKI > 搜索:「query」 */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span
+                                                onClick={handleSearchBackClick}
+                                                style={{
+                                                    color: '#888',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    transition: 'color 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = '#FFD700'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = '#888'}
+                                            >WIKI</span>
+                                            <ChevronRight size={16} color="#666" />
+                                            <span style={{
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: '1.1rem'
+                                            }}>{t('wiki.search_results')}:「{searchQuery}」</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
                                 {isSearchMode && (
                                     <div style={{
@@ -2615,66 +2722,96 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                         </div>
                                                     )}
 
-                                                    {/* 工单列表 */}
-                                                    {keywordTickets.length > 0 && (
-                                                        <div>
-                                                            <div style={{
-                                                                fontSize: '12px',
-                                                                fontWeight: 600,
-                                                                color: '#888',
-                                                                marginBottom: '12px',
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.5px'
-                                                            }}>
-                                                                相关工单 · {keywordTickets.length}
-                                                            </div>
-                                                            <div style={{
-                                                                display: 'grid',
-                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                                                gap: '12px'
-                                                            }}>
-                                                                {(showMoreTickets ? keywordTickets : keywordTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
-                                                                    <TicketCard
-                                                                        key={`${ticket.ticket_type}-${ticket.id}`}
-                                                                        id={ticket.id}
-                                                                        ticketNumber={ticket.ticket_number}
-                                                                        ticketType={ticket.ticket_type}
-                                                                        title={ticket.title || ticket.subject || '无标题'}
-                                                                        status={ticket.status}
-                                                                        productModel={ticket.product_model}
-                                                                        onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
-                                                                        variant="compact"
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            {keywordTickets.length > DEFAULT_SHOW_COUNT && (
-                                                                <button
-                                                                    onClick={() => setShowMoreTickets(!showMoreTickets)}
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        marginTop: '12px',
-                                                                        padding: '10px',
-                                                                        background: 'rgba(255,255,255,0.03)',
-                                                                        border: '1px solid rgba(255,255,255,0.08)',
-                                                                        borderRadius: '8px',
-                                                                        color: '#888',
-                                                                        fontSize: '13px',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        gap: '6px'
-                                                                    }}
-                                                                >
-                                                                    {showMoreTickets ? (
-                                                                        <>收起 <ChevronUp size={14} /></>
-                                                                    ) : (
-                                                                        <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
-                                                                    )}
-                                                                </button>
-                                                            )}
+                                                    {/* 工单列表 - 始终渲染（loading/empty/有数据） */}
+                                                    <div>
+                                                        <div style={{
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            color: '#888',
+                                                            marginBottom: '12px',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            相关工单{!isTicketSearching && keywordTickets.length > 0 && ` · ${keywordTickets.length}`}
                                                         </div>
-                                                    )}
+                                                        {isTicketSearching ? (
+                                                            <div style={{
+                                                                padding: '16px',
+                                                                background: 'rgba(255,255,255,0.02)',
+                                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                                borderRadius: '8px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '10px',
+                                                                color: '#888',
+                                                                fontSize: '13px'
+                                                            }}>
+                                                                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                                                                正在搜索相关工单...
+                                                            </div>
+                                                        ) : keywordTickets.length === 0 ? (
+                                                            <div style={{
+                                                                padding: '12px 16px',
+                                                                background: 'rgba(255,255,255,0.02)',
+                                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                                borderRadius: '8px',
+                                                                color: '#666',
+                                                                fontSize: '13px'
+                                                            }}>
+                                                                暂无相关工单
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div style={{
+                                                                    display: 'grid',
+                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                                    gap: '12px'
+                                                                }}>
+                                                                    {(showMoreTickets ? keywordTickets : keywordTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                                        <TicketCard
+                                                                            key={`${ticket.ticket_type}-${ticket.id}`}
+                                                                            id={ticket.id}
+                                                                            ticketNumber={ticket.ticket_number}
+                                                                            ticketType={ticket.ticket_type}
+                                                                            title={ticket.title || ticket.subject || '无标题'}
+                                                                            status={ticket.status}
+                                                                            productModel={ticket.product_model}
+                                                                            customerName={ticket.customer_name}
+                                                                            contactName={ticket.contact_name}
+                                                                            onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                            variant="compact"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                {keywordTickets.length > DEFAULT_SHOW_COUNT && (
+                                                                    <button
+                                                                        onClick={() => setShowMoreTickets(!showMoreTickets)}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            marginTop: '12px',
+                                                                            padding: '10px',
+                                                                            background: 'rgba(255,255,255,0.03)',
+                                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                                            borderRadius: '8px',
+                                                                            color: '#888',
+                                                                            fontSize: '13px',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            gap: '6px'
+                                                                        }}
+                                                                    >
+                                                                        {showMoreTickets ? (
+                                                                            <>收起 <ChevronUp size={14} /></>
+                                                                        ) : (
+                                                                            <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </>
                                         )}
@@ -2811,134 +2948,91 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                                 )}
 
                                                 {/* 参考来源 */}
+                                                {/* 参考来源 */}
                                                 {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
                                                     <div>
                                                         <div style={{
-                                                            fontSize: '13px',
-                                                            fontWeight: 700,
-                                                            color: '#888',
-                                                            marginBottom: '12px',
-                                                            textTransform: 'uppercase',
-                                                            letterSpacing: '1px'
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            marginBottom: '12px'
                                                         }}>
-                                                            参考来源 · {relatedArticles.length + aiRelatedTickets.length}
+                                                            <div style={{
+                                                                fontSize: '13px',
+                                                                fontWeight: 700,
+                                                                color: '#888',
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '1px'
+                                                            }}>
+                                                                参考来源 · {relatedArticles.length + aiRelatedTickets.length}
+                                                            </div>
+                                                            {relatedArticles.length + aiRelatedTickets.length > AI_REF_SHOW_COUNT && (
+                                                                <button
+                                                                    onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
+                                                                    style={{
+                                                                        background: 'transparent',
+                                                                        border: 'none',
+                                                                        color: '#4CAF50',
+                                                                        fontSize: '12px',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '4px',
+                                                                        padding: 0
+                                                                    }}
+                                                                >
+                                                                    {showMoreAiArticles ? (
+                                                                        <>收起 <ChevronUp size={12} /></>
+                                                                    ) : (
+                                                                        <>展开更多 ({relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                    )}
+                                                                </button>
+                                                            )}
                                                         </div>
 
-                                                        {/* 关联文章 */}
-                                                        {relatedArticles.length > 0 && (
-                                                            <div style={{ marginBottom: aiRelatedTickets.length > 0 ? '16px' : 0 }}>
-                                                                <div style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#666',
-                                                                    marginBottom: '8px'
-                                                                }}>
-                                                                    文章 · {relatedArticles.length}
-                                                                </div>
-                                                                <div style={{
-                                                                    display: 'grid',
-                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                                                    gap: '10px'
-                                                                }}>
-                                                                    {(showMoreAiArticles ? relatedArticles : relatedArticles.slice(0, AI_REF_SHOW_COUNT)).map(article => (
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                            gap: '10px'
+                                                        }}>
+                                                            {((showMoreAiArticles
+                                                                ? [...relatedArticles, ...aiRelatedTickets]
+                                                                : [...relatedArticles, ...aiRelatedTickets].slice(0, AI_REF_SHOW_COUNT)
+                                                            )).map((item: any) => {
+                                                                // 如果有 summary 或 content，则是文章；否则视为工单
+                                                                if (item.summary !== undefined || item.content !== undefined) {
+                                                                    return (
                                                                         <ArticleCard
-                                                                            key={article.id}
-                                                                            id={article.id}
-                                                                            title={article.title}
-                                                                            summary={article.summary}
-                                                                            productLine={article.product_line}
-                                                                            productModels={article.product_models}
-                                                                            category={article.category}
-                                                                            onClick={() => handleArticleClick(article)}
+                                                                            key={`ai-article-${item.id}`}
+                                                                            id={item.id}
+                                                                            title={item.title}
+                                                                            summary={item.summary}
+                                                                            productLine={item.product_line}
+                                                                            productModels={item.product_models}
+                                                                            category={item.category}
+                                                                            onClick={() => handleArticleClick(item)}
                                                                             variant="reference"
                                                                         />
-                                                                    ))}
-                                                                </div>
-                                                                {relatedArticles.length > AI_REF_SHOW_COUNT && (
-                                                                    <button
-                                                                        onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
-                                                                        style={{
-                                                                            width: '100%',
-                                                                            marginTop: '10px',
-                                                                            padding: '8px',
-                                                                            background: 'rgba(255,255,255,0.03)',
-                                                                            border: '1px solid rgba(255,255,255,0.08)',
-                                                                            borderRadius: '6px',
-                                                                            color: '#888',
-                                                                            fontSize: '12px',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center',
-                                                                            gap: '6px'
-                                                                        }}
-                                                                    >
-                                                                        {showMoreAiArticles ? (
-                                                                            <>收起 <ChevronUp size={12} /></>
-                                                                        ) : (
-                                                                            <>展开更多 ({relatedArticles.length - AI_REF_SHOW_COUNT}) <ChevronDown size={12} /></>
-                                                                        )}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
-
-                                                        {/* 关联工单 */}
-                                                        {aiRelatedTickets.length > 0 && (
-                                                            <div>
-                                                                <div style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#666',
-                                                                    marginBottom: '8px'
-                                                                }}>
-                                                                    工单 · {aiRelatedTickets.length}
-                                                                </div>
-                                                                <div style={{
-                                                                    display: 'grid',
-                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                                                    gap: '10px'
-                                                                }}>
-                                                                    {(showMoreAiTickets ? aiRelatedTickets : aiRelatedTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                                    );
+                                                                } else {
+                                                                    return (
                                                                         <TicketCard
-                                                                            key={`ai-${ticket.ticket_type}-${ticket.id}`}
-                                                                            id={ticket.id}
-                                                                            ticketNumber={ticket.ticket_number}
-                                                                            ticketType={ticket.ticket_type}
-                                                                            title={ticket.title || ticket.subject || '无标题'}
-                                                                            status={ticket.status}
-                                                                            productModel={ticket.product_model}
-                                                                            onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                            key={`ai-ticket-${item.ticket_type}-${item.id}`}
+                                                                            id={item.id}
+                                                                            ticketNumber={item.ticket_number}
+                                                                            ticketType={item.ticket_type}
+                                                                            title={item.title || item.subject || '无标题'}
+                                                                            status={item.status}
+                                                                            productModel={item.product_model}
+                                                                            customerName={item.customer_name}
+                                                                            contactName={item.contact_name}
+                                                                            onClick={() => navigate(`/service/${item.ticket_type}/${item.id}`)}
                                                                             variant="compact"
                                                                         />
-                                                                    ))}
-                                                                </div>
-                                                                {aiRelatedTickets.length > DEFAULT_SHOW_COUNT && (
-                                                                    <button
-                                                                        onClick={() => setShowMoreAiTickets(!showMoreAiTickets)}
-                                                                        style={{
-                                                                            width: '100%',
-                                                                            marginTop: '10px',
-                                                                            padding: '8px',
-                                                                            background: 'rgba(255,255,255,0.03)',
-                                                                            border: '1px solid rgba(255,255,255,0.08)',
-                                                                            borderRadius: '6px',
-                                                                            color: '#888',
-                                                                            fontSize: '12px',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center',
-                                                                            gap: '6px'
-                                                                        }}
-                                                                    >
-                                                                        {showMoreAiTickets ? (
-                                                                            <>收起 <ChevronUp size={12} /></>
-                                                                        ) : (
-                                                                            <>展开更多 ({aiRelatedTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
-                                                                        )}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                                    );
+                                                                }
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>

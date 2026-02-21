@@ -586,20 +586,25 @@ const authenticate = (req, res, next) => {
                 return res.sendStatus(403);
             }
 
-            // Reload user from DB to ensure latest role/department info
-            // Use both integer and float comparison for backward compatibility
-            const user = db.prepare(`
-                SELECT id, username, role, department_id 
-                FROM users
-                WHERE id = ? OR id = CAST(? AS REAL)
-            `).get(decoded.id, decoded.id);
+            try {
+                // Reload user from DB to ensure latest role/department info
+                // Use both integer and float comparison for backward compatibility
+                const user = db.prepare(`
+                    SELECT id, username, role, department_id 
+                    FROM users
+                    WHERE id = ? OR id = CAST(? AS REAL)
+                `).get(decoded.id, decoded.id);
 
-            if (!user) {
-                return res.sendStatus(401);
+                if (!user) {
+                    return res.sendStatus(401);
+                }
+
+                req.user = user;
+                next();
+            } catch (err) {
+                console.error('[Auth Middleware] Database Error:', err);
+                return res.status(500).json({ error: 'Internal Server Error' });
             }
-
-            req.user = user;
-            next();
         });
     } else {
         res.sendStatus(401);

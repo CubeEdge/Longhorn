@@ -30,7 +30,3 @@ description: Standard procedure to finalize a task and sync all documentation
    - Add a bullet point for the technical changes made.
    - Mention any new technologies or patterns introduced.
 
-
-7. **Git Commit**:
-   - Run: `git add docs/`
-   - Run: `git commit -m "docs: finalize task documentation (prompt_log, backlog, dev_log)"`

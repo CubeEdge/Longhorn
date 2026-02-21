@@ -363,7 +363,9 @@ ${enhancedContext}`;
 
         // Build WHERE clause based on user role
         let whereConditions = ['tsi.closed_at IS NOT NULL'];
-        let params = { query, limit: 3 }; // Top 3 tickets
+        // Sanitize query for FTS5
+        const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+        let params = { query: safeQuery, limit: 3 }; // Top 3 tickets
 
         // Permission Filter
         if (user && user.department === 'Dealer' && user.dealer_id) {
@@ -373,7 +375,7 @@ ${enhancedContext}`;
 
         const whereClause = whereConditions.join(' AND ');
 
-        // FTS5 Search Query
+        // FTS5 Search Query — use subquery pattern (FTS5 virtual tables don't support JOIN alias)
         const searchQuery = `
             SELECT 
                 tsi.ticket_number,
@@ -383,12 +385,13 @@ ${enhancedContext}`;
                 tsi.resolution,
                 tsi.product_model,
                 tsi.account_id,
-                fts.rank
+                fts_match.rank AS rank
             FROM ticket_search_index tsi
-            INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
-            WHERE fts MATCH @query
-              AND ${whereClause}
-            ORDER BY fts.rank
+            INNER JOIN (
+                SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
+            ) fts_match ON tsi.id = fts_match.rowid
+            WHERE ${whereClause}
+            ORDER BY fts_match.rank
             LIMIT @limit
         `;
 
@@ -424,7 +427,8 @@ ${enhancedContext}`;
 
         // Build WHERE clause based on user visibility
         let whereConditions = ["ka.status = 'published'"];
-        let params = { query, limit: 3 }; // Top 3 articles
+        const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+        let params = { query: safeQuery, limit: 3 }; // Top 3 articles
 
         // Visibility Filter based on user role
         if (user) {
@@ -445,7 +449,7 @@ ${enhancedContext}`;
 
         const whereClause = whereConditions.join(' AND ');
 
-        // FTS5 Search Query for knowledge base
+        // FTS5 Search Query for knowledge base — use subquery pattern
         const searchQuery = `
             SELECT 
                 ka.id,
@@ -457,12 +461,13 @@ ${enhancedContext}`;
                 ka.product_line,
                 ka.visibility,
                 ka.source_reference,
-                fts.rank
+                fts_match.rank AS rank
             FROM knowledge_articles ka
-            INNER JOIN knowledge_fts fts ON ka.id = fts.rowid
-            WHERE fts MATCH @query
-              AND ${whereClause}
-            ORDER BY fts.rank
+            INNER JOIN (
+                SELECT rowid, rank FROM knowledge_fts WHERE knowledge_fts MATCH @query
+            ) fts_match ON ka.id = fts_match.rowid
+            WHERE ${whereClause}
+            ORDER BY fts_match.rank
             LIMIT @limit
         `;
 
