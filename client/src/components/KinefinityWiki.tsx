@@ -10,6 +10,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import WikiEditorModal from './Knowledge/WikiEditorModal';
+import { ArticleCard } from './Knowledge/ArticleCard';
+import { TicketCard } from './Knowledge/TicketCard';
 
 interface KnowledgeArticle {
     id: number;
@@ -120,22 +122,30 @@ export const KinefinityWiki: React.FC = () => {
         const params = new URLSearchParams(location.search);
         const productLine = params.get('line') || 'A';
         const saved = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
-        console.log('[WIKI] Initial groupedExpandedModels for', productLine, ':', saved ? JSON.parse(saved) : 'empty');
         return saved ? new Set(JSON.parse(saved)) : new Set();
     });
     const [groupedExpandedCategories, setGroupedExpandedCategories] = useState<Set<string>>(() => {
         const params = new URLSearchParams(location.search);
         const productLine = params.get('line') || 'A';
         const saved = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
-        console.log('[WIKI] Initial groupedExpandedCategories for', productLine, ':', saved ? JSON.parse(saved) : 'empty');
         return saved ? new Set(JSON.parse(saved)) : new Set();
     });
     const [showSearchResults, setShowSearchResults] = useState(false);
+    const [isSearchMode, setIsSearchMode] = useState(false); // 区分搜索模式和分组视图模式
+    
+    // 简化调试信息输出
+    useEffect(() => {
+        // 只在状态异常时输出警告
+        if (showSearchResults && !isSearchMode && searchQuery.trim()) {
+            console.warn('[WIKI] Inconsistent state: showSearchResults=true but isSearchMode=false');
+        }
+    }, [showSearchResults, isSearchMode, searchQuery]);
     const [searchResults, setSearchResults] = useState<KnowledgeArticle[]>([]);
     const [, setIsSearching] = useState(false);
     
-    // 搜索栏展开/收起状态
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    // 搜索栏状态 - 当前始终展开
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_isSearchExpanded, _setIsSearchExpanded] = useState(true);
     
     // 当前选中的产品族类 - 默认选中A类
     const [selectedProductLine, setSelectedProductLine] = useState<string | null>('A');
@@ -159,10 +169,33 @@ export const KinefinityWiki: React.FC = () => {
     const [managerSearchQuery, setManagerSearchQuery] = useState('');
     const [managerSort, setManagerSort] = useState<{ field: 'title' | 'product_line' | 'product_model' | 'category'; order: 'asc' | 'desc' } | null>(null);
     
+    // 搜索结果展开/折叠状态
+    const [aiAnswerExpanded, setAiAnswerExpanded] = useState(true);
+    
+    // 搜索结果显示控制
+    const [showKeywordPanel, setShowKeywordPanel] = useState(true);
+    const [showAiPanel, setShowAiPanel] = useState(true);
+    const [extractedKeywords, setExtractedKeywords] = useState('');
+    
+    // 搜索结果默认显示数量
+    const DEFAULT_SHOW_COUNT = 3;
+    
+    // 工单搜索结果
+    const [keywordTickets, setKeywordTickets] = useState<any[]>([]);
+    const [aiRelatedTickets, setAiRelatedTickets] = useState<any[]>([]);
+    const [showMoreArticles, setShowMoreArticles] = useState(false);
+    const [showMoreTickets, setShowMoreTickets] = useState(false);
+    const [showMoreAiArticles, setShowMoreAiArticles] = useState(false);
+    const [showMoreAiTickets, setShowMoreAiTickets] = useState(false);
+    const [showMoreRecent, setShowMoreRecent] = useState(false);
+    
+    // 最近浏览展开/折叠状态
+    const [recentExpanded, setRecentExpanded] = useState(true);
+    const RECENT_SHOW_COUNT = 3;
+    
     const [showManualTocModal, setShowManualTocModal] = useState(false);
 
-    // 搜索双模式状态
-    const [searchMode, setSearchMode] = useState<'keyword' | 'ai'>('keyword');
+    // AI搜索状态
     const [aiAnswer, setAiAnswer] = useState<string>('');
     const [isAiSearching, setIsAiSearching] = useState(false);
     const [relatedArticles, setRelatedArticles] = useState<KnowledgeArticle[]>([]);
@@ -313,15 +346,23 @@ export const KinefinityWiki: React.FC = () => {
         fetchArticles();
     }, []);
 
-    // 监听 URL 参数变化，处理面包屑导航和分组视图
+    // 监听 URL 参数变化，处理面包屑导航、分组视图和搜索状态
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const productLine = params.get('line');
         const productModel = params.get('model');
         const category = params.get('category');
+        const searchParam = params.get('search');
+        
+        // 如果URL中有search参数，恢复搜索状态
+        if (searchParam && articles.length > 0) {
+            setSearchQuery(searchParam);
+            setPendingSearchQuery(searchParam);
+            return;
+        }
         
         // 如果没有任何URL参数，自动加载A类内容
-        if (!productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !showSearchResults) {
+        if (!productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !isSearchMode) {
             const filtered = articles.filter(a => a.product_line === 'A');
             const newBreadcrumb: BreadcrumbItem[] = [{
                 label: 'WIKI',
@@ -446,7 +487,6 @@ export const KinefinityWiki: React.FC = () => {
             const key = `wiki-grouped-expanded-models-${selectedProductLine}`;
             const value = JSON.stringify(Array.from(groupedExpandedModels));
             localStorage.setItem(key, value);
-            console.log('[WIKI] Saved expanded models to', key, ':', value);
         }
     }, [groupedExpandedModels, selectedProductLine]);
 
@@ -455,7 +495,6 @@ export const KinefinityWiki: React.FC = () => {
             const key = `wiki-grouped-expanded-categories-${selectedProductLine}`;
             const value = JSON.stringify(Array.from(groupedExpandedCategories));
             localStorage.setItem(key, value);
-            console.log('[WIKI] Saved expanded categories to', key, ':', value);
         }
     }, [groupedExpandedCategories, selectedProductLine]);
 
@@ -464,7 +503,6 @@ export const KinefinityWiki: React.FC = () => {
         const handleBokehOptimized = async (event: Event) => {
             const customEvent = event as CustomEvent;
             const { articleId } = customEvent.detail;
-            console.log('[WIKI] Bokeh optimization completed for article:', articleId);
             
             // Use ref to get current article (avoids stale closure)
             const currentArticle = selectedArticleRef.current;
@@ -477,7 +515,6 @@ export const KinefinityWiki: React.FC = () => {
                         setSelectedArticle(res.data.data);
                         selectedArticleRef.current = res.data.data;
                         setViewMode('draft'); // Auto-switch to draft view
-                        console.log('[WIKI] Article reloaded and switched to draft view');
                     }
                 } catch (err) {
                     console.error('[WIKI] Failed to reload article:', err);
@@ -498,19 +535,23 @@ export const KinefinityWiki: React.FC = () => {
         }
         
         const query = pendingSearchQuery.trim();
-        const isNaturalLanguage = detectSearchType(query);
-        setSearchMode(isNaturalLanguage ? 'ai' : 'keyword');
+        
+        // 提取关键词用于显示
+        const keywords = extractKeywords(query);
+        setExtractedKeywords(keywords);
         
         const doSearch = async () => {
             try {
                 setIsSearching(true);
+                setIsSearchMode(true); // 尽早设置搜索模式
+                setShowKeywordPanel(true);
+                setShowAiPanel(true);
                 
-                if (isNaturalLanguage) {
-                    setIsAiSearching(true);
-                    await performAiSearch(query);
-                } else {
-                    await performKeywordSearch(query);
-                }
+                // 同时执行关键词搜索和AI搜索
+                await Promise.all([
+                    performKeywordSearch(query),
+                    performAiSearch(query)
+                ]);
             } catch (err) {
                 console.error('[Wiki] Search error:', err);
             } finally {
@@ -522,54 +563,108 @@ export const KinefinityWiki: React.FC = () => {
         doSearch();
     }, [pendingSearchQuery, token]);
 
-    // 检测搜索类型：自然语言问题 vs 关键词
-    const detectSearchType = (query: string): boolean => {
-        // 自然语言特征：
-        // 1. 包含疑问词（如何、怎么、为什么、什么是等）
-        // 2. 以"找/查/推荐"开头
-        // 3. 长度较长且包含空格或标点
-        // 4. 包含"?"或"？"
-        
-        const questionWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?/;
-        const recommendWords = /^找|查|推荐|搜索|查找/;
-        
-        if (questionWords.test(query)) return true;
-        if (recommendWords.test(query)) return true;
-        if (query.length > 15 && (query.includes(' ') || query.includes('，') || query.includes(','))) return true;
-        
-        return false;
-    };
-
-    // 关键词搜索
+    // 关键词搜索 - 同时搜索文章和工单
     const performKeywordSearch = async (query: string) => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await axios.get('/api/v1/knowledge', {
+        
+        // 1. 搜索知识库文章
+        const articleRes = await axios.get('/api/v1/knowledge', {
             headers,
             params: { search: query, page_size: 50 }
         });
-        setSearchResults(res.data.data || []);
+        const articleResults = articleRes.data.data || [];
+        setSearchResults(articleResults);
+        
+        // 2. 搜索工单
+        let ticketResults: any[] = [];
+        try {
+            const ticketRes = await axios.post('/api/v1/bokeh/search-tickets', {
+                query,
+                top_k: 50
+            }, { headers });
+            ticketResults = ticketRes.data.results || [];
+        } catch (err) {
+            // 工单搜索失败不影响关键词搜索结果
+        }
+        setKeywordTickets(ticketResults);
+        
         setShowSearchResults(true);
-        setAiAnswer('');
-        setRelatedArticles([]);
+        setIsSearchMode(true);
+        
+        // 更新URL，支持分享和浏览器回退
+        navigate(`/tech-hub/wiki?search=${encodeURIComponent(query)}`, { replace: false });
+        
+        // 重置展开状态
+        setShowMoreArticles(false);
+        setShowMoreTickets(false);
     };
 
-    // Bokeh 搜索
+    // 从自然语言问题中提取关键词
+    const extractKeywords = (query: string): string => {
+        // 1. 首先提取技术术语：大写缩写（如SDI、HDMI）、数字+单位（如3G、4K）、产品型号
+        const technicalTerms = query.match(/[A-Z]{2,}|\d+[KG]|[A-Z]\d+|Edge\s*\d+K|TERRA|MAVO|KineMON/g) || [];
+        
+        // 2. 提取英文单词（可能包含技术术语）
+        const englishWords = query.match(/[a-zA-Z]+/g) || [];
+        
+        // 3. 移除常见的疑问词和停用词
+        const stopWords = /如何|怎么|为什么|什么是|怎样|哪里|哪个|哪些|吗|呢|？|\?|的|是|有|什么|参数|功能|方法|步骤|介绍|说明|关于|支持|吗/g;
+        
+        // 4. 清理后的查询（移除停用词）
+        let cleaned = query.replace(stopWords, ' ').trim();
+        
+        // 5. 如果提取到了技术术语，优先使用技术术语
+        if (technicalTerms.length > 0) {
+            // 去重并保持顺序
+            const uniqueTerms = [...new Set(technicalTerms)];
+            return uniqueTerms.join(' ');
+        }
+        
+        // 6. 如果有英文单词，使用英文单词
+        const meaningfulEnglish = englishWords.filter(w => w.length > 1 && !['吗', '呢', '的', '是'].includes(w));
+        if (meaningfulEnglish.length > 0) {
+            return meaningfulEnglish.join(' ');
+        }
+        
+        // 7. 返回清理后的查询或原始查询的前20个字符
+        return cleaned || query.slice(0, 20);
+    };
+
+    // Bokeh 搜索 - 同时获取关联文章和工单
     const performAiSearch = async (query: string) => {
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            setIsAiSearching(true);
             
-            // 1. 先获取传统搜索结果作为上下文
-            const searchRes = await axios.get('/api/v1/knowledge', {
-                headers,
-                params: { search: query, page_size: 10 }
-            });
-            const contextArticles = searchRes.data.data || [];
+            // 并行获取知识库文章和工单（使用原始query进行搜索）
+            const [articleRes, ticketRes] = await Promise.all([
+                axios.get('/api/v1/knowledge', {
+                    headers,
+                    params: { search: query, page_size: 10 }
+                }),
+                axios.post('/api/v1/bokeh/search-tickets', {
+                    query: query,
+                    top_k: 10
+                }, { headers }).catch(() => ({ data: { results: [] } }))
+            ]);
             
-            // 2. 调用 Bokeh 接口获取回答
+            const contextArticles = articleRes.data.data || [];
+            const contextTickets = ticketRes.data?.results || [];
+            
+            // 3. 调用 Bokeh 接口获取回答
             const messages = [
                 {
                     role: 'system',
-                    content: `你是 Kinefinity 技术支持助手。请基于以下知识库文章回答用户问题。如果知识库中没有相关信息，请说明并提供一般性建议。\n\n知识库文章：\n${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}`).join('\n')}`
+                    content: `你是 Kinefinity 技术支持助手。请严格基于以下知识库文章回答用户问题。
+
+重要规则：
+1. 只使用知识库中明确提供的信息，不要添加、推测或发挥任何知识库中没有的内容
+2. 如果知识库中没有相关信息，明确说明"根据现有知识库资料，暂未找到相关信息"
+3. 不要编造具体的技术参数、规格或功能描述
+4. 回答应简洁准确，不要过度解释
+
+知识库文章：
+${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}`).join('\n')}`
                 },
                 {
                     role: 'user',
@@ -584,11 +679,15 @@ export const KinefinityWiki: React.FC = () => {
             
             setAiAnswer(aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。');
             setRelatedArticles(contextArticles);
-            setShowSearchResults(true);
+            setAiRelatedTickets(contextTickets);
+            
+            // 重置展开状态
+            setShowMoreAiArticles(false);
+            setShowMoreAiTickets(false);
         } catch (err) {
             console.error('[Wiki] Bokeh search error:', err);
-            // Bokeh 失败时回退到关键词搜索
-            await performKeywordSearch(query);
+        } finally {
+            setIsAiSearching(false);
         }
     };
 
@@ -794,9 +893,7 @@ export const KinefinityWiki: React.FC = () => {
 
     // 点击产品族类卡片
     const handleProductLineClick = (productLine: string) => {
-        console.log('[WIKI] handleProductLineClick - productLine:', productLine);
         const filtered = articles.filter(a => a.product_line === productLine);
-        console.log('[WIKI] handleProductLineClick - filtered articles count:', filtered.length);
         
         const lineLabels: Record<string, string> = {
             'A': 'A 类',
@@ -818,7 +915,6 @@ export const KinefinityWiki: React.FC = () => {
         // 先加载展开状态，再设置 selectedProductLine，避免 useEffect 覆盖
         const savedModels = localStorage.getItem(`wiki-grouped-expanded-models-${productLine}`);
         const savedCategories = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
-        console.log('[WIKI] handleProductLineClick - loading expanded states for', productLine, ':', { savedModels, savedCategories });
         
         // 直接设置展开状态
         const newModelsSet = savedModels ? new Set<string>(JSON.parse(savedModels)) : new Set<string>();
@@ -2166,127 +2262,83 @@ export const KinefinityWiki: React.FC = () => {
                                     display: 'flex',
                                     alignItems: 'center'
                                 }}>
-                                    {/* 可展开搜索栏 - 使用 overflow:hidden 防止闪烁 */}
+                                    {/* 搜索框 - 始终展开 */}
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        border: '1px solid rgba(255,215,0,0.3)',
                                         borderRadius: '10px',
                                         padding: '0 12px',
-                                        width: isSearchExpanded ? '280px' : '40px',
+                                        width: '280px',
                                         height: '40px',
-                                        overflow: 'hidden',
-                                        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s',
-                                        cursor: isSearchExpanded ? 'default' : 'pointer',
-                                        borderColor: isSearchExpanded ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'
-                                    }}
-                                    onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
-                                    onMouseEnter={(e) => {
-                                        if (!isSearchExpanded) e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isSearchExpanded) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                        overflow: 'hidden'
                                     }}
                                     >
-                                        <Search size={16} color={isSearchExpanded ? '#FFD700' : '#999'} style={{ flexShrink: 0 }} />
-                                        {isSearchExpanded && (
-                                            <>
-                                                <input
-                                                    type="text"
-                                                    placeholder={t('wiki.search_placeholder')}
-                                                    value={searchQuery}
-                                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && searchQuery.trim()) {
-                                                            setPendingSearchQuery(searchQuery.trim());
-                                                        }
-                                                    }}
-                                                    autoFocus
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '10px 12px',
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: '#fff',
-                                                        fontSize: '14px',
-                                                        outline: 'none',
-                                                        minWidth: 0
-                                                    }}
-                                                    onBlur={() => {
-                                                        if (!searchQuery) setIsSearchExpanded(false);
-                                                    }}
-                                                />
-                                                {searchQuery.trim() && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPendingSearchQuery(searchQuery.trim());
-                                                        }}
-                                                        style={{
-                                                            background: 'rgba(255,215,0,0.2)',
-                                                            border: '1px solid rgba(255,215,0,0.4)',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            padding: '6px 12px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            flexShrink: 0,
-                                                            color: '#FFD700',
-                                                            fontSize: '13px',
-                                                            fontWeight: 500
-                                                        }}
-                                                    >
-                                                        搜索
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        console.log('[WIKI] Search cancel button clicked');
-                                                        setSearchQuery('');
-                                                        setIsSearchExpanded(false);
-                                                        setShowSearchResults(false);
-                                                        // 重新加载 A 类分组视图
-                                                        setTimeout(() => {
-                                                            console.log('[WIKI] Reloading A class grouped view...');
-                                                            const filtered = articles.filter(a => a.product_line === 'A');
-                                                            console.log('[WIKI] Filtered articles:', filtered.length);
-                                                            const newBreadcrumb: BreadcrumbItem[] = [{
-                                                                label: 'WIKI',
-                                                                type: 'home'
-                                                            }, {
-                                                                label: 'A 类',
-                                                                type: 'product_line',
-                                                                productLine: 'A',
-                                                                viewMode: 'grouped'
-                                                            }];
-                                                            setBreadcrumbPath(newBreadcrumb);
-                                                            setSearchResults(filtered);
-                                                            setShowSearchResults(true);
-                                                            setIsSearching(false);
-                                                            // 从 localStorage 恢复 A 类的展开状态
-                                                            const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
-                                                            const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
-                                                            console.log('[WIKI] Restoring expanded states for A:', { savedModels, savedCategories });
-                                                            setGroupedExpandedModels(savedModels ? new Set(JSON.parse(savedModels)) : new Set());
-                                                            setGroupedExpandedCategories(savedCategories ? new Set(JSON.parse(savedCategories)) : new Set());
-                                                            navigate('/tech-hub/wiki?line=A');
-                                                            console.log('[WIKI] A class grouped view reloaded');
-                                                        }, 0);
-                                                    }}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        padding: '4px',
-                                                        display: 'flex',
-                                                        flexShrink: 0
-                                                    }}
-                                                >
-                                                    <X size={14} color="#666" />
-                                                </button>
-                                            </>
+                                        <Search size={16} color="#FFD700" style={{ flexShrink: 0 }} />
+                                        <input
+                                            type="text"
+                                            placeholder={t('wiki.search_placeholder')}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && searchQuery.trim()) {
+                                                    setPendingSearchQuery(searchQuery.trim());
+                                                }
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px 12px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                outline: 'none',
+                                                minWidth: 0
+                                            }}
+                                        />
+                                        {searchQuery.trim() ? (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // 清除搜索，恢复到A类视图（强制刷新页面）
+                                                    window.location.href = '/tech-hub/wiki?line=A';
+                                                }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '4px',
+                                                    display: 'flex',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                <X size={14} color="#666" />
+                                            </button>
+                                        ) : null}
+                                        {searchQuery.trim() && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPendingSearchQuery(searchQuery.trim());
+                                                }}
+                                                style={{
+                                                    background: 'rgba(255,215,0,0.2)',
+                                                    border: '1px solid rgba(255,215,0,0.4)',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    padding: '6px 12px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    flexShrink: 0,
+                                                    color: '#FFD700',
+                                                    fontSize: '13px',
+                                                    fontWeight: 500,
+                                                    marginLeft: '8px'
+                                                }}
+                                            >
+                                                搜索
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -2406,209 +2458,513 @@ export const KinefinityWiki: React.FC = () => {
                         
                         {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
                         {showSearchResults && searchQuery.trim() !== '' && (
-                            <div style={{
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '16px',
-                                padding: '20px',
-                                marginBottom: '24px'
-                            }}>
-                                {/* 搜索模式标签 */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    marginBottom: '16px'
-                                }}>
-                                    <span style={{
-                                        padding: '4px 12px',
-                                        background: searchMode === 'ai' ? 'rgba(76,175,80,0.15)' : 'rgba(255,215,0,0.15)',
-                                        borderRadius: '6px',
-                                        fontSize: '12px',
-                                        color: searchMode === 'ai' ? '#4CAF50' : '#FFD700',
-                                        fontWeight: 600
-                                    }}>
-                                        {searchMode === 'ai' ? t('wiki.search.ai_answer') : t('wiki.search.keyword')}
-                                    </span>
-                                    {isAiSearching && (
-                                        <span style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                                            {t('wiki.search.thinking')}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Bokeh 回答区域 */}
-                                {searchMode === 'ai' && aiAnswer && (
+                            <div style={{ marginBottom: '24px' }}>
+                                {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
+                                {showKeywordPanel && isSearchMode && (
                                     <div style={{
-                                        background: 'rgba(76,175,80,0.05)',
-                                        border: '1px solid rgba(76,175,80,0.15)',
-                                        borderRadius: '12px',
-                                        padding: '16px',
-                                        marginBottom: '20px'
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '2px solid rgba(255,215,0,0.25)',
+                                        borderRadius: '16px',
+                                        padding: '20px',
+                                        marginBottom: '20px',
+                                        boxShadow: '0 4px 24px rgba(255,215,0,0.08)'
                                     }}>
+                                        {/* Panel 头部：标签 + 关闭按钮 */}
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '8px',
-                                            marginBottom: '12px'
+                                            justifyContent: 'space-between',
+                                            marginBottom: '16px'
                                         }}>
-                                            <Sparkles size={16} color="#4CAF50" />
-                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#4CAF50' }}>
-                                                {t('wiki.search.bokeh_answer')}
-                                            </span>
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: '#ccc',
-                                            lineHeight: '1.7'
-                                        }}>
-                                            <ReactMarkdown 
-                                                remarkPlugins={[remarkGfm]}
-                                                rehypePlugins={[rehypeRaw]}
-                                                components={{
-                                                    a: ({node, ...props}) => (
-                                                        <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
-                                                    )
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px'
+                                            }}>
+                                                <span style={{
+                                                    padding: '4px 12px',
+                                                    background: 'rgba(255,215,0,0.15)',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    color: '#FFD700',
+                                                    fontWeight: 600
+                                                }}>
+                                                    关键词搜索
+                                                </span>
+                                                <span style={{ fontSize: '13px', color: '#666' }}>
+                                                    {extractedKeywords ? `「${extractedKeywords}」` : ''}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    // 关闭搜索，恢复到A类视图（强制刷新页面）
+                                                    window.location.href = '/tech-hub/wiki?line=A';
+                                                }}
+                                                style={{
+                                                    width: '28px',
+                                                    height: '28px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                                                 }}
                                             >
-                                                {aiAnswer}
-                                            </ReactMarkdown>
+                                                <X size={14} color="#999" />
+                                            </button>
+                                        </div>
+
+                                        {/* 搜索结果统计 + 展开更多按钮 */}
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            marginBottom: '16px',
+                                            paddingBottom: '12px',
+                                            borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                        }}>
+                                            <div style={{ fontSize: '14px', color: '#999' }}>
+                                                {searchResults.length === 0 && keywordTickets.length === 0 ? (
+                                                    <span style={{ color: '#666' }}>未找到相关文章或工单</span>
+                                                ) : (
+                                                    <>
+                                                        搜索结果：找到 {searchResults.length} 篇文章
+                                                        {keywordTickets.length > 0 && ` · ${keywordTickets.length} 个工单`}
+                                                    </>
+                                                )}
+                                            </div>
+                                            {searchResults.length > DEFAULT_SHOW_COUNT && (
+                                                <button
+                                                    onClick={() => setShowMoreArticles(!showMoreArticles)}
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        background: 'rgba(255,255,255,0.05)',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        borderRadius: '6px',
+                                                        color: '#888',
+                                                        fontSize: '12px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        transition: 'all 0.15s'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    }}
+                                                >
+                                                    {showMoreArticles ? (
+                                                        <>收起 <ChevronUp size={12} /></>
+                                                    ) : (
+                                                        <>展开更多 ({searchResults.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* 关键词结果内容 - 文章列表 */}
+                                        <div>
+                                            {/* 文章列表 */}
+                                            {searchResults.length > 0 && (
+                                                <div style={{ marginBottom: keywordTickets.length > 0 ? '20px' : 0 }}>
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                        gap: '12px'
+                                                    }}>
+                                                        {(showMoreArticles ? searchResults : searchResults.slice(0, DEFAULT_SHOW_COUNT)).map(article => (
+                                                            <ArticleCard
+                                                                key={article.id}
+                                                                id={article.id}
+                                                                title={article.title}
+                                                                summary={article.summary}
+                                                                productLine={article.product_line}
+                                                                productModels={article.product_models}
+                                                                category={article.category}
+                                                                onClick={() => handleArticleClick(article)}
+                                                                variant="default"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {/* 工单列表 */}
+                                            {keywordTickets.length > 0 && (
+                                                <div>
+                                                    <div style={{
+                                                        fontSize: '12px',
+                                                        fontWeight: 600,
+                                                        color: '#888',
+                                                        marginBottom: '12px',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.5px'
+                                                    }}>
+                                                        相关工单 · {keywordTickets.length}
+                                                    </div>
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                                        gap: '12px'
+                                                    }}>
+                                                        {(showMoreTickets ? keywordTickets : keywordTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                            <TicketCard
+                                                                key={`${ticket.ticket_type}-${ticket.id}`}
+                                                                id={ticket.id}
+                                                                ticketNumber={ticket.ticket_number}
+                                                                ticketType={ticket.ticket_type}
+                                                                title={ticket.title || ticket.subject || '无标题'}
+                                                                status={ticket.status}
+                                                                productModel={ticket.product_model}
+                                                                onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                variant="compact"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    {keywordTickets.length > DEFAULT_SHOW_COUNT && (
+                                                        <button
+                                                            onClick={() => setShowMoreTickets(!showMoreTickets)}
+                                                            style={{
+                                                                width: '100%',
+                                                                marginTop: '12px',
+                                                                padding: '10px',
+                                                                background: 'rgba(255,255,255,0.03)',
+                                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                                borderRadius: '8px',
+                                                                color: '#888',
+                                                                fontSize: '13px',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                        >
+                                                            {showMoreTickets ? (
+                                                                <>收起 <ChevronUp size={14} /></>
+                                                            ) : (
+                                                                <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* 统计文案 + 关闭按钮 */}
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '16px'
-                                }}>
-                                    <span style={{ fontSize: '14px', color: '#999' }}>
-                                        {searchMode === 'ai' && relatedArticles.length > 0 
-                                            ? t('wiki.search.related_articles', { count: relatedArticles.length })
-                                            : t('wiki.search.results', { count: searchResults.length })
-                                        }
-                                    </span>
-                                    <button
-                                        onClick={() => {
-                                            console.log('[WIKI] Search results close button clicked');
-                                            setSearchQuery('');
-                                            setIsSearchExpanded(false);
-                                            setShowSearchResults(false);
-                                            setAiAnswer('');
-                                            setRelatedArticles([]);
-                                            // 重新加载 A 类分组视图
-                                            setTimeout(() => {
-                                                console.log('[WIKI] Reloading A class grouped view from results panel...');
-                                                const filtered = articles.filter(a => a.product_line === 'A');
-                                                console.log('[WIKI] Filtered articles:', filtered.length);
-                                                const newBreadcrumb: BreadcrumbItem[] = [{
-                                                    label: 'WIKI',
-                                                    type: 'home'
-                                                }, {
-                                                    label: 'A 类',
-                                                    type: 'product_line',
-                                                    productLine: 'A',
-                                                    viewMode: 'grouped'
-                                                }];
-                                                setBreadcrumbPath(newBreadcrumb);
-                                                setSearchResults(filtered);
-                                                setShowSearchResults(true);
-                                                setIsSearching(false);
-                                                const savedModels = localStorage.getItem('wiki-grouped-expanded-models-A');
-                                                const savedCategories = localStorage.getItem('wiki-grouped-expanded-categories-A');
-                                                console.log('[WIKI] Restoring expanded states for A:', { savedModels, savedCategories });
-                                                setGroupedExpandedModels(savedModels ? new Set(JSON.parse(savedModels)) : new Set());
-                                                setGroupedExpandedCategories(savedCategories ? new Set(JSON.parse(savedCategories)) : new Set());
-                                                navigate('/tech-hub/wiki?line=A');
-                                                console.log('[WIKI] A class grouped view reloaded from results panel');
-                                            }, 0);
-                                        }}
-                                        style={{
-                                            width: '28px',
-                                            height: '28px',
+                                {/* AI 搜索 Panel - 搜索时立即显示 */}
+                                {showAiPanel && (
+                                    <div style={{
+                                        background: 'rgba(76,175,80,0.05)',
+                                        border: '2px solid rgba(76,175,80,0.25)',
+                                        borderRadius: '16px',
+                                        padding: '20px',
+                                        boxShadow: '0 4px 24px rgba(76,175,80,0.1)'
+                                    }}>
+                                        {/* Panel 头部：标签 + 关闭按钮 */}
+                                        <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                        }}
-                                    >
-                                        <X size={14} color="#999" />
-                                    </button>
-                                </div>
-                                
-                                {/* 文章列表 */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {(searchMode === 'ai' ? relatedArticles : searchResults).map(article => (
-                                        <div
-                                            key={article.id}
-                                            onClick={() => handleArticleClick(article)}
-                                            style={{
+                                            justifyContent: 'space-between',
+                                            marginBottom: '16px'
+                                        }}>
+                                            <div style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '12px',
-                                                padding: '14px 16px',
-                                                background: 'rgba(255,255,255,0.02)',
-                                                border: '1px solid rgba(255,255,255,0.06)',
-                                                borderRadius: '10px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                            }}
-                                        >
-                                            {/* 产品线标记 */}
-                                            <span style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                background: 'rgba(255,215,0,0.15)',
-                                                color: '#FFD700',
-                                                borderRadius: '6px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '12px',
-                                                fontWeight: 700
+                                                gap: '12px'
                                             }}>
-                                                {article.product_line}
-                                            </span>
-                                            
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontWeight: 600, color: '#fff', fontSize: '15px', marginBottom: '2px' }}>
-                                                    {article.title}
-                                                </div>
-                                                <div style={{ fontSize: '12px', color: '#666' }}>
-                                                    {Array.isArray(article.product_models) ? article.product_models[0] : article.product_models} · {article.category}
-                                                </div>
+                                                <span style={{
+                                                    padding: '4px 12px',
+                                                    background: 'rgba(76,175,80,0.15)',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    color: '#4CAF50',
+                                                    fontWeight: 600
+                                                }}>
+                                                    Bokeh 智能回答
+                                                </span>
+                                                {isAiSearching && (
+                                                    <span style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                                                        思考中...
+                                                    </span>
+                                                )}
                                             </div>
-                                            
-                                            <ChevronRight size={18} color="#666" />
+                                            <button
+                                                onClick={() => {
+                                                    // 折叠/展开 AI Panel
+                                                    setShowAiPanel(!showAiPanel);
+                                                }}
+                                                style={{
+                                                    width: '28px',
+                                                    height: '28px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                }}
+                                            >
+                                                <ChevronDown 
+                                                    size={14} 
+                                                    color="#999" 
+                                                    style={{
+                                                        transform: showAiPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s ease'
+                                                    }}
+                                                />
+                                            </button>
                                         </div>
-                                    ))}
-                                </div>
+
+                                        {/* Bokeh 回答区域 */}
+                                        {isAiSearching && !aiAnswer && (
+                                            <div style={{
+                                                background: 'rgba(76,175,80,0.05)',
+                                                border: '1px solid rgba(76,175,80,0.15)',
+                                                borderRadius: '12px',
+                                                padding: '24px',
+                                                marginBottom: '20px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '12px'
+                                            }}>
+                                                <Loader2 size={28} color="#4CAF50" style={{ animation: 'spin 1.5s linear infinite' }} />
+                                                <span style={{ fontSize: '14px', color: '#4CAF50', fontWeight: 500 }}>
+                                                    Bokeh 正在分析知识库...
+                                                </span>
+                                                <span style={{ fontSize: '12px', color: '#666' }}>
+                                                    正在检索相关技术文档和工单记录
+                                                </span>
+                                            </div>
+                                        )}
+                                        
+                                        {aiAnswer && (
+                                            <div style={{
+                                                background: 'rgba(76,175,80,0.05)',
+                                                border: '1px solid rgba(76,175,80,0.1)',
+                                                borderRadius: '12px',
+                                                marginBottom: '20px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                {/* AI回答头部 - 可点击折叠 */}
+                                                <div 
+                                                    onClick={() => setAiAnswerExpanded(!aiAnswerExpanded)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '14px 16px',
+                                                        cursor: 'pointer',
+                                                        userSelect: 'none',
+                                                        borderBottom: aiAnswerExpanded ? '1px solid rgba(76,175,80,0.1)' : 'none'
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '10px'
+                                                    }}>
+                                                        <Sparkles size={16} color="#4CAF50" />
+                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#4CAF50' }}>
+                                                            Bokeh 回答
+                                                        </span>
+                                                    </div>
+                                                    <ChevronRight 
+                                                        size={16} 
+                                                        color="#4CAF50" 
+                                                        style={{
+                                                            transform: aiAnswerExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                            transition: 'transform 0.2s ease'
+                                                        }}
+                                                    />
+                                                </div>
+                                                
+                                                {/* AI回答内容 */}
+                                                {aiAnswerExpanded && (
+                                                    <div style={{ padding: '16px' }}>
+                                                        <div style={{
+                                                            fontSize: '14px',
+                                                            color: '#ccc',
+                                                            lineHeight: '1.7'
+                                                        }}>
+                                                            <ReactMarkdown 
+                                                                remarkPlugins={[remarkGfm]}
+                                                                rehypePlugins={[rehypeRaw]}
+                                                                components={{
+                                                                    a: ({node, ...props}) => (
+                                                                        <a {...props} style={{color: '#4CAF50', textDecoration: 'underline'}} target="_blank" rel="noopener noreferrer" />
+                                                                    )
+                                                                }}
+                                                            >
+                                                                {aiAnswer}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {/* 参考来源 */}
+                                        {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                            <div>
+                                                <div style={{
+                                                    fontSize: '13px',
+                                                    fontWeight: 700,
+                                                    color: '#888',
+                                                    marginBottom: '12px',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '1px'
+                                                }}>
+                                                    参考来源 · {relatedArticles.length + aiRelatedTickets.length}
+                                                </div>
+                                                
+                                                {/* 关联文章 */}
+                                                {relatedArticles.length > 0 && (
+                                                    <div style={{ marginBottom: aiRelatedTickets.length > 0 ? '16px' : 0 }}>
+                                                        <div style={{
+                                                            fontSize: '12px',
+                                                            color: '#666',
+                                                            marginBottom: '8px'
+                                                        }}>
+                                                            文章 · {relatedArticles.length}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                            gap: '10px'
+                                                        }}>
+                                                            {(showMoreAiArticles ? relatedArticles : relatedArticles.slice(0, DEFAULT_SHOW_COUNT)).map(article => (
+                                                                <ArticleCard
+                                                                    key={article.id}
+                                                                    id={article.id}
+                                                                    title={article.title}
+                                                                    summary={article.summary}
+                                                                    productLine={article.product_line}
+                                                                    productModels={article.product_models}
+                                                                    category={article.category}
+                                                                    onClick={() => handleArticleClick(article)}
+                                                                    variant="reference"
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        {relatedArticles.length > DEFAULT_SHOW_COUNT && (
+                                                            <button
+                                                                onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    marginTop: '10px',
+                                                                    padding: '8px',
+                                                                    background: 'rgba(255,255,255,0.03)',
+                                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                                    borderRadius: '6px',
+                                                                    color: '#888',
+                                                                    fontSize: '12px',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    gap: '6px'
+                                                                }}
+                                                            >
+                                                                {showMoreAiArticles ? (
+                                                                    <>收起 <ChevronUp size={12} /></>
+                                                                ) : (
+                                                                    <>展开更多 ({relatedArticles.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                
+                                                {/* 关联工单 */}
+                                                {aiRelatedTickets.length > 0 && (
+                                                    <div>
+                                                        <div style={{
+                                                            fontSize: '12px',
+                                                            color: '#666',
+                                                            marginBottom: '8px'
+                                                        }}>
+                                                            工单 · {aiRelatedTickets.length}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                            gap: '10px'
+                                                        }}>
+                                                            {(showMoreAiTickets ? aiRelatedTickets : aiRelatedTickets.slice(0, DEFAULT_SHOW_COUNT)).map((ticket: any) => (
+                                                                <TicketCard
+                                                                    key={`ai-${ticket.ticket_type}-${ticket.id}`}
+                                                                    id={ticket.id}
+                                                                    ticketNumber={ticket.ticket_number}
+                                                                    ticketType={ticket.ticket_type}
+                                                                    title={ticket.title || ticket.subject || '无标题'}
+                                                                    status={ticket.status}
+                                                                    productModel={ticket.product_model}
+                                                                    onClick={() => navigate(`/service/${ticket.ticket_type}/${ticket.id}`)}
+                                                                    variant="compact"
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        {aiRelatedTickets.length > DEFAULT_SHOW_COUNT && (
+                                                            <button
+                                                                onClick={() => setShowMoreAiTickets(!showMoreAiTickets)}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    marginTop: '10px',
+                                                                    padding: '8px',
+                                                                    background: 'rgba(255,255,255,0.03)',
+                                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                                    borderRadius: '6px',
+                                                                    color: '#888',
+                                                                    fontSize: '12px',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    gap: '6px'
+                                                                }}
+                                                            >
+                                                                {showMoreAiTickets ? (
+                                                                    <>收起 <ChevronUp size={12} /></>
+                                                                ) : (
+                                                                    <>展开更多 ({aiRelatedTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* 产品族类 Tab 栏 - 搜索时隐藏 */}
-                        {searchQuery.trim() === '' && (
+                        {/* 产品族类 Tab 栏 - 只在非搜索模式下显示 */}
+                        {!isSearchMode && (
                         <div style={{
                             display: 'flex',
                             gap: '8px',
@@ -2677,8 +3033,8 @@ export const KinefinityWiki: React.FC = () => {
                         </div>
                         )}
 
-                        {/* 分组折叠视图（点击产品族类后显示） */}
-                        {showSearchResults && searchResults.length > 0 && searchQuery.trim() === '' && (() => {
+                        {/* 分组折叠视图 - 只在非搜索模式下显示 */}
+                        {!isSearchMode && showSearchResults && searchResults.length > 0 && (() => {
                             // 统计产品型号和文章数
                             const modelSet = new Set<string>();
                             searchResults.forEach(a => {
@@ -2719,11 +3075,8 @@ export const KinefinityWiki: React.FC = () => {
                                         </span>
                                         <button
                                             onClick={() => {
-                                                setShowSearchResults(false);
-                                                setSelectedProductLine(null);
-                                                setSearchQuery('');
-                                                setBreadcrumbPath([]);
-                                                navigate('/tech-hub/wiki');
+                                                // 关闭搜索，恢复到A类视图（强制刷新页面）
+                                                window.location.href = '/tech-hub/wiki?line=A';
                                             }}
                                             style={{
                                                 width: '28px',
@@ -2772,10 +3125,8 @@ export const KinefinityWiki: React.FC = () => {
                                                             const newSet = new Set(groupedExpandedModels);
                                                             if (isExpanded) {
                                                                 newSet.delete(model);
-                                                                console.log('[WIKI] Collapsed model:', model);
                                                             } else {
                                                                 newSet.add(model);
-                                                                console.log('[WIKI] Expanded model:', model);
                                                             }
                                                             setGroupedExpandedModels(newSet);
                                                         }}
@@ -2856,10 +3207,8 @@ export const KinefinityWiki: React.FC = () => {
                                                                                 const newSet = new Set(groupedExpandedCategories);
                                                                                 if (isCatExpanded) {
                                                                                     newSet.delete(catKey);
-                                                                                    console.log('[WIKI] Collapsed category:', catKey);
                                                                                 } else {
                                                                                     newSet.add(catKey);
-                                                                                    console.log('[WIKI] Expanded category:', catKey);
                                                                                 }
                                                                                 setGroupedExpandedCategories(newSet);
                                                                             }}
@@ -2956,79 +3305,113 @@ export const KinefinityWiki: React.FC = () => {
                             );
                         })()}
 
-                        {/* 最近浏览 */}
+                        {/* 最近浏览 - 卡片式 + 可折叠 */}
                         {recentArticles.length > 0 && (
-                            <div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: '#666',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '16px'
-                                }}>
-                                    {t('wiki.recently_viewed')}
+                            <div style={{ marginBottom: '24px' }}>
+                                <div 
+                                    onClick={() => setRecentExpanded(!recentExpanded)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '12px 0',
+                                        cursor: 'pointer',
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    <div style={{
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        color: '#888',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
+                                    }}>
+                                        {t('wiki.recently_viewed')} · {recentArticles.length}
+                                    </div>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }}>
+                                        {recentArticles.length > RECENT_SHOW_COUNT && (
+                                            <span style={{
+                                                fontSize: '12px',
+                                                color: '#666'
+                                            }}>
+                                                {recentExpanded ? t('common.collapse') : t('common.expand')}
+                                            </span>
+                                        )}
+                                        <ChevronRight 
+                                            size={16} 
+                                            color="#666" 
+                                            style={{
+                                                transform: recentExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s ease'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '8px'
-                                }}>
-                                    {recentArticles.slice(0, 5).map((recent) => {
-                                        const article = articles.find(a => a.slug === recent.slug);
-                                        if (!article) return null;
+                                
+                                {recentExpanded && (
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                        gap: '12px'
+                                    }}>
+                                        {(showMoreRecent ? recentArticles : recentArticles.slice(0, RECENT_SHOW_COUNT)).map((recent) => {
+                                            const article = articles.find(a => a.slug === recent.slug);
+                                            if (!article) return null;
 
-                                        return (
-                                            <div
-                                                key={recent.slug}
-                                                onClick={() => handleArticleClick(article)}
-                                                style={{
-                                                    background: 'rgba(255,255,255,0.02)',
-                                                    border: '1px solid rgba(255,255,255,0.06)',
-                                                    borderRadius: '10px',
-                                                    padding: '14px 18px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '12px'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                                }}
-                                            >
-                                                <FileText size={16} color="#666" />
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{
-                                                        fontSize: '14px',
-                                                        fontWeight: 500,
-                                                        color: '#fff',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap'
-                                                    }}>
-                                                        {article.title}
-                                                    </div>
-                                                    {article.product_models && article.product_models.length > 0 && (
-                                                        <div style={{
-                                                            fontSize: '12px',
-                                                            color: '#666',
-                                                            marginTop: '2px'
-                                                        }}>
-                                                            {Array.isArray(article.product_models) ? article.product_models[0] : article.product_models}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <ChevronRight size={16} color="#666" />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                            return (
+                                                <ArticleCard
+                                                    key={recent.slug}
+                                                    id={article.id}
+                                                    title={article.title}
+                                                    summary={article.summary}
+                                                    productLine={article.product_line}
+                                                    productModels={article.product_models}
+                                                    category={article.category}
+                                                    onClick={() => handleArticleClick(article)}
+                                                    variant="compact"
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
+                                {recentExpanded && recentArticles.length > RECENT_SHOW_COUNT && (
+                                    <button
+                                        onClick={() => setShowMoreRecent(!showMoreRecent)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px',
+                                            marginTop: '12px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            borderRadius: '8px',
+                                            color: '#888',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                        }}
+                                    >
+                                        {showMoreRecent ? (
+                                            <>{t('common.collapse')} <ChevronUp size={14} /></>
+                                        ) : (
+                                            <>{t('common.show_more')} ({recentArticles.length - RECENT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
