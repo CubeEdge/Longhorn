@@ -3019,19 +3019,28 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                         )}
 
                         {/* 分组折叠视图 - 只在非搜索模式下显示 */}
-                        {!isSearchMode && showSearchResults && searchResults.length > 0 && (() => {
+                        {!isSearchMode && (() => {
+                            const lineArticles = articles.filter(a => a.product_line === selectedProductLine);
                             // 统计产品型号和文章数
                             const modelSet = new Set<string>();
-                            searchResults.forEach(a => {
+                            lineArticles.forEach(a => {
                                 const models = Array.isArray(a.product_models) ? a.product_models : [a.product_models];
                                 models.forEach(m => m && modelSet.add(m));
                             });
                             const modelCount = modelSet.size;
-                            const articleCount = searchResults.length;
+                            const articleCount = lineArticles.length;
+
+                            if (articleCount === 0) {
+                                return (
+                                    <div style={{ padding: '40px 0', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+                                        该分类下暂无文章
+                                    </div>
+                                );
+                            }
 
                             // 按产品型号分组
                             const groupedByModel = new Map<string, KnowledgeArticle[]>();
-                            searchResults.forEach(a => {
+                            lineArticles.forEach(a => {
                                 const model = Array.isArray(a.product_models) ? a.product_models[0] : a.product_models;
                                 if (!model) return;
                                 if (!groupedByModel.has(model)) {
@@ -3048,7 +3057,7 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                     padding: '20px',
                                     marginBottom: '32px'
                                 }}>
-                                    {/* 统计文案 + 关闭按钮 */}
+                                    {/* 统计文案 */}
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
@@ -3058,32 +3067,6 @@ ${contextArticles.map((a: KnowledgeArticle) => `- ${a.title}: ${a.summary || ''}
                                         <span style={{ fontSize: '14px', color: '#999' }}>
                                             共 <span style={{ color: '#fff', fontWeight: 600 }}>{modelCount}</span> 种产品型号，<span style={{ color: '#fff', fontWeight: 600 }}>{articleCount}</span> 篇文章
                                         </span>
-                                        <button
-                                            onClick={() => {
-                                                // 关闭搜索，恢复到A类视图（强制刷新页面）
-                                                window.location.href = '/tech-hub/wiki?line=A';
-                                            }}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                            }}
-                                        >
-                                            <X size={14} color="#999" />
-                                        </button>
                                     </div>
 
                                     {/* 产品型号分组列表 */}

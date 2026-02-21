@@ -589,10 +589,9 @@ const authenticate = (req, res, next) => {
             // Reload user from DB to ensure latest role/department info
             // Use both integer and float comparison for backward compatibility
             const user = db.prepare(`
-                SELECT u.id, u.username, u.role, u.department_id, d.name as department_name 
-                FROM users u
-                LEFT JOIN departments d ON u.department_id = d.id
-                WHERE u.id = ? OR u.id = CAST(? AS REAL)
+                SELECT id, username, role, department_id 
+                FROM users
+                WHERE id = ? OR id = CAST(? AS REAL)
             `).get(decoded.id, decoded.id);
 
             if (!user) {
