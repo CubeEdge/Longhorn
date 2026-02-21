@@ -1,7 +1,7 @@
 # Service 数据模型设计
 
-**版本**: 0.7.1
-**最后更新**: 2026-02-11
+**版本**: 0.8.0
+**最后更新**: 2026-02-21
 
 > **v0.7.1 更新**：
 > - 账户类型更新：CORPORATE → ORGANIZATION
@@ -538,31 +538,48 @@ knowledge_articles (知识库条目)
 ├── id: SERIAL PRIMARY KEY
 ├── article_number: VARCHAR(20) UNIQUE -- 知识编号 (KB-0023)
 ├── title: VARCHAR(500) NOT NULL -- 标题
-├── knowledge_type: ENUM('faq', 'troubleshooting', 'compatibility', 'firmware', 'basics', 'case', 'manual') -- 类型
-│   -- faq: FAQ常见问题
-│   -- troubleshooting: 故障排查
-│   -- compatibility: 兼容性列表
-│   -- firmware: 固件知识
-│   -- basics: 基础知识
-│   -- case: 问题案例
-│   -- manual: 维修手册
+├── slug: VARCHAR(255) UNIQUE -- 用于URL的短链接
+├── knowledge_type: ENUM('FAQ', 'Troubleshooting', 'Compatibility', 'Firmware', 'Basics', 'Case', 'Manual') -- 类型
+│
+├── // 文档层级结构
+│
+├── chapter_number: INT -- 章节号 (如 Chapter 3)
+├── section_number: INT -- 小节号 (如 Section 3.1)
 │
 ├── // FAQ特有
 ├── question: TEXT -- 问题 (FAQ类型)
 ├── external_answer: TEXT -- 外部回答
 ├── internal_answer: TEXT -- 内部回答
 │
-├── // 通用
-├── content: TEXT -- 正文内容 (Markdown)
-├── visibility: ENUM('public', 'dealer', 'internal', 'department') DEFAULT 'internal' -- 可见性
+├── // 内容与排版
+├── summary: VARCHAR(1000) -- 摘要
+├── content: TEXT -- 原始 Markdown 内容
+├── formatted_content: TEXT -- AI/人工优化后的排版内容
+├── format_status: ENUM('none', 'draft', 'published') DEFAULT 'none' -- 排版状态
+├── formatted_by: ENUM('ai', 'human', 'external') -- 排版人类型
+├── formatted_at: TIMESTAMP -- 排版时间
 │
-├── // 关联
-├── firmware_version: VARCHAR(20) -- 相关固件版本
-├── related_issues: JSON -- 关联工单ID列表
+├── // 分类与属性
+├── category: VARCHAR(100) -- 大类
+├── subcategory: VARCHAR(100) -- 子类
+├── product_line: ENUM('A', 'B', 'C', 'D') -- 产品线
+├── product_models: JSON -- 关联的具体机型列表 (如 ["Edge 8K", "Edge 6K"])
+├── tags: JSON -- 标签列表 (如 ["firmware", "display"])
+├── visibility: ENUM('Public', 'Dealer', 'Internal', 'Department') DEFAULT 'Internal' -- 可见性
 │
-├── // 版本控制
+├── // 导入溯源
+├── source_type: ENUM('Manual', 'PDF', 'DOCX', 'Web') DEFAULT 'Manual' -- 数据来源
+├── source_reference: VARCHAR(255) -- 原始文件名或引用链接
+├── batch_id: VARCHAR(50) -- 批量导入批次ID
+│
+├── // 统计与权重
+├── view_count: INT DEFAULT 0 -- 阅读数
+├── helpful_count: INT DEFAULT 0 -- 觉得有用数
+├── not_helpful_count: INT DEFAULT 0 -- 觉得没用数
+│
+├── // 版本控制与状态
 ├── version: INT DEFAULT 1 -- 版本号
-├── status: ENUM('draft', 'published') DEFAULT 'draft' -- 状态
+├── status: ENUM('Draft', 'Published', 'Archived') DEFAULT 'Draft' -- 状态
 ├── created_by: INT -- 创建人
 ├── updated_by: INT -- 更新人
 ├── published_at: TIMESTAMP -- 发布时间

@@ -15,7 +15,7 @@ description: Standard procedure to finalize a task and sync all documentation
    - Update steps or screenshots to reflect the "As Built" state.
 
 
-4. **Update `docs/2_PromptLog.md`**:
+4. **Update `docs/2_Promptlog.md`**:
    - Record the session time.
    - Summarize the User Prompt.
    - Detail the Actions Taken (Root Cause Analysis, Code Changes).
@@ -26,7 +26,7 @@ description: Standard procedure to finalize a task and sync all documentation
    - Move completed items from "Backlog/To Do" to "History/Completed".
    - Add any newly discovered bugs to "Bug Tracker".
 
-6. **Update `docs/4_DevLog.md`**:
+6. **Update `docs/3_Devlog.md`**:
    - Add a bullet point for the technical changes made.
    - Mention any new technologies or patterns introduced.
 

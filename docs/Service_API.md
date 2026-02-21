@@ -1,9 +1,9 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.0 (Draft)
+**版本**: 0.9.1 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-11
-**关联PRD**: Service_PRD.md v0.11.0
+**最后更新**: 2026-02-21
+**关联PRD**: Service_PRD.md v0.12.0
 **关联场景**: Service_UserScenarios.md v0.7.0
 
 > **重要更新（2026-02-10）**：
@@ -1775,40 +1775,73 @@
 
 > 默认方案: 编辑者可直接发布，无需审核
 
-### 10.6 获取兼容性列表
+### 10.7 自动化导入 API
 
-**GET** `/api/v1/knowledge/compatibility`
+#### 10.7.1 PDF 导入知识条目
 
+**POST** `/api/v1/knowledge/import/pdf`
+
+**权限**: 编辑者+
+
+**Content-Type**: `multipart/form-data`
+
+**Request**:
+- `file`: PDF 文件 (必填, max 50MB)
+- `category`: 分类
+- `product_line`: 产品线 (A/B/C/D)
+- `product_models`: 关联机型 (JSON string)
+- `visibility`: 可见性
+
+**Response**:
 ```json
-// Query params
-?our_product=prod_eagle_hdmi
-&external_brand=Sony
-&interface_type=HDMI
-
-// Response
 {
   "success": true,
-  "data": [
-    {
-      "id": "compat_001",
-      "our_product": { "id": "prod_eagle_hdmi", "name": "Eagle HDMI" },
-      "external_device": "FX6",
-      "external_brand": "Sony",
-      "interface_type": "全尺寸HDMI A",
-      "resolution": "1080p",
-      "frame_rate": "50",
-      "is_compatible": true,
-      "supports_rec_status": true,
-      "supports_vu_meter": true,
-      "supports_timecode": true,
-      "notes": "",
-      "tested_date": "2025-06-15"
-    }
-  ]
+  "data": {
+    "article_id": 456,
+    "title": "从PDF提取的标题",
+    "summary": "自动生成的摘要...",
+    "image_count": 5,
+    "char_count": 12500
+  }
 }
 ```
 
-### 10.7 知识库树形结构
+#### 10.7.2 DOCX 导入知识条目 (文档模式)
+
+**POST** `/api/v1/knowledge/import/docx`
+
+**权限**: 编辑者+
+
+**Content-Type**: `multipart/form-data`
+
+**说明**: 调用 Python 脚本解析 DOCX，按标题自动切分为多个章节条目。
+
+**Request**:
+- `file`: DOCX 文件 (必填)
+- `category`: 分类
+- `product_line`: 产品线
+- `product_models`: 关联机型
+- `visibility`: 可见性
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "batch_id": "a1b2c3d4",
+    "articles_created": 12,
+    "chapters": [
+      { "number": 1, "title": "产品特点", "article_id": 457 },
+      { "number": 2, "title": "快速上手", "article_id": 458 }
+    ],
+    "warnings": [
+      { "type": "TITLE_MISMATCH", "message": "文档标题包含 Edge 8K，但分类选择了 mark2" }
+    ]
+  }
+}
+```
+
+### 10.8 知识库树形结构
 
 **GET** `/api/v1/knowledge/tree`
 

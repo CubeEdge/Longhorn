@@ -4,6 +4,44 @@
 
 ---
 
+## 会话: 2026-02-21 (Knowledge Base Document Sync)
+
+### 任务: 知识库模块全栈文档同步
+- **状态**: ✅ 已完成
+- **背景**: 
+    - 知识库模块已上线自动化导入 (DOCX/PDF) 和混合搜索逻辑，但文档严重滞后。
+    - `Service_DataModel.md` 缺少 10+ 个核心字段。
+    - `Service_API.md` 缺少文件导入相关的 `multipart/form-data` 接口。
+
+- **变更内容**:
+    - **Service_PRD.md**:
+        - **分类**: 对齐 A/B/C/D 产品族群与具体型号。
+        - **流程**: 详细描述 DOCX 导入的“自动切分”与“标题预警”逻辑。
+        - **搜索**: 定义混合搜索（Keywords + AI Semantic）的执行路径。
+    - **Service_DataModel.md**:
+        - **新增**: `chapter_number`, `source_type`, `format_status`, `formatted_content` 等。
+        - **优化**: 将 `product_models` 从 TEXT 改为 JSON，对齐代码中的机型列表逻辑。
+    - **Service_API.md**:
+        - **新增**: `POST /api/v1/knowledge/import/pdf` 和 `docx`。
+        - **更新**: `GET /api/v1/knowledge/audit` 及其统计接口的数据结构。
+    - **Service_UserScenarios.md**:
+        - **新增**: 自动化导入（PDF/DOCX）的操作流程场景描述。
+
+- **验证**:
+    - ✅ 4 份核心文档均已提升版本并对齐最新代码实现。
+    - ✅ 用户已审核通过所有变更。
+
+- **文件修改清单**:
+    - `docs/Service_PRD.md`
+    - `docs/Service_DataModel.md`
+    - `docs/Service_API.md`
+    - `docs/Service_UserScenarios.md`
+    - `docs/1_Backlog.md`
+    - `docs/2_PromptLog.md`
+    - `docs/4_DevLog.md`
+
+---
+
 ## 会话: 2026-02-11 (UI Refinements & Dealer API Fix)
 
 ### 任务: 客户档案 UI 优化与经销商列表修复

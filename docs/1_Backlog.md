@@ -1,7 +1,8 @@
 # Backlog 更新记录
 
-## 最近更新 (2026-02-15 02:57:03)
-- 根据当前代码状态同步更新 backlog
+## 最近更新 (2026-02-21 10:25:00)
+- 完成知识库全方位文档同步 (PRD, API, DataModel, Scenarios)
+- 标记 Knowledge Base (Phase 2) 为已完成
 - 检查待办事项完成状态
 - 更新优先级排序
 
@@ -62,10 +63,11 @@
 ## 📋 待办事项 (Backlog)
 
 ### [Feature] Knowledge Base (Phase 2)
-- **优先级**: 中
+- **优先级**: ✅ 已完成 (2026-02-21)
 - **描述**: 
   - 从 Service Record 沉淀知识点。
   - 实现知识库的搜索与关联推荐。
+  - 文档闭环同步（PRD, API, DataModel, User Scenarios）。
 
 ### [Feature] 全局多语言完善 (Cleanup)
 - **优先级**: 低
@@ -84,6 +86,14 @@
 ---
 
 ## ✅ 已完成 (历史记录)
+
+### [Doc] Knowledge Base Document Sync (2026-02-21)
+- **状态**: ✅ 已完成
+- **内容**:
+  - **Service_PRD.md (v0.12.0)**: 细化 A/B/C/D 族群、DOCX/PDF 导入逻辑、混合搜索。
+  - **Service_DataModel.md (v0.8.0)**: 补充 `chapter_number`, `source_type`, `format_status` 等字段。
+  - **Service_API.md (v0.9.1)**: 注册 PDF/DOCX 导入接口及审计详情。
+  - **Service_UserScenarios.md**: 补充自动化导入操作流程。
 
 ### [Arch] Files 模块重构与系统备份增强 (2026-02-10)
 - **状态**: ✅ 已完成
