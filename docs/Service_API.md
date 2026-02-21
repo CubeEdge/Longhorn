@@ -2,7 +2,7 @@
 
 **版本**: 0.9.1 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-21
+**最后更新**: 2026-02-21 (Deployed v1.5.17)
 **关联PRD**: Service_PRD.md v0.12.0
 **关联场景**: Service_UserScenarios.md v0.7.0
 
