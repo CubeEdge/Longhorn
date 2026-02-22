@@ -145,6 +145,16 @@ interface KnowledgeArticle {
     };
 }
 
+export interface SearchHistoryItem {
+    query: string;
+    timestamp: number;
+    extractedKeywords: string;
+    searchResults: any[];
+    keywordTickets: any[];
+    aiAnswer: string;
+    aiRelatedTickets: any[];
+}
+
 interface CategoryNode {
     id: string;
     label: string;
@@ -207,11 +217,12 @@ export const parseChapterNumber = (title: string): { chapter: number | null, sec
 };
 
 export const KinefinityWiki: React.FC = () => {
+    const { user } = useAuthStore();
+    const { confirm } = useConfirm();
     const navigate = useNavigate();
     const location = useLocation();
     const { slug } = useParams<{ slug: string }>();
     const { token } = useAuthStore();
-    const { confirm } = useConfirm();
     const { setWikiViewContext, clearContext } = useBokehContext();
     const { t } = useLanguage();
 
@@ -336,10 +347,17 @@ export const KinefinityWiki: React.FC = () => {
 
     // 搜索 Tab 状态
     const [activeSearchQuery, setActiveSearchQuery] = useState<string | null>(null); // 当前搜索 Tab 的查询内容
-    const [searchHistory, setSearchHistory] = useState<string[]>(() => {
-        const saved = localStorage.getItem('wiki-search-history');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+    // Dynamic History loading
+    useEffect(() => {
+        try {
+            const userId = user?.id || 'guest';
+            const saved = localStorage.getItem(`wiki-search-history-${userId}`);
+            if (saved) {
+                setSearchHistory(JSON.parse(saved));
+            }
+        } catch (e) { console.error('Failed to load history', e); }
+    }, [user?.id]);
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const [lastProductLine, setLastProductLine] = useState<string>('A'); // 关闭搜索 Tab 时恢复的产品线
     const searchHistoryRef = React.useRef<HTMLDivElement>(null);
@@ -705,13 +723,7 @@ export const KinefinityWiki: React.FC = () => {
         setActiveSearchQuery(query);
         setSelectedProductLine(null); // 切换到搜索 Tab
 
-        // 保存搜索历史（去重，最新在前，最多10条）
-        setSearchHistory(prev => {
-            const deduped = prev.filter(q => q !== query);
-            const updated = [query, ...deduped].slice(0, 10);
-            localStorage.setItem('wiki-search-history', JSON.stringify(updated));
-            return updated;
-        });
+        // History object logic handled after completion
 
         const doSearch = async () => {
             try {
@@ -728,10 +740,29 @@ export const KinefinityWiki: React.FC = () => {
                 setSearchResults([]);
 
                 // 同时执行关键词搜索和AI搜索
-                await Promise.all([
+                const [kRes, aRes] = await Promise.all([
                     performKeywordSearch(query),
                     performAiSearch(query)
                 ]);
+
+                // Save Search History Snapshot
+                setSearchHistory(prev => {
+                    const deduped = prev.filter(item => item.query !== query);
+                    const newItem: SearchHistoryItem = {
+                        query,
+                        timestamp: Date.now(),
+                        extractedKeywords: keywords,
+                        searchResults: kRes?.searchResults || [],
+                        keywordTickets: kRes?.keywordTickets || [],
+                        aiAnswer: aRes?.aiAnswer || '',
+                        aiRelatedTickets: aRes?.aiRelatedTickets || []
+                    };
+                    const updated = [newItem, ...deduped].slice(0, 10);
+                    const userId = useAuthStore.getState().user?.id || 'guest';
+                    localStorage.setItem(`wiki-search-history-${userId}`, JSON.stringify(updated));
+                    return updated;
+                });
+
             } catch (err) {
                 console.error('[Wiki] Search error:', err);
             } finally {
@@ -743,8 +774,7 @@ export const KinefinityWiki: React.FC = () => {
         doSearch();
     }, [pendingSearchQuery, token]);
 
-    // 关键词搜索 - 文章优先渲染，工单异步加载
-    const performKeywordSearch = async (query: string) => {
+    const performKeywordSearch = async (query: string): Promise<any> => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         // 1. 搜索知识库文章（优先渲染）
@@ -773,6 +803,7 @@ export const KinefinityWiki: React.FC = () => {
                 top_k: 50
             }, { headers });
             setKeywordTickets(ticketRes.data.results || []);
+            return { searchResults: articleResults, keywordTickets: ticketRes.data.results || [] };
         } catch (err) {
             // 工单搜索失败不影响关键词搜索结果
             setKeywordTickets([]);
@@ -808,7 +839,7 @@ export const KinefinityWiki: React.FC = () => {
     };
 
     // Bokeh 搜索 - 同时获取关联文章和工单
-    const performAiSearch = async (query: string) => {
+    const performAiSearch = async (query: string): Promise<any> => {
         try {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             setIsAiSearching(true);
@@ -867,6 +898,7 @@ ${contextTickets.map((t: any) => {
         } finally {
             setIsAiSearching(false);
         }
+        return { aiAnswer: null, aiRelatedTickets: [] };
     };
 
     const fetchArticles = async () => {
@@ -1191,6 +1223,30 @@ ${contextTickets.map((t: any) => {
     };
 
     // 关闭搜索 Tab 并恢复上次浏览的产品线
+    const handleDeleteHistoryItem = async (queryToDelete: string) => {
+        let msg = t('wiki.search.delete_history_msg');
+        if (!msg || msg === 'wiki.search.delete_history_msg') msg = '确定要删除搜索及关联对话吗';
+
+        let title = t('wiki.search.delete_history_title');
+        if (!title || title === 'wiki.search.delete_history_title') title = '删除历史搜索纪录';
+
+        const confirmed = await confirm(
+            `${msg}「${queryToDelete}」？`,
+            title
+        );
+        if (confirmed) {
+            setSearchHistory(prev => {
+                const updated = prev.filter(h => h.query !== queryToDelete);
+                const userId = user?.id || 'guest';
+                localStorage.setItem(`wiki-search-history-${userId}`, JSON.stringify(updated));
+                return updated;
+            });
+            if (activeSearchQuery === queryToDelete) {
+                handleCloseSearchTab();
+            }
+        }
+    };
+
     const handleCloseSearchTab = () => {
         setIsSearchMode(false);
         setShowSearchResults(false);
@@ -1204,10 +1260,20 @@ ${contextTickets.map((t: any) => {
     };
 
     // 点击搜索历史项
-    const handleSearchHistorySelect = (query: string) => {
-        setSearchQuery(query);
-        setPendingSearchQuery(query);
+    const handleSearchHistorySelect = (hItem: SearchHistoryItem) => {
+        setSearchQuery(hItem.query);
+        setActiveSearchQuery(hItem.query);
+        setExtractedKeywords(hItem.extractedKeywords);
+        setSearchResults(hItem.searchResults);
+        setKeywordTickets(hItem.keywordTickets);
+        setAiAnswer(hItem.aiAnswer);
+        setAiRelatedTickets(hItem.aiRelatedTickets);
+
+        setIsSearchMode(true);
+        setShowSearchResults(true);
+        setSelectedProductLine(null);
         setShowSearchHistory(false);
+        setPendingSearchQuery('');
     };
 
     // 点击外部关闭搜索历史下拉
@@ -1369,7 +1435,6 @@ ${contextTickets.map((t: any) => {
     const canEdit = selectedArticle?.permissions?.can_edit || false;
 
     // Check if user has wiki admin access (Admin/Lead can access Wiki admin)
-    const { user } = useAuthStore();
     const hasWikiAdminAccess = user?.role === 'Admin' || user?.role === 'Lead';
 
     const renderTreeNode = (node: CategoryNode, level: number = 0) => {
@@ -2450,26 +2515,165 @@ ${contextTickets.map((t: any) => {
                             margin: '0 auto',
                             padding: '40px 32px'
                         }}>
-                            {/* 顶部布局：标题 */}
+                            {/* 顶部布局：标题 + 搜索框 + 管理按钮 */}
                             <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
                                 marginBottom: '24px'
                             }}>
-                                <h1 style={{
-                                    fontSize: '1.8rem',
-                                    fontWeight: 800,
-                                    margin: '0 0 8px 0',
-                                    color: '#fff',
-                                    letterSpacing: '-0.5px'
-                                }}>
-                                    Kinefinity WIKI
-                                </h1>
-                                <p style={{
-                                    fontSize: '14px',
-                                    color: '#666',
-                                    margin: 0
-                                }}>
-                                    {t('wiki.subtitle')}
-                                </p>
+                                <div>
+                                    <h1 style={{
+                                        fontSize: '1.8rem',
+                                        fontWeight: 800,
+                                        margin: '0 0 8px 0',
+                                        color: '#fff',
+                                        letterSpacing: '-0.5px'
+                                    }}>
+                                        Kinefinity WIKI
+                                    </h1>
+                                    <p style={{
+                                        fontSize: '14px',
+                                        color: '#666',
+                                        margin: 0
+                                    }}>
+                                        {t('wiki.subtitle')}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                    {/* 搜索输入框 */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px',
+                                        padding: '0 12px',
+                                        width: '240px',
+                                        height: '38px',
+                                        flexShrink: 0
+                                    }}>
+                                        <Search size={14} color="#888" style={{ flexShrink: 0 }} />
+                                        <input
+                                            type="text"
+                                            placeholder={t('wiki.search_placeholder')}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && searchQuery.trim()) {
+                                                    setPendingSearchQuery(searchQuery.trim());
+                                                }
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px 10px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#fff',
+                                                fontSize: '13px',
+                                                outline: 'none',
+                                                minWidth: 0
+                                            }}
+                                        />
+                                        {searchQuery.trim() && (
+                                            <button
+                                                onClick={() => {
+                                                    setSearchQuery('');
+                                                }}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '2px',
+                                                    display: 'flex',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                <X size={12} color="#666" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* 管理按钮 */}
+                                    {hasWikiAdminAccess && (
+                                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                                            <button
+                                                onClick={() => setShowAdminMenu(!showAdminMenu)}
+                                                style={{
+                                                    padding: '8px 14px',
+                                                    background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                                    border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                                    borderRadius: '10px',
+                                                    color: showAdminMenu ? '#FFD700' : '#999',
+                                                    fontSize: '13px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    height: '38px'
+                                                }}
+                                            >
+                                                <Settings size={16} />
+                                            </button>
+
+                                            {/* 管理菜单下拉 */}
+                                            {showAdminMenu && (
+                                                <>
+                                                    <div
+                                                        onClick={() => setShowAdminMenu(false)}
+                                                        style={{
+                                                            position: 'fixed',
+                                                            inset: 0,
+                                                            zIndex: 99
+                                                        }}
+                                                    />
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        right: 0,
+                                                        marginTop: '8px',
+                                                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        borderRadius: '12px',
+                                                        padding: '8px',
+                                                        minWidth: '180px',
+                                                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                                        zIndex: 100
+                                                    }}>
+                                                        <div
+                                                            onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Upload size={16} color="#FFD700" />
+                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
+                                                        </div>
+                                                        <div
+                                                            onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <FileText size={16} color="#FFD700" />
+                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
+                                                        </div>
+                                                        <div
+                                                            onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <BookOpen size={16} color="#60A5FA" />
+                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* 统一 Tab 栏 + 搜索框 + 管理按钮 */}
@@ -2499,6 +2703,7 @@ ${contextTickets.map((t: any) => {
                                                 // 切回产品线 Tab，如果当前在搜索模式则保留搜索数据但切换视图
                                                 setSelectedProductLine(item.line);
                                                 if (isSearchMode) {
+                                                    setIsSearchMode(false);
                                                     setShowSearchResults(false);
                                                 }
                                                 handleProductLineClick(item.line);
@@ -2632,176 +2837,58 @@ ${contextTickets.map((t: any) => {
                                                 }}>
                                                     {t('wiki.search.history')}
                                                 </div>
-                                                {searchHistory.map((q, i) => (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => handleSearchHistorySelect(q)}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '10px 12px',
-                                                            background: q === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent',
-                                                            border: 'none',
-                                                            borderBottom: i < searchHistory.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                                                            color: q === activeSearchQuery ? '#3B82F6' : '#ccc',
-                                                            fontSize: '13px',
-                                                            cursor: 'pointer',
-                                                            textAlign: 'left',
-                                                            transition: 'background 0.15s',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px'
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = q === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent';
-                                                        }}
+                                                {searchHistory.map((hItem, i) => (
+                                                    <div key={i} style={{
+                                                        position: 'relative',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        borderBottom: i < searchHistory.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                                                        background: hItem.query === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent'
+                                                    }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = hItem.query === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent'}
                                                     >
-                                                        <Search size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
-                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q}</span>
-                                                    </button>
+                                                        <button
+                                                            onClick={() => handleSearchHistorySelect(hItem)}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding: '10px 12px',
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: hItem.query === activeSearchQuery ? '#3B82F6' : '#ccc',
+                                                                fontSize: '13px',
+                                                                cursor: 'pointer',
+                                                                textAlign: 'left',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '8px',
+                                                                overflow: 'hidden'
+                                                            }}
+                                                        >
+                                                            <Search size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+                                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hItem.query}</span>
+                                                        </button>
+                                                        <div
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteHistoryItem(hItem.query); }}
+                                                            style={{
+                                                                padding: '0 12px',
+                                                                cursor: 'pointer',
+                                                                color: '#888',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                height: '100%'
+                                                            }}
+                                                        >
+                                                            <X size={14} style={{ transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#ff453a'} onMouseLeave={e => e.currentTarget.style.color = '#888'} />
+                                                        </div>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                {/* 弹性空间 */}
-                                <div style={{ flex: 1 }} />
 
-                                {/* 搜索输入框 */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '10px',
-                                    padding: '0 12px',
-                                    width: '240px',
-                                    height: '38px',
-                                    flexShrink: 0
-                                }}>
-                                    <Search size={14} color="#888" style={{ flexShrink: 0 }} />
-                                    <input
-                                        type="text"
-                                        placeholder={t('wiki.search_placeholder')}
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && searchQuery.trim()) {
-                                                setPendingSearchQuery(searchQuery.trim());
-                                            }
-                                        }}
-                                        style={{
-                                            flex: 1,
-                                            padding: '8px 10px',
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: '#fff',
-                                            fontSize: '13px',
-                                            outline: 'none',
-                                            minWidth: 0
-                                        }}
-                                    />
-                                    {searchQuery.trim() && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchQuery('');
-                                            }}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                padding: '2px',
-                                                display: 'flex',
-                                                flexShrink: 0
-                                            }}
-                                        >
-                                            <X size={12} color="#666" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* 管理按钮 */}
-                                {hasWikiAdminAccess && (
-                                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                                        <button
-                                            onClick={() => setShowAdminMenu(!showAdminMenu)}
-                                            style={{
-                                                padding: '8px 14px',
-                                                background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                                border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                                                borderRadius: '10px',
-                                                color: showAdminMenu ? '#FFD700' : '#999',
-                                                fontSize: '13px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                height: '38px'
-                                            }}
-                                        >
-                                            <Settings size={16} />
-                                        </button>
-
-                                        {/* 管理菜单下拉 */}
-                                        {showAdminMenu && (
-                                            <>
-                                                <div
-                                                    onClick={() => setShowAdminMenu(false)}
-                                                    style={{
-                                                        position: 'fixed',
-                                                        inset: 0,
-                                                        zIndex: 99
-                                                    }}
-                                                />
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: '100%',
-                                                    right: 0,
-                                                    marginTop: '8px',
-                                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
-                                                    borderRadius: '12px',
-                                                    padding: '8px',
-                                                    minWidth: '180px',
-                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                                                    zIndex: 100
-                                                }}>
-                                                    <div
-                                                        onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <Upload size={16} color="#FFD700" />
-                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
-                                                    </div>
-                                                    <div
-                                                        onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <FileText size={16} color="#FFD700" />
-                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
-                                                    </div>
-                                                    <div
-                                                        onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <BookOpen size={16} color="#60A5FA" />
-                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             {/* 搜索结果列表 - 搜索 Tab 激活时显示（位于 Tab 栏下方） */}
