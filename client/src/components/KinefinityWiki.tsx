@@ -183,8 +183,8 @@ interface ChapterAggregate {
 }
 
 export const parseChapterNumber = (title: string): { chapter: number | null, section: string | null, cleanTitle: string } => {
-    // Match formats like "3.1", "3.1.1", "3" followed by space and title
-    const match = title.match(/:\s*(\d+)((?:\.\d+)*)[.\s]+(.+)/);
+    // Match optional prefix (non-greedy) ending in colon+space, followed by Chapter formatting like "3.1", "3.1.1", "3"
+    const match = title.match(/^(?:.*?:[ \t]*)?(\d+)((?:\.\d+)*)[.\s]+(.+)/);
     if (match) {
         const chapter = parseInt(match[1]);
         const section = match[2] ? match[1] + match[2] : null; // Keep the full section string e.g., "3.1.1"
@@ -3647,35 +3647,37 @@ ${contextTickets.map((t: any) => {
 
                                                                                                     {isChapExpanded && (
                                                                                                         <div style={{ marginLeft: '22px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                                                            {articlesInChapter.map(article => {
-                                                                                                                // If it's the chapter base article itself, skip or render special?
-                                                                                                                // Usually Apple includes the overview as an article. We'll list them all.
-                                                                                                                const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
-                                                                                                                const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
-                                                                                                                return (
-                                                                                                                    <div
-                                                                                                                        key={article.id}
-                                                                                                                        onClick={() => handleArticleClick(article)}
-                                                                                                                        style={{
-                                                                                                                            padding: '8px 12px',
-                                                                                                                            background: 'rgba(255,255,255,0.015)',
-                                                                                                                            borderRadius: '6px',
-                                                                                                                            cursor: 'pointer',
-                                                                                                                            transition: 'all 0.15s',
-                                                                                                                            display: 'flex',
-                                                                                                                            alignItems: 'center',
-                                                                                                                            gap: '12px'
-                                                                                                                        }}
-                                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
-                                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
-                                                                                                                    >
-                                                                                                                        <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                                                                                            {displayNum}
-                                                                                                                        </span>
-                                                                                                                        <span style={{ fontSize: '13px', color: '#ccc', flex: 1 }}>{secTitle}</span>
-                                                                                                                    </div>
-                                                                                                                );
-                                                                                                            })}
+                                                                                                            {articlesInChapter
+                                                                                                                .filter(article => parseChapterNumber(article.title).section !== null)
+                                                                                                                .map(article => {
+                                                                                                                    // If it's the chapter base article itself, skip or render special?
+                                                                                                                    // Usually Apple includes the overview as an article. We'll list them all.
+                                                                                                                    const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
+                                                                                                                    const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+                                                                                                                    return (
+                                                                                                                        <div
+                                                                                                                            key={article.id}
+                                                                                                                            onClick={() => handleArticleClick(article)}
+                                                                                                                            style={{
+                                                                                                                                padding: '8px 12px',
+                                                                                                                                background: 'rgba(255,255,255,0.015)',
+                                                                                                                                borderRadius: '6px',
+                                                                                                                                cursor: 'pointer',
+                                                                                                                                transition: 'all 0.15s',
+                                                                                                                                display: 'flex',
+                                                                                                                                alignItems: 'center',
+                                                                                                                                gap: '12px'
+                                                                                                                            }}
+                                                                                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
+                                                                                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
+                                                                                                                        >
+                                                                                                                            <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                                                                                {displayNum}
+                                                                                                                            </span>
+                                                                                                                            <span style={{ fontSize: '13px', color: '#ccc', flex: 1 }}>{secTitle}</span>
+                                                                                                                        </div>
+                                                                                                                    );
+                                                                                                                })}
                                                                                                         </div>
                                                                                                     )}
                                                                                                 </div>
@@ -4672,41 +4674,43 @@ ${contextTickets.map((t: any) => {
                                                         {/* Accordion Body */}
                                                         {((isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey)) && (
                                                             <div style={{ padding: '8px 18px 14px 48px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                                {articlesInChapter.map(article => {
-                                                                    const isCurrentArticle = article.id === selectedArticle.id;
-                                                                    const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
-                                                                    const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+                                                                {articlesInChapter
+                                                                    .filter(article => parseChapterNumber(article.title).section !== null)
+                                                                    .map(article => {
+                                                                        const isCurrentArticle = article.id === selectedArticle.id;
+                                                                        const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
+                                                                        const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
 
-                                                                    return (
-                                                                        <div
-                                                                            key={article.id}
-                                                                            onClick={() => {
-                                                                                if (!isCurrentArticle) {
-                                                                                    setShowManualTocModal(false);
-                                                                                    handleArticleClick(article);
-                                                                                }
-                                                                            }}
-                                                                            style={{
-                                                                                padding: '10px 14px',
-                                                                                background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
-                                                                                borderRadius: '8px',
-                                                                                cursor: isCurrentArticle ? 'default' : 'pointer',
-                                                                                display: 'flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '12px',
-                                                                                transition: 'all 0.15s'
-                                                                            }}
-                                                                            onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                                                                            onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
-                                                                        >
-                                                                            <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
-                                                                                {displayNum}
-                                                                            </span>
-                                                                            <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
-                                                                            {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                                        return (
+                                                                            <div
+                                                                                key={article.id}
+                                                                                onClick={() => {
+                                                                                    if (!isCurrentArticle) {
+                                                                                        setShowManualTocModal(false);
+                                                                                        handleArticleClick(article);
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    padding: '10px 14px',
+                                                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                                                                    borderRadius: '8px',
+                                                                                    cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '12px',
+                                                                                    transition: 'all 0.15s'
+                                                                                }}
+                                                                                onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                                                                                onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
+                                                                            >
+                                                                                <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                    {displayNum}
+                                                                                </span>
+                                                                                <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
+                                                                                {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                             </div>
                                                         )}
                                                     </div>
