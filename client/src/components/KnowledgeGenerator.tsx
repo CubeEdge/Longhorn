@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { XCircle } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -1290,14 +1291,14 @@ export default function KnowledgeGenerator() {
                                                     <div style={{
                                                         width: '100%',
                                                         height: '4px',
-                                                        background: 'rgba(76,175,80,0.1)',
+                                                        background: 'rgba(255,255,255,0.1)',
                                                         borderRadius: '2px',
                                                         overflow: 'hidden'
                                                     }}>
                                                         <div style={{
                                                             width: `${step.progress || 0}%`,
                                                             height: '100%',
-                                                            background: 'linear-gradient(90deg, #4CAF50, #81C784)',
+                                                            background: '#FFFFFF',
                                                             transition: 'width 0.3s ease-out',
                                                             borderRadius: '2px'
                                                         }} />
@@ -1310,7 +1311,7 @@ export default function KnowledgeGenerator() {
                                                         marginTop: '6px'
                                                     }}>
                                                         <span>{step.details || 'AI优化中...'}</span>
-                                                        <span style={{ color: '#4CAF50', fontWeight: 600 }}>{step.progress || 0}%</span>
+                                                        <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
                                                     </div>
                                                 </div>
                                             )}
@@ -1337,7 +1338,7 @@ export default function KnowledgeGenerator() {
                                                         <div style={{
                                                             width: `${step.progress || 0}%`,
                                                             height: '100%',
-                                                            background: 'linear-gradient(90deg, #FFD700, #FFA500)',
+                                                            background: '#FFFFFF',
                                                             transition: 'width 0.3s ease-out'
                                                         }} />
                                                     </div>
@@ -1368,27 +1369,29 @@ export default function KnowledgeGenerator() {
                                             <button
                                                 onClick={handleCancel}
                                                 style={{
-                                                    padding: '6px 14px',
-                                                    background: 'rgba(255,255,255,0.05)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
-                                                    borderRadius: '8px',
-                                                    color: '#999',
-                                                    fontSize: '12px',
-                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    width: '28px',
+                                                    height: '28px',
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    borderRadius: '50%',
+                                                    color: '#EF4444',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.2s',
-                                                    marginLeft: '12px'
+                                                    marginLeft: '12px',
+                                                    padding: 0
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                                    e.currentTarget.style.color = '#fff';
+                                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.color = '#999';
+                                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
                                                 }}
+                                                title="停止优化"
                                             >
-                                                停止优化
+                                                <XCircle size={16} />
                                             </button>
                                         )}
 

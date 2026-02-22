@@ -234,6 +234,8 @@ export const KinefinityWiki: React.FC = () => {
         const saved = localStorage.getItem(`wiki-grouped-expanded-categories-${productLine}`);
         return saved ? new Set(JSON.parse(saved)) : new Set();
     });
+    const [groupedExpandedChapters, setGroupedExpandedChapters] = useState<Set<string>>(new Set());
+    const [expandedModalChapters, setExpandedModalChapters] = useState<Set<string>>(new Set());
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false); // 区分搜索模式和分组视图模式
 
@@ -3499,7 +3501,7 @@ ${contextTickets.map((t: any) => {
                                                                                 />
                                                                             </div>
 
-                                                                            {/* 文章列表 - 不显示章节号 */}
+                                                                            {/* 文章列表 */}
                                                                             {isCatExpanded && (
                                                                                 <div style={{
                                                                                     marginLeft: '34px',
@@ -3508,34 +3510,172 @@ ${contextTickets.map((t: any) => {
                                                                                     flexDirection: 'column',
                                                                                     gap: '4px'
                                                                                 }}>
-                                                                                    {catArticles.map(article => (
-                                                                                        <div
-                                                                                            key={article.id}
-                                                                                            onClick={() => handleArticleClick(article)}
-                                                                                            style={{
-                                                                                                padding: '10px 12px',
-                                                                                                background: 'rgba(255,255,255,0.02)',
-                                                                                                borderRadius: '8px',
-                                                                                                cursor: 'pointer',
-                                                                                                transition: 'all 0.15s',
-                                                                                                display: 'flex',
-                                                                                                alignItems: 'center',
-                                                                                                gap: '12px'
-                                                                                            }}
-                                                                                            onMouseEnter={(e) => {
-                                                                                                e.currentTarget.style.background = 'rgba(255,215,0,0.08)';
-                                                                                            }}
-                                                                                            onMouseLeave={(e) => {
-                                                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                                                            }}
-                                                                                        >
-                                                                                            <FileText size={14} color="#666" />
-                                                                                            <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
-                                                                                                {article.title}
-                                                                                            </span>
-                                                                                            <ChevronRight size={14} color="#444" />
-                                                                                        </div>
-                                                                                    ))}
+                                                                                    {(() => {
+                                                                                        // IF not manual, render plain list
+                                                                                        if (category !== 'Manual') {
+                                                                                            return catArticles.map(article => (
+                                                                                                <div
+                                                                                                    key={article.id}
+                                                                                                    onClick={() => handleArticleClick(article)}
+                                                                                                    style={{
+                                                                                                        padding: '10px 12px',
+                                                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                                                        borderRadius: '8px',
+                                                                                                        cursor: 'pointer',
+                                                                                                        transition: 'all 0.15s',
+                                                                                                        display: 'flex',
+                                                                                                        alignItems: 'center',
+                                                                                                        gap: '12px'
+                                                                                                    }}
+                                                                                                    onMouseEnter={(e) => {
+                                                                                                        e.currentTarget.style.background = 'rgba(255,215,0,0.08)';
+                                                                                                    }}
+                                                                                                    onMouseLeave={(e) => {
+                                                                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                                                                    }}
+                                                                                                >
+                                                                                                    <FileText size={14} color="#666" />
+                                                                                                    <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
+                                                                                                        {article.title}
+                                                                                                    </span>
+                                                                                                    <ChevronRight size={14} color="#444" />
+                                                                                                </div>
+                                                                                            ));
+                                                                                        }
+
+                                                                                        // For Manual, render Chapter Accordions
+                                                                                        const chapterGroups = new Map<number, KnowledgeArticle[]>();
+                                                                                        const chaptersHaveSubsections = new Set<number>();
+
+                                                                                        catArticles.forEach(a => {
+                                                                                            const { chapter, section } = parseChapterNumber(a.title);
+                                                                                            if (chapter !== null) {
+                                                                                                if (!chapterGroups.has(chapter)) chapterGroups.set(chapter, []);
+                                                                                                chapterGroups.get(chapter)!.push(a);
+                                                                                                if (section !== null) chaptersHaveSubsections.add(chapter);
+                                                                                            } else {
+                                                                                                if (!chapterGroups.has(-1)) chapterGroups.set(-1, []);
+                                                                                                chapterGroups.get(-1)!.push(a);
+                                                                                            }
+                                                                                        });
+
+                                                                                        const sortedChapters = Array.from(chapterGroups.entries()).sort((a, b) => a[0] - b[0]);
+
+                                                                                        return sortedChapters.map(([chapterNum, articlesInChapter]) => {
+                                                                                            // Sort sections within chapter
+                                                                                            articlesInChapter.sort((a, b) => {
+                                                                                                const secA = parseChapterNumber(a.title).section || '';
+                                                                                                const secB = parseChapterNumber(b.title).section || '';
+                                                                                                return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
+                                                                                            });
+
+                                                                                            const isAccordion = chaptersHaveSubsections.has(chapterNum);
+                                                                                            const firstArticle = articlesInChapter[0];
+                                                                                            const chapterKey = `${catKey}-chap-${chapterNum}`;
+                                                                                            const isChapExpanded = groupedExpandedChapters.has(chapterKey);
+                                                                                            const { cleanTitle } = parseChapterNumber(firstArticle.title);
+
+                                                                                            // If no subsections (just 1 standalone article or it's a chapter without subdivisions)
+                                                                                            if (!isAccordion || chapterNum === -1) {
+                                                                                                return articlesInChapter.map(article => (
+                                                                                                    <div
+                                                                                                        key={article.id}
+                                                                                                        onClick={() => handleArticleClick(article)}
+                                                                                                        style={{
+                                                                                                            padding: '10px 12px',
+                                                                                                            background: 'rgba(255,255,255,0.02)',
+                                                                                                            borderRadius: '8px',
+                                                                                                            cursor: 'pointer',
+                                                                                                            transition: 'all 0.15s',
+                                                                                                            display: 'flex',
+                                                                                                            alignItems: 'center',
+                                                                                                            gap: '12px'
+                                                                                                        }}
+                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
+                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                                                                                    >
+                                                                                                        <FileText size={14} color="#666" />
+                                                                                                        <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
+                                                                                                            {article.title}
+                                                                                                        </span>
+                                                                                                        <ChevronRight size={14} color="#444" />
+                                                                                                    </div>
+                                                                                                ));
+                                                                                            }
+
+                                                                                            // It is an accordion with subsections
+                                                                                            return (
+                                                                                                <div key={chapterKey}>
+                                                                                                    <div
+                                                                                                        onClick={() => {
+                                                                                                            const newSet = new Set(groupedExpandedChapters);
+                                                                                                            if (isChapExpanded) newSet.delete(chapterKey);
+                                                                                                            else newSet.add(chapterKey);
+                                                                                                            setGroupedExpandedChapters(newSet);
+                                                                                                        }}
+                                                                                                        style={{
+                                                                                                            display: 'flex',
+                                                                                                            alignItems: 'center',
+                                                                                                            gap: '8px',
+                                                                                                            padding: '10px 12px',
+                                                                                                            cursor: 'pointer',
+                                                                                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                                                                            transition: 'background 0.15s'
+                                                                                                        }}
+                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                                                                    >
+                                                                                                        <ChevronRight
+                                                                                                            size={14}
+                                                                                                            color="#FFD700"
+                                                                                                            style={{
+                                                                                                                transform: isChapExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                                                                transition: 'transform 0.2s ease',
+                                                                                                                flexShrink: 0
+                                                                                                            }}
+                                                                                                        />
+                                                                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
+                                                                                                            第{chapterNum}章：{cleanTitle}
+                                                                                                        </span>
+                                                                                                    </div>
+
+                                                                                                    {isChapExpanded && (
+                                                                                                        <div style={{ marginLeft: '22px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                                                            {articlesInChapter.map(article => {
+                                                                                                                // If it's the chapter base article itself, skip or render special?
+                                                                                                                // Usually Apple includes the overview as an article. We'll list them all.
+                                                                                                                const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
+                                                                                                                const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+                                                                                                                return (
+                                                                                                                    <div
+                                                                                                                        key={article.id}
+                                                                                                                        onClick={() => handleArticleClick(article)}
+                                                                                                                        style={{
+                                                                                                                            padding: '8px 12px',
+                                                                                                                            background: 'rgba(255,255,255,0.015)',
+                                                                                                                            borderRadius: '6px',
+                                                                                                                            cursor: 'pointer',
+                                                                                                                            transition: 'all 0.15s',
+                                                                                                                            display: 'flex',
+                                                                                                                            alignItems: 'center',
+                                                                                                                            gap: '12px'
+                                                                                                                        }}
+                                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
+                                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
+                                                                                                                    >
+                                                                                                                        <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                                                                            {displayNum}
+                                                                                                                        </span>
+                                                                                                                        <span style={{ fontSize: '13px', color: '#ccc', flex: 1 }}>{secTitle}</span>
+                                                                                                                    </div>
+                                                                                                                );
+                                                                                                            })}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            );
+                                                                                        });
+                                                                                    })()}
                                                                                 </div>
                                                                             )}
                                                                         </div>
@@ -4378,87 +4518,189 @@ ${contextTickets.map((t: any) => {
                                         flexDirection: 'column',
                                         gap: '8px'
                                     }}>
-                                        {manualArticles.map((article) => {
-                                            const isCurrentArticle = article.id === selectedArticle.id;
-                                            const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
-                                            const displayNum = section ? `${chapter}.${section}` : chapter?.toString() || '';
-                                            const isSubSection = section !== null;
+                                        {(() => {
+                                            const chapterGroups = new Map<number, KnowledgeArticle[]>();
+                                            const chaptersHaveSubsections = new Set<number>();
 
-                                            return (
-                                                <div
-                                                    key={article.id}
-                                                    onClick={() => {
-                                                        if (!isCurrentArticle) {
-                                                            setShowManualTocModal(false);
-                                                            handleArticleClick(article);
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        padding: '14px 18px',
-                                                        marginLeft: isSubSection ? '32px' : '0',
-                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
-                                                        border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                            manualArticles.forEach(a => {
+                                                const { chapter, section } = parseChapterNumber(a.title);
+                                                if (chapter !== null) {
+                                                    if (!chapterGroups.has(chapter)) chapterGroups.set(chapter, []);
+                                                    chapterGroups.get(chapter)!.push(a);
+                                                    if (section !== null) chaptersHaveSubsections.add(chapter);
+                                                } else {
+                                                    if (!chapterGroups.has(-1)) chapterGroups.set(-1, []);
+                                                    chapterGroups.get(-1)!.push(a);
+                                                }
+                                            });
+
+                                            const sortedChapters = Array.from(chapterGroups.entries()).sort((a, b) => a[0] - b[0]);
+
+                                            return sortedChapters.map(([chapterNum, articlesInChapter]) => {
+                                                articlesInChapter.sort((a, b) => {
+                                                    const secA = parseChapterNumber(a.title).section || '';
+                                                    const secB = parseChapterNumber(b.title).section || '';
+                                                    return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
+                                                });
+
+                                                const isAccordion = chaptersHaveSubsections.has(chapterNum) && chapterNum !== -1;
+                                                const chapterKey = `modal-chap-${chapterNum}`;
+                                                const isCurrentChapter = articlesInChapter.some(a => a.id === selectedArticle.id);
+
+                                                // Default to expanded if it contains the current article, unless explicitly collapsed
+                                                // For simplicity, we just use the set to track explicitly TOGGLED states.
+                                                // Actually, let's just make everything collapsed by default and toggle with state, 
+                                                // BUT if it's the current chapter we auto-expand unless it's in a collapsed tracking set.
+                                                // To keep it clean: just use expandedModalChapters.
+                                                const isChapExpanded = expandedModalChapters.has(chapterKey) || isCurrentChapter;
+
+                                                if (!isAccordion) {
+                                                    return articlesInChapter.map(article => {
+                                                        const isCurrentArticle = article.id === selectedArticle.id;
+                                                        const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
+                                                        const displayNum = section ? `${chapter}.${section}` : chapter?.toString() || '';
+
+                                                        return (
+                                                            <div
+                                                                key={article.id}
+                                                                onClick={() => {
+                                                                    if (!isCurrentArticle) {
+                                                                        setShowManualTocModal(false);
+                                                                        handleArticleClick(article);
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    padding: '14px 18px',
+                                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
+                                                                    border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                                    borderRadius: '12px',
+                                                                    cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '16px',
+                                                                    transition: 'all 0.15s'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)'; }
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }
+                                                                }}
+                                                            >
+                                                                {displayNum && (
+                                                                    <span style={{ minWidth: '44px', padding: '6px 10px', background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#FFD700', textAlign: 'center' }}>
+                                                                        {displayNum}
+                                                                    </span>
+                                                                )}
+                                                                <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#ccc', flex: 1 }}>{cleanTitle}</span>
+                                                                {isCurrentArticle && <span style={{ fontSize: '12px', color: '#FFD700', padding: '4px 10px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
+                                                            </div>
+                                                        );
+                                                    });
+                                                }
+
+                                                // It's a grouped accordion
+                                                const firstArticle = articlesInChapter[0];
+                                                const { cleanTitle: chapCleanTitle } = parseChapterNumber(firstArticle.title);
+                                                return (
+                                                    <div key={chapterKey} style={{
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        border: '1px solid rgba(255,255,255,0.05)',
                                                         borderRadius: '12px',
-                                                        cursor: isCurrentArticle ? 'default' : 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '16px',
-                                                        transition: 'all 0.15s'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        if (!isCurrentArticle) {
-                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                            e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)';
-                                                        }
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        if (!isCurrentArticle) {
-                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
-                                                        }
-                                                    }}
-                                                >
-                                                    {/* 章节号 */}
-                                                    {displayNum && (
-                                                        <span style={{
-                                                            minWidth: isSubSection ? '36px' : '44px',
-                                                            padding: isSubSection ? '4px 8px' : '6px 10px',
-                                                            background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
-                                                            borderRadius: '8px',
-                                                            fontSize: isSubSection ? '12px' : '13px',
-                                                            fontWeight: 600,
-                                                            color: '#FFD700',
-                                                            textAlign: 'center'
-                                                        }}>
-                                                            {displayNum}
-                                                        </span>
-                                                    )}
-
-                                                    {/* 标题 */}
-                                                    <span style={{
-                                                        fontSize: isSubSection ? '14px' : '15px',
-                                                        fontWeight: isCurrentArticle ? 600 : 400,
-                                                        color: isCurrentArticle ? '#FFD700' : '#ccc',
-                                                        flex: 1
+                                                        overflow: 'hidden'
                                                     }}>
-                                                        {cleanTitle}
-                                                    </span>
+                                                        {/* Accordion Header */}
+                                                        <div
+                                                            onClick={() => {
+                                                                const newSet = new Set(expandedModalChapters);
+                                                                if (expandedModalChapters.has(chapterKey)) {
+                                                                    newSet.delete(chapterKey);
+                                                                    // If it was auto-expanded due to isCurrentChapter, we need to artificially track it so it closes.
+                                                                    // Actually, standard behavior: just track toggles.
+                                                                } else {
+                                                                    newSet.add(chapterKey);
+                                                                }
+                                                                // If isCurrentChapter is true and it's NOT in the set, clicking should COLLAPSE it.
+                                                                // To do that robustly: 
+                                                                if (isCurrentChapter && !expandedModalChapters.has(chapterKey)) {
+                                                                    newSet.add('collapsed-' + chapterKey);
+                                                                }
+                                                                if (isCurrentChapter && expandedModalChapters.has('collapsed-' + chapterKey)) {
+                                                                    newSet.delete('collapsed-' + chapterKey);
+                                                                }
 
-                                                    {/* 当前阅读标记 */}
-                                                    {isCurrentArticle && (
-                                                        <span style={{
-                                                            fontSize: '12px',
-                                                            color: '#FFD700',
-                                                            padding: '4px 10px',
-                                                            background: 'rgba(255,215,0,0.1)',
-                                                            borderRadius: '10px'
-                                                        }}>
-                                                            当前
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                                setExpandedModalChapters(newSet);
+                                                            }}
+                                                            style={{
+                                                                padding: '14px 18px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                cursor: 'pointer',
+                                                                background: isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',
+                                                                transition: 'background 0.15s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent'}
+                                                        >
+                                                            <ChevronRight
+                                                                size={18}
+                                                                color="#FFD700"
+                                                                style={{
+                                                                    transform: (isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey) ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                    transition: 'transform 0.2s ease',
+                                                                    flexShrink: 0
+                                                                }}
+                                                            />
+                                                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
+                                                                第{chapterNum}章：{chapCleanTitle}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Accordion Body */}
+                                                        {((isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey)) && (
+                                                            <div style={{ padding: '8px 18px 14px 48px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                {articlesInChapter.map(article => {
+                                                                    const isCurrentArticle = article.id === selectedArticle.id;
+                                                                    const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
+                                                                    const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+
+                                                                    return (
+                                                                        <div
+                                                                            key={article.id}
+                                                                            onClick={() => {
+                                                                                if (!isCurrentArticle) {
+                                                                                    setShowManualTocModal(false);
+                                                                                    handleArticleClick(article);
+                                                                                }
+                                                                            }}
+                                                                            style={{
+                                                                                padding: '10px 14px',
+                                                                                background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                                                                borderRadius: '8px',
+                                                                                cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '12px',
+                                                                                transition: 'all 0.15s'
+                                                                            }}
+                                                                            onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                                                                            onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
+                                                                        >
+                                                                            <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                {displayNum}
+                                                                            </span>
+                                                                            <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
+                                                                            {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             </div>
