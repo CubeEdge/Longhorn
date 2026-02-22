@@ -4,6 +4,55 @@
 
 ---
 
+## 会话: 2026-02-23 (Wiki Search Tab UI Redesign)
+
+### 任务: Wiki 搜索 Tab 重构与 UI 统一化
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **统一 Tab 面板**: 在 `KinefinityWiki.tsx` 中彻底重构了顶部导航布局，将独立的搜索栏整合到产品族类 Tab (A/B/C/D) 同一行，实现空间的高效利用。
+    - **动态搜索 Tab**: 新增 Search Tab 组件。当触发查询时该 Tab 动态出现并高亮。内置下拉式的搜索历史（最多10条近期去重查询，使用 localStorage 存储，支持外部点击自动收起）。
+    - **上下文恢复**: 用户手动关闭搜索（点击 x）或切换产品线时，系统基于 `lastProductLine` 记忆自动平滑回退，无需走多余的面包屑导航结构，彻底避免嵌套过深。
+    - **多语言与样式对齐**: 新增 `wiki.search.history` 在全语种（zh, en, de, ja）的词条配置；统一了知识生成器 `KnowledgeGenerator` 弹窗的最大宽度与 Bokeh 功能图标颜色，并弱化了 AI 回答面板外框，与暗黑基调原生融合。
+    - **构建与测试**: 修复由于大规模迁移视图引发的 JSX 错误拼接块（移除冗余代码）与未使用属性残留，验证 TypeScript 零报错体系。
+- **版本**: Client v12.1.7 (已发版)
+
+---
+
+### 任务: 知识库体验深度优化与 UI 规范化
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **同义词翻译修复**: 纠正了 `SynonymManager.tsx` 中 `useTranslation` 钩子的错误引用（误用了 `react-i18next`），统一切换至本地 `useLanguage` 钩子，解决了同义词管理界面翻译键值解析失效的问题。
+    - **左侧路由精简**: 从 `App.tsx` 中移除了独立的 “知识库” 侧边栏入口及相关二级路由，将入口统一收敛至 Wiki 系统的管理菜单中，降低导航负载。
+    - **弹窗化改造**: 将 `KnowledgeGenerator.tsx` 从页面重构为 `Modal` 组件。通过 `isOpen`/`onClose` 状态控制，利用 `Fixed` 布局与 `backdrop-filter` 实现了 macOS26 风格的高级毛玻璃弹窗效果。
+    - **品牌配色规范化**: 遵循 `Service_PRD.md` 的规范，将 `KnowledgeGenerator` 中所有标志性的 “Kine Green” (`#4CAF50`) 以及相关高亮底色全部替换为 “Kine Yellow” (`#FFD700`)，保持了服务系统视觉语言的高度统一性。
+- **版本**: Client v12.1.0 (已发布)
+
+---
+
+
+## 会话: 2026-02-22 (Wiki Turbo Scraper: Jina Reader Integration)
+
+### 任务: 集成 Jina Reader 提升网页抓取还原度
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **Jina 转发逻辑**: 后端增加 `turbo` 开关，通过 `r.jina.ai` 获取 Markdown，绕开 Axios 直连的 403 封锁。
+    - **图片多模态抓取**: 统一 `saveImageLocally` 逻辑，支持同时从 HTML `img` 和 Markdown 语法中提取并本地化图片（转 WebP）。
+    - **前端 UI 面板**: 增加开关组件并关联后端 `turbo` 字段。
+
+
+## 会话: 2026-02-22 (Wiki Table of Contents UI Polishing)
+
+### 任务: 修复 DOCX 层级渲染与分类底色
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **修复正则切分**: 移除了 `parseChapterNumber` 中对标题前缀冒号的强制依赖（如 `XXX: 1.1`）。改写为更宽松且精准的非贪婪捕获正则，适配了诸如 `1. 基本说明` 格式，解决了子章节被归类到 `-1` 组的问题。
+    - **修复重复序号拼接**: 移除了前端将 `chapterNum` 与已经包含主章节号的 `sectionNum` 再次拼接的冗余逻辑，彻底修复了 UI 渲染 `1.1.1` 这种画蛇添足的显示 Bug。
+    - **折叠骨架空文章过滤**: 在 KinefinityWiki 组件的 `articlesInChapter.map` 内部加入 `.filter(article => parseChapterNumber(article.title).section !== null)` 保护逻辑，隐藏掉用于支撑大目录框架但不带真正内容的冗余父级文章（如原“第三章”空壳），使得苹果级折叠效果彻底干净利落。
+    - **分类底色移除**: 清除了平铺页面里 `A 类操作手册` 所带的实验性绿色高亮背景，复原为了暗黑底色的悬浮高亮灰度按钮，保证视觉的严谨与统一。
+- **版本**: Client v12.0.9 (已上线)
+
+---
+
 ## 会话: 2026-02-22 (Knowledge Base Bug Fixes & URL Import Authorization)
 
 ### 任务: 修复 DOCX 层级渲染与 URL 抓取授权

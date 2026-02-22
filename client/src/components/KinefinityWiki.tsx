@@ -7,23 +7,34 @@ import { useBokehContext } from '../store/useBokehContext';
 import { useLanguage } from '../i18n/useLanguage';
 import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, Ticket, MessageCircleQuestion, RefreshCw, Wrench } from 'lucide-react';
 import { SynonymManager } from './Knowledge/SynonymManager';
+import KnowledgeGenerator from './KnowledgeGenerator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import WikiEditorModal from './Knowledge/WikiEditorModal';
 // Legacy components missing after version upgrade, inline replacements
-const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onClick }) => (
-    <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'rgba(255,255,255,0.05)' } } as any}>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
-        {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
-        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
-            {category && <span>{category}</span>}
-            {productLine && <span>· {productLine}</span>}
-        </div>
-    </div>
-);
+const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onClick }) => {
+    const { t } = useLanguage();
+    const categoryLabels: Record<string, string> = {
+        'Manual': t('wiki.category.manual'),
+        'Troubleshooting': t('wiki.category.troubleshooting'),
+        'FAQ': t('wiki.category.faq')
+    };
+    const displayCategory = categoryLabels[category] || category;
 
-const getTicketStyles = (type: string | undefined, isDark = true) => {
+    return (
+        <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'rgba(255,255,255,0.05)' } } as any}>
+            <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
+            {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
+            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
+                {displayCategory && <span>{displayCategory}</span>}
+                {productLine && <span>· {productLine}</span>}
+            </div>
+        </div>
+    );
+};
+
+const getTicketStyles = (type: string | undefined, t: any, isDark = true) => {
     switch (type) {
         case 'inquiry':
         case 'Inquiry':
@@ -34,7 +45,7 @@ const getTicketStyles = (type: string | undefined, isDark = true) => {
                 hoverBorder: isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.6)',
                 color: '#60A5FA', // Blue
                 icon: <MessageCircleQuestion size={14} />,
-                label: '咨询工单'
+                label: t('wiki.ticket.inquiry')
             };
         case 'rma':
         case 'RMA':
@@ -45,7 +56,7 @@ const getTicketStyles = (type: string | undefined, isDark = true) => {
                 hoverBorder: isDark ? 'rgba(249, 115, 22, 0.5)' : 'rgba(249, 115, 22, 0.6)',
                 color: '#FB923C', // Orange
                 icon: <RefreshCw size={14} />,
-                label: 'RMA返厂'
+                label: t('wiki.ticket.rma')
             };
         case 'dealer_repair':
         case 'Dealer Repair':
@@ -56,7 +67,7 @@ const getTicketStyles = (type: string | undefined, isDark = true) => {
                 hoverBorder: isDark ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.6)',
                 color: '#C084FC', // Purple
                 icon: <Wrench size={14} />,
-                label: '经销商维修'
+                label: t('wiki.ticket.dealer_repair')
             };
         default:
             return {
@@ -66,13 +77,14 @@ const getTicketStyles = (type: string | undefined, isDark = true) => {
                 hoverBorder: isDark ? 'rgba(76, 175, 80, 0.5)' : 'rgba(76, 175, 80, 0.6)',
                 color: '#4CAF50', // Green
                 icon: <Ticket size={14} />,
-                label: type || '其他工单'
+                label: type === 'maintenance' ? t('wiki.ticket.maintenance') : (type || t('common.all'))
             };
     }
 };
 
 const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, productModel, customerName, contactName, onClick }) => {
-    const styles = getTicketStyles(ticketType);
+    const { t } = useLanguage();
+    const styles = getTicketStyles(ticketType, t);
     return (
         <div onClick={onClick} style={{
             padding: '12px',
@@ -269,6 +281,7 @@ export const KinefinityWiki: React.FC = () => {
     // 管理菜单状态
     const [showAdminMenu, setShowAdminMenu] = useState(false);
     const [showArticleManager, setShowArticleManager] = useState(false);
+    const [showKnowledgeImport, setShowKnowledgeImport] = useState(false); // 新增：知识导入弹窗状态
     const [showSynonymManager, setShowSynonymManager] = useState(false);
     const [manageArticles, setManageArticles] = useState<KnowledgeArticle[]>([]);
     const [selectedArticleIds, setSelectedArticleIds] = useState<Set<number>>(new Set());
@@ -280,6 +293,8 @@ export const KinefinityWiki: React.FC = () => {
     const [showKeywordPanel, setShowKeywordPanel] = useState(true);
     const [showAiPanel, setShowAiPanel] = useState(true);
     const [extractedKeywords, setExtractedKeywords] = useState('');
+    const [isNavigationRestored, setIsNavigationRestored] = useState(false);
+
 
     // 搜索结果默认显示数量
     const DEFAULT_SHOW_COUNT = 3;
@@ -319,20 +334,30 @@ export const KinefinityWiki: React.FC = () => {
     const [relatedArticles, setRelatedArticles] = useState<KnowledgeArticle[]>([]);
     const [pendingSearchQuery, setPendingSearchQuery] = useState(''); // 待搜索的查询内容
 
+    // 搜索 Tab 状态
+    const [activeSearchQuery, setActiveSearchQuery] = useState<string | null>(null); // 当前搜索 Tab 的查询内容
+    const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+        const saved = localStorage.getItem('wiki-search-history');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [showSearchHistory, setShowSearchHistory] = useState(false);
+    const [lastProductLine, setLastProductLine] = useState<string>('A'); // 关闭搜索 Tab 时恢复的产品线
+    const searchHistoryRef = React.useRef<HTMLDivElement>(null);
+
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
         const productModels = {
             'A': ['MAVO Edge 8K', 'MAVO Edge 6K', 'MAVO Mark2 LF', 'MAVO Mark2 S35'],
             'B': ['MAVO LF', 'MAVO S35', 'Terra 4K', 'Terra 6K'],
             'C': ['Eagle SDI', 'Eagle HDMI'],
-            'D': ['GripBAT系列', 'Magic Arm', 'Dark Tower', 'KineBAT', '线缆配件']
+            'D': ['GripBAT系列', 'Magic Arm', 'Dark Tower', 'KineBAT', t('wiki.product.cable_accessories')]
         };
 
         const categoryTemplates: Record<string, Array<{ id: string, label: string }>> = {
-            'A': [{ id: 'manual', label: '操作手册' }],
-            'B': [{ id: 'manual', label: '操作手册' }],
-            'C': [{ id: 'manual', label: '操作手册' }],
-            'D': [{ id: 'manual', label: '使用指南' }]
+            'A': [{ id: 'manual', label: t('wiki.category.manual') }],
+            'B': [{ id: 'manual', label: t('wiki.category.manual') }],
+            'C': [{ id: 'manual', label: t('wiki.category.manual') }],
+            'D': [{ id: 'manual', label: t('wiki.category.manual') }]
         };
 
         const buildChapterTree = (articles: KnowledgeArticle[], parentId: string): CategoryNode[] => {
@@ -345,7 +370,7 @@ export const KinefinityWiki: React.FC = () => {
                         chapterMap.set(chapter, {
                             node: {
                                 id: `${parentId}-chapter-${chapter}`,
-                                label: `第${chapter}章`,
+                                label: t('wiki.toc.chapter_prefix', { count: chapter }),
                                 children: [],
                                 articles: []
                             },
@@ -384,15 +409,15 @@ export const KinefinityWiki: React.FC = () => {
 
                     if (!mainArticle && sections.length === 1) {
                         const { cleanTitle } = parseChapterNumber(sections[0].title);
-                        node.label = `第${chapterNum}章：${cleanTitle}`;
+                        node.label = `${t('wiki.toc.chapter_prefix', { count: chapterNum })}：${cleanTitle}`;
                         node.articles = sections;
                         node.children = undefined;
                     } else {
                         node.articles = mainArticle ? [mainArticle] : [];
                         const chapterTitle = mainArticle
                             ? parseChapterNumber(mainArticle.title).cleanTitle
-                            : (sections.length > 0 ? parseChapterNumber(sections[0].title).cleanTitle : `第${chapterNum}章`);
-                        node.label = `第${chapterNum}章：${chapterTitle}`;
+                            : (sections.length > 0 ? parseChapterNumber(sections[0].title).cleanTitle : t('wiki.toc.chapter_prefix', { count: chapterNum }));
+                        node.label = `${t('wiki.toc.chapter_prefix', { count: chapterNum })}：${chapterTitle}`;
                         node.children = sectionNodes.length > 0 ? sectionNodes : undefined;
                     }
                     result.push(node);
@@ -402,10 +427,10 @@ export const KinefinityWiki: React.FC = () => {
         };
 
         const tree: CategoryNode[] = [
-            { id: 'a-camera', label: 'A类：在售电影摄影机', product_line: 'A', children: [] },
-            { id: 'b-camera', label: 'B类：历史机型', product_line: 'B', children: [] },
-            { id: 'c-evf', label: 'C类：电子寻像器', product_line: 'C', children: [] },
-            { id: 'd-accessory', label: 'D类：通用配件', product_line: 'D', children: [] },
+            { id: 'a-camera', label: t('wiki.line.a_desc'), product_line: 'A', children: [] },
+            { id: 'b-camera', label: t('wiki.line.b_desc'), product_line: 'B', children: [] },
+            { id: 'c-evf', label: t('wiki.line.c_desc'), product_line: 'C', children: [] },
+            { id: 'd-accessory', label: t('wiki.line.d_desc'), product_line: 'D', children: [] },
         ];
 
         tree.forEach(productLineNode => {
@@ -491,13 +516,14 @@ export const KinefinityWiki: React.FC = () => {
         }
 
         // 如果没有任何 URL 参数且没有实体 slug 路径，自动加载 A 类内容
-        if (!slug && !productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !isSearchMode) {
+        // 注意：当 URL 中有 slug 时（deep-link），不应重定向到首页
+        if (!slug && !productLine && !productModel && !category && articles.length > 0 && selectedProductLine === 'A' && !isSearchMode && !selectedArticle) {
             const filtered = articles.filter(a => a.product_line === 'A');
             const newBreadcrumb: BreadcrumbItem[] = [{
                 label: 'WIKI',
                 type: 'home'
             }, {
-                label: 'A 类',
+                label: t('wiki.line.a'),
                 type: 'product_line',
                 productLine: 'A',
                 viewMode: 'grouped'
@@ -521,10 +547,10 @@ export const KinefinityWiki: React.FC = () => {
 
             if (productLine) {
                 const lineLabels: Record<string, string> = {
-                    'A': 'A 类',
-                    'B': 'B 类',
-                    'C': 'C 类',
-                    'D': 'D 类'
+                    'A': t('wiki.line.a'),
+                    'B': t('wiki.line.b'),
+                    'C': t('wiki.line.c'),
+                    'D': t('wiki.line.d')
                 };
                 newBreadcrumb.push({
                     label: lineLabels[productLine],
@@ -546,9 +572,9 @@ export const KinefinityWiki: React.FC = () => {
 
             if (category && productModel && productLine) {
                 const categoryLabels: Record<string, string> = {
-                    'Manual': '操作手册',
-                    'Troubleshooting': '故障排查',
-                    'FAQ': '常见问题'
+                    'Manual': t('wiki.category.manual'),
+                    'Troubleshooting': t('wiki.category.troubleshooting'),
+                    'FAQ': t('wiki.category.faq')
                 };
                 newBreadcrumb.push({
                     label: categoryLabels[category] || category,
@@ -591,6 +617,7 @@ export const KinefinityWiki: React.FC = () => {
                 loadArticleDetail(article);
                 buildBreadcrumb(article);
             }
+            setIsNavigationRestored(true);
         } else if (!slug) {
             const lastSlug = localStorage.getItem('wiki-last-article');
             if (lastSlug && articles.length > 0) {
@@ -601,8 +628,10 @@ export const KinefinityWiki: React.FC = () => {
                     buildBreadcrumb(article);
                 }
             }
+            setIsNavigationRestored(true);
         }
-    }, [slug, articles]);
+    }, [slug, articles.length > 0]);
+
 
     // 点击面包屑WIKI按钮时，重置到A类视图
 
@@ -668,6 +697,21 @@ export const KinefinityWiki: React.FC = () => {
         // 提取关键词用于显示
         const keywords = extractKeywords(query);
         setExtractedKeywords(keywords);
+
+        // 激活搜索 Tab
+        if (!isSearchMode) {
+            setLastProductLine(selectedProductLine || 'A');
+        }
+        setActiveSearchQuery(query);
+        setSelectedProductLine(null); // 切换到搜索 Tab
+
+        // 保存搜索历史（去重，最新在前，最多10条）
+        setSearchHistory(prev => {
+            const deduped = prev.filter(q => q !== query);
+            const updated = [query, ...deduped].slice(0, 10);
+            localStorage.setItem('wiki-search-history', JSON.stringify(updated));
+            return updated;
+        });
 
         const doSearch = async () => {
             try {
@@ -788,22 +832,17 @@ export const KinefinityWiki: React.FC = () => {
             const messages = [
                 {
                     role: 'system',
-                    content: `你是 Kinefinity 技术支持助手。请严格基于以下知识库文章和历史工单回答用户问题。
+                    content: `${t('wiki.ai.system_prompt')}
 
-重要规则：
-1. 只使用知识库中明确提供的信息，不要添加、推测或发挥任何知识库中没有的内容
-2. 如果知识库中没有相关信息，明确说明"根据现有知识库资料，暂未找到相关信息"
-3. 不要编造具体的技术参数、规格或功能描述
-4. 回答应简洁准确，不要过度解释
-5. 引用任何文章或工单时，**必须**使用上下文中提供的完整 Markdown 链接格式。例如 [工单标题](/service/inquiry-tickets/123)
+${t('wiki.ai.important_rules')}
 
-知识库文章：
-${contextArticles.map((a: KnowledgeArticle) => `- [${a.title}](/tech-hub/wiki/${a.slug}): ${a.summary || ''}`).join('\n')}${contextTickets.length > 0 ? `
+${contextArticles.length > 0 ? `${t('wiki.ai.related_articles')}
+${contextArticles.map((a: KnowledgeArticle) => `- [${a.title}](/tech-hub/wiki/${a.slug}): ${a.summary || ''}`).join('\n')}` : ''}${contextTickets.length > 0 ? `
 
-历史工单：
+${t('wiki.ai.related_tickets')}
 ${contextTickets.map((t: any) => {
                         const route = t.ticket_type === 'inquiry' ? 'inquiry-tickets' : t.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
-                        return `- [${t.ticket_number}](/service/${route}/${t.ticket_id || t.id}) ${t.title}: ${t.description || ''} → ${t.resolution || '处理中'}`;
+                        return `- [${t.ticket_number}](/service/${route}/${t.ticket_id || t.id}) ${t.title}: ${t.description || ''} → ${t.resolution || t('status.processing')}`;
                     }).join('\n')}` : ''}`
                 },
                 {
@@ -817,7 +856,7 @@ ${contextTickets.map((t: any) => {
                 context: { source: 'wiki_search', articles: contextArticles.map((a: KnowledgeArticle) => a.id) }
             }, { headers });
 
-            setAiAnswer(typeof aiRes.data.data === 'string' ? aiRes.data.data : (aiRes.data.data?.content || '抱歉，无法获取 Bokeh 回答。'));
+            setAiAnswer(typeof aiRes.data.data === 'string' ? aiRes.data.data : (aiRes.data.data?.content || t('wiki.search.ai_error')));
             setRelatedArticles(contextArticles);
             setAiRelatedTickets(contextTickets);
 
@@ -851,10 +890,10 @@ ${contextTickets.map((t: any) => {
         ];
 
         const lineLabels: Record<string, string> = {
-            'A': 'A 类',
-            'B': 'B 类',
-            'C': 'C 类',
-            'D': 'D 类'
+            'A': t('wiki.line.a'),
+            'B': t('wiki.line.b'),
+            'C': t('wiki.line.c'),
+            'D': t('wiki.line.d')
         };
         if (article.product_line && lineLabels[article.product_line]) {
             crumbs.push({
@@ -877,9 +916,9 @@ ${contextTickets.map((t: any) => {
 
         if (article.category) {
             const categoryLabels: Record<string, string> = {
-                'Manual': '操作手册',
-                'Troubleshooting': '故障排查',
-                'FAQ': '常见问题'
+                'Manual': t('wiki.category.manual'),
+                'Troubleshooting': t('wiki.category.troubleshooting'),
+                'FAQ': t('wiki.category.faq')
             };
             crumbs.push({
                 label: categoryLabels[article.category] || article.category,
@@ -1028,10 +1067,10 @@ ${contextTickets.map((t: any) => {
         const filtered = articles.filter(a => a.product_line === productLine);
 
         const lineLabels: Record<string, string> = {
-            'A': 'A 类',
-            'B': 'B 类',
-            'C': 'C 类',
-            'D': 'D 类'
+            'A': t('wiki.line.a'),
+            'B': t('wiki.line.b'),
+            'C': t('wiki.line.c'),
+            'D': t('wiki.line.d')
         };
 
         const newBreadcrumb: BreadcrumbItem[] = [{
@@ -1151,18 +1190,36 @@ ${contextTickets.map((t: any) => {
         }
     };
 
-    // 搜索结果页返回首页
-    const handleSearchBackClick = () => {
+    // 关闭搜索 Tab 并恢复上次浏览的产品线
+    const handleCloseSearchTab = () => {
         setIsSearchMode(false);
         setShowSearchResults(false);
+        setActiveSearchQuery(null);
+        setSelectedProductLine(lastProductLine);
         setSearchQuery('');
         setPendingSearchQuery('');
         setSelectedArticle(null);
         selectedArticleRef.current = null;
-        setSelectedProductLine('A');
         clearContext();
-        navigate('/tech-hub/wiki?line=A');
     };
+
+    // 点击搜索历史项
+    const handleSearchHistorySelect = (query: string) => {
+        setSearchQuery(query);
+        setPendingSearchQuery(query);
+        setShowSearchHistory(false);
+    };
+
+    // 点击外部关闭搜索历史下拉
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (searchHistoryRef.current && !searchHistoryRef.current.contains(e.target as Node)) {
+                setShowSearchHistory(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     // Bokeh formatting functions
     const handleBokehFormat = async () => {
@@ -1183,7 +1240,7 @@ ${contextTickets.map((t: any) => {
             }
         } catch (err: any) {
             console.error('[WIKI] Bokeh format error:', err);
-            alert(err.response?.data?.error?.message || 'Bokeh格式化失败');
+            alert(err.response?.data?.error?.message || t('wiki.bokeh_format_error'));
         } finally {
             setIsFormatting(false);
         }
@@ -1193,10 +1250,10 @@ ${contextTickets.map((t: any) => {
         if (!selectedArticle || !token) return;
 
         const confirmed = await confirm(
-            '发布后将覆盖原有内容，此操作不可撤销。',
-            '发布 Bokeh 优化内容',
-            '确认发布',
-            '取消'
+            t('wiki.publish.confirm_desc'),
+            t('wiki.publish.confirm_title'),
+            t('wiki.publish.confirm_button'),
+            t('action.cancel')
         );
         if (!confirmed) return;
 
@@ -1213,7 +1270,7 @@ ${contextTickets.map((t: any) => {
             }
         } catch (err: any) {
             console.error('[WIKI] Publish format error:', err);
-            alert(err.response?.data?.error?.message || '发布失败');
+            alert(err.response?.data?.error?.message || t('wiki.publish_format_error'));
         }
     };
 
@@ -1288,13 +1345,13 @@ ${contextTickets.map((t: any) => {
         if (!selectedArticle) return '';
         // Priority: content (published) > formatted_content (draft)
         // Page should show published content, editor shows draft
-        if (selectedArticle.content && selectedArticle.content !== '暂无内容') {
+        if (selectedArticle.content && selectedArticle.content !== t('wiki.content.empty')) {
             return selectedArticle.content;
         }
         if (selectedArticle.formatted_content) {
             return selectedArticle.formatted_content;
         }
-        return '暂无内容';
+        return t('wiki.content.empty');
     };
 
     // Get current display summary based on view mode
@@ -1450,7 +1507,7 @@ ${contextTickets.map((t: any) => {
                         {node.articles!
                             .sort((a, b) => {
                                 // Manual类按章节号排序
-                                if (node.category === 'Manual' || node.label === '操作手册') {
+                                if (node.category === 'Manual' || node.label === t('wiki.category.manual')) {
                                     const getNum = (title: string) => {
                                         const match = title.match(/:\s*(\d+)(?:\.(\d+))?/);
                                         if (match) {
@@ -1466,7 +1523,7 @@ ${contextTickets.map((t: any) => {
                             })
                             .map(article => {
                                 // 提取章节号和标题
-                                const isManual = node.category === 'Manual' || node.label === '操作手册';
+                                const isManual = node.category === 'Manual' || node.label === t('wiki.category.manual');
                                 const { chapter: parsedChap, section: parsedSec, cleanTitle: parsedCleanTitle } = parseChapterNumber(article.title);
                                 const chapterNum = parsedChap !== null ? parsedChap.toString() : '';
                                 const displayNum = parsedSec ? parsedSec : chapterNum;
@@ -1544,7 +1601,7 @@ ${contextTickets.map((t: any) => {
             }}>
                 <div style={{ textAlign: 'center' }}>
                     <BookOpen size={48} style={{ marginBottom: '16px', color: '#FFD700' }} />
-                    <div style={{ fontSize: '16px', color: '#999' }}>正在加载知识库...</div>
+                    <div style={{ fontSize: '16px', color: '#999' }}>{t('wiki.loading')}</div>
                 </div>
             </div>
         );
@@ -1726,7 +1783,7 @@ ${contextTickets.map((t: any) => {
                                         }}
                                     >
                                         <Edit3 size={14} />
-                                        编辑
+                                        {t('action.edit')}
                                     </button>
                                 )}
                             </div>
@@ -1766,7 +1823,7 @@ ${contextTickets.map((t: any) => {
                                                 gap: '4px'
                                             }}
                                         >
-                                            <Eye size={14} /> 发布版
+                                            <Eye size={14} /> {t('wiki.toolbar.published')}
                                         </button>
                                         <button
                                             onClick={() => setViewMode('draft')}
@@ -1784,7 +1841,7 @@ ${contextTickets.map((t: any) => {
                                                 gap: '4px'
                                             }}
                                         >
-                                            <EyeOff size={14} /> 草稿
+                                            <EyeOff size={14} /> {t('wiki.toolbar.draft')}
                                         </button>
                                     </div>
 
@@ -1796,7 +1853,7 @@ ${contextTickets.map((t: any) => {
                                         disabled={isFormatting}
                                         style={{
                                             padding: '8px 16px',
-                                            background: isFormatting ? 'rgba(0,191,165,0.1)' : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                            background: isFormatting ? 'rgba(139,92,246,0.1)' : 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
                                             border: 'none',
                                             borderRadius: '8px',
                                             color: '#fff',
@@ -1810,7 +1867,7 @@ ${contextTickets.map((t: any) => {
                                         }}
                                     >
                                         <Sparkles size={14} />
-                                        {isFormatting ? 'Bokeh 处理中...' : 'Bokeh 优化排版'}
+                                        {isFormatting ? t('wiki.toolbar.bokeh_processing') : t('wiki.toolbar.bokeh_format')}
                                     </button>
 
                                     {/* Manual Edit Button */}
@@ -1832,7 +1889,7 @@ ${contextTickets.map((t: any) => {
                                         }}
                                     >
                                         <Edit3 size={14} />
-                                        编辑
+                                        {t('action.edit')}
                                     </button>
 
                                     {/* Publish Button - Only show when draft exists */}
@@ -1853,7 +1910,7 @@ ${contextTickets.map((t: any) => {
                                                 gap: '6px'
                                             }}
                                         >
-                                            发布草稿
+                                            {t('wiki.toolbar.publish_draft')}
                                         </button>
                                     )}
                                 </div>
@@ -1952,24 +2009,24 @@ ${contextTickets.map((t: any) => {
                                         color: '#999'
                                     }}>
                                         <div style={{ fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
-                                            📚 知识来源
+                                            {t('wiki.source.title')}
                                         </div>
                                         {selectedArticle.source_type && (
                                             <div style={{ marginBottom: '4px' }}>
-                                                <span style={{ color: '#666' }}>类型：</span>
-                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_type === 'docx' ? 'Word文档' : selectedArticle.source_type === 'pdf' ? 'PDF文档' : selectedArticle.source_type === 'url' ? '网页' : '文本输入'}</span>
+                                                <span style={{ color: '#666' }}>{t('wiki.source.type_prefix')}</span>
+                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_type === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
                                             </div>
                                         )}
                                         {selectedArticle.source_reference && (
                                             <div>
-                                                <span style={{ color: '#666' }}>文档：</span>
+                                                <span style={{ color: '#666' }}>{t('wiki.source.doc_prefix')}</span>
                                                 <span style={{ color: '#aaa' }}>{selectedArticle.source_reference}</span>
                                             </div>
                                         )}
                                         {selectedArticle.source_url && (
                                             <div style={{ marginTop: '4px' }}>
                                                 <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#FFD700', textDecoration: 'none', fontSize: '12px' }}>
-                                                    🔗 查看原文
+                                                    {t('wiki.source.view_original')}
                                                 </a>
                                             </div>
                                         )}
@@ -1978,7 +2035,7 @@ ${contextTickets.map((t: any) => {
 
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
-                                        这篇文章对您有帮助吗？
+                                        {t('wiki.feedback.title')}
                                     </div>
                                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                                         <button style={{
@@ -2004,7 +2061,7 @@ ${contextTickets.map((t: any) => {
                                             }}
                                         >
                                             <ThumbsUp size={16} />
-                                            <span>有帮助 ({selectedArticle.helpful_count})</span>
+                                            <span>{t('wiki.feedback.helpful', { count: selectedArticle.helpful_count })}</span>
                                         </button>
                                         <button style={{
                                             padding: '10px 24px',
@@ -2029,7 +2086,7 @@ ${contextTickets.map((t: any) => {
                                             }}
                                         >
                                             <ThumbsDown size={16} />
-                                            <span>需要改进 ({selectedArticle.not_helpful_count})</span>
+                                            <span>{t('wiki.feedback.not_helpful', { count: selectedArticle.not_helpful_count })}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -2064,7 +2121,7 @@ ${contextTickets.map((t: any) => {
                                 }}
                             >
                                 <ChevronLeft size={18} color="#999" />
-                                <span style={{ color: '#999', fontSize: '14px' }}>返回</span>
+                                <span style={{ color: '#999', fontSize: '14px' }}>{t('action.back')}</span>
                             </button>
 
                             {/* Chapter Header */}
@@ -2082,13 +2139,13 @@ ${contextTickets.map((t: any) => {
                                         color: '#fff',
                                         marginBottom: '8px'
                                     }}>
-                                        第{chapterView.chapter_number}章
+                                        {t('wiki.toc.chapter_prefix', { count: chapterView.chapter_number })}
                                         {chapterView.main_chapter && (
                                             <span style={{ color: '#ccc', fontWeight: 500 }}>：{chapterView.main_chapter.title.split(':').pop()?.split('.').slice(1).join('.')}</span>
                                         )}
                                     </h1>
                                     <p style={{ color: '#999', fontSize: '14px' }}>
-                                        共 {chapterView.total_articles} 篇文章
+                                        {t('wiki.search.results', { count: chapterView.total_articles })}
                                     </p>
                                 </div>
                             </div>
@@ -2125,7 +2182,7 @@ ${contextTickets.map((t: any) => {
                                                 cursor: 'pointer'
                                             }}
                                         >
-                                            查看章节概述
+                                            {t('wiki.toc.view_overview')}
                                         </button>
                                     )}
                                 </div>
@@ -2145,10 +2202,10 @@ ${contextTickets.map((t: any) => {
                                 <BookOpen size={20} color="#00BFA5" />
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#00BFA5' }}>
-                                        {showFullChapter ? '正在阅读完整章节' : '一键阅读整章内容'}
+                                        {showFullChapter ? t('wiki.toc.reading_full') : t('wiki.toc.read_full_title')}
                                     </div>
                                     <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
-                                        {showFullChapter ? '点击右侧按钮收起' : '将所有小节内容合并展示，方便连续阅读'}
+                                        {showFullChapter ? t('common.collapse') : t('wiki.toc.read_full_desc')}
                                     </div>
                                 </div>
                                 <button
@@ -2178,11 +2235,11 @@ ${contextTickets.map((t: any) => {
                                     }}
                                 >
                                     {loadingFullChapter ? (
-                                        <>加载中...</>
+                                        <>{t('dashboard.loading')}</>
                                     ) : showFullChapter ? (
-                                        <>收起<ChevronDown size={14} /></>
+                                        <>{t('common.collapse')}<ChevronDown size={14} /></>
                                     ) : (
-                                        <>阅读整章<ChevronRight size={14} /></>
+                                        <>{t('wiki.toc.read_full')}<ChevronRight size={14} /></>
                                     )}
                                 </button>
                             </div>
@@ -2274,7 +2331,7 @@ ${contextTickets.map((t: any) => {
                                         gap: '8px'
                                     }}>
                                         <List size={18} />
-                                        本章内容
+                                        {t('wiki.toc.chapter_content')}
                                     </h2>
 
                                     <div style={{
@@ -2373,328 +2430,383 @@ ${contextTickets.map((t: any) => {
                                 </>
                             )}
                         </div>
-                    ) : (
+                    ) : (slug && articles.length > 0) ? (
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '60vh',
+                            color: '#666'
+                        }}>
+                            <BookOpen size={48} style={{ marginBottom: '16px', color: '#FFD700', opacity: 0.5 }} />
+                            <div style={{ fontSize: '14px' }}>{t('dashboard.loading')}</div>
+                        </div>
+                    ) : (isNavigationRestored && (
                         // Welcome View - 重构后的主页
+
                         <div style={{
                             maxWidth: '1200px',
                             margin: '0 auto',
                             padding: '40px 32px'
                         }}>
-                            {/* 顶部布局：标题 + 搜索栏 + 操作按钮 */}
+                            {/* 顶部布局：标题 */}
+                            <div style={{
+                                marginBottom: '24px'
+                            }}>
+                                <h1 style={{
+                                    fontSize: '1.8rem',
+                                    fontWeight: 800,
+                                    margin: '0 0 8px 0',
+                                    color: '#fff',
+                                    letterSpacing: '-0.5px'
+                                }}>
+                                    Kinefinity WIKI
+                                </h1>
+                                <p style={{
+                                    fontSize: '14px',
+                                    color: '#666',
+                                    margin: 0
+                                }}>
+                                    {t('wiki.subtitle')}
+                                </p>
+                            </div>
+
+                            {/* 统一 Tab 栏 + 搜索框 + 管理按钮 */}
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
+                                gap: '8px',
+                                padding: '12px 0',
+                                borderBottom: '1px solid rgba(255,255,255,0.08)',
                                 marginBottom: '32px'
                             }}>
-                                {/* 左侧：标题 */}
-                                <div>
-                                    <h1 style={{
-                                        fontSize: '1.8rem',
-                                        fontWeight: 800,
-                                        margin: '0 0 8px 0',
-                                        color: '#fff',
-                                        letterSpacing: '-0.5px'
-                                    }}>
-                                        Kinefinity WIKI
-                                    </h1>
-                                    <p style={{
-                                        fontSize: '14px',
-                                        color: '#666',
-                                        margin: 0
-                                    }}>
-                                        {t('wiki.subtitle')}
-                                    </p>
-                                </div>
+                                {/* A/B/C/D 产品族类 Tab */}
+                                {[
+                                    { line: 'A', label: t('wiki.line.a_desc') },
+                                    { line: 'B', label: t('wiki.line.b_desc') },
+                                    { line: 'C', label: t('wiki.line.c_desc') },
+                                    { line: 'D', label: t('wiki.line.d_desc') }
+                                ].map(item => {
+                                    const lineArticles = articles.filter(a => a.product_line === item.line);
+                                    const count = lineArticles.length;
+                                    const isSelected = selectedProductLine === item.line;
 
-                                {/* 右侧：搜索栏 + 目录 + 管理 */}
-                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                    {/* 可展开搜索栏 */}
-                                    <div style={{
-                                        position: 'relative',
-                                        display: 'flex',
-                                        alignItems: 'center'
-                                    }}>
-                                        {/* 搜索框 - 始终展开 */}
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,215,0,0.3)',
-                                            borderRadius: '10px',
-                                            padding: '0 12px',
-                                            width: '280px',
-                                            height: '40px',
-                                            overflow: 'hidden'
-                                        }}
+                                    return (
+                                        <button
+                                            key={item.line}
+                                            onClick={() => {
+                                                // 切回产品线 Tab，如果当前在搜索模式则保留搜索数据但切换视图
+                                                setSelectedProductLine(item.line);
+                                                if (isSearchMode) {
+                                                    setShowSearchResults(false);
+                                                }
+                                                handleProductLineClick(item.line);
+                                            }}
+                                            style={{
+                                                padding: '10px 18px',
+                                                background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
+                                                border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '10px',
+                                                color: isSelected ? '#FFF' : '#888',
+                                                fontSize: '14px',
+                                                fontWeight: isSelected ? 600 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                flexShrink: 0
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.color = '#ccc';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.color = '#888';
+                                                }
+                                            }}
                                         >
-                                            <Search size={16} color="#FFD700" style={{ flexShrink: 0 }} />
-                                            <input
-                                                type="text"
-                                                placeholder={t('wiki.search_placeholder')}
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && searchQuery.trim()) {
-                                                        setPendingSearchQuery(searchQuery.trim());
-                                                    }
-                                                }}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '10px 12px',
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    color: '#fff',
-                                                    fontSize: '14px',
-                                                    outline: 'none',
-                                                    minWidth: 0
+                                            {item.label}
+                                            {count > 0 && (
+                                                <span style={{
+                                                    padding: '2px 8px',
+                                                    background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                                                    borderRadius: '10px',
+                                                    fontSize: '12px',
+                                                    color: isSelected ? '#FFD700' : '#666'
+                                                }}>
+                                                    {count}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+
+                                {/* 搜索 Tab - 有搜索时显示 */}
+                                {activeSearchQuery && (
+                                    <div ref={searchHistoryRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                        <button
+                                            onClick={() => {
+                                                // 切换到搜索 Tab
+                                                setSelectedProductLine(null);
+                                                setIsSearchMode(true);
+                                                setShowSearchResults(true);
+                                            }}
+                                            style={{
+                                                padding: '10px 14px',
+                                                background: selectedProductLine === null ? 'rgba(59,130,246,0.12)' : 'transparent',
+                                                border: `1px solid ${selectedProductLine === null ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '10px',
+                                                color: selectedProductLine === null ? '#fff' : '#888',
+                                                fontSize: '14px',
+                                                fontWeight: selectedProductLine === null ? 600 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <Search size={14} />
+                                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                「{activeSearchQuery.length > 10 ? activeSearchQuery.slice(0, 10) + '...' : activeSearchQuery}」
+                                            </span>
+                                            {/* 历史下拉箭头 */}
+                                            {searchHistory.length > 1 && (
+                                                <ChevronDown
+                                                    size={12}
+                                                    style={{
+                                                        opacity: 0.6,
+                                                        cursor: 'pointer',
+                                                        transition: 'transform 0.2s',
+                                                        transform: showSearchHistory ? 'rotate(180deg)' : 'rotate(0deg)'
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowSearchHistory(!showSearchHistory);
+                                                    }}
+                                                />
+                                            )}
+                                            {/* 关闭按钮 */}
+                                            <X
+                                                size={12}
+                                                style={{ opacity: 0.5, cursor: 'pointer', marginLeft: '2px' }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCloseSearchTab();
                                                 }}
                                             />
-                                            {searchQuery.trim() ? (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        // 清除搜索，恢复到A类视图（强制刷新页面）
-                                                        window.location.href = '/tech-hub/wiki?line=A';
-                                                    }}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        padding: '4px',
-                                                        display: 'flex',
-                                                        flexShrink: 0
-                                                    }}
-                                                >
-                                                    <X size={14} color="#666" />
-                                                </button>
-                                            ) : null}
-                                            {searchQuery.trim() && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setPendingSearchQuery(searchQuery.trim());
-                                                    }}
-                                                    style={{
-                                                        background: 'rgba(255,215,0,0.2)',
-                                                        border: '1px solid rgba(255,215,0,0.4)',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        padding: '6px 12px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        flexShrink: 0,
-                                                        color: '#FFD700',
-                                                        fontSize: '13px',
-                                                        fontWeight: 500,
-                                                        marginLeft: '8px'
-                                                    }}
-                                                >
-                                                    搜索
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                                        </button>
 
-                                    {/* 管理按钮 - 下拉菜单 */}
-                                    {hasWikiAdminAccess && (
-                                        <div style={{ position: 'relative' }}>
-                                            <button
-                                                onClick={() => setShowAdminMenu(!showAdminMenu)}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                                    border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                                                    borderRadius: '10px',
-                                                    color: showAdminMenu ? '#FFD700' : '#999',
-                                                    fontSize: '14px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    if (!showAdminMenu) {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                                        e.currentTarget.style.color = '#fff';
-                                                    }
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    if (!showAdminMenu) {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                        e.currentTarget.style.color = '#999';
-                                                    }
-                                                }}
-                                            >
-                                                <Settings size={18} />
-                                                <span>{t('wiki.manage')}</span>
-                                            </button>
-
-                                            {/* 下拉菜单 */}
-                                            {showAdminMenu && (
-                                                <>
-                                                    {/* 点击外部关闭 */}
-                                                    <div
-                                                        onClick={() => setShowAdminMenu(false)}
+                                        {/* 搜索历史下拉 */}
+                                        {showSearchHistory && searchHistory.length > 0 && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                marginTop: '6px',
+                                                width: '240px',
+                                                background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '10px',
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                                                overflow: 'hidden',
+                                                zIndex: 100
+                                            }}>
+                                                <div style={{
+                                                    padding: '8px 12px',
+                                                    fontSize: '11px',
+                                                    color: '#666',
+                                                    fontWeight: 600,
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                                }}>
+                                                    {t('wiki.search.history')}
+                                                </div>
+                                                {searchHistory.map((q, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => handleSearchHistorySelect(q)}
                                                         style={{
-                                                            position: 'fixed',
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            bottom: 0,
-                                                            zIndex: 99
+                                                            width: '100%',
+                                                            padding: '10px 12px',
+                                                            background: q === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent',
+                                                            border: 'none',
+                                                            borderBottom: i < searchHistory.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                                                            color: q === activeSearchQuery ? '#3B82F6' : '#ccc',
+                                                            fontSize: '13px',
+                                                            cursor: 'pointer',
+                                                            textAlign: 'left',
+                                                            transition: 'background 0.15s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
                                                         }}
-                                                    />
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: '100%',
-                                                        right: 0,
-                                                        marginTop: '8px',
-                                                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: '12px',
-                                                        padding: '8px',
-                                                        minWidth: '180px',
-                                                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                                                        zIndex: 100
-                                                    }}>
-                                                        <div
-                                                            onClick={() => {
-                                                                setShowAdminMenu(false);
-                                                                navigate('/tech-hub/knowledge-import');
-                                                            }}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '10px',
-                                                                padding: '10px 12px',
-                                                                borderRadius: '8px',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s'
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <Upload size={16} color="#4CAF50" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
-                                                        </div>
-                                                        <div
-                                                            onClick={() => {
-                                                                setShowAdminMenu(false);
-                                                                setManageArticles(articles);
-                                                                setSelectedArticleIds(new Set());
-                                                                setShowArticleManager(true);
-                                                            }}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '10px',
-                                                                padding: '10px 12px',
-                                                                borderRadius: '8px',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s'
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <FileText size={16} color="#FFD700" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
-                                                        </div>
-                                                        <div
-                                                            onClick={() => {
-                                                                setShowAdminMenu(false);
-                                                                setShowSynonymManager(true);
-                                                            }}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '10px',
-                                                                padding: '10px 12px',
-                                                                borderRadius: '8px',
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s'
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <BookOpen size={16} color="#60A5FA" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background = q === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent';
+                                                        }}
+                                                    >
+                                                        <Search size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* 弹性空间 */}
+                                <div style={{ flex: 1 }} />
+
+                                {/* 搜索输入框 */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '10px',
+                                    padding: '0 12px',
+                                    width: '240px',
+                                    height: '38px',
+                                    flexShrink: 0
+                                }}>
+                                    <Search size={14} color="#888" style={{ flexShrink: 0 }} />
+                                    <input
+                                        type="text"
+                                        placeholder={t('wiki.search_placeholder')}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && searchQuery.trim()) {
+                                                setPendingSearchQuery(searchQuery.trim());
+                                            }
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 10px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#fff',
+                                            fontSize: '13px',
+                                            outline: 'none',
+                                            minWidth: 0
+                                        }}
+                                    />
+                                    {searchQuery.trim() && (
+                                        <button
+                                            onClick={() => {
+                                                setSearchQuery('');
+                                            }}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: '2px',
+                                                display: 'flex',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <X size={12} color="#666" />
+                                        </button>
                                     )}
                                 </div>
+
+                                {/* 管理按钮 */}
+                                {hasWikiAdminAccess && (
+                                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                                        <button
+                                            onClick={() => setShowAdminMenu(!showAdminMenu)}
+                                            style={{
+                                                padding: '8px 14px',
+                                                background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                                border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '10px',
+                                                color: showAdminMenu ? '#FFD700' : '#999',
+                                                fontSize: '13px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                height: '38px'
+                                            }}
+                                        >
+                                            <Settings size={16} />
+                                        </button>
+
+                                        {/* 管理菜单下拉 */}
+                                        {showAdminMenu && (
+                                            <>
+                                                <div
+                                                    onClick={() => setShowAdminMenu(false)}
+                                                    style={{
+                                                        position: 'fixed',
+                                                        inset: 0,
+                                                        zIndex: 99
+                                                    }}
+                                                />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    right: 0,
+                                                    marginTop: '8px',
+                                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '12px',
+                                                    padding: '8px',
+                                                    minWidth: '180px',
+                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                                    zIndex: 100
+                                                }}>
+                                                    <div
+                                                        onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Upload size={16} color="#FFD700" />
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
+                                                    </div>
+                                                    <div
+                                                        onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <FileText size={16} color="#FFD700" />
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
+                                                    </div>
+                                                    <div
+                                                        onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <BookOpen size={16} color="#60A5FA" />
+                                                        <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
-                            {/* 搜索结果列表（仅搜索框输入时显示，位于产品族类 Tab 之上） */}
-                            {showSearchResults && searchQuery.trim() !== '' && (
+                            {/* 搜索结果列表 - 搜索 Tab 激活时显示（位于 Tab 栏下方） */}
+                            {isSearchMode && selectedProductLine === null && activeSearchQuery && (
                                 <div style={{ marginBottom: '24px' }}>
-                                    {/* 搜索结果导航栏 - 面包屑 + 返回按钮 */}
-                                    {isSearchMode && (
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            marginBottom: '20px',
-                                            paddingBottom: '16px',
-                                            borderBottom: '1px solid rgba(255,255,255,0.06)'
-                                        }}>
-                                            {/* Back Button - 圆形设计，与文章页一致 */}
-                                            <button
-                                                onClick={handleSearchBackClick}
-                                                style={{
-                                                    background: 'rgba(255, 255, 255, 0.1)',
-                                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                                    borderRadius: '50%',
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    flexShrink: 0
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = '#FFD700';
-                                                    e.currentTarget.style.borderColor = '#FFD700';
-                                                    e.currentTarget.style.transform = 'scale(1.1)';
-                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                                                    e.currentTarget.style.transform = 'scale(1)';
-                                                    e.currentTarget.style.boxShadow = 'none';
-                                                }}
-                                            >
-                                                <ChevronLeft size={20} color="#fff" strokeWidth={2.5} />
-                                            </button>
-                                            {/* Breadcrumb: WIKI > 搜索:「query」 */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span
-                                                    onClick={handleSearchBackClick}
-                                                    style={{
-                                                        color: '#888',
-                                                        cursor: 'pointer',
-                                                        fontSize: '0.9rem',
-                                                        transition: 'color 0.2s'
-                                                    }}
-                                                    onMouseEnter={(e) => e.currentTarget.style.color = '#FFD700'}
-                                                    onMouseLeave={(e) => e.currentTarget.style.color = '#888'}
-                                                >WIKI</span>
-                                                <ChevronRight size={16} color="#666" />
-                                                <span style={{
-                                                    color: '#fff',
-                                                    fontWeight: 700,
-                                                    fontSize: '1.1rem'
-                                                }}>{t('wiki.search_results')}:「{searchQuery}」</span>
-                                            </div>
-                                        </div>
-                                    )}
                                     {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
                                     {isSearchMode && (
                                         <div style={{
@@ -2725,7 +2837,7 @@ ${contextTickets.map((t: any) => {
                                                         color: '#FFD700',
                                                         fontWeight: 600
                                                     }}>
-                                                        关键词搜索
+                                                        {t('wiki.search.keyword')}
                                                     </span>
                                                     <span style={{ fontSize: '13px', color: '#666' }}>
                                                         {extractedKeywords ? `「${extractedKeywords}」` : ''}
@@ -2779,11 +2891,11 @@ ${contextTickets.map((t: any) => {
                                                     }}>
                                                         <div style={{ fontSize: '14px', color: '#999' }}>
                                                             {searchResults.length === 0 && keywordTickets.length === 0 ? (
-                                                                <span style={{ color: '#666' }}>未找到相关文章或工单</span>
+                                                                <span style={{ color: '#666' }}>{t('wiki.search.no_results')}</span>
                                                             ) : (
                                                                 <>
-                                                                    搜索结果：找到 {searchResults.length} 篇文章
-                                                                    {keywordTickets.length > 0 && ` · ${keywordTickets.length} 个工单`}
+                                                                    {t('wiki.search.results', { count: searchResults.length })}
+                                                                    {keywordTickets.length > 0 && ` · ${t('wiki.search.related_tickets')} (${keywordTickets.length})`}
                                                                 </>
                                                             )}
                                                         </div>
@@ -2811,9 +2923,9 @@ ${contextTickets.map((t: any) => {
                                                                 }}
                                                             >
                                                                 {showMoreArticles ? (
-                                                                    <>收起 <ChevronUp size={12} /></>
+                                                                    <>{t('common.show_less')} <ChevronUp size={12} /></>
                                                                 ) : (
-                                                                    <>展开更多 ({searchResults.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                    <>{t('common.show_more', { count: searchResults.length - DEFAULT_SHOW_COUNT })} <ChevronDown size={12} /></>
                                                                 )}
                                                             </button>
                                                         )}
@@ -2861,7 +2973,7 @@ ${contextTickets.map((t: any) => {
                                                                     textTransform: 'uppercase',
                                                                     letterSpacing: '0.5px'
                                                                 }}>
-                                                                    相关工单{!isTicketSearching && keywordTickets.length > 0 && ` · ${keywordTickets.length}`}
+                                                                    {t('wiki.search.related_tickets')}{!isTicketSearching && keywordTickets.length > 0 && ` · ${keywordTickets.length}`}
                                                                 </div>
                                                                 {keywordTickets.length > DEFAULT_SHOW_COUNT && (
                                                                     <button
@@ -2887,9 +2999,9 @@ ${contextTickets.map((t: any) => {
                                                                         }}
                                                                     >
                                                                         {showMoreTickets ? (
-                                                                            <>收起 <ChevronUp size={14} /></>
+                                                                            <>{t('common.show_less')} <ChevronUp size={14} /></>
                                                                         ) : (
-                                                                            <>展开更多 ({keywordTickets.length - DEFAULT_SHOW_COUNT}) <ChevronDown size={14} /></>
+                                                                            <>{t('common.show_more', { count: keywordTickets.length - DEFAULT_SHOW_COUNT })} <ChevronDown size={14} /></>
                                                                         )}
                                                                     </button>
                                                                 )}
@@ -2907,7 +3019,7 @@ ${contextTickets.map((t: any) => {
                                                                     fontSize: '13px'
                                                                 }}>
                                                                     <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                                                                    正在搜索相关工单...
+                                                                    {t('wiki.search.searching_tickets')}
                                                                 </div>
                                                             ) : keywordTickets.length === 0 ? (
                                                                 <div style={{
@@ -2918,7 +3030,7 @@ ${contextTickets.map((t: any) => {
                                                                     color: '#666',
                                                                     fontSize: '13px'
                                                                 }}>
-                                                                    暂无相关工单
+                                                                    {t('wiki.search.no_tickets')}
                                                                 </div>
                                                             ) : (
                                                                 <div style={{
@@ -2932,7 +3044,7 @@ ${contextTickets.map((t: any) => {
                                                                             id={ticket.id}
                                                                             ticketNumber={ticket.ticket_number}
                                                                             ticketType={ticket.ticket_type}
-                                                                            title={ticket.title || ticket.subject || '无标题'}
+                                                                            title={ticket.title || ticket.subject || t('wiki.search.untitled')}
                                                                             status={ticket.status}
                                                                             productModel={ticket.product_model}
                                                                             customerName={ticket.customer_name}
@@ -2956,11 +3068,12 @@ ${contextTickets.map((t: any) => {
                                     {/* AI 搜索 Panel - 只在搜索时显示 */}
                                     {isSearchMode && (
                                         <div style={{
-                                            background: 'rgba(76,175,80,0.05)',
-                                            border: '2px solid rgba(76,175,80,0.25)',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
                                             borderRadius: '16px',
                                             padding: '20px',
-                                            boxShadow: '0 4px 24px rgba(76,175,80,0.1)'
+                                            position: 'relative',
+                                            overflow: 'hidden'
                                         }}>
                                             {/* Panel 头部：标签 + 折叠按钮 */}
                                             <div style={{
@@ -2975,19 +3088,20 @@ ${contextTickets.map((t: any) => {
                                                     gap: '12px'
                                                 }}>
                                                     <span style={{
-                                                        padding: '4px 12px',
-                                                        background: 'rgba(76,175,80,0.15)',
-                                                        borderRadius: '6px',
+                                                        padding: '5px 14px',
+                                                        background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
+                                                        borderRadius: '8px',
                                                         fontSize: '12px',
-                                                        color: '#4CAF50',
-                                                        fontWeight: 600
+                                                        color: '#a78bfa',
+                                                        fontWeight: 600,
+                                                        letterSpacing: '0.3px'
                                                     }}>
-                                                        Bokeh 智能回答
+                                                        ✦ {t('wiki.search.ai_answer')}
                                                     </span>
                                                     {isAiSearching && (
                                                         <span style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                             <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                                                            思考中...
+                                                            {t('wiki.search.thinking')}
                                                         </span>
                                                     )}
                                                 </div>
@@ -3031,8 +3145,8 @@ ${contextTickets.map((t: any) => {
                                                 <div style={{ marginTop: '16px' }}>
                                                     {isAiSearching && !aiAnswer && (
                                                         <div style={{
-                                                            background: 'rgba(76,175,80,0.05)',
-                                                            border: '1px solid rgba(76,175,80,0.15)',
+                                                            background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(6,182,212,0.06))',
+                                                            border: '1px solid rgba(139,92,246,0.15)',
                                                             borderRadius: '12px',
                                                             padding: '24px',
                                                             marginBottom: '20px',
@@ -3041,30 +3155,30 @@ ${contextTickets.map((t: any) => {
                                                             alignItems: 'center',
                                                             gap: '12px'
                                                         }}>
-                                                            <Loader2 size={28} color="#4CAF50" style={{ animation: 'spin 1.5s linear infinite' }} />
-                                                            <span style={{ fontSize: '14px', color: '#4CAF50', fontWeight: 500 }}>
-                                                                Bokeh 正在分析知识库...
+                                                            <Loader2 size={28} color="#a78bfa" style={{ animation: 'spin 1.5s linear infinite' }} />
+                                                            <span style={{ fontSize: '14px', color: '#a78bfa', fontWeight: 500 }}>
+                                                                {t('wiki.search.analyzing')}
                                                             </span>
                                                             <span style={{ fontSize: '12px', color: '#666' }}>
-                                                                正在检索相关技术文档和工单记录
+                                                                {t('wiki.search.retrieving')}
                                                             </span>
                                                         </div>
                                                     )}
 
                                                     {aiAnswer && (
                                                         <div style={{
-                                                            background: 'transparent',
-                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                            background: 'rgba(255,255,255,0.02)',
                                                             borderRadius: '12px',
                                                             marginBottom: '20px',
                                                             overflow: 'hidden'
                                                         }}>
-                                                            {/* AI回答内容 - 直接显示，无需折叠 */}
-                                                            <div style={{ padding: '16px' }}>
+                                                            {/* AI回答内容 - 精心排版 */}
+                                                            <div style={{ padding: '20px 24px' }}>
                                                                 <div style={{
-                                                                    fontSize: '14px',
-                                                                    color: '#ccc',
-                                                                    lineHeight: '1.7'
+                                                                    fontSize: '14.5px',
+                                                                    color: '#d4d4d4',
+                                                                    lineHeight: '1.85',
+                                                                    letterSpacing: '0.01em'
                                                                 }}>
                                                                     <ReactMarkdown
                                                                         remarkPlugins={[remarkGfm]}
@@ -3081,7 +3195,7 @@ ${contextTickets.map((t: any) => {
                                                                                 else if (props.href?.includes('rma')) typeStr = 'rma';
                                                                                 else if (props.href?.includes('dealer')) typeStr = 'dealer_repair';
 
-                                                                                const styles = isTicket ? getTicketStyles(typeStr) : getTicketStyles('article');
+                                                                                const styles = isTicket ? getTicketStyles(typeStr, t) : getTicketStyles('article', t);
 
                                                                                 return (
                                                                                     <a {...props}
@@ -3145,7 +3259,7 @@ ${contextTickets.map((t: any) => {
                                                                     textTransform: 'uppercase',
                                                                     letterSpacing: '1px'
                                                                 }}>
-                                                                    参考来源 · {relatedArticles.length + aiRelatedTickets.length}
+                                                                    {t('wiki.search.sources')} · {relatedArticles.length + aiRelatedTickets.length}
                                                                 </div>
                                                                 {relatedArticles.length + aiRelatedTickets.length > AI_REF_SHOW_COUNT && (
                                                                     <button
@@ -3153,7 +3267,7 @@ ${contextTickets.map((t: any) => {
                                                                         style={{
                                                                             background: 'transparent',
                                                                             border: 'none',
-                                                                            color: '#4CAF50',
+                                                                            color: '#a78bfa',
                                                                             fontSize: '12px',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
@@ -3163,9 +3277,9 @@ ${contextTickets.map((t: any) => {
                                                                         }}
                                                                     >
                                                                         {showMoreAiArticles ? (
-                                                                            <>收起 <ChevronUp size={12} /></>
+                                                                            <>{t('common.show_less')} <ChevronUp size={12} /></>
                                                                         ) : (
-                                                                            <>展开更多 ({relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT}) <ChevronDown size={12} /></>
+                                                                            <>{t('common.show_more', { count: relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT })} <ChevronDown size={12} /></>
                                                                         )}
                                                                     </button>
                                                                 )}
@@ -3202,7 +3316,7 @@ ${contextTickets.map((t: any) => {
                                                                                 id={item.id}
                                                                                 ticketNumber={item.ticket_number}
                                                                                 ticketType={item.ticket_type}
-                                                                                title={item.title || item.subject || '无标题'}
+                                                                                title={item.title || item.subject || t('wiki.search.untitled')}
                                                                                 status={item.status}
                                                                                 productModel={item.product_model}
                                                                                 customerName={item.customer_name}
@@ -3226,76 +3340,6 @@ ${contextTickets.map((t: any) => {
                                 </div>
                             )}
 
-                            {/* 产品族类 Tab 栏 - 只在非搜索模式下显示 */}
-                            {!isSearchMode && (
-                                <div style={{
-                                    display: 'flex',
-                                    gap: '8px',
-                                    padding: '12px 0',
-                                    borderBottom: '1px solid rgba(255,255,255,0.08)',
-                                    marginBottom: '32px'
-                                }}>
-                                    {[
-                                        { line: 'A', label: 'A类 · 在售机型' },
-                                        { line: 'B', label: 'B类 · 历史机型' },
-                                        { line: 'C', label: 'C类 · 寻像器' },
-                                        { line: 'D', label: 'D类 · 配件' }
-                                    ].map(item => {
-                                        const lineArticles = articles.filter(a => a.product_line === item.line);
-                                        const count = lineArticles.length;
-                                        const isSelected = selectedProductLine === item.line;
-
-                                        return (
-                                            <button
-                                                key={item.line}
-                                                onClick={() => handleProductLineClick(item.line)}
-                                                style={{
-                                                    padding: '10px 18px',
-                                                    background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
-                                                    border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                                    borderRadius: '10px',
-                                                    color: isSelected ? '#FFF' : '#888',
-                                                    fontSize: '14px',
-                                                    fontWeight: isSelected ? 600 : 400,
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    if (!isSelected) {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                        e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
-                                                        e.currentTarget.style.color = '#ccc';
-                                                    }
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    if (!isSelected) {
-                                                        e.currentTarget.style.background = 'transparent';
-                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                                        e.currentTarget.style.color = '#888';
-                                                    }
-                                                }}
-                                            >
-                                                {item.label}
-                                                {count > 0 && (
-                                                    <span style={{
-                                                        padding: '2px 8px',
-                                                        background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
-                                                        borderRadius: '10px',
-                                                        fontSize: '12px',
-                                                        color: isSelected ? '#FFD700' : '#666'
-                                                    }}>
-                                                        {count}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
                             {/* 分组折叠视图 - 只在非搜索模式下显示 */}
                             {!isSearchMode && (() => {
                                 const lineArticles = articles.filter(a => a.product_line === selectedProductLine);
@@ -3311,7 +3355,7 @@ ${contextTickets.map((t: any) => {
                                 if (articleCount === 0) {
                                     return (
                                         <div style={{ padding: '40px 0', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-                                            该分类下暂无文章
+                                            {t('wiki.category.no_articles')}
                                         </div>
                                     );
                                 }
@@ -3343,7 +3387,7 @@ ${contextTickets.map((t: any) => {
                                             marginBottom: '16px'
                                         }}>
                                             <span style={{ fontSize: '14px', color: '#999' }}>
-                                                共 <span style={{ color: '#fff', fontWeight: 600 }}>{modelCount}</span> 种产品型号，<span style={{ color: '#fff', fontWeight: 600 }}>{articleCount}</span> 篇文章
+                                                {t('wiki.manage.stats_summary', { models: modelCount, articles: articleCount })}
                                             </span>
                                         </div>
 
@@ -3415,7 +3459,7 @@ ${contextTickets.map((t: any) => {
                                                                 fontSize: '12px',
                                                                 color: '#999'
                                                             }}>
-                                                                {modelArticles.length}篇
+                                                                {t('wiki.count.articles', { count: modelArticles.length })}
                                                             </span>
 
                                                             <ChevronDown
@@ -3441,9 +3485,9 @@ ${contextTickets.map((t: any) => {
                                                                     const catKey = `${model}-${category}`;
                                                                     const isCatExpanded = groupedExpandedCategories.has(catKey);
                                                                     const categoryLabels: Record<string, string> = {
-                                                                        'Manual': '操作手册',
-                                                                        'Troubleshooting': '故障排查',
-                                                                        'FAQ': '常见问题'
+                                                                        'Manual': t('wiki.category.manual'),
+                                                                        'Troubleshooting': t('wiki.category.troubleshooting'),
+                                                                        'FAQ': t('wiki.category.faq')
                                                                     };
 
                                                                     return (
@@ -3486,7 +3530,7 @@ ${contextTickets.map((t: any) => {
                                                                                 </span>
 
                                                                                 <span style={{ flex: 1, color: '#ccc', fontSize: '14px' }}>
-                                                                                    {categoryLabels[category] || category} {catArticles.length}篇
+                                                                                    {categoryLabels[category] || category} {t('wiki.count.articles', { count: catArticles.length })}
                                                                                 </span>
 
                                                                                 <ChevronDown
@@ -3639,7 +3683,7 @@ ${contextTickets.map((t: any) => {
                                                                                                             }}
                                                                                                         />
                                                                                                         <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
-                                                                                                            第{chapterNum}章{cleanTitle ? `：${cleanTitle}` : ''}
+                                                                                                            {t('wiki.toc.chapter_prefix', { count: chapterNum })}{cleanTitle ? `：${cleanTitle}` : ''}
                                                                                                         </span>
                                                                                                     </div>
 
@@ -3740,7 +3784,7 @@ ${contextTickets.map((t: any) => {
                                                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                                             >
-                                                操作首选项 <ChevronDown size={12} />
+                                                {t('wiki.settings.preference')} <ChevronDown size={12} />
                                             </button>
 
                                             {showRecentMenu && (
@@ -3779,7 +3823,7 @@ ${contextTickets.map((t: any) => {
                                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                     >
-                                                        {recentExpanded ? '折叠面板' : '展开面板'}
+                                                        {recentExpanded ? t('wiki.panel.collapse') : t('wiki.panel.expand')}
                                                     </button>
                                                     {recentArticles.length > RECENT_SHOW_COUNT && recentExpanded && (
                                                         <button
@@ -3804,7 +3848,7 @@ ${contextTickets.map((t: any) => {
                                                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                         >
-                                                            {showMoreRecent ? '收起更多' : `展开更多 (${recentArticles.length - RECENT_SHOW_COUNT})`}
+                                                            {showMoreRecent ? t('common.show_less') : t('common.show_more', { count: recentArticles.length - RECENT_SHOW_COUNT })}
                                                         </button>
                                                     )}
                                                 </div>
@@ -3841,147 +3885,149 @@ ${contextTickets.map((t: any) => {
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    ))}
+                </div >
 
                 {/* Right Sidebar - TOC Panel (从右侧滑出) */}
-                {tocVisible && (
-                    <>
-                        {/* Overlay */}
-                        <div
-                            onClick={() => setTocVisible(false)}
-                            style={{
+                {
+                    tocVisible && (
+                        <>
+                            {/* Overlay */}
+                            <div
+                                onClick={() => setTocVisible(false)}
+                                style={{
+                                    position: 'fixed',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    background: 'rgba(0,0,0,0.6)',
+                                    backdropFilter: 'blur(4px)',
+                                    zIndex: 998,
+                                    animation: 'fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                            />
+
+                            {/* TOC Panel - Apple 支持页面风格 */}
+                            <div ref={tocPanelRef} style={{
                                 position: 'fixed',
-                                top: 0,
-                                left: 0,
                                 right: 0,
+                                top: 0,
                                 bottom: 0,
-                                background: 'rgba(0,0,0,0.6)',
-                                backdropFilter: 'blur(4px)',
-                                zIndex: 998,
-                                animation: 'fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                            }}
-                        />
-
-                        {/* TOC Panel - Apple 支持页面风格 */}
-                        <div ref={tocPanelRef} style={{
-                            position: 'fixed',
-                            right: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: '360px',
-                            background: '#0a0a0a',
-                            borderLeft: '1px solid rgba(255,255,255,0.08)',
-                            zIndex: 999,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
-                        }}>
-                            {/* Header - 左上角关闭按钮 */}
-                            <div style={{
-                                padding: '16px 20px',
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                width: '360px',
+                                background: '#0a0a0a',
+                                borderLeft: '1px solid rgba(255,255,255,0.08)',
+                                zIndex: 999,
                                 display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between'
+                                flexDirection: 'column',
+                                animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
                             }}>
-                                <button
-                                    onClick={() => setTocVisible(false)}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.08)',
-                                        border: 'none',
-                                        borderRadius: '50%',
-                                        width: '32px',
-                                        height: '32px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                    }}
-                                >
-                                    <X size={18} color="#fff" />
-                                </button>
-                            </div>
-
-                            {/* 产品名称标题 - Apple 风格 */}
-                            <div style={{
-                                padding: '24px 28px 16px',
-                            }}>
-                                <h2 style={{
-                                    fontSize: '24px',
-                                    fontWeight: 700,
-                                    color: '#fff',
-                                    margin: 0,
-                                    marginBottom: '8px'
+                                {/* Header - 左上角关闭按钮 */}
+                                <div style={{
+                                    padding: '16px 20px',
+                                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
                                 }}>
-                                    Kinefinity
-                                </h2>
-                                <p style={{
-                                    fontSize: '13px',
-                                    color: '#888',
-                                    margin: 0
-                                }}>
-                                    {t('wiki.toc_title')}
-                                </p>
-                            </div>
-
-                            {/* Search */}
-                            <div style={{ padding: '0 20px 16px' }}>
-                                <div style={{ position: 'relative' }}>
-                                    <Search size={16} style={{
-                                        position: 'absolute',
-                                        left: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        color: '#666'
-                                    }} />
-                                    <input
-                                        type="text"
-                                        placeholder="搜索..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    <button
+                                        onClick={() => setTocVisible(false)}
                                         style={{
-                                            width: '100%',
-                                            padding: '10px 12px 10px 38px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '10px',
-                                            color: '#fff',
-                                            fontSize: '14px',
-                                            outline: 'none',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            background: 'rgba(255,255,255,0.08)',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: '32px',
+                                            height: '32px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s'
                                         }}
-                                        onFocus={(e) => {
-                                            e.currentTarget.style.borderColor = 'rgba(255,215,0,0.4)';
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                        }}
+                                        onMouseLeave={(e) => {
                                             e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                                         }}
-                                        onBlur={(e) => {
-                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                        }}
-                                    />
+                                    >
+                                        <X size={18} color="#fff" />
+                                    </button>
+                                </div>
+
+                                {/* 产品名称标题 - Apple 风格 */}
+                                <div style={{
+                                    padding: '24px 28px 16px',
+                                }}>
+                                    <h2 style={{
+                                        fontSize: '24px',
+                                        fontWeight: 700,
+                                        color: '#fff',
+                                        margin: 0,
+                                        marginBottom: '8px'
+                                    }}>
+                                        Kinefinity
+                                    </h2>
+                                    <p style={{
+                                        fontSize: '13px',
+                                        color: '#888',
+                                        margin: 0
+                                    }}>
+                                        {t('wiki.toc_title')}
+                                    </p>
+                                </div>
+
+                                {/* Search */}
+                                <div style={{ padding: '0 20px 16px' }}>
+                                    <div style={{ position: 'relative' }}>
+                                        <Search size={16} style={{
+                                            position: 'absolute',
+                                            left: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: '#666'
+                                        }} />
+                                        <input
+                                            type="text"
+                                            placeholder={t('wiki.search.placeholder_short')}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px 10px 38px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '10px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                outline: 'none',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                            onFocus={(e) => {
+                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.4)';
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                            }}
+                                            onBlur={(e) => {
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Tree Navigation - Apple 风格列表 */}
+                                <div style={{
+                                    flex: 1,
+                                    overflowY: 'auto',
+                                    padding: '0 12px 20px',
+                                }}>
+                                    {tree.map(node => renderTreeNode(node))}
                                 </div>
                             </div>
-
-                            {/* Tree Navigation - Apple 风格列表 */}
-                            <div style={{
-                                flex: 1,
-                                overflowY: 'auto',
-                                padding: '0 12px 20px',
-                            }}>
-                                {tree.map(node => renderTreeNode(node))}
-                            </div>
-                        </div>
-                    </>
-                )}
+                        </>
+                    )
+                }
 
                 <style>{`
                 @keyframes fadeIn {
@@ -4011,717 +4057,774 @@ ${contextTickets.map((t: any) => {
                     }}
                 />
 
+                {/* 知识导入弹窗 */}
+                <KnowledgeGenerator
+                    isOpen={showKnowledgeImport}
+                    onClose={() => setShowKnowledgeImport(false)}
+                />
+
                 {/* 文章管理弹窗 */}
-                {showArticleManager && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0,0,0,0.7)',
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        animation: 'fadeIn 0.2s ease-out'
-                    }}>
-                        <div style={{
-                            background: 'linear-gradient(145deg, #2a2a2a 0%, #1e1e1e 100%)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '20px',
-                            width: '90%',
-                            maxWidth: '900px',
-                            maxHeight: '80vh',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
-                        }}>
-                            {/* 头部 */}
-                            <div style={{
-                                padding: '20px 24px',
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <div>
-                                    <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#fff', margin: 0 }}>
-                                        文章管理
-                                    </h2>
-                                    <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>
-                                        共 {manageArticles.length} 篇文章，已选 {selectedArticleIds.size} 篇
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setShowArticleManager(false)}
-                                    style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <X size={16} color="#999" />
-                                </button>
-                            </div>
-
-                            {/* 操作栏 */}
-                            <div style={{
-                                padding: '12px 24px',
-                                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                                display: 'flex',
-                                gap: '12px',
-                                alignItems: 'center'
-                            }}>
-                                {/* 搜索框 */}
-                                <div style={{
-                                    flex: 1,
-                                    position: 'relative'
-                                }}>
-                                    <Search size={16} color="#666" style={{
-                                        position: 'absolute',
-                                        left: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)'
-                                    }} />
-                                    <input
-                                        type="text"
-                                        placeholder="搜索文章标题..."
-                                        value={managerSearchQuery}
-                                        onChange={(e) => setManagerSearchQuery(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px 12px 8px 36px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontSize: '13px',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
-
-                                {/* 全选复选框 */}
-                                <button
-                                    onClick={() => {
-                                        if (selectedArticleIds.size === manageArticles.length) {
-                                            setSelectedArticleIds(new Set());
-                                        } else {
-                                            setSelectedArticleIds(new Set(manageArticles.map(a => a.id)));
-                                        }
-                                    }}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '8px 14px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '8px',
-                                        color: '#ccc',
-                                        fontSize: '13px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '16px',
-                                        height: '16px',
-                                        border: `2px solid ${selectedArticleIds.size === manageArticles.length ? '#FFD700' : '#666'}`,
-                                        borderRadius: '4px',
-                                        background: selectedArticleIds.size === manageArticles.length ? 'rgba(255,215,0,0.2)' : 'transparent',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        {selectedArticleIds.size === manageArticles.length && <Check size={12} color="#FFD700" />}
-                                    </div>
-                                    全选
-                                </button>
-
-                                {/* 批量删除 */}
-                                {selectedArticleIds.size > 0 && (
-                                    <button
-                                        onClick={async () => {
-                                            const confirmed = await confirm(
-                                                `确定删除选中的 ${selectedArticleIds.size} 篇文章？此操作不可撤销。`,
-                                                '批量删除文章',
-                                                '确认删除',
-                                                '取消'
-                                            );
-                                            if (!confirmed) return;
-
-                                            setIsDeleting(true);
-                                            const headers = { Authorization: `Bearer ${token}` };
-                                            const idsToDelete = Array.from(selectedArticleIds);
-                                            let successCount = 0;
-
-                                            for (const id of idsToDelete) {
-                                                try {
-                                                    await axios.delete(`/api/v1/knowledge/${id}`, { headers });
-                                                    successCount++;
-                                                } catch (err) {
-                                                    console.error(`Failed to delete article ${id}:`, err);
-                                                }
-                                            }
-
-                                            // 刷新列表
-                                            await fetchArticles();
-                                            setManageArticles(prev => prev.filter(a => !selectedArticleIds.has(a.id)));
-                                            setSelectedArticleIds(new Set());
-                                            setIsDeleting(false);
-                                        }}
-                                        disabled={isDeleting}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            padding: '8px 14px',
-                                            background: 'rgba(255,68,68,0.15)',
-                                            border: '1px solid rgba(255,68,68,0.3)',
-                                            borderRadius: '8px',
-                                            color: '#ff6b6b',
-                                            fontSize: '13px',
-                                            cursor: isDeleting ? 'not-allowed' : 'pointer',
-                                            opacity: isDeleting ? 0.6 : 1
-                                        }}
-                                    >
-                                        <Trash2 size={14} />
-                                        {isDeleting ? '删除中...' : `删除选中 (${selectedArticleIds.size})`}
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* 文章列表 */}
-                            <div style={{
-                                flex: 1,
-                                overflowY: 'auto',
-                                padding: '12px 24px'
-                            }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
-                                            <th
-                                                style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
-                                                onClick={() => setManagerSort(prev => ({ field: 'title', order: prev?.field === 'title' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    标题
-                                                    {managerSort?.field === 'title' && (
-                                                        managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                                    )}
-                                                </div>
-                                            </th>
-                                            <th
-                                                style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
-                                                onClick={() => setManagerSort(prev => ({ field: 'product_line', order: prev?.field === 'product_line' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    产品线
-                                                    {managerSort?.field === 'product_line' && (
-                                                        managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                                    )}
-                                                </div>
-                                            </th>
-                                            <th
-                                                style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
-                                                onClick={() => setManagerSort(prev => ({ field: 'product_model', order: prev?.field === 'product_model' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    产品
-                                                    {managerSort?.field === 'product_model' && (
-                                                        managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                                    )}
-                                                </div>
-                                            </th>
-                                            <th
-                                                style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
-                                                onClick={() => setManagerSort(prev => ({ field: 'category', order: prev?.field === 'category' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    分类
-                                                    {managerSort?.field === 'category' && (
-                                                        managerSort.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                                    )}
-                                                </div>
-                                            </th>
-                                            <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 500 }}>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {manageArticles
-                                            .filter(article => {
-                                                if (managerSearchQuery.trim() === '') return true;
-                                                const query = managerSearchQuery.toLowerCase();
-                                                // 搜索标题
-                                                if (article.title.toLowerCase().includes(query)) return true;
-                                                // 搜索分类
-                                                if (article.category?.toLowerCase().includes(query)) return true;
-                                                // 搜索产品线
-                                                if (article.product_line?.toLowerCase().includes(query)) return true;
-                                                // 搜索产品型号
-                                                const models = Array.isArray(article.product_models)
-                                                    ? article.product_models.join(' ')
-                                                    : article.product_models || '';
-                                                if (models.toLowerCase().includes(query)) return true;
-                                                return false;
-                                            })
-                                            .sort((a, b) => {
-                                                if (!managerSort) return 0;
-                                                const { field, order } = managerSort;
-                                                let valA: string, valB: string;
-
-                                                if (field === 'product_model') {
-                                                    valA = (Array.isArray(a.product_models) ? a.product_models[0] : a.product_models) || '';
-                                                    valB = (Array.isArray(b.product_models) ? b.product_models[0] : b.product_models) || '';
-                                                } else {
-                                                    valA = (a[field] || '') as string;
-                                                    valB = (b[field] || '') as string;
-                                                }
-
-                                                const comparison = valA.localeCompare(valB, 'zh-CN');
-                                                return order === 'asc' ? comparison : -comparison;
-                                            })
-                                            .map(article => {
-                                                const isSelected = selectedArticleIds.has(article.id);
-                                                const lineLabels: Record<string, string> = {
-                                                    'A': 'A类',
-                                                    'B': 'B类',
-                                                    'C': 'C类',
-                                                    'D': 'D类'
-                                                };
-
-                                                return (
-                                                    <tr
-                                                        key={article.id}
-                                                        style={{
-                                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                                            background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
-                                                        }}
-                                                    >
-                                                        <td style={{ padding: '12px 8px' }}>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const newSet = new Set(selectedArticleIds);
-                                                                    if (isSelected) {
-                                                                        newSet.delete(article.id);
-                                                                    } else {
-                                                                        newSet.add(article.id);
-                                                                    }
-                                                                    setSelectedArticleIds(newSet);
-                                                                }}
-                                                                style={{
-                                                                    width: '18px',
-                                                                    height: '18px',
-                                                                    border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
-                                                                    borderRadius: '4px',
-                                                                    background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center'
-                                                                }}
-                                                            >
-                                                                {isSelected && <Check size={12} color="#FFD700" />}
-                                                            </button>
-                                                        </td>
-                                                        <td style={{ padding: '12px 8px' }}>
-                                                            <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
-                                                                {article.title}
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: '12px 8px' }}>
-                                                            <span style={{
-                                                                padding: '4px 8px',
-                                                                background: 'rgba(255,215,0,0.1)',
-                                                                borderRadius: '6px',
-                                                                color: '#FFD700',
-                                                                fontSize: '12px'
-                                                            }}>
-                                                                {lineLabels[article.product_line] || article.product_line}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
-                                                            {Array.isArray(article.product_models)
-                                                                ? article.product_models[0]
-                                                                : article.product_models || '-'}
-                                                        </td>
-                                                        <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
-                                                            {article.category}
-                                                        </td>
-                                                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                                                            <button
-                                                                onClick={async () => {
-                                                                    const confirmed = await confirm(
-                                                                        `确定删除「${article.title}」？`,
-                                                                        '删除文章',
-                                                                        '确认删除',
-                                                                        '取消'
-                                                                    );
-                                                                    if (!confirmed) return;
-
-                                                                    try {
-                                                                        const headers = { Authorization: `Bearer ${token}` };
-                                                                        await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
-                                                                        await fetchArticles();
-                                                                        setManageArticles(prev => prev.filter(a => a.id !== article.id));
-                                                                    } catch (err) {
-                                                                        console.error('Delete article failed:', err);
-                                                                    }
-                                                                }}
-                                                                style={{
-                                                                    padding: '6px 10px',
-                                                                    background: 'transparent',
-                                                                    border: '1px solid rgba(255,68,68,0.3)',
-                                                                    borderRadius: '6px',
-                                                                    color: '#ff6b6b',
-                                                                    fontSize: '12px',
-                                                                    cursor: 'pointer',
-                                                                    transition: 'all 0.15s'
-                                                                }}
-                                                                onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.background = 'transparent';
-                                                                }}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 手册目录弹窗 */}
-                {showManualTocModal && selectedArticle?.category === 'Manual' && (() => {
-                    const model = Array.isArray(selectedArticle.product_models)
-                        ? selectedArticle.product_models[0]
-                        : selectedArticle.product_models;
-                    const manualArticles = articles.filter(a =>
-                        a.product_line === selectedArticle.product_line &&
-                        a.category === 'Manual' &&
-                        (Array.isArray(a.product_models) ? a.product_models.includes(model) : a.product_models === model)
-                    ).sort((a, b) => {
-                        const secA = parseChapterNumber(a.title);
-                        const secB = parseChapterNumber(b.title);
-                        const chapterDiff = (secA.chapter || 9999) - (secB.chapter || 9999);
-                        if (chapterDiff !== 0) return chapterDiff;
-                        return (secA.section || '').localeCompare(secB.section || '', undefined, { numeric: true, sensitivity: 'base' });
-                    });
-
-                    // 分类标签映射
-                    const categoryLabels: Record<string, string> = {
-                        'Manual': '操作手册',
-                        'Troubleshooting': '故障排查',
-                        'FAQ': '常见问题'
-                    };
-                    const categoryLabel = categoryLabels[selectedArticle.category] || selectedArticle.category;
-
-                    return (
+                {
+                    showArticleManager && (
                         <div style={{
                             position: 'fixed',
                             top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0,0,0,0.85)',
+                            background: 'rgba(0,0,0,0.7)',
                             backdropFilter: 'blur(8px)',
                             WebkitBackdropFilter: 'blur(8px)',
-                            zIndex: 1000,
-                            animation: 'fadeIn 0.2s ease-out',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: '40px'
+                            zIndex: 1000,
+                            animation: 'fadeIn 0.2s ease-out'
                         }}>
-                            {/* 弹窗内容 - 宽度约2/3 */}
                             <div style={{
-                                width: '100%',
-                                maxWidth: '900px',
-                                maxHeight: '80vh',
-                                background: '#1a1a1a',
+                                background: 'linear-gradient(145deg, #2a2a2a 0%, #1e1e1e 100%)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '20px',
+                                width: '90%',
+                                maxWidth: '900px',
+                                maxHeight: '80vh',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                overflow: 'hidden',
-                                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                                boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
                             }}>
-                                {/* 顶部标题栏 */}
+                                {/* 头部 */}
                                 <div style={{
                                     padding: '24px 32px',
                                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
                                 }}>
-                                    <div>
-                                        <h2 style={{
-                                            fontSize: '24px',
-                                            fontWeight: 700,
-                                            color: '#fff',
-                                            margin: 0
-                                        }}>
-                                            {model} · {categoryLabel}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: 0 }}>
+                                            {t('wiki.manage_articles')}
                                         </h2>
-                                        <p style={{
-                                            fontSize: '14px',
-                                            color: '#888',
-                                            margin: '6px 0 0 0'
-                                        }}>
-                                            共 {manualArticles.length} 章
+                                        <p style={{ fontSize: '14px', color: '#888', margin: 0, fontWeight: 400 }}>
+                                            {t('wiki.manage.stats', { total: manageArticles.length, selected: selectedArticleIds.size })}
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => setShowManualTocModal(false)}
+                                        onClick={() => setShowArticleManager(false)}
                                         style={{
-                                            background: 'rgba(255,255,255,0.08)',
-                                            border: 'none',
-                                            borderRadius: '50%',
                                             width: '40px',
                                             height: '40px',
-                                            cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
+                                            background: 'rgba(255,255,255,0.08)',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            cursor: 'pointer',
+                                            color: '#fff',
                                             transition: 'all 0.2s'
                                         }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
                                     >
-                                        <X size={22} color="#fff" />
+                                        <X size={22} />
                                     </button>
+
                                 </div>
 
-                                {/* 章节列表 */}
+                                {/* 操作栏 */}
+                                <div style={{
+                                    padding: '12px 24px',
+                                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    display: 'flex',
+                                    gap: '12px',
+                                    alignItems: 'center'
+                                }}>
+                                    {/* 搜索框 */}
+                                    <div style={{
+                                        flex: 1,
+                                        position: 'relative'
+                                    }}>
+                                        <Search size={16} color="#666" style={{
+                                            position: 'absolute',
+                                            left: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)'
+                                        }} />
+                                        <input
+                                            type="text"
+                                            placeholder={t('wiki.manage.search_placeholder')}
+                                            value={managerSearchQuery}
+                                            onChange={(e) => setManagerSearchQuery(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 12px 8px 36px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '13px',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* 全选复选框 */}
+                                    <button
+                                        onClick={() => {
+                                            if (selectedArticleIds.size === manageArticles.length) {
+                                                setSelectedArticleIds(new Set());
+                                            } else {
+                                                setSelectedArticleIds(new Set(manageArticles.map(a => a.id)));
+                                            }
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '8px 14px',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '8px',
+                                            color: '#ccc',
+                                            fontSize: '13px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            border: `2px solid ${selectedArticleIds.size === manageArticles.length ? '#FFD700' : '#666'}`,
+                                            borderRadius: '4px',
+                                            background: selectedArticleIds.size === manageArticles.length ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            {selectedArticleIds.size === manageArticles.length && <Check size={12} color="#FFD700" />}
+                                        </div>
+                                        {t('common.select_all')}
+                                    </button>
+
+                                    {/* 批量删除 */}
+                                    {selectedArticleIds.size > 0 && (
+                                        <button
+                                            onClick={async () => {
+                                                const confirmed = await confirm(
+                                                    t('wiki.manage.delete_confirm', { count: selectedArticleIds.size }),
+                                                    t('wiki.manage.delete_batch'),
+                                                    t('common.confirm_delete'),
+                                                    t('action.cancel')
+                                                );
+                                                if (!confirmed) return;
+
+                                                setIsDeleting(true);
+                                                const headers = { Authorization: `Bearer ${token}` };
+                                                const idsToDelete = Array.from(selectedArticleIds);
+                                                let successCount = 0;
+
+                                                for (const id of idsToDelete) {
+                                                    try {
+                                                        await axios.delete(`/api/v1/knowledge/${id}`, { headers });
+                                                        successCount++;
+                                                    } catch (err) {
+                                                        console.error(`Failed to delete article ${id}:`, err);
+                                                    }
+                                                }
+
+                                                // 刷新列表
+                                                await fetchArticles();
+                                                setManageArticles(prev => prev.filter(a => !selectedArticleIds.has(a.id)));
+                                                setSelectedArticleIds(new Set());
+                                                setIsDeleting(false);
+                                            }}
+                                            disabled={isDeleting}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '8px 14px',
+                                                background: 'rgba(255,68,68,0.15)',
+                                                border: '1px solid rgba(255,68,68,0.3)',
+                                                borderRadius: '8px',
+                                                color: '#ff6b6b',
+                                                fontSize: '13px',
+                                                cursor: isDeleting ? 'not-allowed' : 'pointer',
+                                                opacity: isDeleting ? 0.6 : 1
+                                            }}
+                                        >
+                                            <Trash2 size={14} />
+                                            {isDeleting ? t('common.deleting') : t('wiki.manage.delete_selected', { count: selectedArticleIds.size })}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* 文章列表 */}
                                 <div style={{
                                     flex: 1,
                                     overflowY: 'auto',
-                                    padding: '24px 32px'
+                                    padding: '12px 24px'
                                 }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '8px'
-                                    }}>
-                                        {(() => {
-                                            const chapterGroups = new Map<number, KnowledgeArticle[]>();
-                                            const chaptersHaveSubsections = new Set<number>();
-
-                                            manualArticles.forEach(a => {
-                                                const { chapter, section } = parseChapterNumber(a.title);
-                                                if (chapter !== null) {
-                                                    if (!chapterGroups.has(chapter)) chapterGroups.set(chapter, []);
-                                                    chapterGroups.get(chapter)!.push(a);
-                                                    if (section !== null) chaptersHaveSubsections.add(chapter);
-                                                } else {
-                                                    if (!chapterGroups.has(-1)) chapterGroups.set(-1, []);
-                                                    chapterGroups.get(-1)!.push(a);
-                                                }
-                                            });
-
-                                            const sortedChapters = Array.from(chapterGroups.entries()).sort((a, b) => a[0] - b[0]);
-
-                                            return sortedChapters.map(([chapterNum, articlesInChapter]) => {
-                                                articlesInChapter.sort((a, b) => {
-                                                    const secA = parseChapterNumber(a.title).section || '';
-                                                    const secB = parseChapterNumber(b.title).section || '';
-                                                    return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
-                                                });
-
-                                                const _isAccordion = chaptersHaveSubsections.has(chapterNum) || articlesInChapter.length > 1;
-
-                                                const chapterKey = `modal-chap-${chapterNum}`;
-                                                const isCurrentChapter = articlesInChapter.some(a => a.id === selectedArticle.id);
-
-                                                // Default to expanded if it contains the current article, unless explicitly collapsed
-                                                // For simplicity, we just use the set to track explicitly TOGGLED states.
-                                                // Actually, let's just make everything collapsed by default and toggle with state, 
-                                                // BUT if it's the current chapter we auto-expand unless it's in a collapsed tracking set.
-                                                // To keep it clean: just use expandedModalChapters.
-                                                const isChapExpanded = expandedModalChapters.has(chapterKey) || isCurrentChapter;
-
-                                                if (!_isAccordion) {
-                                                    return articlesInChapter.map(article => {
-                                                        const isCurrentArticle = article.id === selectedArticle.id;
-                                                        const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
-                                                        const displayNum = section ? section : chapter?.toString() || '';
-
-                                                        return (
-                                                            <div
-                                                                key={article.id}
-                                                                onClick={() => {
-                                                                    if (!isCurrentArticle) {
-                                                                        setShowManualTocModal(false);
-                                                                        handleArticleClick(article);
-                                                                    }
-                                                                }}
-                                                                style={{
-                                                                    padding: '14px 18px',
-                                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
-                                                                    border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                                                    borderRadius: '12px',
-                                                                    cursor: isCurrentArticle ? 'default' : 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: '16px',
-                                                                    transition: 'all 0.15s'
-                                                                }}
-                                                                onMouseEnter={(e) => {
-                                                                    if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)'; }
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }
-                                                                }}
-                                                            >
-                                                                {displayNum && (
-                                                                    <span style={{ minWidth: '44px', padding: '6px 10px', background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#FFD700', textAlign: 'center' }}>
-                                                                        {displayNum}
-                                                                    </span>
-                                                                )}
-                                                                <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#ccc', flex: 1 }}>{cleanTitle}</span>
-                                                                {isCurrentArticle && <span style={{ fontSize: '12px', color: '#FFD700', padding: '4px 10px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
-                                                            </div>
-                                                        );
-                                                    });
-                                                }
-
-                                                // It's a grouped accordion
-
-                                                let chapCleanTitle = '';
-                                                const rootChapterArticle = articlesInChapter.find(a => parseChapterNumber(a.title).section === null);
-                                                if (rootChapterArticle) {
-                                                    chapCleanTitle = parseChapterNumber(rootChapterArticle.title).cleanTitle;
-                                                }
-
-                                                return (
-                                                    <div key={chapterKey} style={{
-                                                        background: 'rgba(255,255,255,0.02)',
-                                                        border: '1px solid rgba(255,255,255,0.05)',
-                                                        borderRadius: '12px',
-                                                        overflow: 'hidden'
-                                                    }}>
-                                                        {/* Accordion Header */}
-                                                        <div
-                                                            onClick={() => {
-                                                                const newSet = new Set(expandedModalChapters);
-                                                                if (expandedModalChapters.has(chapterKey)) {
-                                                                    newSet.delete(chapterKey);
-                                                                    // If it was auto-expanded due to isCurrentChapter, we need to artificially track it so it closes.
-                                                                    // Actually, standard behavior: just track toggles.
-                                                                } else {
-                                                                    newSet.add(chapterKey);
-                                                                }
-                                                                // If isCurrentChapter is true and it's NOT in the set, clicking should COLLAPSE it.
-                                                                // To do that robustly: 
-                                                                if (isCurrentChapter && !expandedModalChapters.has(chapterKey)) {
-                                                                    newSet.add('collapsed-' + chapterKey);
-                                                                }
-                                                                if (isCurrentChapter && expandedModalChapters.has('collapsed-' + chapterKey)) {
-                                                                    newSet.delete('collapsed-' + chapterKey);
-                                                                }
-
-                                                                setExpandedModalChapters(newSet);
-                                                            }}
-                                                            style={{
-                                                                padding: '14px 18px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '12px',
-                                                                cursor: 'pointer',
-                                                                background: isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',
-                                                                transition: 'background 0.15s'
-                                                            }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent'}
-                                                        >
-                                                            <ChevronRight
-                                                                size={18}
-                                                                color="#FFD700"
-                                                                style={{
-                                                                    transform: (isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey) ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                                    transition: 'transform 0.2s ease',
-                                                                    flexShrink: 0
-                                                                }}
-                                                            />
-                                                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
-                                                                第{chapterNum}章{chapCleanTitle ? `：${chapCleanTitle}` : ''}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Accordion Body */}
-                                                        {((isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey)) && (
-                                                            <div style={{ padding: '8px 18px 14px 48px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                                {articlesInChapter
-                                                                    .filter(article => parseChapterNumber(article.title).section !== null)
-                                                                    .map(article => {
-                                                                        const isCurrentArticle = article.id === selectedArticle.id;
-                                                                        const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
-                                                                        const displayNum = section ? section : `${chapterNum}`;
-
-                                                                        return (
-                                                                            <div
-                                                                                key={article.id}
-                                                                                onClick={() => {
-                                                                                    if (!isCurrentArticle) {
-                                                                                        setShowManualTocModal(false);
-                                                                                        handleArticleClick(article);
-                                                                                    }
-                                                                                }}
-                                                                                style={{
-                                                                                    padding: '10px 14px',
-                                                                                    background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
-                                                                                    borderRadius: '8px',
-                                                                                    cursor: isCurrentArticle ? 'default' : 'pointer',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    gap: '12px',
-                                                                                    transition: 'all 0.15s'
-                                                                                }}
-                                                                                onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                                                                                onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
-                                                                            >
-                                                                                <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
-                                                                                    {displayNum}
-                                                                                </span>
-                                                                                <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
-                                                                                {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>当前</span>}
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                            </div>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
+                                                <th
+                                                    style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    onClick={() => setManagerSort(prev => ({ field: 'title', order: prev?.field === 'title' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {t('wiki.manage.column.title')}
+                                                        {managerSort?.field === 'title' && (
+                                                            managerSort?.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                                         )}
                                                     </div>
-                                                );
-                                            });
-                                        })()}
-                                    </div>
+                                                </th>
+                                                <th
+                                                    style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    onClick={() => setManagerSort(prev => ({ field: 'product_line', order: prev?.field === 'product_line' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {t('wiki.manage.column.product_line')}
+                                                        {managerSort?.field === 'product_line' && (
+                                                            managerSort?.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    onClick={() => setManagerSort(prev => ({ field: 'product_model', order: prev?.field === 'product_model' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {t('wiki.manage.column.product_model')}
+                                                        {managerSort?.field === 'product_model' && (
+                                                            managerSort?.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    onClick={() => setManagerSort(prev => ({ field: 'category', order: prev?.field === 'category' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        {t('wiki.manage.column.category')}
+                                                        {managerSort?.field === 'category' && (
+                                                            managerSort?.order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 500 }}>{t('common.actions')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {manageArticles
+                                                .filter(article => {
+                                                    if (managerSearchQuery.trim() === '') return true;
+                                                    const query = managerSearchQuery.toLowerCase();
+                                                    // 搜索标题
+                                                    if (article.title.toLowerCase().includes(query)) return true;
+                                                    // 搜索分类
+                                                    if (article.category?.toLowerCase().includes(query)) return true;
+                                                    // 搜索产品线
+                                                    if (article.product_line?.toLowerCase().includes(query)) return true;
+                                                    // 搜索产品型号
+                                                    const models = Array.isArray(article.product_models)
+                                                        ? article.product_models.join(' ')
+                                                        : article.product_models || '';
+                                                    if (models.toLowerCase().includes(query)) return true;
+                                                    return false;
+                                                })
+                                                .sort((a, b) => {
+                                                    if (!managerSort) return 0;
+                                                    const { field, order } = managerSort;
+                                                    let valA: string, valB: string;
+
+                                                    if (field === 'product_model') {
+                                                        valA = (Array.isArray(a.product_models) ? a.product_models[0] : a.product_models) || '';
+                                                        valB = (Array.isArray(b.product_models) ? b.product_models[0] : b.product_models) || '';
+                                                    } else {
+                                                        valA = (a[field] || '') as string;
+                                                        valB = (b[field] || '') as string;
+                                                    }
+
+                                                    const comparison = valA.localeCompare(valB, 'zh-CN');
+                                                    return order === 'asc' ? comparison : -comparison;
+                                                })
+                                                .map(article => {
+                                                    const isSelected = selectedArticleIds.has(article.id);
+                                                    const lineLabels: Record<string, string> = {
+                                                        'A': t('wiki.line.a'),
+                                                        'B': t('wiki.line.b'),
+                                                        'C': t('wiki.line.c'),
+                                                        'D': t('wiki.line.d')
+                                                    };
+
+                                                    return (
+                                                        <tr
+                                                            key={article.id}
+                                                            style={{
+                                                                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                                background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
+                                                            }}
+                                                        >
+                                                            <td style={{ padding: '12px 8px' }}>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newSet = new Set(selectedArticleIds);
+                                                                        if (isSelected) {
+                                                                            newSet.delete(article.id);
+                                                                        } else {
+                                                                            newSet.add(article.id);
+                                                                        }
+                                                                        setSelectedArticleIds(newSet);
+                                                                    }}
+                                                                    style={{
+                                                                        width: '18px',
+                                                                        height: '18px',
+                                                                        border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
+                                                                        borderRadius: '4px',
+                                                                        background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center'
+                                                                    }}
+                                                                >
+                                                                    {isSelected && <Check size={12} color="#FFD700" />}
+                                                                </button>
+                                                            </td>
+                                                            <td style={{ padding: '12px 8px' }}>
+                                                                <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
+                                                                    {article.title}
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: '12px 8px' }}>
+                                                                <span style={{
+                                                                    padding: '4px 8px',
+                                                                    background: 'rgba(255,215,0,0.1)',
+                                                                    borderRadius: '6px',
+                                                                    color: '#FFD700',
+                                                                    fontSize: '12px'
+                                                                }}>
+                                                                    {lineLabels[article.product_line] || article.product_line}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
+                                                                {Array.isArray(article.product_models)
+                                                                    ? article.product_models[0]
+                                                                    : article.product_models || '-'}
+                                                            </td>
+                                                            <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
+                                                                {article.category}
+                                                            </td>
+                                                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        const confirmed = await confirm(
+                                                                            t('wiki.manage.delete_single_confirm', { title: article.title }),
+                                                                            t('wiki.manage.delete_article'),
+                                                                            t('common.confirm_delete'),
+                                                                            t('action.cancel')
+                                                                        );
+                                                                        if (!confirmed) return;
+
+                                                                        try {
+                                                                            const headers = { Authorization: `Bearer ${token}` };
+                                                                            await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
+                                                                            await fetchArticles();
+                                                                            setManageArticles(prev => prev.filter(a => a.id !== article.id));
+                                                                        } catch (err) {
+                                                                            console.error('Delete article failed:', err);
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '6px 10px',
+                                                                        background: 'transparent',
+                                                                        border: '1px solid rgba(255,68,68,0.3)',
+                                                                        borderRadius: '6px',
+                                                                        color: '#ff6b6b',
+                                                                        fontSize: '12px',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.15s'
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.currentTarget.style.background = 'transparent';
+                                                                    }}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
-                    );
-                })()}
-            </div>
+                    )
+                }
+
+                {/* 手册目录弹窗 */}
+                {
+                    showManualTocModal && selectedArticle?.category === 'Manual' && (() => {
+                        const model = Array.isArray(selectedArticle.product_models)
+                            ? selectedArticle.product_models[0]
+                            : selectedArticle.product_models;
+                        const manualArticles = articles.filter(a =>
+                            a.product_line === selectedArticle.product_line &&
+                            a.category === 'Manual' &&
+                            (Array.isArray(a.product_models) ? a.product_models.includes(model) : a.product_models === model)
+                        ).sort((a, b) => {
+                            const secA = parseChapterNumber(a.title);
+                            const secB = parseChapterNumber(b.title);
+                            const chapterDiff = (secA.chapter || 9999) - (secB.chapter || 9999);
+                            if (chapterDiff !== 0) return chapterDiff;
+                            return (secA.section || '').localeCompare(secB.section || '', undefined, { numeric: true, sensitivity: 'base' });
+                        });
+
+                        // 分类标签映射
+                        const categoryLabels: Record<string, string> = {
+                            'Manual': t('wiki.category.manual'),
+                            'Troubleshooting': t('wiki.category.troubleshooting'),
+                            'FAQ': t('wiki.category.faq')
+                        };
+                        const categoryLabel = categoryLabels[selectedArticle.category] || selectedArticle.category;
+
+                        return (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0,0,0,0.85)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                zIndex: 1000,
+                                animation: 'fadeIn 0.2s ease-out',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '40px'
+                            }}>
+                                {/* 弹窗内容 - 宽度约2/3 */}
+                                <div style={{
+                                    width: '90%',
+                                    maxWidth: '900px',
+                                    height: '80vh',
+                                    maxHeight: '800px',
+                                    background: 'linear-gradient(145deg, #1e1e1e 0%, #181818 100%)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 24px 80px rgba(0,0,0,0.6)'
+                                }}>
+                                    {/* 顶部标题栏 */}
+                                    <div style={{
+                                        padding: '24px 32px',
+                                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <h2 style={{
+                                                fontSize: '24px',
+                                                fontWeight: 700,
+                                                color: '#fff',
+                                                margin: 0
+                                            }}>
+                                                {model} · {categoryLabel}
+                                            </h2>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                color: '#888',
+                                                margin: 0,
+                                                fontWeight: 400
+                                            }}>
+                                                {t('wiki.toc.stats', { count: manualArticles.length })}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setShowManualTocModal(false)}
+                                            style={{
+                                                background: 'rgba(255,255,255,0.08)',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: '40px',
+                                                height: '40px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                            }}
+                                        >
+                                            <X size={22} color="#fff" />
+                                        </button>
+                                    </div>
+
+                                    {/* 章节列表 */}
+                                    <div style={{
+                                        flex: 1,
+                                        overflowY: 'auto',
+                                        padding: '24px 32px'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '8px'
+                                        }}>
+                                            {(() => {
+                                                const chapterGroups = new Map<number, KnowledgeArticle[]>();
+                                                const chaptersHaveSubsections = new Set<number>();
+
+                                                manualArticles.forEach(a => {
+                                                    const { chapter, section } = parseChapterNumber(a.title);
+                                                    if (chapter !== null) {
+                                                        if (!chapterGroups.has(chapter)) chapterGroups.set(chapter, []);
+                                                        chapterGroups.get(chapter)!.push(a);
+                                                        if (section !== null) chaptersHaveSubsections.add(chapter);
+                                                    } else {
+                                                        if (!chapterGroups.has(-1)) chapterGroups.set(-1, []);
+                                                        chapterGroups.get(-1)!.push(a);
+                                                    }
+                                                });
+
+                                                const sortedChapters = Array.from(chapterGroups.entries()).sort((a, b) => a[0] - b[0]);
+
+                                                return sortedChapters.map(([chapterNum, articlesInChapter]) => {
+                                                    articlesInChapter.sort((a, b) => {
+                                                        const secA = parseChapterNumber(a.title).section || '';
+                                                        const secB = parseChapterNumber(b.title).section || '';
+                                                        return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
+                                                    });
+
+                                                    const _isAccordion = chaptersHaveSubsections.has(chapterNum) || articlesInChapter.length > 1;
+
+                                                    const chapterKey = `modal-chap-${chapterNum}`;
+                                                    const isCurrentChapter = articlesInChapter.some(a => a.id === selectedArticle.id);
+
+                                                    // Default to expanded if it contains the current article, unless explicitly collapsed
+                                                    // For simplicity, we just use the set to track explicitly TOGGLED states.
+                                                    // Actually, let's just make everything collapsed by default and toggle with state, 
+                                                    // BUT if it's the current chapter we auto-expand unless it's in a collapsed tracking set.
+                                                    // To keep it clean: just use expandedModalChapters.
+                                                    const isChapExpanded = expandedModalChapters.has(chapterKey) || isCurrentChapter;
+
+                                                    if (!_isAccordion) {
+                                                        return articlesInChapter.map(article => {
+                                                            const isCurrentArticle = article.id === selectedArticle.id;
+                                                            const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
+                                                            const displayNum = section ? section : chapter?.toString() || '';
+
+                                                            return (
+                                                                <div
+                                                                    key={article.id}
+                                                                    onClick={() => {
+                                                                        if (!isCurrentArticle) {
+                                                                            setShowManualTocModal(false);
+                                                                            handleArticleClick(article);
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '14px 18px',
+                                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
+                                                                        border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                                        borderRadius: '12px',
+                                                                        cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '16px',
+                                                                        transition: 'all 0.15s'
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)'; }
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }
+                                                                    }}
+                                                                >
+                                                                    {displayNum && (
+                                                                        <span style={{ minWidth: '44px', padding: '6px 10px', background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#FFD700', textAlign: 'center' }}>
+                                                                            {displayNum}
+                                                                        </span>
+                                                                    )}
+                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#ccc', flex: 1 }}>{cleanTitle}</span>
+                                                                    {isCurrentArticle && <span style={{ fontSize: '12px', color: '#FFD700', padding: '4px 10px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
+                                                                </div>
+                                                            );
+                                                        });
+                                                    }
+
+                                                    // It's a grouped accordion
+
+                                                    let chapCleanTitle = '';
+                                                    const rootChapterArticle = articlesInChapter.find(a => parseChapterNumber(a.title).section === null);
+                                                    if (rootChapterArticle) {
+                                                        chapCleanTitle = parseChapterNumber(rootChapterArticle.title).cleanTitle;
+                                                    }
+
+                                                    return (
+                                                        <div key={chapterKey} style={{
+                                                            background: 'rgba(255,255,255,0.02)',
+                                                            border: '1px solid rgba(255,255,255,0.05)',
+                                                            borderRadius: '12px',
+                                                            overflow: 'hidden'
+                                                        }}>
+                                                            {/* Accordion Header */}
+                                                            <div
+                                                                onClick={() => {
+                                                                    const newSet = new Set(expandedModalChapters);
+                                                                    if (expandedModalChapters.has(chapterKey)) {
+                                                                        newSet.delete(chapterKey);
+                                                                        // If it was auto-expanded due to isCurrentChapter, we need to artificially track it so it closes.
+                                                                        // Actually, standard behavior: just track toggles.
+                                                                    } else {
+                                                                        newSet.add(chapterKey);
+                                                                    }
+                                                                    // If isCurrentChapter is true and it's NOT in the set, clicking should COLLAPSE it.
+                                                                    // To do that robustly: 
+                                                                    if (isCurrentChapter && !expandedModalChapters.has(chapterKey)) {
+                                                                        newSet.add('collapsed-' + chapterKey);
+                                                                    }
+                                                                    if (isCurrentChapter && expandedModalChapters.has('collapsed-' + chapterKey)) {
+                                                                        newSet.delete('collapsed-' + chapterKey);
+                                                                    }
+
+                                                                    setExpandedModalChapters(newSet);
+                                                                }}
+                                                                style={{
+                                                                    padding: '14px 18px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '12px',
+                                                                    cursor: 'pointer',
+                                                                    background: isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',
+                                                                    transition: 'background 0.15s'
+                                                                }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent'}
+                                                            >
+                                                                <ChevronRight
+                                                                    size={18}
+                                                                    color="#FFD700"
+                                                                    style={{
+                                                                        transform: (isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey) ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                        transition: 'transform 0.2s ease',
+                                                                        flexShrink: 0
+                                                                    }}
+                                                                />
+                                                                <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
+                                                                    {t('wiki.toc.chapter_prefix', { count: chapterNum })}{chapCleanTitle ? `：${chapCleanTitle}` : ''}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* Accordion Body */}
+                                                            {((isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey)) && (
+                                                                <div style={{ padding: '8px 18px 14px 48px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                    {articlesInChapter
+                                                                        .filter(article => parseChapterNumber(article.title).section !== null)
+                                                                        .map(article => {
+                                                                            const isCurrentArticle = article.id === selectedArticle.id;
+                                                                            const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
+                                                                            const displayNum = section ? section : `${chapterNum}`;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={article.id}
+                                                                                    onClick={() => {
+                                                                                        if (!isCurrentArticle) {
+                                                                                            setShowManualTocModal(false);
+                                                                                            handleArticleClick(article);
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{
+                                                                                        padding: '10px 14px',
+                                                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                                                                        borderRadius: '8px',
+                                                                                        cursor: isCurrentArticle ? 'default' : 'pointer',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        gap: '12px',
+                                                                                        transition: 'all 0.15s'
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                                                                                    onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
+                                                                                >
+                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                        {displayNum}
+                                                                                    </span>
+                                                                                    <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
+                                                                                    {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+
+                                        {/* 动态底部提示 - 当章节较少时填充空白 */}
+                                        <div style={{
+                                            marginTop: 'auto',
+                                            padding: '24px 0 8px',
+                                            borderTop: '1px solid rgba(255,255,255,0.04)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '12px'
+                                        }}>
+                                            <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }}>
+                                                {t('wiki.toc.tips_title')}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                                {[
+                                                    { icon: '📖', text: t('wiki.toc.tip_click') },
+                                                    { icon: '🔍', text: t('wiki.toc.tip_search') },
+                                                    { icon: '📑', text: t('wiki.toc.tip_bookmark') }
+                                                ].map((tip, i) => (
+                                                    <div key={i} style={{
+                                                        flex: '1 1 200px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        padding: '10px 14px',
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        borderRadius: '10px',
+                                                        border: '1px solid rgba(255,255,255,0.04)',
+                                                        fontSize: '12px',
+                                                        color: '#666',
+                                                        lineHeight: '1.4'
+                                                    }}>
+                                                        <span style={{ fontSize: '16px', flexShrink: 0 }}>{tip.icon}</span>
+                                                        {tip.text}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()
+                }
+            </div >
             <SynonymManager isOpen={showSynonymManager} onClose={() => setShowSynonymManager(false)} />
         </>
     );
