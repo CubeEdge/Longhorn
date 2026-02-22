@@ -1467,12 +1467,10 @@ ${contextTickets.map((t: any) => {
                             .map(article => {
                                 // 提取章节号和标题
                                 const isManual = node.category === 'Manual' || node.label === '操作手册';
-                                const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
-                                const chapterNum = chapterMatch ? chapterMatch[1] : '';
-                                const sectionNum = chapterMatch ? chapterMatch[2] : '';
-                                const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
-                                const cleanTitle = titleMatch ? titleMatch[1] : article.title;
-                                const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
+                                const { chapter: parsedChap, section: parsedSec, cleanTitle: parsedCleanTitle } = parseChapterNumber(article.title);
+                                const chapterNum = parsedChap !== null ? parsedChap.toString() : '';
+                                const displayNum = parsedSec ? parsedSec : chapterNum;
+                                const cleanTitle = parsedCleanTitle;
 
                                 return (
                                     <div
@@ -3465,8 +3463,8 @@ ${contextTickets.map((t: any) => {
                                                                                     alignItems: 'center',
                                                                                     gap: '10px',
                                                                                     padding: '10px 14px',
-                                                                                    background: isCatExpanded ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.02)',
-                                                                                    border: `1px solid ${isCatExpanded ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                                                                    background: isCatExpanded ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                                                                                    border: `1px solid ${isCatExpanded ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'}`,
                                                                                     borderRadius: '8px',
                                                                                     cursor: 'pointer',
                                                                                     transition: 'all 0.2s'
@@ -3475,8 +3473,8 @@ ${contextTickets.map((t: any) => {
                                                                                 <span style={{
                                                                                     width: '24px',
                                                                                     height: '24px',
-                                                                                    background: 'rgba(76,175,80,0.15)',
-                                                                                    color: '#4CAF50',
+                                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                                    color: '#ddd',
                                                                                     borderRadius: '5px',
                                                                                     display: 'flex',
                                                                                     alignItems: 'center',
@@ -3653,7 +3651,7 @@ ${contextTickets.map((t: any) => {
                                                                                                                     // If it's the chapter base article itself, skip or render special?
                                                                                                                     // Usually Apple includes the overview as an article. We'll list them all.
                                                                                                                     const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
-                                                                                                                    const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+                                                                                                                    const displayNum = section ? section : `${chapterNum}`;
                                                                                                                     return (
                                                                                                                         <div
                                                                                                                             key={article.id}
@@ -4567,7 +4565,7 @@ ${contextTickets.map((t: any) => {
                                                     return articlesInChapter.map(article => {
                                                         const isCurrentArticle = article.id === selectedArticle.id;
                                                         const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
-                                                        const displayNum = section ? `${chapter}.${section}` : chapter?.toString() || '';
+                                                        const displayNum = section ? section : chapter?.toString() || '';
 
                                                         return (
                                                             <div
@@ -4679,7 +4677,7 @@ ${contextTickets.map((t: any) => {
                                                                     .map(article => {
                                                                         const isCurrentArticle = article.id === selectedArticle.id;
                                                                         const { section, cleanTitle: secTitle } = parseChapterNumber(article.title);
-                                                                        const displayNum = section ? `${chapterNum}.${section}` : `${chapterNum}`;
+                                                                        const displayNum = section ? section : `${chapterNum}`;
 
                                                                         return (
                                                                             <div
