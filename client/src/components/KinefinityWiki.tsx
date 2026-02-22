@@ -3569,11 +3569,17 @@ ${contextTickets.map((t: any) => {
                                                                                                 return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
                                                                                             });
 
-                                                                                            const isAccordion = chaptersHaveSubsections.has(chapterNum);
-                                                                                            const firstArticle = articlesInChapter[0];
+                                                                                            const isAccordion = chaptersHaveSubsections.has(chapterNum) || articlesInChapter.length > 1;
                                                                                             const chapterKey = `${catKey}-chap-${chapterNum}`;
                                                                                             const isChapExpanded = groupedExpandedChapters.has(chapterKey);
-                                                                                            const { cleanTitle } = parseChapterNumber(firstArticle.title);
+
+                                                                                            // Infer Chapter Title: Try to find the root chapter (section === null)
+                                                                                            // If not found, fall back to "Chapter X"
+                                                                                            let cleanTitle = '';
+                                                                                            const rootChapterArticle = articlesInChapter.find(a => parseChapterNumber(a.title).section === null);
+                                                                                            if (rootChapterArticle) {
+                                                                                                cleanTitle = parseChapterNumber(rootChapterArticle.title).cleanTitle;
+                                                                                            }
 
                                                                                             // If no subsections (just 1 standalone article or it's a chapter without subdivisions)
                                                                                             if (!isAccordion || chapterNum === -1) {
@@ -3635,7 +3641,7 @@ ${contextTickets.map((t: any) => {
                                                                                                             }}
                                                                                                         />
                                                                                                         <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
-                                                                                                            第{chapterNum}章：{cleanTitle}
+                                                                                                            第{chapterNum}章{cleanTitle ? `：${cleanTitle}` : ''}
                                                                                                         </span>
                                                                                                     </div>
 
@@ -4543,7 +4549,8 @@ ${contextTickets.map((t: any) => {
                                                     return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
                                                 });
 
-                                                const isAccordion = chaptersHaveSubsections.has(chapterNum) && chapterNum !== -1;
+                                                const _isAccordion = chaptersHaveSubsections.has(chapterNum) || articlesInChapter.length > 1;
+
                                                 const chapterKey = `modal-chap-${chapterNum}`;
                                                 const isCurrentChapter = articlesInChapter.some(a => a.id === selectedArticle.id);
 
@@ -4554,7 +4561,7 @@ ${contextTickets.map((t: any) => {
                                                 // To keep it clean: just use expandedModalChapters.
                                                 const isChapExpanded = expandedModalChapters.has(chapterKey) || isCurrentChapter;
 
-                                                if (!isAccordion) {
+                                                if (!_isAccordion) {
                                                     return articlesInChapter.map(article => {
                                                         const isCurrentArticle = article.id === selectedArticle.id;
                                                         const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
@@ -4600,8 +4607,13 @@ ${contextTickets.map((t: any) => {
                                                 }
 
                                                 // It's a grouped accordion
-                                                const firstArticle = articlesInChapter[0];
-                                                const { cleanTitle: chapCleanTitle } = parseChapterNumber(firstArticle.title);
+
+                                                let chapCleanTitle = '';
+                                                const rootChapterArticle = articlesInChapter.find(a => parseChapterNumber(a.title).section === null);
+                                                if (rootChapterArticle) {
+                                                    chapCleanTitle = parseChapterNumber(rootChapterArticle.title).cleanTitle;
+                                                }
+
                                                 return (
                                                     <div key={chapterKey} style={{
                                                         background: 'rgba(255,255,255,0.02)',
@@ -4653,7 +4665,7 @@ ${contextTickets.map((t: any) => {
                                                                 }}
                                                             />
                                                             <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
-                                                                第{chapterNum}章：{chapCleanTitle}
+                                                                第{chapterNum}章{chapCleanTitle ? `：${chapCleanTitle}` : ''}
                                                             </span>
                                                         </div>
 

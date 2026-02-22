@@ -1882,7 +1882,13 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             const nextIndex = (i < matches.length - 1) ? matches[i + 1].index : html.length;
             const content = html.substring(headingEnd, nextIndex).trim();
 
-            if (content.length > 100) {
+            if (content.length > 100 || (match[1] === '1')) { // Always keep h1 (parent chapters) even if empty
+                chapters.push({
+                    title: fullTitle,
+                    content: `<h${match[1]}>${chapterTitle}</h${match[1]}>\n${content}`
+                });
+            } else if (match[1] === '2' && /^[\d\.]+/.test(cleanedTitle)) {
+                // Keep h2 if it looks like a numbered section (e.g., 3.1) even if short, to be safe.
                 chapters.push({
                     title: fullTitle,
                     content: `<h${match[1]}>${chapterTitle}</h${match[1]}>\n${content}`
