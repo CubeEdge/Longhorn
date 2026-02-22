@@ -182,6 +182,18 @@ interface ChapterAggregate {
     total_articles: number;
 }
 
+export const parseChapterNumber = (title: string): { chapter: number | null, section: string | null, cleanTitle: string } => {
+    // Match formats like "3.1", "3.1.1", "3" followed by space and title
+    const match = title.match(/:\s*(\d+)((?:\.\d+)*)[.\s]+(.+)/);
+    if (match) {
+        const chapter = parseInt(match[1]);
+        const section = match[2] ? match[1] + match[2] : null; // Keep the full section string e.g., "3.1.1"
+        const cleanTitle = match[3].trim();
+        return { chapter, section, cleanTitle };
+    }
+    return { chapter: null, section: null, cleanTitle: title };
+};
+
 export const KinefinityWiki: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -321,22 +333,11 @@ export const KinefinityWiki: React.FC = () => {
             'D': [{ id: 'manual', label: '使用指南' }]
         };
 
-        const parseChapterNumber = (title: string): { chapter: number | null, section: number | null, cleanTitle: string } => {
-            const match = title.match(/:\s*(\d+)(?:\.(\d+))?(?:\.\d+)*[.\s]+(.+)/);
-            if (match) {
-                const chapter = parseInt(match[1]);
-                const section = match[2] ? parseInt(match[2]) : null;
-                const cleanTitle = match[3].trim();
-                return { chapter, section, cleanTitle };
-            }
-            return { chapter: null, section: null, cleanTitle: title };
-        };
-
         const buildChapterTree = (articles: KnowledgeArticle[], parentId: string): CategoryNode[] => {
-            const chapterMap = new Map<number, { node: CategoryNode, sections: KnowledgeArticle[] }>();
+            const chapterMap = new Map<number, { node: CategoryNode, mainArticle: KnowledgeArticle | null, sections: KnowledgeArticle[] }>();
 
             articles.forEach(article => {
-                const { chapter } = parseChapterNumber(article.title);
+                const { chapter, section } = parseChapterNumber(article.title);
                 if (chapter !== null) {
                     if (!chapterMap.has(chapter)) {
                         chapterMap.set(chapter, {
@@ -346,29 +347,51 @@ export const KinefinityWiki: React.FC = () => {
                                 children: [],
                                 articles: []
                             },
+                            mainArticle: null,
                             sections: []
                         });
                     }
-                    chapterMap.get(chapter)!.sections.push(article);
+                    if (section === null) {
+                        chapterMap.get(chapter)!.mainArticle = article;
+                    } else {
+                        chapterMap.get(chapter)!.sections.push(article);
+                    }
                 }
             });
 
             const result: CategoryNode[] = [];
             Array.from(chapterMap.entries())
                 .sort((a, b) => a[0] - b[0])
-                .forEach(([chapterNum, { node, sections }]) => {
-                    if (sections.length === 1) {
+                .forEach(([chapterNum, { node, mainArticle, sections }]) => {
+                    // Sort sections (e.g., 3.1, 3.2)
+                    sections.sort((a, b) => {
+                        const secA = parseChapterNumber(a.title).section || '';
+                        const secB = parseChapterNumber(b.title).section || '';
+                        return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+
+                    // Build children nodes for sections
+                    const sectionNodes: CategoryNode[] = sections.map((sec, currIndex) => {
+                        const { section, cleanTitle } = parseChapterNumber(sec.title);
+                        return {
+                            id: `${node.id}-section-${section || currIndex}`,
+                            label: `${chapterNum}.${section} ${cleanTitle}`,
+                            articles: [sec]
+                        };
+                    });
+
+                    if (!mainArticle && sections.length === 1) {
                         const { cleanTitle } = parseChapterNumber(sections[0].title);
                         node.label = `第${chapterNum}章：${cleanTitle}`;
                         node.articles = sections;
                         node.children = undefined;
                     } else {
-                        node.articles = sections;
-                        const chapterArticle = sections.find(s => parseChapterNumber(s.title).section === null);
-                        const chapterTitle = chapterArticle
-                            ? parseChapterNumber(chapterArticle.title).cleanTitle
-                            : parseChapterNumber(sections[0].title).cleanTitle;
+                        node.articles = mainArticle ? [mainArticle] : [];
+                        const chapterTitle = mainArticle
+                            ? parseChapterNumber(mainArticle.title).cleanTitle
+                            : (sections.length > 0 ? parseChapterNumber(sections[0].title).cleanTitle : `第${chapterNum}章`);
                         node.label = `第${chapterNum}章：${chapterTitle}`;
+                        node.children = sectionNodes.length > 0 ? sectionNodes : undefined;
                     }
                     result.push(node);
                 });
@@ -1421,7 +1444,7 @@ ${contextTickets.map((t: any) => {
                 )}
 
                 {isExpanded && hasArticles && (
-                    <div style={{ marginLeft: (level + 1) * 16 }}>
+                    <div>
                         {node.articles!
                             .sort((a, b) => {
                                 // Manual类按章节号排序
@@ -4249,16 +4272,11 @@ ${contextTickets.map((t: any) => {
                         a.category === 'Manual' &&
                         (Array.isArray(a.product_models) ? a.product_models.includes(model) : a.product_models === model)
                     ).sort((a, b) => {
-                        const getNum = (title: string) => {
-                            const match = title.match(/:\s*(\d+)(?:\.(\d+))?/);
-                            if (match) {
-                                const chapter = parseInt(match[1]) * 100;
-                                const section = match[2] ? parseInt(match[2]) : 0;
-                                return chapter + section;
-                            }
-                            return 9999;
-                        };
-                        return getNum(a.title) - getNum(b.title);
+                        const secA = parseChapterNumber(a.title);
+                        const secB = parseChapterNumber(b.title);
+                        const chapterDiff = (secA.chapter || 9999) - (secB.chapter || 9999);
+                        if (chapterDiff !== 0) return chapterDiff;
+                        return (secA.section || '').localeCompare(secB.section || '', undefined, { numeric: true, sensitivity: 'base' });
                     });
 
                     // 分类标签映射
@@ -4362,12 +4380,9 @@ ${contextTickets.map((t: any) => {
                                     }}>
                                         {manualArticles.map((article) => {
                                             const isCurrentArticle = article.id === selectedArticle.id;
-                                            const chapterMatch = article.title.match(/:\s*(\d+)(?:\.(\d+))?/);
-                                            const chapterNum = chapterMatch ? chapterMatch[1] : '';
-                                            const sectionNum = chapterMatch ? chapterMatch[2] : '';
-                                            const titleMatch = article.title.match(/:\s*[\d.]+[.\s]+(.+)/);
-                                            const cleanTitle = titleMatch ? titleMatch[1] : article.title;
-                                            const displayNum = sectionNum ? `${chapterNum}.${sectionNum}` : chapterNum;
+                                            const { chapter, section, cleanTitle } = parseChapterNumber(article.title);
+                                            const displayNum = section ? `${chapter}.${section}` : chapter?.toString() || '';
+                                            const isSubSection = section !== null;
 
                                             return (
                                                 <div
@@ -4380,6 +4395,7 @@ ${contextTickets.map((t: any) => {
                                                     }}
                                                     style={{
                                                         padding: '14px 18px',
+                                                        marginLeft: isSubSection ? '32px' : '0',
                                                         background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
                                                         border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
                                                         borderRadius: '12px',
@@ -4403,22 +4419,24 @@ ${contextTickets.map((t: any) => {
                                                     }}
                                                 >
                                                     {/* 章节号 */}
-                                                    <span style={{
-                                                        minWidth: '44px',
-                                                        padding: '6px 10px',
-                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
-                                                        borderRadius: '8px',
-                                                        fontSize: '13px',
-                                                        fontWeight: 600,
-                                                        color: '#FFD700',
-                                                        textAlign: 'center'
-                                                    }}>
-                                                        {displayNum}
-                                                    </span>
+                                                    {displayNum && (
+                                                        <span style={{
+                                                            minWidth: isSubSection ? '36px' : '44px',
+                                                            padding: isSubSection ? '4px 8px' : '6px 10px',
+                                                            background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
+                                                            borderRadius: '8px',
+                                                            fontSize: isSubSection ? '12px' : '13px',
+                                                            fontWeight: 600,
+                                                            color: '#FFD700',
+                                                            textAlign: 'center'
+                                                        }}>
+                                                            {displayNum}
+                                                        </span>
+                                                    )}
 
                                                     {/* 标题 */}
                                                     <span style={{
-                                                        fontSize: '15px',
+                                                        fontSize: isSubSection ? '14px' : '15px',
                                                         fontWeight: isCurrentArticle ? 600 : 400,
                                                         color: isCurrentArticle ? '#FFD700' : '#ccc',
                                                         flex: 1

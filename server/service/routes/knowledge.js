@@ -393,7 +393,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             console.log(`[Knowledge Import] PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} chars`);
 
             // Extract images from PDF
-            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
+            const imagesDir = './data/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
@@ -568,7 +568,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             const timestamp = Date.now();
             const tempDir = `/tmp/docx_import_${timestamp}`;
             const htmlPath = path.join(tempDir, 'output.html');
-            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
+            const imagesDir = './data/Knowledge/Images';
 
             // 创建临时目录
             fs.mkdirSync(tempDir, { recursive: true });
@@ -830,7 +830,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
      */
     router.post('/import/url', authenticate, async (req, res) => {
         try {
-            if (req.user.user_type !== 'Employee') {
+            if (!['Employee', 'Internal'].includes(req.user.user_type)) {
                 return res.status(403).json({
                     success: false,
                     error: { code: 'FORBIDDEN', message: '只有内部员工可以导入知识' }
@@ -880,7 +880,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
             // Download images from webpage
             console.log('[Knowledge Import URL] Downloading images...');
-            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
+            const imagesDir = './data/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }

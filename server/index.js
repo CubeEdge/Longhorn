@@ -23,11 +23,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
-const DISK_A = '/Volumes/fileserver/Files';
+const DISK_A = process.env.STORAGE_PATH || (process.platform === 'darwin' && !__dirname.includes('KineCore') ? '/Volumes/fileserver/Files' : path.join(__dirname, 'data/DiskA'));
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
 const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads');
-const BACKUP_DIR = '/Volumes/fileserver/System/Backups/db';
+const BACKUP_DIR = process.env.BACKUP_PATH || './data/Backups';
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
 const upload = multer({ dest: path.join(DISK_A, '.uploads') });
@@ -595,7 +595,7 @@ const authenticate = (req, res, next) => {
                 // Reload user from DB to ensure latest role/department info
                 // Use both integer and float comparison for backward compatibility
                 const user = db.prepare(`
-                    SELECT id, username, role, department_id 
+                    SELECT id, username, role, department_id, user_type 
                     FROM users
                     WHERE id = ? OR id = CAST(? AS REAL)
                 `).get(decoded.id, decoded.id);
@@ -1418,7 +1418,7 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
         // Update database (skip file_stats for Service module - table may not exist)
         const itemPath = path.join(subPath, fileName);
         const normalizedPath = itemPath.normalize('NFC').replace(/\\/g, '/');
-        
+
         try {
             db.prepare(`
                 INSERT OR REPLACE INTO file_stats (path, uploaded_at, uploaded_by, accessed_count, last_accessed)

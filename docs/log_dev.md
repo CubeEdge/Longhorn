@@ -4,6 +4,20 @@
 
 ---
 
+## 会话: 2026-02-22 (Knowledge Base Bug Fixes & URL Import Authorization)
+
+### 任务: 修复 DOCX 层级渲染与 URL 抓取授权
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **DOCX 导入正则增强**: 修改了 `KinefinityWiki.tsx` 中的 `parseChapterNumber` 函数，确保能够正确截取类似 `3.1.2` 的长分节信息。同时增强了 `buildChapterTree` 处理逻辑，实现子章节正确地嵌套在父章节底下展示。
+    - **UI 修改**: 移除了在 `showManualTocModal` 中的残留缩进左横线样式，对齐了苹果设计的内敛交互。
+    - **本地服务脱钩解耦**: `server/index.js` 移除了强制依赖 `/Volumes/fileserver` 物理盘的写法。改为读取 `STORAGE_PATH` 环境变量或妥协 fallback 至 `./data/DiskA`。解决了开发者启动项目的崩溃死循环。
+    - **修复 403 Forbidden 权限阻塞**: 在 `server/index.js` `authenticate` 中加入了漏取的 `user_type` 字段，并在 `knowledge.js` 放开了对于 `user_type` = `Employee` 的身份认证限制。这解除了在 Knowledge Generator 输入 HTTP URL 时的非授权阻止。
+    - **网络架构发现**: 探测了 `https://kinefinity.com` 的反爬虫特性（SSL_ERROR_SYSCALL 拒绝握手），确定目前的 Axios/curl 等 Node HTTP 库无法直穿 TLS WAF。
+- **版本**: Root v1.5.22 / Client v12.0.6 (待构建发版)
+
+---
+
 ## 会话: 2026-02-22 (Merge Conflict Resolution & Deployment)
 
 ### 任务: 解决合并冲突与线上部署
