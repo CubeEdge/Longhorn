@@ -1666,10 +1666,11 @@ ${contextTickets.map((t: any) => {
                                 marginBottom: '20px'
                             }}>
                                 <h1 style={{
-                                    fontSize: '32px',
-                                    fontWeight: 700,
+                                    fontSize: '1.8rem',
+                                    fontWeight: 800,
                                     color: '#fff',
                                     lineHeight: '1.3',
+                                    letterSpacing: '-0.5px',
                                     flex: 1
                                 }}>
                                     {selectedArticle.title}
@@ -2366,10 +2367,11 @@ ${contextTickets.map((t: any) => {
                                 {/* 左侧：标题 */}
                                 <div>
                                     <h1 style={{
-                                        fontSize: '28px',
-                                        fontWeight: 700,
+                                        fontSize: '1.8rem',
+                                        fontWeight: 800,
+                                        margin: '0 0 8px 0',
                                         color: '#fff',
-                                        margin: '0 0 8px 0'
+                                        letterSpacing: '-0.5px'
                                     }}>
                                         Kinefinity WIKI
                                     </h1>
@@ -3229,7 +3231,7 @@ ${contextTickets.map((t: any) => {
                                                     background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
                                                     border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
                                                     borderRadius: '10px',
-                                                    color: isSelected ? '#FFD700' : '#888',
+                                                    color: isSelected ? '#FFF' : '#888',
                                                     fontSize: '14px',
                                                     fontWeight: isSelected ? 600 : 400,
                                                     cursor: 'pointer',

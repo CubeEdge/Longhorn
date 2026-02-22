@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
     Sparkles, Save, Send, ArrowLeft,
     Loader2, History, ChevronDown, FileText, Trash2
 } from 'lucide-react';
@@ -42,18 +42,18 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
     const [currentMarkdown, setCurrentMarkdown] = useState('');
     const [showVersionHistory, setShowVersionHistory] = useState(false);
     const [showPublishPreview, setShowPublishPreview] = useState(false);
-    
+
     // 摘要编辑状态
     const [summary, setSummary] = useState('');
     const [showSummaryDropdown, setShowSummaryDropdown] = useState(false);
     const SUMMARY_MAX_LENGTH = 200;
-    
+
     // Bokeh 优化下拉菜单
     const [showBokehDropdown, setShowBokehDropdown] = useState(false);
-    
+
     // 删除草稿状态
     const [isDeleting, setIsDeleting] = useState(false);
-    
+
     // TipTap 编辑器引用 - 用于直接获取编辑器内容
     const editorRef = useRef<TipTapEditorRef>(null);
     const summaryDropdownRef = useRef<HTMLDivElement>(null);
@@ -79,7 +79,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             setCurrentMarkdown(rawContent);
             // 加载摘要 - 统一使用 summary 字段
             setSummary(article.summary || '');
-            
+
             // 设置 Bokeh 编辑器上下文
             setWikiEditContext({
                 id: article.id,
@@ -90,7 +90,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             });
         }
     }, [isOpen, article, setWikiEditContext]);
-    
+
     // 清除 Bokeh 上下文当编辑器关闭
     useEffect(() => {
         if (!isOpen) {
@@ -113,7 +113,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             setError('文章ID无效');
             return;
         }
-        
+
         setIsSaving(true);
         setError(null);
         try {
@@ -127,14 +127,14 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                 htmlContent = currentMarkdown || editorContent;
                 console.log('[WikiEditor] Editor ref not available, using state');
             }
-            
+
             if (!htmlContent || htmlContent.trim() === '') {
                 setError('内容不能为空');
                 return;
             }
-            
+
             console.log('[WikiEditor] Saving HTML content preview:', htmlContent.substring(0, 200) + '...');
-            
+
             const res = await axios.patch(`/api/v1/knowledge/${article.id}`, {
                 // 直接保存 HTML 格式，不转换为 Markdown
                 formatted_content: htmlContent,
@@ -167,12 +167,12 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             setError('文章ID无效');
             return;
         }
-        
+
         setIsOptimizing(true);
         setError(null);
         setShowBokehDropdown(false);
         try {
-            const res = await axios.post(`/api/v1/knowledge/${article.id}/format`, 
+            const res = await axios.post(`/api/v1/knowledge/${article.id}/format`,
                 { mode },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -201,7 +201,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
     const handleBokehChanges = (newContent: string) => {
         setEditorContent(newContent);
         setCurrentMarkdown(newContent);
-        
+
         // 更新 Bokeh 上下文中的当前内容
         if (article) {
             setWikiEditContext({
@@ -236,7 +236,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
             setError('文章ID无效');
             return;
         }
-        
+
         setIsDeleting(true);
         setError(null);
         try {
@@ -308,7 +308,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             gap: '16px',
                             background: 'rgba(255,255,255,0.02)'
                         }}>
-                            <button 
+                            <button
                                 onClick={onClose}
                                 style={{
                                     background: 'transparent',
@@ -320,16 +320,17 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             >
                                 <ArrowLeft size={20} />
                             </button>
-                            
-                            <h2 style={{ 
-                                fontSize: '18px', 
-                                fontWeight: 600, 
+
+                            <h2 style={{
+                                fontSize: '1.8rem',
+                                fontWeight: 800,
                                 color: '#fff',
-                                margin: 0 
+                                letterSpacing: '-0.5px',
+                                margin: 0
                             }}>
                                 {article?.title || '编辑文章'}
                             </h2>
-                            
+
                             {/* 摘要下拉按钮 */}
                             <div ref={summaryDropdownRef} style={{ position: 'relative' }}>
                                 <button
@@ -352,7 +353,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     {summary && <span style={{ fontSize: '10px', opacity: 0.7 }}>({summary.length})</span>}
                                     <ChevronDown size={12} />
                                 </button>
-                                
+
                                 {/* 摘要下拉面板 */}
                                 {showSummaryDropdown && (
                                     <div style={{
@@ -409,7 +410,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div style={{ flex: 1 }} />
 
                             {/* Error Display */}
@@ -449,7 +450,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     Bokeh 优化
                                     <ChevronDown size={12} />
                                 </button>
-                                
+
                                 {/* Bokeh 下拉菜单选项 */}
                                 {showBokehDropdown && !isOptimizing && (
                                     <div style={{
@@ -523,7 +524,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
 
                         {/* TipTap Editor */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <TipTapEditor
+                            <TipTapEditor
                                 ref={editorRef}
                                 content={editorContent}
                                 onChange={(markdown) => {
@@ -571,7 +572,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 >
                                     取消
                                 </button>
-                                
+
                                 <button
                                     onClick={async () => {
                                         const confirmed = await confirm(
@@ -602,7 +603,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                     删除草稿
                                 </button>
-                                
+
                                 <button
                                     onClick={handleSaveDraft}
                                     disabled={isSaving}
@@ -623,7 +624,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                     存草稿
                                 </button>
-                                
+
                                 <button
                                     onClick={() => setShowPublishPreview(true)}
                                     disabled={isSaving || !currentMarkdown}

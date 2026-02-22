@@ -4,6 +4,18 @@
 
 ---
 
+## 会话: 2026-02-22 (Merge Conflict Resolution & Deployment)
+
+### 任务: 解决合并冲突与线上部署
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **处理 Git 合并冲突**: 解决了知识库重构与搜索增强特性之间的合并冲突。排查并清除了 `translations.ts` 中的多余的 `wiki.*` 和 `browser.*` 多语言键值重复定义。
+    - **TypeScript 修复**: 恢复了因重置丢失的 `setWikiViewContext`；修复了 `TipTapEditor.tsx` 组件内 implicit `any` 导致的编译报错；补齐了缺失的依赖 (如 `@tiptap/react` 等)。
+    - **部署模式切换**: 鉴于线上服务器拉取 GitHub 请求出现高延迟，采用本地编译打包然后 Rsync 分发的 Fast Deploy 脚本 (`deploy.sh`) 成功强制同步代码并上线。
+- **版本**: Root v1.5.22 / Client v12.0.6
+
+---
+
 ## 会话: 2026-02-21 (Synonym Manager & Search Leniency)
 
 ### 任务: 同义词字典管理与工单搜索宽泛化

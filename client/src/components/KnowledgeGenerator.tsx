@@ -40,10 +40,10 @@ interface ImportProgress {
 
 export default function KnowledgeGenerator() {
     const navigate = useNavigate();
-    
+
     // Import mode
     const [importMode, setImportMode] = useState<'docx' | 'url' | 'text'>('docx');
-    
+
     // Form state
     const [docxFile, setDocxFile] = useState<File | null>(null);
     const [urlInput, setUrlInput] = useState('');
@@ -54,10 +54,10 @@ export default function KnowledgeGenerator() {
     const [productModels, setProductModels] = useState<string[]>([]);
     const [visibility, setVisibility] = useState<'Public' | 'Dealer' | 'Internal' | 'Department'>('Public');
     const [tags, setTags] = useState('');
-    
+
     // 导入方式选项：直接导入 or Bokeh优化
     const [bokehOptimize, setBokehOptimize] = useState(true);
-    
+
     // UI state
     const [loading, setLoading] = useState(false);
     // result 状态保留用于 handleCancel 中的 setResult 调用
@@ -131,7 +131,7 @@ export default function KnowledgeGenerator() {
             }
             setDocxFile(file);
             setError('');
-            
+
             // Auto-detect product from filename
             const filename = file.name;
             if (filename.includes('Edge 6K') || filename.includes('Edge6K')) {
@@ -171,9 +171,9 @@ export default function KnowledgeGenerator() {
                 const optimizeProgress = currentOptimizeStep?.progress || 0;
                 return {
                     ...prev,
-                    steps: prev.steps.map(s => 
-                        s.status === 'processing' 
-                            ? { ...s, status: 'partial', details: `已停止优化（完成了 ${optimizeProgress}%）` } 
+                    steps: prev.steps.map(s =>
+                        s.status === 'processing'
+                            ? { ...s, status: 'partial', details: `已停止优化（完成了 ${optimizeProgress}%）` }
                             : s
                     )
                 };
@@ -194,14 +194,14 @@ export default function KnowledgeGenerator() {
         setLoading(true);
         setError('');
         setResult(null);
-        
+
         // 初始化进度 - 简化为3个步骤
         const initialSteps: ProgressStep[] = [
             { id: 'upload', label: '上传文件', status: 'pending' },
             { id: 'process', label: '处理文档', status: 'pending', details: '解析DOCX、提取内容、生成摘要' },
             ...(bokehOptimize ? [{ id: 'optimize', label: 'Bokeh优化', status: 'pending' as const, details: 'AI优化排版和内容格式' }] : [])
         ];
-        
+
         console.log('[Import] Setting initial progress...');
         const progressState = {
             currentStep: 'upload',
@@ -210,7 +210,7 @@ export default function KnowledgeGenerator() {
         };
         console.log('[Import] Progress state:', progressState);
         setProgress(progressState);
-        
+
         // Force a small delay to ensure React updates the DOM
         await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -235,7 +235,7 @@ export default function KnowledgeGenerator() {
                     setProgress(null);
                     return;
                 }
-                
+
                 // 验证产品型号必填
                 if (!productModels || productModels.length === 0) {
                     setError('请选择产品型号');
@@ -253,7 +253,7 @@ export default function KnowledgeGenerator() {
 
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
                 const totalChunks = Math.ceil(docxFile.size / CHUNK_SIZE);
-                
+
                 // 生成稳定的uploadId（基于文件名和大小，确保重试时ID相同）
                 // 使用更安全的方式处理中文文件名
                 const fileHash = `${docxFile.name}-${docxFile.size}-${docxFile.lastModified}`;
@@ -271,9 +271,9 @@ export default function KnowledgeGenerator() {
                     }
                     uploadId = Math.abs(hash).toString(36) + Date.now().toString(36);
                 }
-                
+
                 console.log(`[Upload] Starting upload: ${docxFile.name}, uploadId: ${uploadId}, chunks: ${totalChunks}`);
-                
+
                 // 设置文件总大小
                 setTotalFileSize(docxFile.size);
                 let uploadedBytes = 0;
@@ -292,12 +292,12 @@ export default function KnowledgeGenerator() {
                         body: JSON.stringify({ uploadId, totalChunks }),
                         signal: controller.signal
                     });
-                    
+
                     if (checkResponse.ok) {
                         const checkData = await checkResponse.json();
                         existingChunks = checkData.existingChunks || [];
                         console.log(`[Upload] Found ${existingChunks.length}/${totalChunks} existing chunks`);
-                        
+
                         // 计算已上传的字节数
                         uploadedBytes = existingChunks.length * CHUNK_SIZE;
                         if (uploadedBytes > docxFile.size) uploadedBytes = docxFile.size;
@@ -338,7 +338,7 @@ export default function KnowledgeGenerator() {
                     // 使用axios上传（和FileBrowser一样）
                     console.log(`[Upload] Uploading chunk ${chunkIndex + 1}/${totalChunks}...`);
                     await axios.post(`${API_BASE_URL}/api/upload/chunk`, chunkFormData, {
-                        headers: { 
+                        headers: {
                             Authorization: `Bearer ${token}`,
                             'Content-Type': 'multipart/form-data'
                         },
@@ -348,12 +348,12 @@ export default function KnowledgeGenerator() {
                             const currentTotal = uploadedBytes + chunkUploaded;
                             const percentComplete = Math.round((currentTotal / docxFile.size) * 100);
                             setUploadedSize(currentTotal);
-                            
+
                             // 计算上传速度
                             const currentTime = Date.now();
                             const timeDiff = (currentTime - lastTime) / 1000;
                             const loadedDiff = currentTotal - lastLoaded;
-                            
+
                             if (timeDiff > 0.5) {
                                 const speed = loadedDiff / timeDiff;
                                 if (speed >= 1024 * 1024) {
@@ -366,10 +366,10 @@ export default function KnowledgeGenerator() {
                                 lastLoaded = currentTotal;
                                 lastTime = currentTime;
                             }
-                            
+
                             setProgress(prev => prev ? {
                                 ...prev,
-                                steps: prev.steps.map(s => 
+                                steps: prev.steps.map(s =>
                                     s.id === 'upload' ? { ...s, progress: Math.min(percentComplete, 99) } : s
                                 )
                             } : null);
@@ -436,7 +436,7 @@ export default function KnowledgeGenerator() {
                     setLoading(false);
                     return;
                 }
-                
+
                 // 验证产品型号必填
                 if (!productModels || productModels.length === 0) {
                     setError('请选择产品型号');
@@ -467,7 +467,7 @@ export default function KnowledgeGenerator() {
                     setLoading(false);
                     return;
                 }
-                
+
                 // 验证产品型号必填
                 if (!productModels || productModels.length === 0) {
                     setError('请选择产品型号');
@@ -500,11 +500,11 @@ export default function KnowledgeGenerator() {
                 currentStep: 'process',
                 steps: prev.steps.map(s => s.id === 'process' ? { ...s, status: 'processing' } : s)
             } : null);
-            
+
             // 检查响应
             const contentType = response.headers.get('content-type');
             let data;
-            
+
             if (!response.ok) {
                 // 尝试解析错误信息
                 try {
@@ -522,14 +522,14 @@ export default function KnowledgeGenerator() {
             } else {
                 data = await response.json();
             }
-            
+
             console.log('[Import] Response data:', data);
-            
+
             if (!data.success) {
                 console.error('[Import] API error:', data.error);
                 throw new Error(data.error?.message || '导入失败');
             }
-            
+
             // 标记处理步骤完成
             setProgress(prev => prev ? {
                 ...prev,
@@ -558,40 +558,40 @@ export default function KnowledgeGenerator() {
                 setProgress(prev => prev ? {
                     ...prev,
                     currentStep: 'optimize',
-                    steps: prev.steps.map(s => 
+                    steps: prev.steps.map(s =>
                         s.id === 'optimize' ? { ...s, status: 'processing' } : s
                     )
                 } : null);
 
                 console.log('[Import] Starting Bokeh optimization for', articleIds.length, 'articles');
-                
+
                 const totalArticles = articleIds.length;
                 let optimizedCount = 0;
-                
+
                 for (let i = 0; i < articleIds.length; i++) {
                     if (controller.signal.aborted) {
                         console.log('[Import] Bokeh optimization cancelled by user');
                         break;
                     }
-                    
+
                     const articleId = articleIds[i];
                     try {
                         console.log(`[Import] Optimizing article ${i + 1}/${articleIds.length}: ID=${articleId}`);
-                        
-                        await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`, 
+
+                        await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`,
                             { mode: 'full' },
                             { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         optimizedCount++;
-                        
+
                         // 更新进度（优化完成后更新一次）
                         const finalPercent = Math.round((optimizedCount / totalArticles) * 100);
                         setProgress(prev => prev ? {
                             ...prev,
-                            steps: prev.steps.map(s => 
-                                s.id === 'optimize' 
-                                    ? { ...s, progress: finalPercent, details: `${optimizedCount}/${totalArticles} 篇` } 
+                            steps: prev.steps.map(s =>
+                                s.id === 'optimize'
+                                    ? { ...s, progress: finalPercent, details: `${optimizedCount}/${totalArticles} 篇` }
                                     : s
                             )
                         } : null);
@@ -603,7 +603,7 @@ export default function KnowledgeGenerator() {
 
                 setProgress(prev => prev ? {
                     ...prev,
-                    steps: prev.steps.map(s => 
+                    steps: prev.steps.map(s =>
                         s.id === 'optimize' ? { ...s, status: 'completed' } : s
                     )
                 } : null);
@@ -630,7 +630,7 @@ export default function KnowledgeGenerator() {
             // 标记失败的步骤
             setProgress(prev => prev ? {
                 ...prev,
-                steps: prev.steps.map(s => 
+                steps: prev.steps.map(s =>
                     s.status === 'processing' ? { ...s, status: 'failed' } : s
                 )
             } : null);
@@ -659,17 +659,17 @@ export default function KnowledgeGenerator() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                        <h1 style={{ 
-                            fontSize: '32px', 
-                            fontWeight: 700, 
-                            marginBottom: '8px', 
+                        <h1 style={{
+                            fontSize: '1.8rem',
+                            fontWeight: 800,
+                            marginBottom: '8px',
                             color: '#fff',
                             letterSpacing: '-0.5px'
                         }}>
                             知识库导入器
                         </h1>
-                        <p style={{ 
-                            color: '#666', 
+                        <p style={{
+                            color: '#666',
                             fontSize: '16px',
                             lineHeight: '1.6',
                             maxWidth: '600px',
@@ -709,7 +709,7 @@ export default function KnowledgeGenerator() {
             {/* 移除独立的大横条，改为放在左侧内容框内 */}
 
             {/* Main Content: Left 2/5 Content, Right 3/5 Metadata */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px', alignItems: 'stretch' }}>
                 {/* Left: Content Input */}
                 <div style={{
                     background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
@@ -718,12 +718,13 @@ export default function KnowledgeGenerator() {
                     padding: '20px',
                     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    height: '100%'
                 }}>
-                    <h3 style={{ 
-                        fontSize: '16px', 
-                        fontWeight: 600, 
-                        marginBottom: '16px', 
+                    <h3 style={{
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        marginBottom: '16px',
                         color: '#fff',
                         letterSpacing: '0.3px'
                     }}>
@@ -751,17 +752,17 @@ export default function KnowledgeGenerator() {
                                 style={{
                                     flex: 1,
                                     padding: '8px 12px',
-                                    background: importMode === mode 
+                                    background: importMode === mode
                                         ? 'linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(255,165,0,0.2) 100%)'
                                         : 'transparent',
                                     border: 'none',
                                     borderRadius: '8px',
-                                    color: importMode === mode ? '#FFD700' : '#999',
+                                    color: importMode === mode ? '#FFF' : '#999',
                                     cursor: 'pointer',
                                     fontSize: '13px',
                                     fontWeight: 600,
                                     transition: 'all 0.2s',
-                                    boxShadow: importMode === mode 
+                                    boxShadow: importMode === mode
                                         ? '0 2px 8px rgba(255,215,0,0.3)'
                                         : 'none'
                                 }}
@@ -785,8 +786,8 @@ export default function KnowledgeGenerator() {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s'
                             }}>
-                                <div style={{ 
-                                    fontSize: '48px', 
+                                <div style={{
+                                    fontSize: '48px',
                                     fontWeight: 700,
                                     color: '#FFD700',
                                     marginBottom: '12px'
@@ -797,8 +798,8 @@ export default function KnowledgeGenerator() {
                                 <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
                                     或拖拽DOCX文件到此处
                                 </div>
-                                <div style={{ 
-                                    fontSize: '11px', 
+                                <div style={{
+                                    fontSize: '11px',
                                     color: '#999',
                                     padding: '6px 12px',
                                     background: 'rgba(255,215,0,0.1)',
@@ -963,9 +964,9 @@ export default function KnowledgeGenerator() {
                 }}>
                     {/* Header with Import Button */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <h3 style={{ 
-                            fontSize: '16px', 
-                            fontWeight: 600, 
+                        <h3 style={{
+                            fontSize: '16px',
+                            fontWeight: 600,
                             color: '#fff',
                             letterSpacing: '0.3px',
                             margin: 0
@@ -977,8 +978,8 @@ export default function KnowledgeGenerator() {
                             disabled={loading || (importMode === 'docx' && !docxFile) || (importMode === 'url' && !urlInput) || (importMode === 'text' && (!title || !textInput))}
                             style={{
                                 padding: '12px 28px',
-                                background: loading 
-                                    ? 'rgba(255,255,255,0.05)' 
+                                background: loading
+                                    ? 'rgba(255,255,255,0.05)'
                                     : '#FFD700',
                                 border: 'none',
                                 borderRadius: '10px',
@@ -1067,16 +1068,16 @@ export default function KnowledgeGenerator() {
 
                         {/* Product Models - Dropdown */}
                         <div>
-                            <label style={{ 
-                                display: 'block', 
-                                fontSize: '13px', 
-                                color: '#999', 
-                                marginBottom: '8px', 
-                                fontWeight: 500 
+                            <label style={{
+                                display: 'block',
+                                fontSize: '13px',
+                                color: '#999',
+                                marginBottom: '8px',
+                                fontWeight: 500
                             }}>
                                 产品型号 *
-                                <span style={{ 
-                                    color: '#ff6b6b', 
+                                <span style={{
+                                    color: '#ff6b6b',
                                     marginLeft: '4px',
                                     fontSize: '12px'
                                 }}>
@@ -1184,9 +1185,9 @@ export default function KnowledgeGenerator() {
                     }}>
                         {/* Header */}
                         <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-                            <h3 style={{ 
-                                fontSize: '20px', 
-                                fontWeight: 600, 
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: 600,
                                 color: '#fff',
                                 margin: 0,
                                 letterSpacing: '0.5px'
@@ -1203,33 +1204,33 @@ export default function KnowledgeGenerator() {
                                     alignItems: 'center',
                                     gap: '14px',
                                     padding: '16px',
-                                    background: step.status === 'processing' 
-                                               ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.03)') 
-                                               : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
-                                               step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${step.status === 'processing' 
-                                                         ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.08)') :
-                                                         step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
-                                                         step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                    background: step.status === 'processing'
+                                        ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.03)')
+                                        : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
+                                            step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
+                                    border: `1px solid ${step.status === 'processing'
+                                        ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.08)') :
+                                        step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
+                                            step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
                                     borderRadius: '12px',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}>
                                     {/* Step Number */}
-                                    <div style={{ 
+                                    <div style={{
                                         minWidth: '32px',
                                         height: '32px',
                                         borderRadius: '50%',
-                                        background: step.status === 'processing' 
-                                                   ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.08)') :
-                                                   step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
+                                        background: step.status === 'processing'
+                                            ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.08)') :
+                                            step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         fontSize: '14px',
                                         fontWeight: 700,
-                                        color: step.status === 'processing' 
-                                               ? (step.id === 'bokeh_optimize' ? '#4CAF50' : '#fff') :
-                                               step.status === 'failed' ? '#fff' : '#666'
+                                        color: step.status === 'processing'
+                                            ? (step.id === 'bokeh_optimize' ? '#4CAF50' : '#fff') :
+                                            step.status === 'failed' ? '#fff' : '#666'
                                     }}>
                                         {index + 1}
                                     </div>
@@ -1237,19 +1238,19 @@ export default function KnowledgeGenerator() {
                                     {/* Step Info */}
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ 
-                                                fontSize: '15px', 
-                                                fontWeight: 600, 
-                                                color: step.status === 'processing' 
-                                                       ? (step.id === 'optimize' ? '#4CAF50' : '#fff') :
-                                                       step.status === 'completed' ? '#fff' : '#999'
+                                            <div style={{
+                                                fontSize: '15px',
+                                                fontWeight: 600,
+                                                color: step.status === 'processing'
+                                                    ? (step.id === 'optimize' ? '#4CAF50' : '#fff') :
+                                                    step.status === 'completed' ? '#fff' : '#999'
                                             }}>
                                                 {step.label}
                                             </div>
                                             {/* Step details */}
                                             {step.details && step.status === 'processing' && (
-                                                <div style={{ 
-                                                    fontSize: '12px', 
+                                                <div style={{
+                                                    fontSize: '12px',
                                                     color: '#666',
                                                     marginTop: '4px'
                                                 }}>
@@ -1274,10 +1275,10 @@ export default function KnowledgeGenerator() {
                                                             borderRadius: '2px'
                                                         }} />
                                                     </div>
-                                                    <div style={{ 
-                                                        fontSize: '11px', 
-                                                        color: '#888', 
-                                                        marginTop: '6px' 
+                                                    <div style={{
+                                                        fontSize: '11px',
+                                                        color: '#888',
+                                                        marginTop: '6px'
                                                     }}>
                                                         正在解析文档结构、提取图片、生成AI摘要...
                                                     </div>
@@ -1301,12 +1302,12 @@ export default function KnowledgeGenerator() {
                                                             borderRadius: '2px'
                                                         }} />
                                                     </div>
-                                                    <div style={{ 
+                                                    <div style={{
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
-                                                        fontSize: '11px', 
-                                                        color: '#888', 
-                                                        marginTop: '6px' 
+                                                        fontSize: '11px',
+                                                        color: '#888',
+                                                        marginTop: '6px'
                                                     }}>
                                                         <span>{step.details || 'AI优化中...'}</span>
                                                         <span style={{ color: '#4CAF50', fontWeight: 600 }}>{step.progress || 0}%</span>
@@ -1343,7 +1344,7 @@ export default function KnowledgeGenerator() {
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         {/* Completed Checkmark - Right side */}
                                         {step.status === 'completed' && (
                                             <div style={{
@@ -1361,17 +1362,17 @@ export default function KnowledgeGenerator() {
                                                 ✓
                                             </div>
                                         )}
-                                        
+
                                         {/* Bokeh Optimize Stop Button - Right side */}
                                         {step.id === 'optimize' && step.status === 'processing' && (
                                             <button
                                                 onClick={handleCancel}
                                                 style={{
                                                     padding: '6px 14px',
-                                                    background: 'rgba(255,68,68,0.15)',
-                                                    border: '1px solid rgba(255,68,68,0.4)',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
                                                     borderRadius: '8px',
-                                                    color: '#ff4444',
+                                                    color: '#999',
                                                     fontSize: '12px',
                                                     fontWeight: 500,
                                                     cursor: 'pointer',
@@ -1379,16 +1380,18 @@ export default function KnowledgeGenerator() {
                                                     marginLeft: '12px'
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.25)';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                    e.currentTarget.style.color = '#fff';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.color = '#999';
                                                 }}
                                             >
                                                 停止优化
                                             </button>
                                         )}
-                                        
+
                                         {/* Failed indicator */}
                                         {step.status === 'failed' && (
                                             <div style={{
@@ -1457,7 +1460,7 @@ export default function KnowledgeGenerator() {
                                 </div>
                             </div>
                         )}
-                        
+
                         {/* Action Buttons */}
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                             {loading && (
@@ -1751,7 +1754,7 @@ export default function KnowledgeGenerator() {
                             marginTop: '16px',
                             lineHeight: '1.5'
                         }}>
-                            系统已按您选择的产品型号导入，<br/>
+                            系统已按您选择的产品型号导入，<br />
                             如有错误请删除后重新导入
                         </p>
                     </div>
@@ -1761,7 +1764,7 @@ export default function KnowledgeGenerator() {
     );
 }
 
-{/* 动画 CSS */}
+{/* 动画 CSS */ }
 <style>{`
     @keyframes fadeIn {
         from { opacity: 0; }
