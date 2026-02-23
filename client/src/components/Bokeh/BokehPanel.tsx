@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles, GripHorizontal } from 'lucide-react';
+import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles, GripHorizontal, BookOpen } from 'lucide-react';
 import { getTicketStyles } from './TicketLink';
 import TicketDetailDialog from './TicketDetailDialog';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -415,12 +415,13 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#4CAF50' : 'rgba(255,255,255,0.1)',
-                                color: msg.role === 'user' ? 'white' : 'white',
+                                background: msg.role === 'user' ? '#FFD700' : 'rgba(0, 191, 165, 0.1)',
+                                color: msg.role === 'user' ? '#000' : 'white',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
                                 borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                                 borderBottomLeftRadius: msg.role === 'user' ? '12px' : '2px',
+                                border: msg.role === 'assistant' ? '1px solid rgba(0, 191, 165, 0.2)' : 'none'
                             }}>
                                 {msg.role === 'assistant' ? (
                                     <div style={{
@@ -502,7 +503,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                                                 e.currentTarget.style.background = 'rgba(0, 191, 165, 0.1)';
                                                             }}
                                                         >
-                                                            <span style={{ display: 'flex', marginTop: '-1px' }}><FileText size={14} /></span>
+                                                            <span style={{ display: 'flex', marginTop: '-1px' }}><BookOpen size={14} /></span>
                                                             {props.children}
                                                         </a>
                                                     );

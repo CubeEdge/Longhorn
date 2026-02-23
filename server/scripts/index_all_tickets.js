@@ -62,6 +62,9 @@ function indexTicket(ticket_type, ticket_id) {
 
     let visibility = ticketData.dealer_id ? 'dealer' : 'internal';
 
+    // Delete existing to allow updates
+    db.prepare('DELETE FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?').run(ticket_type, ticket_id);
+
     db.prepare(`
         INSERT INTO ticket_search_index (
             ticket_type, ticket_id, ticket_number,
@@ -101,13 +104,8 @@ try {
     const inquiryTickets = db.prepare('SELECT id FROM v_inquiry_tickets_ready_for_index').all();
     for (const t of inquiryTickets) {
         try {
-            const existing = db.prepare(
-                'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-            ).get('inquiry', t.id);
-            if (!existing) {
-                indexTicket('inquiry', t.id);
-                indexed.inquiry++;
-            }
+            indexTicket('inquiry', t.id);
+            indexed.inquiry++;
         } catch (err) {
             console.error(`  ❌ Failed to index inquiry ticket ${t.id}:`, err.message);
         }
@@ -119,13 +117,8 @@ try {
     const rmaTickets = db.prepare('SELECT id FROM v_rma_tickets_ready_for_index').all();
     for (const t of rmaTickets) {
         try {
-            const existing = db.prepare(
-                'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-            ).get('rma', t.id);
-            if (!existing) {
-                indexTicket('rma', t.id);
-                indexed.rma++;
-            }
+            indexTicket('rma', t.id);
+            indexed.rma++;
         } catch (err) {
             console.error(`  ❌ Failed to index RMA ticket ${t.id}:`, err.message);
         }
@@ -137,13 +130,8 @@ try {
     const dealerRepairs = db.prepare('SELECT id FROM v_dealer_repairs_ready_for_index').all();
     for (const t of dealerRepairs) {
         try {
-            const existing = db.prepare(
-                'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-            ).get('dealer_repair', t.id);
-            if (!existing) {
-                indexTicket('dealer_repair', t.id);
-                indexed.dealer_repair++;
-            }
+            indexTicket('dealer_repair', t.id);
+            indexed.dealer_repair++;
         } catch (err) {
             console.error(`  ❌ Failed to index dealer repair ${t.id}:`, err.message);
         }

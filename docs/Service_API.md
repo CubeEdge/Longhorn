@@ -1,9 +1,9 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.2 (Draft)
+**版本**: 0.9.3 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-22 (Deployed v12.1.5)
-**关联PRD**: Service_PRD.md v0.12.0
+**最后更新**: 2026-02-24 (Deployed v12.1.26)
+**关联PRD**: Service_PRD.md v0.13.2
 **关联场景**: Service_UserScenarios.md v0.7.0
 
 > **重要更新（2026-02-10）**：

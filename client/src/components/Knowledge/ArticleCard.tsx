@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, ChevronRight } from 'lucide-react';
+import { BookOpen, ChevronRight } from 'lucide-react';
 
 interface ArticleCardProps {
     id: number;
@@ -23,8 +23,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
     variant = 'default'
 }) => {
 
-    const modelText = Array.isArray(productModels) 
-        ? productModels[0] 
+    const modelText = Array.isArray(productModels)
+        ? productModels[0]
         : productModels;
 
     if (variant === 'compact') {
@@ -63,7 +63,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     justifyContent: 'center',
                     flexShrink: 0
                 }}>
-                    <FileText size={18} color="#FFD700" />
+                    <BookOpen size={18} color="#FFD700" />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
@@ -148,7 +148,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                         {title}
                     </div>
                 </div>
-                
+
                 {summary && (
                     <div style={{
                         fontSize: '12px',
@@ -162,7 +162,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                         {summary}
                     </div>
                 )}
-                
+
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -245,7 +245,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     {title}
                 </div>
             </div>
-            
+
             {summary && (
                 <div style={{
                     fontSize: '13px',
@@ -259,7 +259,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     {summary}
                 </div>
             )}
-            
+
             <div style={{
                 display: 'flex',
                 alignItems: 'center',

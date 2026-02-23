@@ -4,6 +4,26 @@
 
 ---
 
+## 会话: 2026-02-24 (Wiki & Bokeh UI Polish)
+
+### 任务: Wiki 来源过滤、工单卡片修复及 Bokeh 视觉增强
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **Wiki 参考来源过滤**: 在 `KinefinityWiki.tsx` 的 `ArticleSection` 组件中，为 `referenceArticles` 添加了 `source_type === 'knowledge'` 的过滤条件。此举移除了搜索关联中干扰的工单卡片，使 Wiki 界面回归纯净的知识库属性。
+    - **UI 细节优化**:
+        - 修改了 Wiki 的 “Show More” 按钮颜色为淡灰色 (`#888`)。
+        - 将操作菜单从 “操作首选项” 重命名为 “操作”。
+    - **工单卡片健壮性修复**: 在 `TicketCard` 组件中引入了 `isValid` 检测逻辑，拦截了字符串形式的 `"null"` 和 `"undefined"`。现在支持在只有 `customerName` 或 `contactName` 时优雅展示，避免了视觉上的逻辑真空。
+    - **Bokeh Chat 视觉打磨**:
+        - **配色对齐**: 调整 `BokehPanel.tsx` 中的用户气泡颜色为 **Kine Yellow** (`#FFD700`)，并将文本设为黑色，显著提升了品牌识别度并增强了对比度。
+        - **引用图标优化**: 重构了 `TicketLink.tsx` 与 `ArticleCard.tsx`。Wiki 文章引用统一使用 `BookOpen` 图标，工单引用则根据类型自动匹配 `MessageCircleQuestion` (Inquiry), `RefreshCw` (RMA), `Wrench` (Dealer Repair) 或 `Ticket` (Default)。
+    - **文档系统瘦身**:
+        - **日志整合**: 彻底清理了 `docs` 目录。将 `1_Backlog.md` 的增量内容合并至 `log_backlog.md`，统一了开发任务的流水线追踪。
+        - **冗余清理**: 删除了 `fix_logs` 文件夹及过期的实施全景图 (`FULL_DEPLOYMENT_RECAP.md`) 等 4 个文件，降低了文档库的熵值。
+- **版本**: Client v12.1.26 (已发版)
+
+---
+
 ## 会话: 2026-02-23 (UI Polish & System Fixes)
 
 ### 任务: Toast 通知集成、样式对齐与接口解耦

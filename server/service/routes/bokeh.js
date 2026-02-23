@@ -262,14 +262,10 @@ module.exports = (db, authenticate, aiService) => {
                 return res.status(404).json({ error: 'Ticket not found or not ready for indexing' });
             }
 
-            // Check if already indexed
-            const existing = db.prepare(
-                'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-            ).get(ticket_type, ticket_id);
-
-            if (existing) {
-                return res.json({ success: true, message: 'Already indexed', indexed: false });
-            }
+            // Delete if already indexed to allow real-time updates
+            db.prepare(
+                'DELETE FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
+            ).run(ticket_type, ticket_id);
 
             // Build content digest based on ticket type
             let title, description, resolution, tags, product_model, serial_number, category, closed_at;
@@ -377,14 +373,9 @@ module.exports = (db, authenticate, aiService) => {
             const inquiryTickets = db.prepare('SELECT id FROM v_inquiry_tickets_ready_for_index').all();
             for (const t of inquiryTickets) {
                 try {
-                    const existing = db.prepare(
-                        'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-                    ).get('inquiry', t.id);
-                    if (!existing) {
-                        // Call internal index API logic (simplified inline)
-                        await indexTicket(db, 'inquiry', t.id);
-                        indexed.inquiry++;
-                    }
+                    // Call internal index API logic (simplified inline)
+                    await indexTicket(db, 'inquiry', t.id);
+                    indexed.inquiry++;
                 } catch (err) {
                     console.error(`Failed to index inquiry ticket ${t.id}:`, err.message);
                 }
@@ -394,13 +385,8 @@ module.exports = (db, authenticate, aiService) => {
             const rmaTickets = db.prepare('SELECT id FROM v_rma_tickets_ready_for_index').all();
             for (const t of rmaTickets) {
                 try {
-                    const existing = db.prepare(
-                        'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-                    ).get('rma', t.id);
-                    if (!existing) {
-                        await indexTicket(db, 'rma', t.id);
-                        indexed.rma++;
-                    }
+                    await indexTicket(db, 'rma', t.id);
+                    indexed.rma++;
                 } catch (err) {
                     console.error(`Failed to index RMA ticket ${t.id}:`, err.message);
                 }
@@ -410,13 +396,8 @@ module.exports = (db, authenticate, aiService) => {
             const dealerRepairs = db.prepare('SELECT id FROM v_dealer_repairs_ready_for_index').all();
             for (const t of dealerRepairs) {
                 try {
-                    const existing = db.prepare(
-                        'SELECT id FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
-                    ).get('dealer_repair', t.id);
-                    if (!existing) {
-                        await indexTicket(db, 'dealer_repair', t.id);
-                        indexed.dealer_repair++;
-                    }
+                    await indexTicket(db, 'dealer_repair', t.id);
+                    indexed.dealer_repair++;
                 } catch (err) {
                     console.error(`Failed to index dealer repair ${t.id}:`, err.message);
                 }
@@ -481,6 +462,11 @@ function indexTicket(db, ticket_type, ticket_id) {
     serial_number = ticketData.serial_number;
 
     let visibility = ticketData.dealer_id ? 'dealer' : 'internal';
+
+    // Delete any existing entry to allow updates
+    db.prepare(
+        'DELETE FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
+    ).run(ticket_type, ticket_id);
 
     db.prepare(`
         INSERT INTO ticket_search_index (

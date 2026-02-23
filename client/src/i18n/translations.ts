@@ -1299,7 +1299,7 @@ export const translations = {
         'wiki.category.no_articles': '该分类下暂无文章',
         'wiki.manage.stats_summary': '共 {models} 种产品型号，{articles} 篇文章',
         'wiki.count.articles': '{count} 篇',
-        'wiki.settings.preference': '操作首选项',
+        'wiki.settings.preference': '操作',
         'wiki.panel.collapse': '折叠面板',
         'wiki.panel.expand': '展开面板',
         'wiki.search.placeholder_short': '搜索...',

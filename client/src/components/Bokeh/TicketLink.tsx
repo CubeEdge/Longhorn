@@ -1,4 +1,4 @@
-import { MessageCircleQuestion, RefreshCw, Wrench } from 'lucide-react';
+import { MessageCircleQuestion, RefreshCw, Wrench, Ticket } from 'lucide-react';
 
 interface TicketLinkProps {
     ticketNumber: string;
@@ -46,7 +46,7 @@ export const getTicketStyles = (type: string | undefined) => {
                 hoverBg: 'rgba(0, 191, 165, 0.25)',
                 hoverBorder: 'rgba(0, 191, 165, 0.6)',
                 color: '#00BFA5', // Teal
-                icon: <MessageCircleQuestion size={14} />,
+                icon: <Ticket size={14} />,
             };
     }
 };

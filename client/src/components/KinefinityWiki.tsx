@@ -105,13 +105,18 @@ const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, pr
             <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
             <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {productModel && <span style={{ fontSize: '11px', color: '#666' }}>{productModel}</span>}
-                {(customerName || contactName) && (
-                    <span style={{ fontSize: '11px', color: '#888' }}>
-                        {productModel && '·'} {contactName && contactName !== customerName
-                            ? `${customerName} · ${contactName}`
-                            : customerName || contactName}
-                    </span>
-                )}
+                {(() => {
+                    const isValid = (name?: string) => name && name !== 'null' && name !== 'undefined';
+                    const validCus = isValid(customerName) ? customerName : '';
+                    const validCon = isValid(contactName) ? contactName : '';
+                    if (!validCus && !validCon) return null;
+                    const display = (validCus && validCon && validCus !== validCon) ? `${validCus} · ${validCon}` : (validCus || validCon);
+                    return (
+                        <span style={{ fontSize: '11px', color: '#888' }}>
+                            {productModel && '· '} {display}
+                        </span>
+                    );
+                })()}
             </div>
         </div>
     );
@@ -3154,7 +3159,7 @@ ${contextTickets.map((ticket: any) => {
 
                                                     {/* 参考来源 */}
                                                     {/* 参考来源 */}
-                                                    {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                                    {relatedArticles.length > 0 && (
                                                         <div>
                                                             <div style={{
                                                                 display: 'flex',
@@ -3169,15 +3174,15 @@ ${contextTickets.map((ticket: any) => {
                                                                     textTransform: 'uppercase',
                                                                     letterSpacing: '1px'
                                                                 }}>
-                                                                    {t('wiki.search.sources')} · {relatedArticles.length + aiRelatedTickets.length}
+                                                                    {t('wiki.search.sources')} · {relatedArticles.length}
                                                                 </div>
-                                                                {relatedArticles.length + aiRelatedTickets.length > AI_REF_SHOW_COUNT && (
+                                                                {relatedArticles.length > AI_REF_SHOW_COUNT && (
                                                                     <button
                                                                         onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
                                                                         style={{
                                                                             background: 'transparent',
                                                                             border: 'none',
-                                                                            color: '#00BFA5',
+                                                                            color: '#888',
                                                                             fontSize: '12px',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
@@ -3189,7 +3194,7 @@ ${contextTickets.map((ticket: any) => {
                                                                         {showMoreAiArticles ? (
                                                                             <>{t('common.show_less')} <ChevronUp size={12} /></>
                                                                         ) : (
-                                                                            <>{t('common.show_more', { count: relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT })} <ChevronDown size={12} /></>
+                                                                            <>{t('common.show_more', { count: relatedArticles.length - AI_REF_SHOW_COUNT })} <ChevronDown size={12} /></>
                                                                         )}
                                                                     </button>
                                                                 )}
@@ -3201,44 +3206,22 @@ ${contextTickets.map((ticket: any) => {
                                                                 gap: '10px'
                                                             }}>
                                                                 {((showMoreAiArticles
-                                                                    ? [...relatedArticles, ...aiRelatedTickets]
-                                                                    : [...relatedArticles, ...aiRelatedTickets].slice(0, AI_REF_SHOW_COUNT)
+                                                                    ? relatedArticles
+                                                                    : relatedArticles.slice(0, AI_REF_SHOW_COUNT)
                                                                 )).map((item: any) => {
-                                                                    // 如果有 summary 或 content，则是文章；否则视为工单
-                                                                    if (item.summary !== undefined || item.content !== undefined) {
-                                                                        return (
-                                                                            <ArticleCard
-                                                                                key={`ai-article-${item.id}`}
-                                                                                id={item.id}
-                                                                                title={item.title}
-                                                                                summary={item.summary}
-                                                                                productLine={item.product_line}
-                                                                                productModels={item.product_models}
-                                                                                category={item.category}
-                                                                                onClick={() => handleArticleClick(item)}
-                                                                                variant="reference"
-                                                                            />
-                                                                        );
-                                                                    } else {
-                                                                        return (
-                                                                            <TicketCard
-                                                                                key={`ai-ticket-${item.ticket_type}-${item.id}`}
-                                                                                id={item.id}
-                                                                                ticketNumber={item.ticket_number}
-                                                                                ticketType={item.ticket_type}
-                                                                                title={item.title || item.subject || t('wiki.search.untitled')}
-                                                                                status={item.status}
-                                                                                productModel={item.product_model}
-                                                                                customerName={item.customer_name}
-                                                                                contactName={item.contact_name}
-                                                                                onClick={() => {
-                                                                                    const route = item.ticket_type === 'inquiry' ? 'inquiry-tickets' : item.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
-                                                                                    window.open(`/service/${route}/${item.ticket_id || item.id}`, '_blank');
-                                                                                }}
-                                                                                variant="compact"
-                                                                            />
-                                                                        );
-                                                                    }
+                                                                    return (
+                                                                        <ArticleCard
+                                                                            key={`ai-article-${item.id}`}
+                                                                            id={item.id}
+                                                                            title={item.title}
+                                                                            summary={item.summary}
+                                                                            productLine={item.product_line}
+                                                                            productModels={item.product_models}
+                                                                            category={item.category}
+                                                                            onClick={() => handleArticleClick(item)}
+                                                                            variant="reference"
+                                                                        />
+                                                                    );
                                                                 })}
                                                             </div>
                                                         </div>

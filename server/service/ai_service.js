@@ -377,7 +377,7 @@ ${enhancedContext}`;
         if (!this.db) return [];
 
         // Build WHERE clause based on user role
-        let whereConditions = ['tsi.closed_at IS NOT NULL'];
+        let whereConditions = [];
 
         // Sanitize query for FTS5 — split by space, expand with synonyms, use OR for lenient matching
         const { expandWithSynonyms } = require('./routes/synonyms');

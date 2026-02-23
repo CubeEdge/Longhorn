@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-02-24 00:15 (耗时: 60m)
+
+**User Prompt**:
+Wiki & Bokeh UI 抛光
+要求：1. 过滤 相关引用，仅显示知识库文章；2. Wiki "查看更多" 按钮颜色调整为淡灰色；3. "操作首选项" 重命名为 "操作"；4. 修复工单卡片 `null` 名称显示；5. Bokeh 气泡颜色调整 (User: Kine Yellow, Bokeh: Cyan)；6. Bokeh 引用图标优化 (Wiki: Book, Ticket: Ticket)；7. 清理 docs 冗余日志。
+
+**Agent Response**:
+1. **Wiki 来源过滤**: 修改 `KinefinityWiki.tsx`，在参考来源渲染时增加 `source_type === 'knowledge'` 过滤，隐藏工单干扰。
+2. **样式微调**: 更新 “Show More” 按钮颜色为 `#888`；在 `translations.ts` 中将 `wiki.action.preferences` 更名为 “操作”。
+3. **健壮性修复**: 修复 `TicketCard` 的 null 值渲染逻辑，通过 `isValid` 检测避免展示 “null” 字符串。
+4. **Bokeh 视觉打磨**: 调整用户气泡背景色为 **Kine Yellow** (`#FFD700`)，并将文本设为黑色；根据引用内容动态匹配 `BookOpen` 或 `Ticket` 图标。
+5. **文档清爽化**: 将 `1_Backlog.md` 完整合并至 `log_backlog.md`；清理了包括 `fix_logs` 在内的多处冗余开发文档。
+
+**Result**:
+全站 UI 体验进入极简品牌化阶段，工单数据展示更稳健，文档结构更加精炼。
+
+---
+
 ## 2026-02-23 10:45 (耗时: 30m)
 
 **User Prompt**:
