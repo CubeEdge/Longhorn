@@ -1,6 +1,6 @@
 # System Context (系统全景图)
 
-> **最后更新/Last Updated**: 2026-02-10 v2.0.0
+> **最后更新/Last Updated**: 2026-02-23 v2.0.3 (Toast, DailyWord Fix & Style Refinement)
 > **核心作用**: 本文档定义了 Longhorn 项目的“世界观”，包括硬件设施、部署架构、核心代码逻辑与已知限制。
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 

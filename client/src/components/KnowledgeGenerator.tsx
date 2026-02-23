@@ -5,9 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { XCircle } from 'lucide-react';
+import { X, XCircle, Sparkles } from 'lucide-react';
+import { useLanguage } from '../i18n/useLanguage';
+
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -39,8 +41,15 @@ interface ImportProgress {
     };
 }
 
-export default function KnowledgeGenerator() {
-    const navigate = useNavigate();
+interface KnowledgeGeneratorProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
+
+export default function KnowledgeGenerator({ isOpen = true, onClose }: KnowledgeGeneratorProps) {
+    const { t } = useLanguage();
+
+
 
     // Import mode
     const [importMode, setImportMode] = useState<'docx' | 'url' | 'text'>('docx');
@@ -58,6 +67,8 @@ export default function KnowledgeGenerator() {
 
     // 导入方式选项：直接导入 or Bokeh优化
     const [bokehOptimize, setBokehOptimize] = useState(true);
+    // 新增：Turbo 模式 (使用 Jina Reader 自动绕过反爬、提取表格图片)
+    const [turboMode, setTurboMode] = useState(true);
 
     // UI state
     const [loading, setLoading] = useState(false);
@@ -458,7 +469,8 @@ export default function KnowledgeGenerator() {
                         product_line: productLine,
                         product_models: productModels,
                         visibility,
-                        tags: tags.split(',').map(t => t.trim()).filter(Boolean)
+                        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                        turbo: turboMode
                     })
                 });
             } else {
@@ -644,1147 +656,1213 @@ export default function KnowledgeGenerator() {
     // handleViewImported 已移除 - 导入完成后直接点击完成按钮返回
 
 
+    if (!isOpen) return null;
+
     return (
-        <div style={{
-            padding: '32px',
-            maxWidth: '1400px',
-            margin: '0 auto',
-            background: 'linear-gradient(to bottom, #1a1a1a 0%, #151515 100%)',
-            minHeight: '100vh'
-        }}>
-            {/* Header - macOS26 Style */}
+        <>
             <div style={{
-                marginBottom: '40px',
-                paddingBottom: '24px',
-                borderBottom: '1px solid rgba(255,215,0,0.15)'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 style={{
-                            fontSize: '1.8rem',
-                            fontWeight: 800,
-                            marginBottom: '8px',
-                            color: '#fff',
-                            letterSpacing: '-0.5px'
-                        }}>
-                            知识库导入器
-                        </h1>
-                        <p style={{
-                            color: '#666',
-                            fontSize: '16px',
-                            lineHeight: '1.6',
-                            maxWidth: '600px',
-                            margin: 0
-                        }}>
-                            Import Word Documents, Web Content or Manual Knowledge to Database
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => navigate('/tech-hub/wiki')}
-                        style={{
-                            padding: '10px 20px',
-                            background: 'rgba(255,215,0,0.1)',
-                            border: '1px solid rgba(255,215,0,0.3)',
-                            borderRadius: '10px',
-                            color: '#FFD700',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '14px',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,215,0,0.2)';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                    >
-                        浏览 WIKI
-                    </button>
-                </div>
-            </div>
-
-            {/* Import Mode Selector - macOS26 Style */}
-            {/* 移除独立的大横条，改为放在左侧内容框内 */}
-
-            {/* Main Content: Left 2/5 Content, Right 3/5 Metadata */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px', alignItems: 'stretch' }}>
-                {/* Left: Content Input */}
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden'
+            }} onClick={(e) => { if (e.target === e.currentTarget && onClose) onClose(); }}>
                 <div style={{
-                    background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    position: 'relative',
+                    width: '90%', maxWidth: '1400px', maxHeight: '90vh',
+                    background: 'linear-gradient(to bottom, #1a1a1a 0%, #151515 100%)',
                     borderRadius: '16px',
-                    padding: '20px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%'
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                    display: 'flex', flexDirection: 'column',
+                    overflow: 'hidden'
                 }}>
-                    <h3 style={{
-                        fontSize: '16px',
-                        fontWeight: 600,
-                        marginBottom: '16px',
-                        color: '#fff',
-                        letterSpacing: '0.3px'
-                    }}>
-                        内容来源
-                    </h3>
-
-                    {/* 模式选择标签页 - 紧凑设计 */}
+                    {/* Header - matching Manual TOC modal */}
                     <div style={{
+                        padding: '24px 32px',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
                         display: 'flex',
-                        gap: '8px',
-                        marginBottom: '20px',
-                        padding: '4px',
-                        background: 'rgba(255,255,255,0.02)',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(255,255,255,0.05)'
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
                     }}>
-                        {[
-                            { mode: 'docx' as const, label: 'Word文档' },
-                            { mode: 'url' as const, label: '网页URL' },
-                            { mode: 'text' as const, label: '文本输入' }
-                        ].map(({ mode, label }) => (
-                            <button
-                                key={mode}
-                                onClick={() => setImportMode(mode)}
-                                style={{
-                                    flex: 1,
-                                    padding: '8px 12px',
-                                    background: importMode === mode
-                                        ? 'linear-gradient(135deg, rgba(255,215,0,0.2) 0%, rgba(255,165,0,0.2) 100%)'
-                                        : 'transparent',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    color: importMode === mode ? '#FFF' : '#999',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    fontWeight: 600,
-                                    transition: 'all 0.2s',
-                                    boxShadow: importMode === mode
-                                        ? '0 2px 8px rgba(255,215,0,0.3)'
-                                        : 'none'
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <h2 style={{
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                margin: 0,
+                                color: '#fff'
+                            }}>
+                                {t('wiki.import_knowledge')}
+                            </h2>
+                            <p style={{
+                                color: '#888',
+                                fontSize: '14px',
+                                margin: 0,
+                                fontWeight: 400
+                            }}>
+                                {t('wiki.import_description')}
+                            </p>
+                        </div>
 
-                    {importMode === 'docx' && (
-                        <div>
-                            <label style={{
+                        <button
+                            onClick={onClose}
+                            style={{
+                                background: 'rgba(255,255,255,0.08)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '40px',
+                                height: '40px',
+                                cursor: 'pointer',
                                 display: 'flex',
-                                flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '40px 20px',
-                                background: 'rgba(255,215,0,0.03)',
-                                border: '2px dashed rgba(255,215,0,0.3)',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}>
-                                <div style={{
-                                    fontSize: '48px',
-                                    fontWeight: 700,
-                                    color: '#FFD700',
-                                    marginBottom: '12px'
-                                }}>+</div>
-                                <div style={{ fontSize: '15px', color: '#ddd', marginBottom: '6px', fontWeight: 500 }}>
-                                    选择Word文档
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
-                                    或拖拽DOCX文件到此处
-                                </div>
-                                <div style={{
-                                    fontSize: '11px',
-                                    color: '#999',
-                                    padding: '6px 12px',
-                                    background: 'rgba(255,215,0,0.1)',
-                                    borderRadius: '6px',
-                                    border: '1px solid rgba(255,215,0,0.2)'
-                                }}>
-                                    支持: .docx / .doc
-                                </div>
-                                <input
-                                    type="file"
-                                    accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
-                                    onChange={handleFileChange}
-                                    style={{ display: 'none' }}
-                                />
-                            </label>
-                            {docxFile && (
-                                <div style={{
-                                    marginTop: '12px',
-                                    padding: '12px',
-                                    background: 'rgba(255,215,0,0.1)',
-                                    border: '1px solid rgba(255,215,0,0.3)',
-                                    borderRadius: '10px',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#FFD700', marginBottom: '2px' }}>
-                                            {docxFile.name}
-                                        </div>
-                                        <div style={{ fontSize: '11px', color: '#999' }}>
-                                            {formatSize(docxFile.size)}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setDocxFile(null)}
-                                        style={{
-                                            padding: '4px 8px',
-                                            background: '#ff4444',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '12px'
-                                        }}
-                                    >
-                                        移除
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* 导入方式选项 - 紧凑单选 */}
-                            <div style={{
-                                marginTop: '16px',
-                                padding: '12px',
-                                background: 'rgba(255,255,255,0.02)',
-                                borderRadius: '10px',
-                                border: '1px solid rgba(255,255,255,0.06)'
-                            }}>
-                                <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
-                                    导入方式
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        onClick={() => setBokehOptimize(true)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px 12px',
-                                            background: bokehOptimize ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.02)',
-                                            border: `1px solid ${bokehOptimize ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <div style={{ fontSize: '13px', fontWeight: 600, color: bokehOptimize ? '#4CAF50' : '#ccc', textAlign: 'center' }}>
-                                            Bokeh优化
-                                        </div>
-                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px', textAlign: 'center' }}>
-                                            优化排版+摘要
-                                        </div>
-                                    </button>
-                                    <button
-                                        onClick={() => setBokehOptimize(false)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px 12px',
-                                            background: !bokehOptimize ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.02)',
-                                            border: `1px solid ${!bokehOptimize ? 'rgba(76,175,80,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <div style={{ fontSize: '13px', fontWeight: 600, color: !bokehOptimize ? '#4CAF50' : '#ccc', textAlign: 'center' }}>
-                                            直接导入
-                                        </div>
-                                        <div style={{ fontSize: '10px', color: '#888', marginTop: '2px', textAlign: 'center' }}>
-                                            保持原始格式
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {importMode === 'url' && (
-                        <div>
-                            <input
-                                type="url"
-                                value={urlInput}
-                                onChange={(e) => setUrlInput(e.target.value)}
-                                placeholder="https://kinefinity.com/support/application-notes/..."
-                                style={{
-                                    width: '100%',
-                                    padding: '10px',
-                                    background: '#1a1a1a',
-                                    border: '1px solid #444',
-                                    borderRadius: '6px',
-                                    color: '#fff',
-                                    fontSize: '13px'
-                                }}
-                            />
-                            <div style={{ marginTop: '8px', fontSize: '11px', color: '#666' }}>
-                                💡 提示：支持Application Note、技术博客等网页内容
-                            </div>
-                        </div>
-                    )}
-
-                    {importMode === 'text' && (
-                        <div>
-                            <textarea
-                                value={textInput}
-                                onChange={(e) => setTextInput(e.target.value)}
-                                placeholder="在此粘贴或输入知识内容...&#10;&#10;支持Markdown格式：&#10;# 标题&#10;## 子标题&#10;- 列表项"
-                                style={{
-                                    width: '100%',
-                                    minHeight: '200px',
-                                    padding: '10px',
-                                    background: '#1a1a1a',
-                                    border: '1px solid #444',
-                                    borderRadius: '6px',
-                                    color: '#fff',
-                                    fontSize: '13px',
-                                    fontFamily: 'monospace',
-                                    resize: 'vertical'
-                                }}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* Right: Metadata */}
-                <div style={{
-                    background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '16px',
-                    padding: '20px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                }}>
-                    {/* Header with Import Button */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <h3 style={{
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            color: '#fff',
-                            letterSpacing: '0.3px',
-                            margin: 0
-                        }}>
-                            知识属性
-                        </h3>
-                        <button
-                            onClick={handleImport}
-                            disabled={loading || (importMode === 'docx' && !docxFile) || (importMode === 'url' && !urlInput) || (importMode === 'text' && (!title || !textInput))}
-                            style={{
-                                padding: '12px 28px',
-                                background: loading
-                                    ? 'rgba(255,255,255,0.05)'
-                                    : '#FFD700',
-                                border: 'none',
-                                borderRadius: '10px',
-                                color: loading ? '#666' : '#000',
-                                fontSize: '15px',
-                                fontWeight: 700,
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                opacity: loading ? 0.5 : 1,
                                 transition: 'all 0.2s',
-                                boxShadow: loading ? 'none' : '0 4px 12px rgba(255,215,0,0.4)',
-                                whiteSpace: 'nowrap'
+                                flexShrink: 0
                             }}
-                            onMouseEnter={(e) => {
-                                if (!loading) {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,215,0,0.5)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!loading) {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.4)';
-                                }
-                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
                         >
-                            {loading ? '导入中...' : '开始导入'}
+                            <X size={22} color="#fff" />
                         </button>
                     </div>
 
-                    {/* Metadata Form */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-                        {/* Category */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                分类 *
-                            </label>
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                    <div style={{ flex: 1, padding: '32px', overflowY: 'auto' }}>
 
-                        {/* Product Line */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                产品族群 *
-                            </label>
-                            <select
-                                value={productLine}
-                                onChange={(e) => {
-                                    setProductLine(e.target.value);
-                                    setProductModels([]);
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {productLines.map(line => (
-                                    <option key={line.value} value={line.value}>
-                                        {line.label} - {line.desc}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Import Mode Selector - macOS26 Style */}
+                        {/* 移除独立的大横条，改为放在左侧内容框内 */}
 
-                        {/* Product Models - Dropdown */}
-                        <div>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '13px',
-                                color: '#999',
-                                marginBottom: '8px',
-                                fontWeight: 500
+                        {/* Main Content: Left 2/5 Content, Right 3/5 Metadata */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px', alignItems: 'stretch' }}>
+                            {/* Left: Content Input */}
+                            <div style={{
+                                background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '16px',
+                                padding: '20px',
+                                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%'
                             }}>
-                                产品型号 *
-                                <span style={{
-                                    color: '#ff6b6b',
-                                    marginLeft: '4px',
-                                    fontSize: '12px'
+                                <h3 style={{
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    marginBottom: '16px',
+                                    color: '#fff',
+                                    letterSpacing: '0.3px'
                                 }}>
-                                    (必选)
-                                </span>
-                            </label>
-                            <select
-                                value={productModels[0] || ''}
-                                onChange={(e) => setProductModels(e.target.value ? [e.target.value] : [])}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <option value="">请选择产品型号</option>
-                                {productModelOptions[productLine].map(model => (
-                                    <option key={model} value={model}>{model}</option>
-                                ))}
-                            </select>
-                        </div>
+                                    内容来源
+                                </h3>
 
-                        {/* Visibility */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                可见性 *
-                            </label>
-                            <select
-                                value={visibility}
-                                onChange={(e) => setVisibility(e.target.value as any)}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {visibilityOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Tags */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                标签 (逗号分隔)
-                            </label>
-                            <input
-                                type="text"
-                                value={tags}
-                                onChange={(e) => setTags(e.target.value)}
-                                placeholder="固件升级, SDI, 故障排查"
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    transition: 'all 0.2s'
-                                }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Progress Modal - macOS26 Style */}
-            {progress && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.75)',
-                    backdropFilter: 'blur(12px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    padding: '20px'
-                }}>
-                    <div style={{
-                        width: '100%',
-                        maxWidth: '560px',
-                        background: 'linear-gradient(145deg, #2a2a2a 0%, #1f1f1f 100%)',
-                        borderRadius: '20px',
-                        boxShadow: '0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
-                        padding: '32px',
-                        border: '1px solid rgba(255,215,0,0.1)'
-                    }}>
-                        {/* Header */}
-                        <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-                            <h3 style={{
-                                fontSize: '20px',
-                                fontWeight: 600,
-                                color: '#fff',
-                                margin: 0,
-                                letterSpacing: '0.5px'
-                            }}>
-                                导入进度
-                            </h3>
-                        </div>
-
-                        {/* Progress Steps */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-                            {progress.steps.map((step, index) => (
-                                <div key={step.id} style={{
+                                {/* 模式选择标签页 - 紧凑设计 */}
+                                <div style={{
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '14px',
-                                    padding: '16px',
-                                    background: step.status === 'processing'
-                                        ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.03)')
-                                        : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
-                                            step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${step.status === 'processing'
-                                        ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.08)') :
-                                        step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
-                                            step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                    borderRadius: '12px',
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    gap: '8px',
+                                    marginBottom: '20px',
+                                    padding: '4px',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.05)'
                                 }}>
-                                    {/* Step Number */}
-                                    <div style={{
-                                        minWidth: '32px',
-                                        height: '32px',
-                                        borderRadius: '50%',
-                                        background: step.status === 'processing'
-                                            ? (step.id === 'bokeh_optimize' ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.08)') :
-                                            step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '14px',
-                                        fontWeight: 700,
-                                        color: step.status === 'processing'
-                                            ? (step.id === 'bokeh_optimize' ? '#4CAF50' : '#fff') :
-                                            step.status === 'failed' ? '#fff' : '#666'
-                                    }}>
-                                        {index + 1}
-                                    </div>
+                                    {[
+                                        { mode: 'docx' as const, label: 'Word文档' },
+                                        { mode: 'url' as const, label: '网页URL' },
+                                        { mode: 'text' as const, label: '文本输入' }
+                                    ].map(({ mode, label }) => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setImportMode(mode)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px 12px',
+                                                background: importMode === mode
+                                                    ? 'rgba(255,215,0,0.12)'
+                                                    : 'transparent',
+                                                border: `1px solid ${importMode === mode ? 'rgba(255,215,0,0.4)' : 'transparent'}`,
+                                                borderRadius: '8px',
+                                                color: importMode === mode ? '#fff' : '#888',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                fontWeight: 700,
+                                                transition: 'all 0.2s',
+                                                boxShadow: importMode === mode
+                                                    ? '0 4px 12px rgba(0,0,0,0.2)'
+                                                    : 'none'
+                                            }}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
 
-                                    {/* Step Info */}
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ flex: 1 }}>
+                                {importMode === 'docx' && (
+                                    <div>
+                                        <label style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '40px 20px',
+                                            background: 'rgba(255,215,0,0.03)',
+                                            border: '2px dashed rgba(255,215,0,0.3)',
+                                            borderRadius: '12px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}>
                                             <div style={{
-                                                fontSize: '15px',
-                                                fontWeight: 600,
-                                                color: step.status === 'processing'
-                                                    ? (step.id === 'optimize' ? '#4CAF50' : '#fff') :
-                                                    step.status === 'completed' ? '#fff' : '#999'
-                                            }}>
-                                                {step.label}
+                                                fontSize: '48px',
+                                                fontWeight: 700,
+                                                color: '#FFD700',
+                                                marginBottom: '12px'
+                                            }}>+</div>
+                                            <div style={{ fontSize: '15px', color: '#ddd', marginBottom: '6px', fontWeight: 500 }}>
+                                                选择Word文档
                                             </div>
-                                            {/* Step details */}
-                                            {step.details && step.status === 'processing' && (
-                                                <div style={{
-                                                    fontSize: '12px',
-                                                    color: '#666',
-                                                    marginTop: '4px'
-                                                }}>
-                                                    {step.details}
-                                                </div>
-                                            )}
-                                            {/* Processing progress bar - indeterminate */}
-                                            {step.id === 'process' && step.status === 'processing' && (
-                                                <div style={{ marginTop: '10px' }}>
-                                                    <div style={{
-                                                        width: '100%',
-                                                        height: '4px',
-                                                        background: 'rgba(255,215,0,0.1)',
-                                                        borderRadius: '2px',
-                                                        overflow: 'hidden'
-                                                    }}>
-                                                        <div style={{
-                                                            width: '30%',
-                                                            height: '100%',
-                                                            background: 'linear-gradient(90deg, #FFD700, #FFA500)',
-                                                            animation: 'indeterminate 1.5s infinite ease-in-out',
-                                                            borderRadius: '2px'
-                                                        }} />
-                                                    </div>
-                                                    <div style={{
-                                                        fontSize: '11px',
-                                                        color: '#888',
-                                                        marginTop: '6px'
-                                                    }}>
-                                                        正在解析文档结构、提取图片、生成AI摘要...
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {/* Bokeh optimize progress bar */}
-                                            {step.id === 'optimize' && step.status === 'processing' && (
-                                                <div style={{ marginTop: '10px' }}>
-                                                    <div style={{
-                                                        width: '100%',
-                                                        height: '4px',
-                                                        background: 'rgba(255,255,255,0.1)',
-                                                        borderRadius: '2px',
-                                                        overflow: 'hidden'
-                                                    }}>
-                                                        <div style={{
-                                                            width: `${step.progress || 0}%`,
-                                                            height: '100%',
-                                                            background: '#FFFFFF',
-                                                            transition: 'width 0.3s ease-out',
-                                                            borderRadius: '2px'
-                                                        }} />
-                                                    </div>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        fontSize: '11px',
-                                                        color: '#888',
-                                                        marginTop: '6px'
-                                                    }}>
-                                                        <span>{step.details || 'AI优化中...'}</span>
-                                                        <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {/* Upload Progress Bar and Info */}
-                                            {step.id === 'upload' && step.status === 'processing' && (
-                                                <div style={{ marginTop: '8px' }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        fontSize: '12px',
-                                                        color: '#999'
-                                                    }}>
-                                                        <span>{formatSize(uploadedSize)} / {formatSize(totalFileSize)}</span>
-                                                        <span style={{ color: '#FFD700' }}>{uploadSpeed}</span>
-                                                    </div>
-                                                    <div style={{
-                                                        width: '100%',
-                                                        height: '4px',
-                                                        background: 'rgba(255,255,255,0.1)',
-                                                        borderRadius: '2px',
-                                                        overflow: 'hidden',
-                                                        marginTop: '6px'
-                                                    }}>
-                                                        <div style={{
-                                                            width: `${step.progress || 0}%`,
-                                                            height: '100%',
-                                                            background: '#FFFFFF',
-                                                            transition: 'width 0.3s ease-out'
-                                                        }} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Completed Checkmark - Right side */}
-                                        {step.status === 'completed' && (
+                                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                                                或拖拽DOCX文件到此处
+                                            </div>
                                             <div style={{
-                                                width: '24px',
-                                                height: '24px',
-                                                borderRadius: '50%',
-                                                background: '#4CAF50',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '14px',
-                                                color: '#000',
-                                                fontWeight: 700
+                                                fontSize: '11px',
+                                                color: '#999',
+                                                padding: '6px 12px',
+                                                background: 'rgba(255,215,0,0.1)',
+                                                borderRadius: '6px',
+                                                border: '1px solid rgba(255,215,0,0.2)'
                                             }}>
-                                                ✓
+                                                支持: .docx / .doc
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                                                onChange={handleFileChange}
+                                                style={{ display: 'none' }}
+                                            />
+                                        </label>
+                                        {docxFile && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '12px',
+                                                background: 'rgba(255,215,0,0.1)',
+                                                border: '1px solid rgba(255,215,0,0.3)',
+                                                borderRadius: '10px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#FFD700', marginBottom: '2px' }}>
+                                                        {docxFile.name}
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: '#999' }}>
+                                                        {formatSize(docxFile.size)}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setDocxFile(null)}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        background: '#ff4444',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        color: '#fff',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px'
+                                                    }}
+                                                >
+                                                    移除
+                                                </button>
                                             </div>
                                         )}
 
-                                        {/* Bokeh Optimize Stop Button - Right side */}
-                                        {step.id === 'optimize' && step.status === 'processing' && (
-                                            <button
-                                                onClick={handleCancel}
-                                                style={{
+                                        {/* 导入方式选项 - 紧凑单选 */}
+                                        <div style={{
+                                            marginTop: '16px',
+                                            padding: '12px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            borderRadius: '10px',
+                                            border: '1px solid rgba(255,255,255,0.06)'
+                                        }}>
+                                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
+                                                导入方式
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => setBokehOptimize(true)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '10px 12px',
+                                                        background: bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
+                                                        border: `1px solid ${bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        position: 'relative',
+                                                        overflow: 'hidden',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: bokehOptimize ? '#fff' : '#888' }}>
+                                                        <Sparkles size={14} style={{ opacity: bokehOptimize ? 1 : 0.6 }} />
+                                                        <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                                                            Bokeh 优化
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: bokehOptimize ? '#666' : '#666', marginTop: '2px' }}>
+                                                        优化排版 + 摘要
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => setBokehOptimize(false)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '10px 12px',
+                                                        background: !bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
+                                                        border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: 700, color: !bokehOptimize ? '#fff' : '#888', textAlign: 'center' }}>
+                                                        直接导入
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: !bokehOptimize ? '#666' : '#666', marginTop: '2px', textAlign: 'center' }}>
+                                                        保持原始格式
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {importMode === 'url' && (
+                                    <div>
+                                        <input
+                                            type="url"
+                                            value={urlInput}
+                                            onChange={(e) => setUrlInput(e.target.value)}
+                                            placeholder="https://kinefinity.com/support/application-notes/..."
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px',
+                                                background: '#1a1a1a',
+                                                border: '1px solid #444',
+                                                borderRadius: '6px',
+                                                color: '#fff',
+                                                fontSize: '13px'
+                                            }}
+                                        />
+                                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <input
+                                                type="checkbox"
+                                                id="turbo-mode"
+                                                checked={turboMode}
+                                                onChange={(e) => setTurboMode(e.target.checked)}
+                                                style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                                            />
+                                            <label htmlFor="turbo-mode" style={{ fontSize: '11px', color: '#aaa', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                🚀 Turbo 模式 (Jina Reader 增强：自动还原表格、图片并绕过反爬)
+                                            </label>
+                                        </div>
+                                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
+                                            💡 提示：支持导入 Application Note、官方博客等，建议默认开启
+                                        </div>
+                                    </div>
+                                )}
+
+                                {importMode === 'text' && (
+                                    <div>
+                                        <textarea
+                                            value={textInput}
+                                            onChange={(e) => setTextInput(e.target.value)}
+                                            placeholder="在此粘贴或输入知识内容...&#10;&#10;支持Markdown格式：&#10;# 标题&#10;## 子标题&#10;- 列表项"
+                                            style={{
+                                                width: '100%',
+                                                minHeight: '200px',
+                                                padding: '10px',
+                                                background: '#1a1a1a',
+                                                border: '1px solid #444',
+                                                borderRadius: '6px',
+                                                color: '#fff',
+                                                fontSize: '13px',
+                                                fontFamily: 'monospace',
+                                                resize: 'vertical'
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right: Metadata */}
+                            <div style={{
+                                background: 'linear-gradient(145deg, #252525 0%, #1f1f1f 100%)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '16px',
+                                padding: '20px',
+                                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}>
+                                {/* Header with Import Button */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                                    <h3 style={{
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        color: '#fff',
+                                        letterSpacing: '0.3px',
+                                        margin: 0
+                                    }}>
+                                        知识属性
+                                    </h3>
+                                    <button
+                                        onClick={handleImport}
+                                        disabled={loading || (importMode === 'docx' && !docxFile) || (importMode === 'url' && !urlInput) || (importMode === 'text' && (!title || !textInput))}
+                                        style={{
+                                            padding: '12px 28px',
+                                            background: loading
+                                                ? 'rgba(255,255,255,0.05)'
+                                                : '#FFD700',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            color: loading ? '#666' : '#000',
+                                            fontSize: '15px',
+                                            fontWeight: 700,
+                                            cursor: loading ? 'not-allowed' : 'pointer',
+                                            opacity: loading ? 0.5 : 1,
+                                            transition: 'all 0.2s',
+                                            boxShadow: loading ? 'none' : '0 4px 12px rgba(255,215,0,0.4)',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!loading) {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(255,215,0,0.5)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!loading) {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.4)';
+                                            }
+                                        }}
+                                    >
+                                        {loading ? '导入中...' : '开始导入'}
+                                    </button>
+                                </div>
+
+                                {/* Metadata Form */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
+                                    {/* Category */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            分类 *
+                                        </label>
+                                        <select
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {categories.map(cat => (
+                                                <option key={cat.value} value={cat.value}>{cat.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Product Line */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            产品族群 *
+                                        </label>
+                                        <select
+                                            value={productLine}
+                                            onChange={(e) => {
+                                                setProductLine(e.target.value);
+                                                setProductModels([]);
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {productLines.map(line => (
+                                                <option key={line.value} value={line.value}>
+                                                    {line.label} - {line.desc}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Product Models - Dropdown */}
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            fontSize: '13px',
+                                            color: '#999',
+                                            marginBottom: '8px',
+                                            fontWeight: 500
+                                        }}>
+                                            产品型号 *
+                                            <span style={{
+                                                color: '#ff6b6b',
+                                                marginLeft: '4px',
+                                                fontSize: '12px'
+                                            }}>
+                                                (必选)
+                                            </span>
+                                        </label>
+                                        <select
+                                            value={productModels[0] || ''}
+                                            onChange={(e) => setProductModels(e.target.value ? [e.target.value] : [])}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="">请选择产品型号</option>
+                                            {productModelOptions[productLine].map(model => (
+                                                <option key={model} value={model}>{model}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Visibility */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            可见性 *
+                                        </label>
+                                        <select
+                                            value={visibility}
+                                            onChange={(e) => setVisibility(e.target.value as any)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {visibilityOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Tags */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            标签 (逗号分隔)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={tags}
+                                            onChange={(e) => setTags(e.target.value)}
+                                            placeholder="固件升级, SDI, 故障排查"
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '14px',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Progress Modal - macOS26 Style */}
+                        {progress && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0,0,0,0.75)',
+                                backdropFilter: 'blur(12px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 9999,
+                                padding: '20px'
+                            }}>
+                                <div style={{
+                                    width: '100%',
+                                    maxWidth: '680px',
+                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #1f1f1f 100%)',
+                                    borderRadius: '20px',
+                                    boxShadow: '0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+                                    padding: '32px',
+                                    border: '1px solid rgba(255,215,0,0.1)'
+                                }}>
+                                    {/* Header */}
+                                    <div style={{ marginBottom: '28px', textAlign: 'center' }}>
+                                        <h3 style={{
+                                            fontSize: '20px',
+                                            fontWeight: 600,
+                                            color: '#fff',
+                                            margin: 0,
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            导入进度
+                                        </h3>
+                                        {/* Import Info Summary */}
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: '1fr 1fr',
+                                            gap: '8px 16px',
+                                            marginTop: '16px',
+                                            padding: '14px 16px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            borderRadius: '12px',
+                                            fontSize: '13px'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ color: '#666' }}>📄</span>
+                                                <span style={{ color: '#999' }}>{docxFile?.name || '—'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ color: '#666' }}>📦</span>
+                                                <span style={{ color: bokehOptimize ? '#a78bfa' : '#FFD700', fontWeight: 500 }}>
+                                                    {bokehOptimize ? 'Bokeh 优化' : '直接导入'}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ color: '#666' }}>🎬</span>
+                                                <span style={{ color: '#ccc' }}>{productModels.length > 0 ? productModels.join(', ') : '—'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ color: '#666' }}>📁</span>
+                                                <span style={{ color: '#ccc' }}>{productLine} · {category}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Steps */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+                                        {progress.steps.map((step, index) => (
+                                            <div key={step.id} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '14px',
+                                                padding: '16px',
+                                                background: step.status === 'processing'
+                                                    ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.03)')
+                                                    : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
+                                                        step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${step.status === 'processing'
+                                                    ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.08)') :
+                                                    step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
+                                                        step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                borderRadius: '12px',
+                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}>
+                                                {/* Step Number */}
+                                                <div style={{
+                                                    minWidth: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '50%',
+                                                    background: step.status === 'processing'
+                                                        ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.08)') :
+                                                        step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    width: '28px',
-                                                    height: '28px',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                                    borderRadius: '50%',
-                                                    color: '#EF4444',
+                                                    fontSize: '14px',
+                                                    fontWeight: 700,
+                                                    color: step.status === 'processing'
+                                                        ? (step.id === 'bokeh_optimize' ? '#a78bfa' : '#fff') :
+                                                        step.status === 'failed' ? '#fff' : '#666'
+                                                }}>
+                                                    {index + 1}
+                                                </div>
+
+                                                {/* Step Info */}
+                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{
+                                                            fontSize: '15px',
+                                                            fontWeight: 600,
+                                                            color: step.status === 'processing'
+                                                                ? (step.id === 'optimize' ? '#a78bfa' : '#fff') :
+                                                                step.status === 'completed' ? '#fff' : '#999'
+                                                        }}>
+                                                            {step.label}
+                                                        </div>
+                                                        {/* Step details */}
+                                                        {step.details && step.status === 'processing' && (
+                                                            <div style={{
+                                                                fontSize: '12px',
+                                                                color: '#666',
+                                                                marginTop: '4px'
+                                                            }}>
+                                                                {step.details}
+                                                            </div>
+                                                        )}
+                                                        {/* Processing progress bar - indeterminate */}
+                                                        {step.id === 'process' && step.status === 'processing' && (
+                                                            <div style={{ marginTop: '10px' }}>
+                                                                <div style={{
+                                                                    width: '100%',
+                                                                    height: '4px',
+                                                                    background: 'rgba(255,215,0,0.1)',
+                                                                    borderRadius: '2px',
+                                                                    overflow: 'hidden'
+                                                                }}>
+                                                                    <div style={{
+                                                                        width: '30%',
+                                                                        height: '100%',
+                                                                        background: 'linear-gradient(90deg, #FFD700, #FFA500)',
+                                                                        animation: 'indeterminate 1.5s infinite ease-in-out',
+                                                                        borderRadius: '2px'
+                                                                    }} />
+                                                                </div>
+                                                                <div style={{
+                                                                    fontSize: '11px',
+                                                                    color: '#888',
+                                                                    marginTop: '6px'
+                                                                }}>
+                                                                    正在解析文档结构、提取图片、生成AI摘要...
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {/* Bokeh optimize progress bar */}
+                                                        {step.id === 'optimize' && step.status === 'processing' && (
+                                                            <div style={{ marginTop: '10px' }}>
+                                                                <div style={{
+                                                                    width: '100%',
+                                                                    height: '4px',
+                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    borderRadius: '2px',
+                                                                    overflow: 'hidden'
+                                                                }}>
+                                                                    <div style={{
+                                                                        width: `${step.progress || 0}%`,
+                                                                        height: '100%',
+                                                                        background: '#FFFFFF',
+                                                                        transition: 'width 0.3s ease-out',
+                                                                        borderRadius: '2px'
+                                                                    }} />
+                                                                </div>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    fontSize: '11px',
+                                                                    color: '#888',
+                                                                    marginTop: '6px'
+                                                                }}>
+                                                                    <span>{step.details || 'AI优化中...'}</span>
+                                                                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {/* Upload Progress Bar and Info */}
+                                                        {step.id === 'upload' && step.status === 'processing' && (
+                                                            <div style={{ marginTop: '8px' }}>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    fontSize: '12px',
+                                                                    color: '#999'
+                                                                }}>
+                                                                    <span>{formatSize(uploadedSize)} / {formatSize(totalFileSize)}</span>
+                                                                    <span style={{ color: '#FFD700' }}>{uploadSpeed}</span>
+                                                                </div>
+                                                                <div style={{
+                                                                    width: '100%',
+                                                                    height: '4px',
+                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    borderRadius: '2px',
+                                                                    overflow: 'hidden',
+                                                                    marginTop: '6px'
+                                                                }}>
+                                                                    <div style={{
+                                                                        width: `${step.progress || 0}%`,
+                                                                        height: '100%',
+                                                                        background: '#FFFFFF',
+                                                                        transition: 'width 0.3s ease-out'
+                                                                    }} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Completed Checkmark - Right side */}
+                                                    {step.status === 'completed' && (
+                                                        <div style={{
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: '#4CAF50',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '14px',
+                                                            color: '#000',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            ✓
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bokeh Optimize Stop Button - Right side */}
+                                                    {step.id === 'optimize' && step.status === 'processing' && (
+                                                        <button
+                                                            onClick={handleCancel}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: '28px',
+                                                                height: '28px',
+                                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                                borderRadius: '50%',
+                                                                color: '#EF4444',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                marginLeft: '12px',
+                                                                padding: 0
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                            }}
+                                                            title="停止优化"
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    )}
+
+                                                    {/* Failed indicator */}
+                                                    {step.status === 'failed' && (
+                                                        <div style={{
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: '#EF4444',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '14px',
+                                                            color: '#fff',
+                                                            fontWeight: 700
+                                                        }}>
+                                                            ✗
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Statistics */}
+                                    {(progress.stats.chapters > 0 || progress.stats.images > 0) && (
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(4, 1fr)',
+                                            gap: '12px',
+                                            padding: '20px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            marginBottom: '20px'
+                                        }}>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                    {progress.stats.chapters}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                    知识章节
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                    {progress.stats.images}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                    提取图片
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                    {progress.stats.tables}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                    转换表格
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                    {progress.stats.totalSize.split(' ')[0]}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                    文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Action Buttons */}
+                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                        {loading && (
+                                            <button
+                                                onClick={handleCancel}
+                                                style={{
+                                                    padding: '12px 28px',
+                                                    background: 'rgba(255,68,68,0.15)',
+                                                    border: '1px solid rgba(255,68,68,0.4)',
+                                                    borderRadius: '10px',
+                                                    color: '#ff4444',
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    marginLeft: '12px',
-                                                    padding: 0
+                                                    transition: 'all 0.2s'
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.25)';
+                                                    e.currentTarget.style.transform = 'translateY(-1px)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                    e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
                                                 }}
-                                                title="停止优化"
                                             >
-                                                <XCircle size={16} />
+                                                取消导入
                                             </button>
                                         )}
-
-                                        {/* Failed indicator */}
-                                        {step.status === 'failed' && (
-                                            <div style={{
-                                                width: '24px',
-                                                height: '24px',
-                                                borderRadius: '50%',
-                                                background: '#EF4444',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '14px',
-                                                color: '#fff',
-                                                fontWeight: 700
-                                            }}>
-                                                ✗
-                                            </div>
+                                        {!loading && (
+                                            <button
+                                                onClick={() => setProgress(null)}
+                                                style={{
+                                                    padding: '12px 32px',
+                                                    background: '#FFD700',
+                                                    border: 'none',
+                                                    borderRadius: '10px',
+                                                    color: '#fff',
+                                                    fontSize: '14px',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(139,92,246,0.4)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.3)';
+                                                }}
+                                            >
+                                                完成
+                                            </button>
                                         )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Statistics */}
-                        {(progress.stats.chapters > 0 || progress.stats.images > 0) && (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(4, 1fr)',
-                                gap: '12px',
-                                padding: '20px',
-                                background: 'rgba(255,255,255,0.02)',
-                                borderRadius: '12px',
-                                border: '1px solid rgba(255,255,255,0.06)',
-                                marginBottom: '20px'
-                            }}>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                        {progress.stats.chapters}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                        知识章节
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                        {progress.stats.images}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                        提取图片
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                        {progress.stats.tables}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                        转换表格
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                        {progress.stats.totalSize.split(' ')[0]}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                        文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                            {loading && (
-                                <button
-                                    onClick={handleCancel}
-                                    style={{
-                                        padding: '12px 28px',
-                                        background: 'rgba(255,68,68,0.15)',
-                                        border: '1px solid rgba(255,68,68,0.4)',
-                                        borderRadius: '10px',
-                                        color: '#ff4444',
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,68,68,0.25)';
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,68,68,0.15)';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }}
-                                >
-                                    取消导入
-                                </button>
-                            )}
-                            {!loading && (
-                                <button
-                                    onClick={() => setProgress(null)}
-                                    style={{
-                                        padding: '12px 32px',
-                                        background: '#4CAF50',
-                                        border: 'none',
-                                        borderRadius: '10px',
-                                        color: '#fff',
-                                        fontSize: '14px',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        boxShadow: '0 4px 12px rgba(76,175,80,0.3)'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(76,175,80,0.4)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(76,175,80,0.3)';
-                                    }}
-                                >
-                                    完成
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* macOS26 风格错误对话框 */}
-            {error && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.6)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    animation: 'fadeIn 0.2s ease-out'
-                }}>
-                    <div style={{
-                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                        border: '1px solid rgba(255,68,68,0.3)',
-                        borderRadius: '16px',
-                        padding: '32px',
-                        maxWidth: '450px',
-                        width: '90%',
-                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                        animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}>
-                        {/* 图标 */}
-                        <div style={{
-                            width: '64px',
-                            height: '64px',
-                            margin: '0 auto 24px',
-                            background: 'rgba(255,68,68,0.1)',
-                            border: '2px solid rgba(255,68,68,0.3)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '32px'
-                        }}>
-                            ❌
-                        </div>
-
-                        {/* 标题 */}
-                        <h3 style={{
-                            fontSize: '20px',
-                            fontWeight: 600,
-                            color: '#ff6b6b',
-                            textAlign: 'center',
-                            marginBottom: '16px'
-                        }}>
-                            操作失败
-                        </h3>
-
-                        {/* 消息 */}
-                        <div style={{
-                            background: 'rgba(255,68,68,0.05)',
-                            border: '1px solid rgba(255,68,68,0.15)',
-                            borderRadius: '12px',
-                            padding: '16px',
-                            marginBottom: '24px'
-                        }}>
-                            <p style={{
-                                fontSize: '14px',
-                                color: '#ccc',
-                                lineHeight: '1.6',
-                                textAlign: 'center',
-                                margin: 0
+                        {/* macOS26 风格错误对话框 */}
+                        {error && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0,0,0,0.6)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 9999,
+                                animation: 'fadeIn 0.2s ease-out'
                             }}>
-                                {error}
-                            </p>
-                        </div>
-
-                        {/* 按钮 */}
-                        <button
-                            onClick={() => {
-                                setError('');
-                                setProgress(null); // 清空进度状态，避免显示之前的成功状态
-                            }}
-                            style={{
-                                width: '100%',
-                                padding: '14px',
-                                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
-                                border: 'none',
-                                borderRadius: '12px',
-                                color: '#fff',
-                                fontSize: '15px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 4px 12px rgba(255,68,68,0.3)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,68,68,0.4)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,68,68,0.3)';
-                            }}
-                        >
-                            我知道了
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* macOS26 风格警告对话框 */}
-            {warningDialog.visible && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.6)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    animation: 'fadeIn 0.2s ease-out'
-                }}>
-                    <div style={{
-                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                        border: '1px solid rgba(255,215,0,0.2)',
-                        borderRadius: '16px',
-                        padding: '32px',
-                        maxWidth: '500px',
-                        width: '90%',
-                        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                        animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}>
-                        {/* 图标 */}
-                        <div style={{
-                            width: '64px',
-                            height: '64px',
-                            margin: '0 auto 24px',
-                            background: 'rgba(255,215,0,0.1)',
-                            border: '2px solid rgba(255,215,0,0.3)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '32px'
-                        }}>
-                            ⚠️
-                        </div>
-
-                        {/* 标题 */}
-                        <h3 style={{
-                            fontSize: '20px',
-                            fontWeight: 600,
-                            color: '#FFD700',
-                            textAlign: 'center',
-                            marginBottom: '16px'
-                        }}>
-                            产品型号不匹配
-                        </h3>
-
-                        {/* 消息 */}
-                        <div style={{
-                            background: 'rgba(255,215,0,0.05)',
-                            border: '1px solid rgba(255,215,0,0.15)',
-                            borderRadius: '12px',
-                            padding: '16px',
-                            marginBottom: '24px'
-                        }}>
-                            <p style={{
-                                fontSize: '14px',
-                                color: '#ccc',
-                                lineHeight: '1.6',
-                                marginBottom: '12px',
-                                textAlign: 'center'
-                            }}>
-                                {warningDialog.message}
-                            </p>
-                            {warningDialog.details && (
                                 <div style={{
-                                    fontSize: '13px',
-                                    color: '#999',
-                                    marginTop: '12px',
-                                    paddingTop: '12px',
-                                    borderTop: '1px solid rgba(255,255,255,0.05)'
+                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                    border: '1px solid rgba(255,68,68,0.3)',
+                                    borderRadius: '16px',
+                                    padding: '32px',
+                                    maxWidth: '450px',
+                                    width: '90%',
+                                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                                    animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}>
-                                    <div style={{ marginBottom: '6px' }}>
-                                        <span style={{ color: '#666' }}>文档内容：</span>
-                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{warningDialog.details.detected}</span>
+                                    {/* 图标 */}
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        margin: '0 auto 24px',
+                                        background: 'rgba(255,68,68,0.1)',
+                                        border: '2px solid rgba(255,68,68,0.3)',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '32px'
+                                    }}>
+                                        ❌
                                     </div>
-                                    <div>
-                                        <span style={{ color: '#666' }}>您的选择：</span>
-                                        <span style={{ color: '#0f0', fontWeight: 500 }}>{warningDialog.details.selected}</span>
+
+                                    {/* 标题 */}
+                                    <h3 style={{
+                                        fontSize: '20px',
+                                        fontWeight: 600,
+                                        color: '#ff6b6b',
+                                        textAlign: 'center',
+                                        marginBottom: '16px'
+                                    }}>
+                                        操作失败
+                                    </h3>
+
+                                    {/* 消息 */}
+                                    <div style={{
+                                        background: 'rgba(255,68,68,0.05)',
+                                        border: '1px solid rgba(255,68,68,0.15)',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        marginBottom: '24px'
+                                    }}>
+                                        <p style={{
+                                            fontSize: '14px',
+                                            color: '#ccc',
+                                            lineHeight: '1.6',
+                                            textAlign: 'center',
+                                            margin: 0
+                                        }}>
+                                            {error}
+                                        </p>
                                     </div>
+
+                                    {/* 按钮 */}
+                                    <button
+                                        onClick={() => {
+                                            setError('');
+                                            setProgress(null); // 清空进度状态，避免显示之前的成功状态
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            color: '#fff',
+                                            fontSize: '15px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(255,68,68,0.3)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,68,68,0.4)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,68,68,0.3)';
+                                        }}
+                                    >
+                                        我知道了
+                                    </button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        {/* 按钮 */}
-                        <button
-                            onClick={() => setWarningDialog({ visible: false, message: '' })}
-                            style={{
-                                width: '100%',
-                                padding: '14px',
-                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                                border: 'none',
-                                borderRadius: '12px',
-                                color: '#000',
-                                fontSize: '15px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 4px 12px rgba(255,215,0,0.3)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,215,0,0.4)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)';
-                            }}
-                        >
-                            我知道了
-                        </button>
+                        {/* macOS26 风格警告对话框 */}
+                        {warningDialog.visible && (
+                            <div style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(0,0,0,0.6)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 9999,
+                                animation: 'fadeIn 0.2s ease-out'
+                            }}>
+                                <div style={{
+                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                    border: '1px solid rgba(255,215,0,0.2)',
+                                    borderRadius: '16px',
+                                    padding: '32px',
+                                    maxWidth: '500px',
+                                    width: '90%',
+                                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                                    animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}>
+                                    {/* 图标 */}
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        margin: '0 auto 24px',
+                                        background: 'rgba(255,215,0,0.1)',
+                                        border: '2px solid rgba(255,215,0,0.3)',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '32px'
+                                    }}>
+                                        ⚠️
+                                    </div>
 
-                        <p style={{
-                            fontSize: '12px',
-                            color: '#666',
-                            textAlign: 'center',
-                            marginTop: '16px',
-                            lineHeight: '1.5'
-                        }}>
-                            系统已按您选择的产品型号导入，<br />
-                            如有错误请删除后重新导入
-                        </p>
+                                    {/* 标题 */}
+                                    <h3 style={{
+                                        fontSize: '20px',
+                                        fontWeight: 600,
+                                        color: '#FFD700',
+                                        textAlign: 'center',
+                                        marginBottom: '16px'
+                                    }}>
+                                        产品型号不匹配
+                                    </h3>
+
+                                    {/* 消息 */}
+                                    <div style={{
+                                        background: 'rgba(255,215,0,0.05)',
+                                        border: '1px solid rgba(255,215,0,0.15)',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        marginBottom: '24px'
+                                    }}>
+                                        <p style={{
+                                            fontSize: '14px',
+                                            color: '#ccc',
+                                            lineHeight: '1.6',
+                                            marginBottom: '12px',
+                                            textAlign: 'center'
+                                        }}>
+                                            {warningDialog.message}
+                                        </p>
+                                        {warningDialog.details && (
+                                            <div style={{
+                                                fontSize: '13px',
+                                                color: '#999',
+                                                marginTop: '12px',
+                                                paddingTop: '12px',
+                                                borderTop: '1px solid rgba(255,255,255,0.05)'
+                                            }}>
+                                                <div style={{ marginBottom: '6px' }}>
+                                                    <span style={{ color: '#666' }}>文档内容：</span>
+                                                    <span style={{ color: '#FFD700', fontWeight: 500 }}>{warningDialog.details.detected}</span>
+                                                </div>
+                                                <div>
+                                                    <span style={{ color: '#666' }}>您的选择：</span>
+                                                    <span style={{ color: '#0f0', fontWeight: 500 }}>{warningDialog.details.selected}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 按钮 */}
+                                    <button
+                                        onClick={() => setWarningDialog({ visible: false, message: '' })}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            color: '#000',
+                                            fontSize: '15px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(255,215,0,0.3)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,215,0,0.4)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,215,0,0.3)';
+                                        }}
+                                    >
+                                        我知道了
+                                    </button>
+
+                                    <p style={{
+                                        fontSize: '12px',
+                                        color: '#666',
+                                        textAlign: 'center',
+                                        marginTop: '16px',
+                                        lineHeight: '1.5'
+                                    }}>
+                                        系统已按您选择的产品型号导入，<br />
+                                        如有错误请删除后重新导入
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
-        </div>
+            </div>
+
+            {/* 动画 CSS */}
+            <style>{`
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            @keyframes indeterminate {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(400%); }
+            }
+        `}</style>
+        </>
     );
 }
-
-{/* 动画 CSS */ }
-<style>{`
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    @keyframes indeterminate {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(400%); }
-    }
-`}</style>

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText, X, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useToast } from '../../store/useToast';
 import KnowledgeAuditLog from '../KnowledgeAuditLog';
 
 interface AIProvider {
@@ -26,6 +27,8 @@ interface SystemSettings {
     ai_work_mode: boolean;
     ai_data_sources: string[];  // ["tickets", "knowledge", "web_search"]
     ai_system_prompt?: string;  // 自定义 Bokeh 系统提示词
+    ai_search_history_limit?: number; // 默认 10
+    show_daily_word?: boolean; // 显示每日一词徽章
     // Primary Backup
     backup_enabled: boolean;
     backup_frequency: number;
@@ -119,11 +122,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { showToast } = useToast();
     const [backingUpPrimary, setBackingUpPrimary] = useState(false);
     const [backingUpSecondary, setBackingUpSecondary] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
     const [backupResult, setBackupResult] = useState<{ success: boolean, message: string, path?: string } | null>(null);
-    
+
     // Backup status state
     const [backupStatus, setBackupStatus] = useState<{
         primary: {
@@ -143,7 +147,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             backups: { name: string; size: number; created_at: string; path: string }[];
         };
     } | null>(null);
-    
+
     // Confirm dialog state
     const [confirmDialog, setConfirmDialog] = useState<{
         isOpen: boolean;
@@ -153,8 +157,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         confirmLabel?: string;
         cancelLabel?: string;
         isDanger?: boolean;
-    }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-    
+    }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
+
     // Restore modal state
     const [restoreModal, setRestoreModal] = useState<{
         isOpen: boolean;
@@ -252,7 +256,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         const isPrimary = type === 'primary';
         showConfirm(
             isPrimary ? '确认主备份' : '确认次级备份',
-            isPrimary 
+            isPrimary
                 ? '即将执行主备份，备份文件将存储至 fileserver SSD。此操作可能需要几分钟，请确保系统正常运行。'
                 : '即将执行次级备份，备份文件将存储至系统盘。此操作可能需要几分钟，请确保系统正常运行。',
             () => handleManualBackupTyped(type),
@@ -269,7 +273,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             console.log('[AdminSettings] Saving providers:', providers.map(p => ({ name: p.name, hasApiKey: !!p.api_key })));
             await axios.post('/api/admin/settings', { settings, providers }, { headers: { Authorization: `Bearer ${token}` } });
             // Show success message
-            alert('设置已保存成功！');
+            showToast('设置已保存成功！', 'success');
             // Reload settings to reflect changes
             const res = await axios.get('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } });
             if (res.data.success && res.data.data?.settings) {
@@ -278,7 +282,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             }
         } catch (err: any) {
             console.error('Failed to save settings:', err);
-            alert('保存失败: ' + (err.response?.data?.error || err.message));
+            showToast('保存失败: ' + (err.response?.data?.error || err.message), 'error');
         } finally {
             setSaving(false);
         }
@@ -305,7 +309,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const deleteProvider = async (index: number) => {
         const p = providers[index];
         if (p.is_active) {
-            alert("Cannot delete the active provider. Please set another provider as active first.");
+            showToast("Cannot delete the active provider. Please set another provider as active first.", "error");
             return;
         }
         if (!window.confirm(`Delete ${p.name}?`)) return;
@@ -315,8 +319,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             const newProviders = providers.filter((_, i) => i !== index);
             setProviders(newProviders);
             setActiveProviderIndex(0);
+            showToast("模型已删除", "success");
         } catch (err) {
             console.error('Delete provider failed');
+            showToast("删除失败", "error");
         }
     };
 
@@ -566,7 +572,30 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             </div>
 
                             <div className="divider" />
-                            
+
+                            {/* 搜索历史上限设置 */}
+                            <div style={{ paddingLeft: 8, marginBottom: 16 }}>
+                                <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>搜索历史缓存条数</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={30}
+                                        value={settings.ai_search_history_limit || 10}
+                                        onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
+                                        style={{
+                                            width: '60px', padding: '6px 8px', borderRadius: '4px',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '14px'
+                                        }}
+                                    />
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '12px' }}>最大30条 (默认10)</span>
+                                </div>
+                            </div>
+
+                            <div className="divider" />
+
                             {/* Bokeh 回答策略设置 */}
                             <div style={{ paddingLeft: 8 }}>
                                 <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>Bokeh 回答策略</div>
@@ -745,9 +774,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             {/* Primary Backup Column - Settings + Dashboard */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                 {/* Primary Backup Settings */}
-                                <div style={{ 
-                                    background: 'rgba(16, 185, 129, 0.08)', 
-                                    padding: '16px 20px', 
+                                <div style={{
+                                    background: 'rgba(16, 185, 129, 0.08)',
+                                    padding: '16px 20px',
                                     borderRadius: 12,
                                     border: '1px solid rgba(16, 185, 129, 0.25)',
                                     marginBottom: 8
@@ -817,13 +846,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
                                 {/* Primary Backup Dashboard Card */}
                                 {backupStatus && (
-                                    <div 
+                                    <div
                                         onClick={() => setRestoreModal({ isOpen: true, type: 'primary', selectedBackup: null })}
-                                        style={{ 
-                                            background: 'rgba(16, 185, 129, 0.05)', 
-                                            padding: 28, 
-                                            borderRadius: 20, 
-                                            border: '1px solid rgba(16, 185, 129, 0.15)', 
+                                        style={{
+                                            background: 'rgba(16, 185, 129, 0.05)',
+                                            padding: 28,
+                                            borderRadius: 20,
+                                            border: '1px solid rgba(16, 185, 129, 0.15)',
                                             backdropFilter: 'blur(10px)',
                                             cursor: 'pointer',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -844,7 +873,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <Database size={22} />
                                             主备份状态
                                         </h3>
-                                        
+
                                         {/* Stats Grid */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                                             <div>
@@ -860,7 +889,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <div>
                                                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
-                                                    {backupStatus.primary.backups[0] 
+                                                    {backupStatus.primary.backups[0]
                                                         ? new Date(backupStatus.primary.backups[0].created_at).toLocaleDateString('zh-CN')
                                                         : '无'}
                                                 </div>
@@ -915,9 +944,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             {/* Secondary Backup Column - Settings + Dashboard */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                 {/* Secondary Backup Settings */}
-                                <div style={{ 
-                                    background: 'rgba(255,255,255,0.03)', 
-                                    padding: '16px 20px', 
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.03)',
+                                    padding: '16px 20px',
                                     borderRadius: 12,
                                     border: '1px solid rgba(255,255,255,0.15)',
                                     marginBottom: 8
@@ -987,13 +1016,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
                                 {/* Secondary Backup Dashboard Card */}
                                 {backupStatus && (
-                                    <div 
+                                    <div
                                         onClick={() => setRestoreModal({ isOpen: true, type: 'secondary', selectedBackup: null })}
-                                        style={{ 
-                                            background: 'rgba(255,255,255,0.02)', 
-                                            padding: 28, 
-                                            borderRadius: 20, 
-                                            border: '1px solid rgba(255,255,255,0.08)', 
+                                        style={{
+                                            background: 'rgba(255,255,255,0.02)',
+                                            padding: 28,
+                                            borderRadius: 20,
+                                            border: '1px solid rgba(255,255,255,0.08)',
                                             backdropFilter: 'blur(10px)',
                                             cursor: 'pointer',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1014,7 +1043,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <Database size={22} />
                                             次级备份状态
                                         </h3>
-                                        
+
                                         {/* Stats Grid */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                                             <div>
@@ -1030,7 +1059,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <div>
                                                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
-                                                    {backupStatus.secondary.backups[0] 
+                                                    {backupStatus.secondary.backups[0]
                                                         ? new Date(backupStatus.secondary.backups[0].created_at).toLocaleDateString('zh-CN')
                                                         : '无'}
                                                 </div>
@@ -1099,10 +1128,29 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
                 {/* === GENERAL TAB === */}
                 {activeTab === 'general' && settings && (
-                    <div style={{ padding: 32 }}>
+                    <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
                         <div className="setting-field">
                             <label>System Name</label>
                             <input type="text" className="text-input" value={settings.system_name} onChange={e => setSettings({ ...settings, system_name: e.target.value })} />
+                        </div>
+
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+
+                        {/* 界面设置 */}
+                        <div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>{t('admin.ui_settings')}</div>
+                            <div className="setting-card" style={{ minHeight: '72px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <div className="setting-label">{t('admin.show_daily_word')}</div>
+                                    <div className="setting-desc">{t('admin.show_daily_word_desc')}</div>
+                                </div>
+                                <Switch
+                                    checked={settings.show_daily_word || false}
+                                    onChange={v => {
+                                        setSettings({ ...settings, show_daily_word: v });
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1141,7 +1189,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 width: '90%', maxWidth: '420px',
                                 borderRadius: '20px',
                                 padding: '0',
-                                boxShadow: confirmDialog.isDanger 
+                                boxShadow: confirmDialog.isDanger
                                     ? '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)'
                                     : '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 215, 0, 0.1)',
                                 animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -1155,16 +1203,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 display: 'flex', alignItems: 'center', gap: '16px'
                             }}>
                                 <div style={{
-                                    background: confirmDialog.isDanger 
+                                    background: confirmDialog.isDanger
                                         ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1))'
                                         : 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
                                     padding: '12px', borderRadius: '14px',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: confirmDialog.isDanger 
+                                    boxShadow: confirmDialog.isDanger
                                         ? '0 4px 12px rgba(239, 68, 68, 0.1)'
                                         : '0 4px 12px rgba(255, 215, 0, 0.1)'
                                 }}>
-                                    {confirmDialog.isDanger 
+                                    {confirmDialog.isDanger
                                         ? <AlertTriangle size={24} color="#EF4444" strokeWidth={2} />
                                         : <Database size={24} color="#FFD700" strokeWidth={2} />
                                     }
@@ -1219,7 +1267,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     onClick={() => closeConfirm(true)}
                                     style={{
                                         padding: '12px 24px',
-                                        background: confirmDialog.isDanger 
+                                        background: confirmDialog.isDanger
                                             ? 'linear-gradient(135deg, #EF4444, #DC2626)'
                                             : 'linear-gradient(135deg, #FFD700, #FFC000)',
                                         border: 'none', borderRadius: '12px',
@@ -1228,19 +1276,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                         minWidth: '90px',
-                                        boxShadow: confirmDialog.isDanger 
+                                        boxShadow: confirmDialog.isDanger
                                             ? '0 4px 15px rgba(239, 68, 68, 0.3)'
                                             : '0 4px 15px rgba(255, 215, 0, 0.3)'
                                     }}
                                     onMouseEnter={e => {
                                         e.currentTarget.style.transform = 'translateY(-1px)';
-                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger 
+                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger
                                             ? '0 6px 20px rgba(239, 68, 68, 0.4)'
                                             : '0 6px 20px rgba(255, 215, 0, 0.4)';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger 
+                                        e.currentTarget.style.boxShadow = confirmDialog.isDanger
                                             ? '0 4px 15px rgba(239, 68, 68, 0.3)'
                                             : '0 4px 15px rgba(255, 215, 0, 0.3)';
                                     }}
@@ -1555,13 +1603,13 @@ interface PromptEditorModalProps {
 
 const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPrompt, onClose, onSave }) => {
     const [prompt, setPrompt] = useState(currentPrompt || '');
-    
+
     useEffect(() => {
         setPrompt(currentPrompt || '');
     }, [currentPrompt, isOpen]);
-    
+
     if (!isOpen) return null;
-    
+
     const defaultPrompt = `你是 Bokeh，Kinefinity 的专业技术支持助手。
 你拥有访问 Kinefinity 服务数据库的权限。
 当前上下文：
@@ -1616,7 +1664,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                         <X size={20} />
                     </button>
                 </div>
-                
+
                 <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: 8, lineHeight: 1.5 }}>
                         自定义系统提示词，控制 Bokeh 的回答风格和数据引用规则。
@@ -1637,7 +1685,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                         resize: 'none', outline: 'none'
                     }}
                 />
-                
+
                 {!prompt && (
                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,215,0,0.7)', marginTop: 8 }}>
                         留空将使用默认提示词

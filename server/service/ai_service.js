@@ -243,11 +243,12 @@ Output raw JSON only, no markdown formatting blocks.`;
         // Search Tickets if enabled - only when fault-related keywords detected
         if (needsTicketSearch && dataSources.includes('tickets') && this.db) {
             try {
+                console.log(`[AI Chat] Detecting ticket search intent for: "${lastUserMessage}"`);
                 const tickets = await this._searchRelatedTickets(lastUserMessage, user);
                 if (tickets && tickets.length > 0) {
                     let ticketContext = '\n\n## 相关历史工单参考\n';
                     tickets.forEach((t, i) => {
-                        ticketContext += `${i + 1}. **[${t.ticket_number}]** (${t.ticket_type})\n`;
+                        ticketContext += `${i + 1}. **[${t.ticket_number}|${t.ticket_id}|${t.ticket_type}]**\n`;
                         ticketContext += `   标题: ${t.title}\n`;
                         if (t.customer_name) ticketContext += `   客户: ${t.customer_name}\n`;
                         if (t.product_model) ticketContext += `   产品: ${t.product_model}\n`;
@@ -256,7 +257,7 @@ Output raw JSON only, no markdown formatting blocks.`;
                         }
                         ticketContext += `\n`;
                     });
-                    ticketContext += '请在回答中引用工单编号,格式为[工单编号|工单ID|类型],例如[K2602-0001|123|inquiry]。\n';
+                    ticketContext += '请务必在回答中直接引用上面的粗体工单代号,格式严格为[工单编号|工单ID|类型],例如[SVC-D-2601-0001|12|dealer_repair], 不要漏掉大括号和中间的管道符与ID。如果有多个则原样照抄对应的代号标签。\n';
                     contextSections.push(ticketContext);
                 }
             } catch (err) {
@@ -377,8 +378,25 @@ ${enhancedContext}`;
 
         // Build WHERE clause based on user role
         let whereConditions = ['tsi.closed_at IS NOT NULL'];
-        // Sanitize query for FTS5
-        const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+
+        // Sanitize query for FTS5 — split by space, expand with synonyms, use OR for lenient matching
+        const { expandWithSynonyms } = require('./routes/synonyms');
+
+        // Use the same stopWords logic as knowledge.js to strip conversational fluff
+        const stopWords = /的|是|有|了|在|和|与|或|也|都|被|把|对|从|到|给|让|着|过|不|没|会|能|可以|应该|关于|如何|什么|怎么|怎样|这个|那个|一些|相关|哪些|哪个|为什么|什么是|介绍|说明|支持|常见|一般|通常|经常|平时|总是|容易|可能|需要|建议|推荐|比较|正确|正常|具体|应当|请问|告诉|问题|帮忙/g;
+        const cleaned = query.replace(stopWords, ' ').replace(/[，。、！？；：""''（）【】\s]+/g, ' ').trim();
+
+        // Extract Chinese and English words
+        const chatWords = cleaned.split(/\s+/).filter(w => w.length > 0);
+        const allTerms = new Set();
+        chatWords.forEach(w => {
+            expandWithSynonyms(w).forEach(syn => allTerms.add(syn));
+        });
+
+        // Fallback to query if tokenization leaves us empty
+        if (allTerms.size === 0) allTerms.add(query);
+
+        const safeQuery = Array.from(allTerms).map(w => '"' + w.replace(/"/g, '""') + '"*').join(' OR ');
         let params = { query: safeQuery, limit: 3 }; // Top 3 tickets
 
         // Permission Filter - dealers can only see their own tickets
@@ -411,7 +429,7 @@ ${enhancedContext}`;
 
         // Try FTS5 first, fallback to LIKE search
         let results = [];
-        
+
         try {
             // FTS5 Search Query
             const ftsQuery = `
@@ -423,12 +441,13 @@ ${enhancedContext}`;
                     tsi.resolution,
                     tsi.product_model,
                     tsi.account_id,
-                    fts.rank
+                    fts_match.rank
                 FROM ticket_search_index tsi
-                INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
-                WHERE fts MATCH @query
-                ${whereClause}
-                ORDER BY fts.rank
+                INNER JOIN (
+                    SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
+                ) fts_match ON tsi.id = fts_match.rowid
+                WHERE ${whereClause}
+                ORDER BY fts_match.rank
                 LIMIT @limit
             `;
             results = this.db.prepare(ftsQuery).all(params);
@@ -452,7 +471,7 @@ ${enhancedContext}`;
                         1.0 as rank
                     FROM ticket_search_index tsi
                     WHERE (tsi.title LIKE @likePattern OR tsi.resolution LIKE @likePattern)
-                    ${whereClause}
+                      AND ${whereClause}
                     ORDER BY tsi.updated_at DESC
                     LIMIT @limit
                 `;
@@ -536,6 +555,7 @@ ${enhancedContext}`;
             LIMIT @limit
         `;
 
+        let results = [];
         try {
             // FTS5 Search Query for knowledge base
             const ftsQuery = `
@@ -549,12 +569,13 @@ ${enhancedContext}`;
                     ka.product_line,
                     ka.visibility,
                     ka.source_reference,
-                    fts.rank
+                    fts_match.rank
                 FROM knowledge_articles ka
-                INNER JOIN knowledge_articles_fts fts ON ka.id = fts.rowid
-                WHERE fts MATCH @query
-                  AND ${whereClause}
-                ORDER BY fts.rank
+                INNER JOIN (
+                    SELECT rowid, rank FROM knowledge_articles_fts WHERE knowledge_articles_fts MATCH @query
+                ) fts_match ON ka.id = fts_match.rowid
+                WHERE ${whereClause}
+                ORDER BY fts_match.rank
                 LIMIT @limit
             `;
             results = this.db.prepare(ftsQuery).all(params);

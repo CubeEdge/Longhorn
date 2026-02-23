@@ -97,7 +97,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
                         {menuItems.map(item => (
                             <div
                                 key={item.id}
-                                onClick={() => navigate(`${routePrefix}/${item.id}`)}
+                                onClick={() => {
+                                    if (item.id === 'settings') {
+                                        const savedSubTab = localStorage.getItem('service_settings_last_tab');
+                                        const subRoute = (savedSubTab === 'general' || !savedSubTab) ? 'settings' : savedSubTab;
+                                        navigate(`${routePrefix}/${subRoute}`);
+                                    } else {
+                                        navigate(`${routePrefix}/${item.id}`);
+                                    }
+                                }}
                                 className={`admin-menu-item ${sidebarActiveId === item.id ? 'active' : ''}`}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

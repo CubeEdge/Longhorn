@@ -5,6 +5,7 @@ import BokehPanel from './BokehPanel';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBokehContext } from '../../store/useBokehContext';
 import axios from 'axios';
+import { useLanguage } from '../../i18n/useLanguage';
 
 interface Message {
     id: string;
@@ -19,6 +20,7 @@ const BokehContainer: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const { token } = useAuthStore();
     const { currentContext, getContextSummary, getSuggestedActions, isEditorMode } = useBokehContext();
+    const { t } = useLanguage();
 
     // Global Shortcut Cmd+K / Ctrl+K
     useEffect(() => {
@@ -82,10 +84,10 @@ const BokehContainer: React.FC = () => {
                         timestamp: Date.now()
                     };
                     setMessages(prev => [...prev, aiMsg]);
-                    
+
                     // Dispatch event to notify editor to refresh with new content
                     window.dispatchEvent(new CustomEvent('bokeh-article-optimized', {
-                        detail: { 
+                        detail: {
                             articleId: currentContext.articleId,
                             optimizedContent: res.data.data.optimized_content
                         }
@@ -107,10 +109,15 @@ const BokehContainer: React.FC = () => {
                 });
 
                 if (res.data.success) {
+                    // Safely extract string content - API may return string or {content: '...'}
+                    const rawData = res.data.data;
+                    const contentStr = typeof rawData === 'string'
+                        ? rawData
+                        : (rawData?.content || rawData?.message || JSON.stringify(rawData));
                     const aiMsg: Message = {
                         id: (Date.now() + 1).toString(),
                         role: 'assistant',
-                        content: res.data.data,
+                        content: contentStr,
                         timestamp: Date.now()
                     };
                     setMessages(prev => [...prev, aiMsg]);
@@ -121,7 +128,7 @@ const BokehContainer: React.FC = () => {
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: "Sorry, I couldn't reach the server. Please check your connection.",
+                content: t('bokeh.error.connection'),
                 timestamp: Date.now()
             };
             setMessages(prev => [...prev, errorMsg]);

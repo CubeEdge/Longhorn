@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-02-23 10:45 (耗时: 30m)
+
+**User Prompt**:
+Refining Bokeh Toggle Styles & Fixes
+要求：1. 修改 Bokeh 切换开关的选中状态为 Kine Yellow 风格；2. 将 AdminSettings 中的 alert 替换为 toast；3. 修复“显示每日一词”设置不生效的问题。
+
+**Agent Response**:
+1. **Toast 替换**: 引入 `useToast` 钩子，将 `AdminSettings.tsx` 中的所有 `alert` 和 `deleteProvider` 中的反馈替换为系统标准的 toast 通知。
+2. **样式优化**: 修改 `KnowledgeGenerator.tsx`，将 “Bokeh 优化” 按钮选中态由蓝色渐变改为黄底半透明（`rgba(255,215,0,0.12)`）加黄色边框。
+3. **接口解耦**: 修改 `system.js` 路由，移除 `/public-settings` 的 `authenticate` 中间件，确保 TopBar 可以匿名读取展示配置。
+
+**Result**: 
+UI 反映更贴合系统规范，每日一词显示逻辑恢复正常。
+
+---
+
 ## 2026-02-23 01:50 (耗时: 120m)
 
 **User Prompt**:

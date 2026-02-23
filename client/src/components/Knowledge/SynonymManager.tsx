@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Search, BookOpen, Tag, Loader2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Search, Plus, Trash2, X, Tag, Loader2 } from 'lucide-react';
+import { useLanguage } from '../../i18n/useLanguage';
 import { useAuthStore } from '../../store/useAuthStore';
 
 interface SynonymGroup {
@@ -37,7 +37,7 @@ function getCategoryColor(category: string): string {
 }
 
 export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose }) => {
-    const { t } = useTranslation();
+    const { t } = useLanguage();
     const { token } = useAuthStore();
     const [groups, setGroups] = useState<SynonymGroup[]>([]);
     const [loading, setLoading] = useState(true);
@@ -202,7 +202,8 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
             animation: 'fadeIn 0.2s ease'
         }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div style={{
-                width: '90%', maxWidth: '900px', maxHeight: '85vh',
+                width: '90%', maxWidth: '900px', height: '80vh',
+                maxHeight: '800px',
                 background: 'linear-gradient(145deg, #1e1e1e 0%, #181818 100%)',
                 borderRadius: '16px',
                 border: '1px solid rgba(255,255,255,0.08)',
@@ -212,33 +213,42 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '20px 24px',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    padding: '24px 32px',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <BookOpen size={20} color="#FFD700" />
-                        <span style={{ fontSize: '17px', fontWeight: 600, color: '#fff' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: 0 }}>
                             {t('synonym.title')}
-                        </span>
-                        <span style={{
-                            fontSize: '12px', color: '#888',
-                            background: 'rgba(255,255,255,0.05)',
-                            padding: '3px 10px', borderRadius: '20px'
-                        }}>
+                        </h2>
+                        <p style={{ fontSize: '14px', color: '#888', margin: 0 }}>
                             {t('synonym.stats', { groups: groups.length, words: totalWords })}
-                        </span>
+                        </p>
                     </div>
-                    <button onClick={onClose} style={{
-                        background: 'rgba(255,255,255,0.05)', border: 'none',
-                        borderRadius: '8px', padding: '8px', cursor: 'pointer',
-                        color: '#888', transition: 'all 0.15s'
-                    }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#888'; }}
+
+
+                    <button
+                        onClick={onClose}
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(255,255,255,0.08)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            color: '#fff',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
                     >
-                        <X size={18} />
+                        <X size={22} />
                     </button>
+
+
                 </div>
 
                 {/* Toolbar */}
@@ -285,8 +295,18 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                 {/* Content */}
                 <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
                     {loading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                        <div style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '12px',
+                            color: '#888',
+                            fontSize: '14px'
+                        }}>
                             <Loader2 size={24} color="#FFD700" style={{ animation: 'spin 1s linear infinite' }} />
+                            <span>正在加载...</span>
                         </div>
                     ) : (
                         <>
@@ -479,6 +499,6 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             `}</style>
-        </div>
+        </div >
     );
 };

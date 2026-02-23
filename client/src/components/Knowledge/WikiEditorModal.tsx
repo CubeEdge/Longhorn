@@ -434,8 +434,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     disabled={isOptimizing}
                                     style={{
                                         padding: '8px 14px',
-                                        background: isOptimizing ? 'rgba(142, 36, 170, 0.3)' : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
-                                        border: 'none',
+                                        background: isOptimizing ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)',
+                                        border: `2px solid ${isOptimizing ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}`,
                                         borderRadius: '8px',
                                         color: '#fff',
                                         fontSize: '13px',
@@ -443,12 +443,13 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         cursor: isOptimizing ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '6px'
+                                        gap: '6px',
+                                        transition: 'all 0.2s',
+                                        boxShadow: isOptimizing ? 'none' : '0 0 8px rgba(139, 92, 246, 0.15)',
                                     }}
                                 >
                                     {isOptimizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                                     Bokeh 优化
-                                    <ChevronDown size={12} />
                                 </button>
 
                                 {/* Bokeh 下拉菜单选项 */}

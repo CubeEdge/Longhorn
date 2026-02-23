@@ -7,8 +7,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Send, ChevronUp, ChevronDown, Sparkles, 
+import {
+    Send, ChevronUp, ChevronDown, Sparkles,
     Check, X, Loader2, Wand2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -60,7 +60,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
     const handleSend = async (text?: string) => {
         const messageText = text || input.trim();
         if (!messageText || !token) return;
-        
+
         // 检测是否涉及摘要，提示用户使用顶部菜单
         if (messageText.includes('摘要')) {
             const aiMsg: Message = {
@@ -88,7 +88,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
 
         try {
             // 判断是否为修改指令
-            const isModificationRequest = 
+            const isModificationRequest =
                 messageText.includes('优化') ||
                 messageText.includes('修改') ||
                 messageText.includes('调整') ||
@@ -112,7 +112,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
 
                 if (res.data.success) {
                     const optimizedContent = res.data.data.optimized_content || res.data.data.formatted_content;
-                    
+
                     if (optimizedContent && optimizedContent !== currentContent) {
                         // 设置待确认的变更
                         setPendingChange({
@@ -185,7 +185,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
         if (pendingChange) {
             onApplyChanges(pendingChange.optimizedContent);
             setPendingChange(null);
-            
+
             const confirmMsg: Message = {
                 id: Date.now().toString(),
                 role: 'assistant',
@@ -198,7 +198,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
 
     const handleRejectChange = () => {
         setPendingChange(null);
-        
+
         const rejectMsg: Message = {
             id: Date.now().toString(),
             role: 'assistant',
@@ -241,7 +241,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
     }, [isExpanded]);
 
     return (
-        <div 
+        <div
             ref={panelRef}
             style={{
                 position: 'relative',
@@ -249,17 +249,17 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                 alignItems: 'center'
             }}
         >
-            {/* 底部栏按钮 - Kine Green 风格 */}
+            {/* 底部栏按钮 - Bokeh 渐变色风格 */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 style={{
                     padding: '6px 12px',
-                    background: isExpanded 
-                        ? 'linear-gradient(135deg, #2E7D32, #1B5E20)' 
-                        : 'rgba(46, 125, 50, 0.15)',
-                    border: '1px solid rgba(46, 125, 50, 0.4)',
+                    background: isExpanded
+                        ? 'linear-gradient(135deg, #7C3AED, #06B6D4)'
+                        : 'rgba(139, 92, 246, 0.15)',
+                    border: '1px solid rgba(139, 92, 246, 0.4)',
                     borderRadius: '6px',
-                    color: isExpanded ? '#fff' : '#4CAF50',
+                    color: isExpanded ? '#fff' : '#a78bfa',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -294,7 +294,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             width: '400px',
                             maxHeight: '350px',
                             background: 'rgba(30, 30, 35, 0.98)',
-                            border: '1px solid rgba(76, 175, 80, 0.3)',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
                             borderRadius: '12px',
                             boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
                             overflow: 'hidden',
@@ -309,9 +309,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             alignItems: 'center',
                             justifyContent: 'space-between'
                         }}>
-                            <span style={{ 
-                                color: '#4CAF50', 
-                                fontSize: '13px', 
+                            <span style={{
+                                color: '#a78bfa',
+                                fontSize: '13px',
                                 fontWeight: 600,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -334,12 +334,12 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 <X size={14} />
                             </button>
                         </div>
-                        
+
                         <div style={{ padding: '12px 16px', maxHeight: '280px', overflowY: 'auto' }}>
                             {/* Quick Actions - 紧凑布局 */}
-                            <div style={{ 
-                                display: 'flex', 
-                                gap: '6px', 
+                            <div style={{
+                                display: 'flex',
+                                gap: '6px',
                                 marginBottom: '10px',
                                 flexWrap: 'wrap'
                             }}>
@@ -350,10 +350,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                         disabled={loading}
                                         style={{
                                             padding: '4px 10px',
-                                            background: 'rgba(76, 175, 80, 0.1)',
-                                            border: '1px solid rgba(76, 175, 80, 0.2)',
+                                            background: 'rgba(139, 92, 246, 0.1)',
+                                            border: '1px solid rgba(139, 92, 246, 0.2)',
                                             borderRadius: '14px',
-                                            color: '#4CAF50',
+                                            color: '#a78bfa',
                                             fontSize: '11px',
                                             cursor: loading ? 'not-allowed' : 'pointer',
                                             opacity: loading ? 0.5 : 1,
@@ -393,10 +393,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                                 borderRadius: '8px',
                                                 fontSize: '11px',
                                                 maxWidth: '90%',
-                                                background: msg.role === 'user' 
-                                                    ? 'rgba(76, 175, 80, 0.15)' 
+                                                background: msg.role === 'user'
+                                                    ? 'rgba(139, 92, 246, 0.15)'
                                                     : 'rgba(255,255,255,0.08)',
-                                                color: msg.role === 'user' ? '#4CAF50' : 'rgba(255,255,255,0.85)',
+                                                color: msg.role === 'user' ? '#a78bfa' : 'rgba(255,255,255,0.85)',
                                                 lineHeight: '1.4'
                                             }}>
                                                 {msg.content}
@@ -411,20 +411,20 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 <div style={{
                                     marginBottom: '10px',
                                     padding: '10px',
-                                    background: 'rgba(76, 175, 80, 0.08)',
-                                    border: '1px solid rgba(76, 175, 80, 0.2)',
+                                    background: 'rgba(139, 92, 246, 0.08)',
+                                    border: '1px solid rgba(139, 92, 246, 0.2)',
                                     borderRadius: '6px'
                                 }}>
-                                    <div style={{ 
-                                        fontSize: '11px', 
-                                        color: '#4CAF50', 
+                                    <div style={{
+                                        fontSize: '11px',
+                                        color: '#a78bfa',
                                         marginBottom: '6px',
                                         fontWeight: 600
                                     }}>
                                         📝 {pendingChange.changeSummary}
                                     </div>
-                                    <div style={{ 
-                                        fontSize: '10px', 
+                                    <div style={{
+                                        fontSize: '10px',
                                         color: 'rgba(255,255,255,0.5)',
                                         marginBottom: '8px'
                                     }}>
@@ -436,7 +436,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                             style={{
                                                 flex: 1,
                                                 padding: '6px',
-                                                background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                                                background: 'linear-gradient(135deg, #7C3AED, #06B6D4)',
                                                 border: 'none',
                                                 borderRadius: '5px',
                                                 color: '#fff',
@@ -509,9 +509,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                     style={{
                                         width: '34px',
                                         height: '34px',
-                                        background: loading || !input.trim() 
-                                            ? 'rgba(76, 175, 80, 0.15)' 
-                                            : 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                                        background: loading || !input.trim()
+                                            ? 'rgba(76, 175, 80, 0.15)'
+                                            : 'linear-gradient(135deg, #7C3AED, #06B6D4)',
                                         border: 'none',
                                         borderRadius: '8px',
                                         color: loading || !input.trim() ? 'rgba(255,255,255,0.3)' : '#000',
@@ -530,9 +530,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 </button>
                             </div>
 
-                            <div style={{ 
-                                fontSize: '9px', 
-                                color: 'rgba(255,255,255,0.25)', 
+                            <div style={{
+                                fontSize: '9px',
+                                color: 'rgba(255,255,255,0.25)',
                                 marginTop: '6px',
                                 textAlign: 'center'
                             }}>

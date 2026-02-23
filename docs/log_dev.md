@@ -4,6 +4,18 @@
 
 ---
 
+## 会话: 2026-02-23 (UI Polish & System Fixes)
+
+### 任务: Toast 通知集成、样式对齐与接口解耦
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **Toast 系统实装**: 在 `AdminSettings.tsx` 中集成了 `useToast` 钩子。通过 `showToast(msg, type)` 替代了阻塞式的 `window.alert`，覆盖了“保存成功”、“删除成功”及“校验失败”等核心反馈场景。
+    - **Bokeh 开关样式重塑**: 在 `KnowledgeGenerator.tsx` 中，将 `bokehOptimize` 激活时的背景由 `linear-gradient` 调整为 `rgba(255,215,0,0.12)`，边框调整为 `rgba(255,215,0,0.4)`，确保了与 “A/B/C/D” 分类 Tab 的选中视觉一致性。
+    - **公共接口鉴权解耦**: 识别出 `DailyWordBadge` 加载失败的根源在于 `/api/v1/system/public-settings` 接口受到 `authenticate` 保护。将其调整为免鉴权访问，允许客户端在未登录或应用初期安全获取系统名称及展示建议。
+- **版本**: Client v12.1.11 (已同步)
+
+---
+
 ## 会话: 2026-02-23 (Wiki Search Tab UI Redesign)
 
 ### 任务: Wiki 搜索 Tab 重构与 UI 统一化

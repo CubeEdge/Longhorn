@@ -68,7 +68,8 @@ db.exec(`
         ai_allow_search BOOLEAN DEFAULT 0,
         ai_provider TEXT DEFAULT 'DeepSeek',
         ai_data_sources TEXT DEFAULT '["tickets","knowledge"]',  -- JSON array: ["tickets", "knowledge", "web_search"]
-        ai_system_prompt TEXT,  -- 自定义 Bokeh 系统提示词
+        ai_search_history_limit INTEGER DEFAULT 10,
+        show_daily_word BOOLEAN DEFAULT 0,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -285,6 +286,8 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_system_prompt TEXT")
 
 // Migration for inquiry_tickets: add knowledge_article_id
 try { db.prepare("ALTER TABLE inquiry_tickets ADD COLUMN knowledge_article_id INTEGER REFERENCES knowledge_articles(id)").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_search_history_limit INTEGER DEFAULT 10").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN show_daily_word BOOLEAN DEFAULT 0").run(); } catch (e) { }
 
 // [DEPRECATED] Migration: customers table extra columns
 // customers 表已废弃，以下迁移代码保留仅作为历史参考

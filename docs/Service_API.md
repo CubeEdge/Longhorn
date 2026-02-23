@@ -1,8 +1,8 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.1 (Draft)
+**版本**: 0.9.2 (Draft)
 **状态**: 草稿
-**最后更新**: 2026-02-21 (Deployed v1.5.17)
+**最后更新**: 2026-02-22 (Deployed v12.1.5)
 **关联PRD**: Service_PRD.md v0.12.0
 **关联场景**: Service_UserScenarios.md v0.7.0
 
@@ -1748,6 +1748,67 @@
 **GET** `/api/v1/knowledge`
 
 **查询参数**:
+...
+
+### 10.3 删除知识条目
+
+**DELETE** `/api/v1/knowledge/{idOrSlug}`
+
+**权限**: Admin / Lead
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "message": "文章已成功删除",
+    "article_id": 456
+  }
+}
+```
+
+---
+
+## 20. 同义词库 API (Synonyms)
+
+> 用于扩展知识库搜索的召回率，将用户口语词（如：录制）转换为行业词或关联词。
+
+### 20.1 获取同义词列表
+
+**GET** `/api/v1/synonyms`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "word": "录制",
+      "synonyms": "录影, 录像, 视频录制",
+      "category": "操作",
+      "is_active": 1
+    }
+  ]
+}
+```
+
+### 20.2 创建/更新同义词
+
+**POST** `/api/v1/synonyms`
+
+```json
+{
+  "word": "拾音",
+  "synonyms": "收音, 麦克风, 录音",
+  "category": "音频"
+}
+```
+
+### 20.3 删除同义词
+
+**DELETE** `/api/v1/synonyms/{id}`
+
 
 | 参数 | 类型 | 说明 |
 |-----|------|------|

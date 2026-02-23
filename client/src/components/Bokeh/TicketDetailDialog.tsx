@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, ExternalLink, User, Package, Calendar, FileText } from 'lucide-react';
 import axios from 'axios';
+import { useLanguage } from '../../i18n/useLanguage';
 
 interface TicketDetailDialogProps {
     isOpen: boolean;
@@ -34,6 +35,7 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [ticket, setTicket] = useState<TicketDetail | null>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (isOpen && ticketId) {
@@ -51,11 +53,18 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
                 dealer_repair: `/api/v1/dealer-repairs/${ticketId}`
             };
 
-            const response = await axios.get(endpoints[ticketType]);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            const response = await axios.get(endpoints[ticketType], { signal: controller.signal });
+            clearTimeout(timeout);
             setTicket(response.data);
         } catch (err: any) {
             console.error('Failed to fetch ticket:', err);
-            setError(err.response?.data?.error || '加载工单详情失败');
+            if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+                setError(t('bokeh.ticket.timeout'));
+            } else {
+                setError(err.response?.data?.error || t('bokeh.ticket.load_failed'));
+            }
         } finally {
             setLoading(false);
         }
@@ -72,12 +81,22 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
 
     const getTypeLabel = () => {
         switch (ticketType) {
-            case 'inquiry': return '咨询工单';
-            case 'rma': return 'RMA返厂单';
-            case 'dealer_repair': return '经销商维修单';
+            case 'inquiry': return t('bokeh.ticket.type_inquiry');
+            case 'rma': return t('bokeh.ticket.type_rma');
+            case 'dealer_repair': return t('bokeh.ticket.type_dealer');
             default: return '';
         }
     };
+
+    // ESC key to close
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
@@ -159,13 +178,19 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                     {loading && (
                         <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.6)' }}>
-                            加载中...
+                            {t('bokeh.ticket.loading')}
                         </div>
                     )}
 
                     {error && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#ff6b6b' }}>
-                            {error}
+                        <div style={{ textAlign: 'center', padding: '40px' }}>
+                            <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>{error}</div>
+                            <button
+                                onClick={onClose}
+                                style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                                {t('action.close')}
+                            </button>
                         </div>
                     )}
 
@@ -199,14 +224,14 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
                                 background: 'rgba(255,255,255,0.05)',
                                 borderRadius: '8px',
                                 padding: '12px',
-                                borderLeft: '3px solid #00 BFA5'
+                                borderLeft: '3px solid #00BFA5'
                             }}>
                                 <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <FileText size={14} />
-                                    问题描述
+                                    {t('bokeh.ticket.problem_desc')}
                                 </div>
                                 <div style={{ fontSize: '14px', color: 'white', lineHeight: '1.6' }}>
-                                    {ticket.problem_summary || ticket.problem_description || '暂无'}
+                                    {ticket.problem_summary || ticket.problem_description || t('bokeh.ticket.none')}
                                 </div>
                             </div>
 
@@ -219,7 +244,7 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
                                     borderLeft: '3px solid #00BFA5'
                                 }}>
                                     <div style={{ fontSize: '12px', color: '#00BFA5', marginBottom: '8px', fontWeight: 600 }}>
-                                        ✅ 解决方案
+                                        ✅ {t('bokeh.ticket.resolution')}
                                     </div>
                                     <div style={{ fontSize: '14px', color: 'white', lineHeight: '1.6' }}>
                                         {ticket.resolution}
@@ -229,7 +254,7 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
 
                             {/* Status */}
                             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                                状态: <span style={{ color: '#00BFA5', fontWeight: 600 }}>{ticket.status}</span>
+                                {t('bokeh.ticket.status')}: <span style={{ color: '#00BFA5', fontWeight: 600 }}>{ticket.status}</span>
                             </div>
                         </div>
                     )}
@@ -263,14 +288,13 @@ const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
                         onMouseLeave={(e) => e.currentTarget.style.background = '#00BFA5'}
                     >
                         <ExternalLink size={16} />
-                        在工单系统中打开
+                        {t('bokeh.ticket.open_in_system')}
                     </button>
                 </div>
             </motion.div>
         </>
     );
 };
-
 const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
         <div style={{ color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{icon}</div>

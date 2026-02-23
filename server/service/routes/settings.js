@@ -36,6 +36,8 @@ module.exports = (db, authenticate, backupService) => {
                 }
 
                 // Normalize Primary Backup Settings
+                settings.ai_search_history_limit = parseInt(settings.ai_search_history_limit) || 10;
+                settings.show_daily_word = Boolean(settings.show_daily_word);
                 settings.backup_enabled = Boolean(settings.backup_enabled);
                 settings.backup_frequency = parseInt(settings.backup_frequency) || 180;
                 settings.backup_retention_days = parseInt(settings.backup_retention_days) || 7;
@@ -84,6 +86,8 @@ module.exports = (db, authenticate, backupService) => {
                         ai_work_mode = @ai_work_mode,
                         ai_data_sources = @ai_data_sources,
                         ai_system_prompt = @ai_system_prompt,
+                        ai_search_history_limit = @ai_search_history_limit,
+                        show_daily_word = @show_daily_word,
 
                         system_name = @system_name,
                         backup_enabled = @backup_enabled,
@@ -101,6 +105,8 @@ module.exports = (db, authenticate, backupService) => {
                     ai_work_mode: settings.ai_work_mode ? 1 : 0,
                     ai_data_sources: dataSources,
                     ai_system_prompt: settings.ai_system_prompt || null,
+                    ai_search_history_limit: Math.max(1, Math.min(30, parseInt(settings.ai_search_history_limit) || 10)),
+                    show_daily_word: settings.show_daily_word ? 1 : 0,
                     backup_enabled: settings.backup_enabled ? 1 : 0,
                     backup_frequency: parseInt(settings.backup_frequency) || 180,
                     backup_retention_days: parseInt(settings.backup_retention_days) || 7,
@@ -116,7 +122,7 @@ module.exports = (db, authenticate, backupService) => {
             // 2. Update/Insert Providers
             if (providers && Array.isArray(providers)) {
                 console.log('[Settings] Saving providers:', providers.map(p => ({ name: p.name, hasApiKey: !!p.api_key, apiKeyLen: p.api_key?.length || 0 })));
-                
+
                 const upsertProvider = db.prepare(`
                     INSERT INTO ai_providers (
                         name, api_key, base_url, chat_model, reasoner_model, vision_model, allow_search, temperature, max_tokens, top_p, is_active, updated_at
@@ -162,7 +168,7 @@ module.exports = (db, authenticate, backupService) => {
     router.get('/backup/status', (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
-            
+
             const status = backupService.getStatus();
             res.json({ success: true, data: status });
         } catch (err) {
@@ -190,7 +196,7 @@ module.exports = (db, authenticate, backupService) => {
     router.post('/backup/now/:type', async (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
-            
+
             const { type } = req.params;
             if (!['primary', 'secondary'].includes(type)) {
                 return res.status(400).json({ error: 'Invalid backup type. Use "primary" or "secondary"' });

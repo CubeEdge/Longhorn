@@ -1,7 +1,7 @@
 # Service 数据模型设计
 
-**版本**: 0.8.0
-**最后更新**: 2026-02-21 (Deployed v1.5.17)
+**版本**: 0.8.1
+**最后更新**: 2026-02-22 (Deployed v12.1.5)
 
 > **v0.7.1 更新**：
 > - 账户类型更新：CORPORATE → ORGANIZATION
@@ -647,6 +647,25 @@ INDEX idx_knowledge (knowledge_id)
 
 ---
 
+### 4.6 搜索同义词库 (search_synonyms)
+
+```sql
+search_synonyms (搜索同义词)
+├── id: SERIAL PRIMARY KEY
+├── word: VARCHAR(100) NOT NULL -- 原词 (如: 录制)
+├── synonyms: TEXT NOT NULL -- 同义词列表 (如: 录影, 录像, 视频录制)
+├── category: VARCHAR(50) -- 词类 (操作/硬件/软件/专有名词)
+├── is_active: BOOLEAN DEFAULT true
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+```
+
+**索引**：
+- PRIMARY KEY (id)
+- INDEX idx_word (word)
+- INDEX idx_category (category)
+
+
 ### 4.5 兼容性条目 (compatibility_entries)
 
 ```sql
@@ -1182,6 +1201,8 @@ ai_usage_logs (AI 使用审计)
 | 2026-02-06 | v1.1 | 新增 AI 配置与系统管理相关表定义 | - | 对应 PRD v0.9.1 |
 | 2026-02-11 | v1.2 | 重构客户模型为"账户+联系人"双层架构 | - | 引入 Account/Contact 模型，支持B2B场景 |
 | 2026-02-11 | v1.3 | 账户类型更新，新增经销商专属字段 | - | CORPORATE→ORGANIZATION，新增 dealer_level 等字段 |
+| 2026-02-22 | v1.4 | 新增 `search_synonyms` 同义词库支持 | - | 对应 Wiki 搜索召回优化需求 |
+
 
 ---
 
@@ -1208,6 +1229,8 @@ Knowledge Base:
   knowledge_articles → knowledge_tags
   knowledge_articles → troubleshooting_steps
   knowledge_articles → compatibility_entries
+  search_synonyms (用于搜索优化)
+
 
 Inventory & Billing:
   accounts (DEALER) → dealer_inventory

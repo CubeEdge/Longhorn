@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles, GripHorizontal } from 'lucide-react';
-import { parseTicketReferences } from './TicketLink';
+import { getTicketStyles } from './TicketLink';
 import TicketDetailDialog from './TicketDetailDialog';
+import { useLanguage } from '../../i18n/useLanguage';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface Message {
     id: string;
@@ -59,12 +63,12 @@ interface GenericPageContext {
     title: string;
 }
 
-type BokehContext = 
-    | WikiArticleEditContext 
-    | WikiArticleViewContext 
-    | WikiHomeContext 
-    | FileManagerContext 
-    | TicketSystemContext 
+type BokehContext =
+    | WikiArticleEditContext
+    | WikiArticleViewContext
+    | WikiHomeContext
+    | FileManagerContext
+    | TicketSystemContext
     | GenericPageContext;
 
 interface BokehPanelProps {
@@ -78,16 +82,50 @@ interface BokehPanelProps {
     suggestedActions?: string[];
 }
 
+const preprocessBokehAnswer = (text: string) => {
+    if (!text) return '';
+    // Format A: [ID|Num|Type] -> [ID](/bokeh-ticket/Num/Type)
+    // Matches [ID|Num] or [ID|Num|Type] or [ID|Type]
+    const ticketPatternA = /\[([A-Z]+-[A-Z]-\d{4}-\d{4}|[A-Z]\d{4}-\d{4}|SVC-\d{4}-\d{4})\|([^\]]+)\]/g;
+    let processed = text.replace(ticketPatternA, (_match, ticketNumber, rest) => {
+        const parts = rest.split('|');
+        let ticketId = '0';
+        let ticketType = 'inquiry';
+
+        if (ticketNumber.startsWith('RMA') || parts.includes('rma')) ticketType = 'rma';
+        else if (ticketNumber.startsWith('SVC') || parts.includes('dealer_repair')) ticketType = 'dealer_repair';
+
+        // Find the numeric ID if it exists
+        const idPart = parts.find((p: string) => /^\d+$/.test(p));
+        if (idPart) ticketId = idPart;
+
+        return `[${ticketNumber}](/bokeh-ticket/${ticketId}/${ticketType})`;
+    });
+
+    // Format B: Simple AI response [RMA-D-2601-0006] -> [RMA-D-2601-0006](/bokeh-ticket/0/rma)
+    // Avoid double processing by checking negative lookbehind or just avoiding the pipe
+    const ticketPatternB = /\[([A-Z]+-[A-Z]-\d{4}-\d{4}|[A-Z]\d{4}-\d{4}|SVC-\d{4}-\d{4})\](?!\()/g;
+    processed = processed.replace(ticketPatternB, (_match, ticketNumber) => {
+        let ticketType = 'inquiry';
+        if (ticketNumber.startsWith('RMA')) ticketType = 'rma';
+        else if (ticketNumber.startsWith('SVC') || ticketNumber.includes('DEALER')) ticketType = 'dealer_repair';
+        return `[${ticketNumber}](/bokeh-ticket/0/${ticketType})`;
+    });
+
+    return processed;
+};
+
 const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, messages, onSendMessage, loading, wikiContext, suggestedActions }) => {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
-    
+    const { t } = useLanguage();
+
     // Drag state
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
     const panelRef = useRef<HTMLDivElement>(null);
-    
+
     // Resize state
     const [size, setSize] = useState({ width: 400, height: 600 });
     const [isResizing, setIsResizing] = useState(false);
@@ -126,13 +164,13 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
         const handleMouseMove = (e: MouseEvent) => {
             const deltaX = e.clientX - dragStartRef.current.x;
             const deltaY = e.clientY - dragStartRef.current.y;
-            
+
             // Calculate new position with bounds checking
             const panelWidth = 400;
             const panelHeight = 600;
             const newX = Math.max(-window.innerWidth + panelWidth + 32, Math.min(window.innerWidth - 32, dragStartRef.current.posX + deltaX));
             const newY = Math.max(-window.innerHeight + panelHeight + 32, Math.min(window.innerHeight - 64, dragStartRef.current.posY + deltaY));
-            
+
             setPosition({ x: newX, y: newY });
         };
 
@@ -167,10 +205,10 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
         const handleResizeMove = (e: MouseEvent) => {
             const deltaX = e.clientX - resizeStartRef.current.x;
             const deltaY = e.clientY - resizeStartRef.current.y;
-            
+
             const newWidth = Math.max(320, Math.min(800, resizeStartRef.current.width + deltaX));
             const newHeight = Math.max(400, Math.min(900, resizeStartRef.current.height + deltaY));
-            
+
             setSize({ width: newWidth, height: newHeight });
         };
 
@@ -215,8 +253,8 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
             <motion.div
                 ref={panelRef}
                 initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ 
-                    opacity: 1, 
+                animate={{
+                    opacity: 1,
                     scale: 1,
                     x: position.x,
                     y: position.y
@@ -243,18 +281,18 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                 }}
             >
                 {/* HEADER - Draggable */}
-                <div 
+                <div
                     onMouseDown={handleMouseDown}
                     style={{
-                    padding: '16px 20px',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.03)',
-                    cursor: 'grab',
-                    userSelect: 'none'
-                }}>
+                        padding: '16px 20px',
+                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'rgba(255,255,255,0.03)',
+                        cursor: 'grab',
+                        userSelect: 'none'
+                    }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
                             width: '12px',
@@ -282,15 +320,15 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                     case 'wiki_article_edit':
                                         return {
                                             icon: <FileText size={14} color="#FFD700" />,
-                                            label: '正在编辑文章',
+                                            label: t('bokeh.context.editing'),
                                             title: wikiContext.articleTitle,
-                                            subtitle: wikiContext.hasDraft ? '有待发布的Bokeh优化草稿' : null,
+                                            subtitle: wikiContext.hasDraft ? t('bokeh.context.has_draft') : null,
                                             color: '#FFD700'
                                         };
                                     case 'wiki_article_view':
                                         return {
                                             icon: <FileText size={14} color="#00BFA5" />,
-                                            label: '正在浏览文章',
+                                            label: t('bokeh.context.viewing'),
                                             title: wikiContext.articleTitle,
                                             subtitle: null,
                                             color: '#00BFA5'
@@ -298,24 +336,24 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                     case 'wiki_home':
                                         return {
                                             icon: <Sparkles size={14} color="#8E24AA" />,
-                                            label: 'Wiki 首页',
-                                            title: '浏览知识库',
+                                            label: t('bokeh.context.wiki_home'),
+                                            title: t('bokeh.context.browse_kb'),
                                             subtitle: null,
                                             color: '#8E24AA'
                                         };
                                     case 'file_manager':
                                         return {
                                             icon: <Box size={14} color="#2196F3" />,
-                                            label: '文件管理',
-                                            title: wikiContext.currentPath || '根目录',
+                                            label: t('bokeh.context.file_mgr'),
+                                            title: wikiContext.currentPath || t('bokeh.context.root_dir'),
                                             subtitle: null,
                                             color: '#2196F3'
                                         };
                                     case 'ticket_system':
                                         return {
                                             icon: <FileText size={14} color="#FF9800" />,
-                                            label: '工单系统',
-                                            title: wikiContext.viewType || '工单列表',
+                                            label: t('bokeh.context.ticket_sys'),
+                                            title: wikiContext.viewType || t('bokeh.context.ticket_list'),
                                             subtitle: null,
                                             color: '#FF9800'
                                         };
@@ -323,10 +361,10 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                         return null;
                                 }
                             };
-                            
+
                             const banner = getBannerContent();
                             if (!banner) return null;
-                            
+
                             return (
                                 <div style={{
                                     background: `linear-gradient(135deg, ${banner.color}15, ${banner.color}08)`,
@@ -364,7 +402,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                 <Sparkles size={32} color="#00BFA5" />
                             </div>
                             <p style={{ color: 'white', fontSize: '14px', marginBottom: '8px' }}>
-                                {wikiContext ? '有什么我可以帮您的？' : 'How can I help you today?'}
+                                {t('bokeh.welcome')}
                             </p>
                         </div>
                     )}
@@ -377,20 +415,105 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#10B981' : 'rgba(255,255,255,0.1)',
+                                background: msg.role === 'user' ? '#4CAF50' : 'rgba(255,255,255,0.1)',
                                 color: msg.role === 'user' ? 'white' : 'white',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
                                 borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                                 borderBottomLeftRadius: msg.role === 'user' ? '12px' : '2px',
-                                whiteSpace: 'pre-wrap'
                             }}>
                                 {msg.role === 'assistant' ? (
-                                    <span style={{ display: 'inline' }}>
-                                        {parseTicketReferences(msg.content, handleOpenTicketDetail)}
-                                    </span>
+                                    <div style={{
+                                        fontSize: '14px',
+                                        color: '#e5e5e5',
+                                        lineHeight: '1.6',
+                                    }}>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
+                                            components={{
+                                                ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '8px 0' }} {...props} />,
+                                                li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
+                                                p: ({ node, ...props }) => <p style={{ marginBottom: '8px', display: 'inline-block', width: '100%' }} {...props} />,
+                                                a: ({ node, ...props }) => {
+                                                    const text = props.children?.toString() || '';
+                                                    const href = props.href || '';
+
+                                                    // 工单卡片 (Ticket Card)
+                                                    if (href.startsWith('/bokeh-ticket/')) {
+                                                        const parts = href.split('/');
+                                                        const ticketId = parseInt(parts[2]);
+                                                        const ticketType = parts[3];
+                                                        const styles = getTicketStyles(ticketType);
+
+                                                        return (
+                                                            <span
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    handleOpenTicketDetail(text, ticketId, ticketType);
+                                                                }}
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px',
+                                                                    background: styles.bg,
+                                                                    border: `1px solid ${styles.border}`,
+                                                                    padding: '1px 8px',
+                                                                    borderRadius: '6px',
+                                                                    color: styles.color,
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '13px',
+                                                                    margin: '0 4px',
+                                                                    verticalAlign: 'bottom',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                <span style={{ display: 'flex', marginTop: '-1px' }}>{styles.icon}</span>
+                                                                {text}
+                                                            </span>
+                                                        );
+                                                    }
+
+                                                    // 文章链接卡片 (Article Card)
+                                                    return (
+                                                        <a {...props}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                background: 'rgba(0, 191, 165, 0.1)',
+                                                                border: '1px solid rgba(0, 191, 165, 0.3)',
+                                                                padding: '1px 8px',
+                                                                borderRadius: '6px',
+                                                                color: '#00BFA5',
+                                                                textDecoration: 'none',
+                                                                fontSize: '13px',
+                                                                margin: '0 4px',
+                                                                verticalAlign: 'bottom',
+                                                                transition: 'all 0.2s',
+                                                                whiteSpace: 'nowrap'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.2)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.1)';
+                                                            }}
+                                                        >
+                                                            <span style={{ display: 'flex', marginTop: '-1px' }}><FileText size={14} /></span>
+                                                            {props.children}
+                                                        </a>
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            {preprocessBokehAnswer(msg.content)}
+                                        </ReactMarkdown>
+                                    </div>
                                 ) : (
-                                    msg.content
+                                    <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
                                 )}
                             </div>
                         </div>
@@ -399,7 +522,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     {loading && (
                         <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', opacity: 0.6 }}>
                             <Loader2 size={16} className="animate-spin" color="#00BFA5" />
-                            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>Bokeh is focusing...</span>
+                            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{t('bokeh.focusing')}</span>
                         </div>
                     )}
                 </div>
@@ -410,11 +533,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                         {suggestedActions && suggestedActions.length > 0 ? (
                             // Use provided suggested actions
                             suggestedActions.slice(0, 4).map((action, idx) => (
-                                <QuickAction 
+                                <QuickAction
                                     key={idx}
-                                    icon={<Sparkles size={14} />} 
-                                    label={action} 
-                                    onClick={() => onSendMessage(action)} 
+                                    icon={<Sparkles size={14} />}
+                                    label={action}
+                                    onClick={() => onSendMessage(action)}
                                 />
                             ))
                         ) : wikiContext ? (
@@ -424,47 +547,47 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                     case 'wiki_article_edit':
                                         return (
                                             <>
-                                                <QuickAction icon={<Sparkles size={14} />} label="优化排版" onClick={() => onSendMessage("优化排版")} />
-                                                <QuickAction icon={<FileText size={14} />} label="精简内容" onClick={() => onSendMessage("精简内容")} />
-                                                <QuickAction icon={<Box size={14} />} label="调整图片" onClick={() => onSendMessage("把图片尺寸改为原来的1/2")} />
-                                                <QuickAction icon={<Sparkles size={14} />} label="标题改黄色" onClick={() => onSendMessage("把标题颜色改为 kine yellow")} />
+                                                <QuickAction icon={<Sparkles size={14} />} label={t('bokeh.action.optimize')} onClick={() => onSendMessage(t('bokeh.action.optimize'))} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.simplify')} onClick={() => onSendMessage(t('bokeh.action.simplify'))} />
+                                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.resize_img')} onClick={() => onSendMessage(t('bokeh.action.resize_img_cmd'))} />
+                                                <QuickAction icon={<Sparkles size={14} />} label={t('bokeh.action.yellow_title')} onClick={() => onSendMessage(t('bokeh.action.yellow_title_cmd'))} />
                                             </>
                                         );
                                     case 'wiki_article_view':
                                         return (
                                             <>
-                                                <QuickAction icon={<FileText size={14} />} label="文章摘要" onClick={() => onSendMessage("这篇文章讲了什么？")} />
-                                                <QuickAction icon={<Sparkles size={14} />} label="查找相关" onClick={() => onSendMessage("查找相关内容")} />
-                                                <QuickAction icon={<Box size={14} />} label="如何编辑" onClick={() => onSendMessage("如何编辑这篇文章？")} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.article_summary')} onClick={() => onSendMessage(t('bokeh.action.article_summary_q'))} />
+                                                <QuickAction icon={<Sparkles size={14} />} label={t('bokeh.action.find_related')} onClick={() => onSendMessage(t('bokeh.action.find_related_q'))} />
+                                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.how_edit')} onClick={() => onSendMessage(t('bokeh.action.how_edit_q'))} />
                                             </>
                                         );
                                     case 'wiki_home':
                                         return (
                                             <>
-                                                <QuickAction icon={<FileText size={14} />} label="创建文章" onClick={() => onSendMessage("如何创建新文章？")} />
-                                                <QuickAction icon={<Sparkles size={14} />} label="MAVO文档" onClick={() => onSendMessage("查找关于 MAVO Edge 的文档")} />
-                                                <QuickAction icon={<Box size={14} />} label="导入文档" onClick={() => onSendMessage("如何导入文档？")} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.create_article')} onClick={() => onSendMessage(t('bokeh.action.create_article_q'))} />
+                                                <QuickAction icon={<Sparkles size={14} />} label={t('bokeh.action.mavo_docs')} onClick={() => onSendMessage(t('bokeh.action.mavo_docs_q'))} />
+                                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.import_doc')} onClick={() => onSendMessage(t('bokeh.action.import_doc_q'))} />
                                             </>
                                         );
                                     case 'file_manager':
                                         return (
                                             <>
-                                                <QuickAction icon={<Box size={14} />} label="分享文件" onClick={() => onSendMessage("如何分享文件？")} />
-                                                <QuickAction icon={<FileText size={14} />} label="创建文件夹" onClick={() => onSendMessage("如何创建文件夹？")} />
+                                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.share_file')} onClick={() => onSendMessage(t('bokeh.action.share_file_q'))} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.create_folder')} onClick={() => onSendMessage(t('bokeh.action.create_folder_q'))} />
                                             </>
                                         );
                                     case 'ticket_system':
                                         return (
                                             <>
-                                                <QuickAction icon={<FileText size={14} />} label="创建工单" onClick={() => onSendMessage("如何创建新工单？")} />
-                                                <QuickAction icon={<Sparkles size={14} />} label="工单流程" onClick={() => onSendMessage("工单处理流程")} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.create_ticket')} onClick={() => onSendMessage(t('bokeh.action.create_ticket_q'))} />
+                                                <QuickAction icon={<Sparkles size={14} />} label={t('bokeh.action.ticket_flow')} onClick={() => onSendMessage(t('bokeh.action.ticket_flow_q'))} />
                                             </>
                                         );
                                     default:
                                         return (
                                             <>
-                                                <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
-                                                <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
+                                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.rma_query')} onClick={() => onSendMessage(t('bokeh.action.rma_query_q'))} />
+                                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.edge_manual')} onClick={() => onSendMessage(t('bokeh.action.edge_manual_q'))} />
                                             </>
                                         );
                                 }
@@ -472,8 +595,8 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                         ) : (
                             // Default actions when no context
                             <>
-                                <QuickAction icon={<Box size={14} />} label="查询RMA物流" onClick={() => onSendMessage("帮我查询最新的RMA物流状态")} />
-                                <QuickAction icon={<FileText size={14} />} label="Edge说明书" onClick={() => onSendMessage("查找MAVO Edge的使用手册")} />
+                                <QuickAction icon={<Box size={14} />} label={t('bokeh.action.rma_query')} onClick={() => onSendMessage(t('bokeh.action.rma_query_q'))} />
+                                <QuickAction icon={<FileText size={14} />} label={t('bokeh.action.edge_manual')} onClick={() => onSendMessage(t('bokeh.action.edge_manual_q'))} />
                             </>
                         )}
                     </div>
@@ -493,7 +616,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={wikiContext?.mode === 'editor' ? "输入修改指令，如：把标题改为黄色..." : "输入您的问题..."}
+                            placeholder={wikiContext?.mode === 'editor' ? t('bokeh.input.editor_hint') : t('bokeh.input.placeholder')}
                             style={{
                                 flex: 1,
                                 background: 'transparent',
@@ -511,8 +634,12 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <button className="input-btn"><Paperclip size={18} /></button>
                             <button
                                 className="input-btn"
-                                style={{ background: input.trim() ? '#10B981' : 'rgba(255,255,255,0.1)', color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)' }}
                                 onClick={handleSend}
+                                disabled={!input.trim()}
+                                style={{
+                                    background: input.trim() ? '#4CAF50' : 'rgba(255,255,255,0.1)',
+                                    color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)',
+                                }}
                             >
                                 <Send size={16} />
                             </button>
@@ -552,10 +679,10 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                      color: white;
                  }
              `}</style>
-            </motion.div>
+            </motion.div >
 
             {/* Resize Handle */}
-            <div
+            < div
                 onMouseDown={handleResizeStart}
                 style={{
                     position: 'fixed',
@@ -567,25 +694,28 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     zIndex: 10000,
                     opacity: 0.4,
                     transition: 'opacity 0.2s'
-                }}
+                }
+                }
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z" fill="white"/>
+                    <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM22 14H20V12H22V14ZM18 18H16V16H18V18ZM14 22H12V20H14V22Z" fill="white" />
                 </svg>
-            </div>
+            </div >
 
             {/* Ticket Detail Dialog */}
-            {selectedTicket && (
-                <TicketDetailDialog
-                    isOpen={ticketDetailOpen}
-                    onClose={() => setTicketDetailOpen(false)}
-                    ticketNumber={selectedTicket.ticketNumber}
-                    ticketId={selectedTicket.ticketId}
-                    ticketType={selectedTicket.ticketType}
-                />
-            )}
+            {
+                selectedTicket && (
+                    <TicketDetailDialog
+                        isOpen={ticketDetailOpen}
+                        onClose={() => setTicketDetailOpen(false)}
+                        ticketNumber={selectedTicket.ticketNumber}
+                        ticketId={selectedTicket.ticketId}
+                        ticketType={selectedTicket.ticketType}
+                    />
+                )
+            }
         </>
     );
 };

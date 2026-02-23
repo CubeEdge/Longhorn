@@ -11,6 +11,30 @@ module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
+     * GET /api/v1/system/public-settings
+     * Get public system settings for clients
+     */
+    router.get('/public-settings', (req, res) => {
+        try {
+            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word FROM system_settings LIMIT 1').get();
+            res.json({
+                success: true,
+                data: {
+                    system_name: settings?.system_name || 'Longhorn System',
+                    ai_search_history_limit: parseInt(settings?.ai_search_history_limit) || 10,
+                    show_daily_word: Boolean(settings?.show_daily_word)
+                }
+            });
+        } catch (err) {
+            console.error('[System] Public settings error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
      * GET /api/v1/system/dictionaries
      * Get all system dictionaries for frontend dropdowns
      */

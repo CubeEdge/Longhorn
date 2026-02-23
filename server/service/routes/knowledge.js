@@ -844,7 +844,8 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 product_line,
                 product_models = [],
                 visibility = 'Public',
-                tags = []
+                tags = [],
+                turbo = true // Default to true for better results
             } = req.body;
 
             if (!url) {
@@ -854,50 +855,102 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 });
             }
 
-            console.log(`[Knowledge Import URL] Fetching: ${url}`);
+            console.log(`[Knowledge Import URL] Fetching: ${url} (Turbo: ${turbo})`);
 
-            // Fetch webpage
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml'
-                },
-                timeout: 30000
-            });
+            let htmlContent = '';
+            let articleTitle = title || 'Web Import';
+            let summary = '';
 
-            const html = response.data;
-            const $ = cheerio.load(html);
+            if (turbo) {
+                // Turbo Mode: Use Jina Reader
+                try {
+                    const jinaUrl = `https://r.jina.ai/${url}`;
+                    const response = await axios.get(jinaUrl, {
+                        headers: {
+                            'Accept': 'text/plain',
+                            'X-No-Cache': 'true'
+                        },
+                        timeout: 45000 // Jina can be slow for complex pages
+                    });
 
-            // Extract meaningful content
-            const extractedContent = extractWebContent($, url);
+                    const markdown = response.data;
+                    if (!markdown || markdown.length < 100) {
+                        throw new Error('Jina returned empty or too short content');
+                    }
 
-            if (!extractedContent.content || extractedContent.content.length < 100) {
-                return res.status(400).json({
-                    success: false,
-                    error: { code: 'NO_CONTENT', message: '无法提取有效内容' }
+                    // Extract title from first line if it looks like a header
+                    const lines = markdown.split('\n');
+                    if (lines[0].startsWith('# ')) {
+                        articleTitle = title || lines[0].replace('# ', '').trim();
+                    }
+
+                    // Download images from Markdown
+                    const imagesDir = './data/Knowledge/Images';
+                    if (!fs.existsSync(imagesDir)) {
+                        fs.mkdirSync(imagesDir, { recursive: true });
+                    }
+
+                    console.log('[Knowledge Import URL] Downloading images from Markdown...');
+                    const downloadedImages = await downloadMarkdownImages(markdown, imagesDir);
+
+                    let finalMarkdown = markdown;
+                    downloadedImages.forEach(img => {
+                        // Replace exact URL matches in Markdown ![alt](url)
+                        finalMarkdown = finalMarkdown.split(img.original).join(img.local);
+                    });
+
+                    htmlContent = finalMarkdown; // Store as Markdown (client renders it)
+                    summary = htmlContent.substring(0, 300).replace(/[#*`]/g, '');
+                } catch (jinaErr) {
+                    console.error(`[Knowledge Import URL] Jina error fallback to standard: ${jinaErr.message}`);
+                    // Fallback to standard axios if Jina fails
+                    return res.status(500).json({
+                        success: false,
+                        error: { code: 'JINA_ERROR', message: `Jina 抓取失败: ${jinaErr.message}` }
+                    });
+                }
+            } else {
+                // Standard Mode: Axios + Cheerio
+                const response = await axios.get(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                        'Accept': 'text/html,application/xhtml+xml'
+                    },
+                    timeout: 30000
+                });
+
+                const html = response.data;
+                const $ = cheerio.load(html);
+
+                // Extract meaningful content
+                const extractedContent = extractWebContent($, url);
+
+                if (!extractedContent.content || extractedContent.content.length < 100) {
+                    return res.status(400).json({
+                        success: false,
+                        error: { code: 'NO_CONTENT', message: '无法提取有效内容' }
+                    });
+                }
+
+                // Download images from webpage
+                console.log('[Knowledge Import URL] Downloading images from HTML...');
+                const imagesDir = './data/Knowledge/Images';
+                if (!fs.existsSync(imagesDir)) {
+                    fs.mkdirSync(imagesDir, { recursive: true });
+                }
+
+                const downloadedImages = await downloadWebImages($, url, imagesDir);
+
+                htmlContent = extractedContent.content;
+                articleTitle = title || extractedContent.title || 'Web Import';
+                summary = extractedContent.summary || htmlContent.replace(/<[^>]+>/g, '').substring(0, 200);
+
+                // Replace images
+                downloadedImages.forEach(img => {
+                    htmlContent = htmlContent.replace(img.original, img.local);
                 });
             }
 
-            // Download images from webpage
-            console.log('[Knowledge Import URL] Downloading images...');
-            const imagesDir = './data/Knowledge/Images';
-            if (!fs.existsSync(imagesDir)) {
-                fs.mkdirSync(imagesDir, { recursive: true });
-            }
-
-            const downloadedImages = await downloadWebImages($, url, imagesDir);
-            console.log(`[Knowledge Import URL] Downloaded ${downloadedImages.length} images`);
-
-            // Keep HTML format (no longer converting to Markdown)
-            let htmlContent = extractedContent.content;
-
-            // Replace image URLs with local paths
-            downloadedImages.forEach(img => {
-                htmlContent = htmlContent.replace(img.original, img.local);
-            });
-
-            // Generate article
-            const articleTitle = title || extractedContent.title || 'Web Import';
             const slug = generateSlug(articleTitle);
 
             // Check duplicate
@@ -1649,55 +1702,89 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
      * Returns array of { original, local }
      * Images are automatically converted to WebP format
      */
+    /**
+     * Download images from web page (HTML/Cheerio)
+     */
     async function downloadWebImages($, baseUrl, outputDir) {
         const downloadedImages = [];
         const images = $('img');
 
         for (let i = 0; i < images.length; i++) {
-            try {
-                const $img = $(images[i]);
-                let src = $img.attr('src');
+            const $img = $(images[i]);
+            let src = $img.attr('src');
+            if (!src) continue;
 
-                if (!src) continue;
+            const localMapping = await saveImageLocally(src, baseUrl, outputDir);
+            if (localMapping) {
+                downloadedImages.push(localMapping);
+            }
+        }
+        return downloadedImages;
+    }
 
-                // Convert relative URL to absolute
-                if (!src.startsWith('http')) {
-                    const base = new URL(baseUrl);
-                    if (src.startsWith('/')) {
-                        src = `${base.origin}${src}`;
-                    } else {
-                        src = `${base.origin}/${src}`;
-                    }
+    /**
+     * Download images from Markdown content
+     */
+    async function downloadMarkdownImages(markdown, outputDir) {
+        const downloadedImages = [];
+        // Match Markdown images: ![alt](url)
+        const matches = markdown.matchAll(/!\[.*?\]\((https?:\/\/.*?)\)/g);
+
+        for (const match of matches) {
+            const src = match[1];
+            const localMapping = await saveImageLocally(src, null, outputDir);
+            if (localMapping) {
+                downloadedImages.push(localMapping);
+            }
+        }
+        return downloadedImages;
+    }
+
+    /**
+     * Helper to download a single image, convert to WebP and save locally
+     */
+    async function saveImageLocally(src, baseUrl, outputDir) {
+        try {
+            let fullSrc = src;
+            // Convert relative URL to absolute if baseUrl provided
+            if (baseUrl && !src.startsWith('http')) {
+                const base = new URL(baseUrl);
+                if (src.startsWith('/')) {
+                    fullSrc = `${base.origin}${src}`;
+                } else {
+                    fullSrc = `${base.origin}/${src}`;
                 }
+            }
 
-                // Skip data URLs and very small images
-                if (src.startsWith('data:')) continue;
+            if (!fullSrc.startsWith('http') || fullSrc.startsWith('data:')) return null;
 
-                // Download image
-                const response = await axios.get(src, {
-                    responseType: 'arraybuffer',
-                    timeout: 10000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-                    }
-                });
+            // Download image
+            const response = await axios.get(fullSrc, {
+                responseType: 'arraybuffer',
+                timeout: 8000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                }
+            });
 
-                const buffer = Buffer.from(response.data);
+            const buffer = Buffer.from(response.data);
+            if (buffer.length < 1024) return null; // Skip too small
 
-                // Skip small images (< 1KB, likely icons)
-                if (buffer.length < 1024) continue;
+            // Generate filename
+            const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 12);
+            const filename = `web_${hash}.webp`;
+            const filepath = path.join(outputDir, filename);
 
-                // Generate filename (WebP format)
-                const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 12);
-                const filename = `web_${hash}.webp`;
-                const filepath = path.join(outputDir, filename);
+            if (fs.existsSync(filepath)) {
+                return { original: src, local: `/data/knowledge_images/${filename}` };
+            }
 
-                // Convert to WebP using Python script
-                const tempPngPath = filepath.replace('.webp', '.png');
-                fs.writeFileSync(tempPngPath, buffer);
+            // Convert to WebP using Python script
+            const tempPngPath = filepath.replace('.webp', '.png');
+            fs.writeFileSync(tempPngPath, buffer);
 
-                try {
-                    execSync(`python3 -c "
+            try {
+                execSync(`python3 -c "
 import sys
 from PIL import Image
 img = Image.open('${tempPngPath}')
@@ -1709,31 +1796,20 @@ if img.mode in ('RGBA', 'LA', 'P'):
 elif img.mode != 'RGB':
     img = img.convert('RGB')
 img.save('${filepath}', 'WEBP', quality=85, method=6)
-"
-`, { encoding: 'utf8', timeout: 5000 });
-
-                    // Delete temp PNG
-                    fs.unlinkSync(tempPngPath);
-                } catch (convertErr) {
-                    console.log(`[Web Images] Failed to convert to WebP, keeping PNG: ${convertErr.message}`);
-                    // Keep PNG if conversion fails
-                    fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
-                }
-
-                const localPath = `/data/knowledge_images/${filename}`;
-                downloadedImages.push({
-                    original: src,
-                    local: localPath
-                });
-
-                console.log(`[Web Images] ✓ Downloaded: ${filename}`);
-            } catch (err) {
-                // Skip images that fail to download
-                console.log(`[Web Images] ⚠ Failed to download image: ${err.message}`);
+"`, { encoding: 'utf8', timeout: 5000 });
+                fs.unlinkSync(tempPngPath);
+            } catch (convertErr) {
+                fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
             }
-        }
 
-        return downloadedImages;
+            return {
+                original: src,
+                local: `/data/knowledge_images/${filename}`
+            };
+        } catch (err) {
+            console.log(`[Web Images] ⚠ Failed to download: ${src} - ${err.message}`);
+            return null;
+        }
     }
 
     /**

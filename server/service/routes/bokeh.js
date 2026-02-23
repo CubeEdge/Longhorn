@@ -82,6 +82,7 @@ module.exports = (db, authenticate, aiService) => {
             `;
 
             // 短查询（<3字符）用 LIKE fallback — trigram tokenizer 要求 ≥3 字符
+            let results;
             if (query.trim().length < 3) {
                 const likeQuery = `
                     SELECT 
@@ -100,7 +101,7 @@ module.exports = (db, authenticate, aiService) => {
                         tsi.account_id
                     FROM ticket_search_index tsi
                     WHERE (tsi.title LIKE @likeQuery OR tsi.description LIKE @likeQuery OR tsi.resolution LIKE @likeQuery OR tsi.tags LIKE @likeQuery)
-                    AND ${whereClause}
+                    ${whereClause}
                     ORDER BY tsi.updated_at DESC
                     LIMIT @limit
                 `;
@@ -129,7 +130,7 @@ module.exports = (db, authenticate, aiService) => {
                     INNER JOIN (
                         SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
                     ) fts_match ON tsi.id = fts_match.rowid
-                    WHERE ${whereClause}
+                    WHERE 1=1 ${whereClause}
                     ORDER BY fts_match.rank
                     LIMIT @limit
                 `;

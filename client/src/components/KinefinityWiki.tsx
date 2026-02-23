@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
 import { useLanguage } from '../i18n/useLanguage';
-import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, Ticket, MessageCircleQuestion, RefreshCw, Wrench } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, Ticket, MessageCircleQuestion, RefreshCw, Wrench, History } from 'lucide-react';
 import { SynonymManager } from './Knowledge/SynonymManager';
 import KnowledgeGenerator from './KnowledgeGenerator';
 import ReactMarkdown from 'react-markdown';
@@ -214,6 +214,37 @@ export const parseChapterNumber = (title: string): { chapter: number | null, sec
         return { chapter, section, cleanTitle };
     }
     return { chapter: null, section: null, cleanTitle: title };
+};
+
+// Convert plain text ticket references [XXX-2601-0001] into markdown links
+export const preprocessAiAnswer = (text: string): string => {
+    if (!text) return '';
+
+    // Advanced Regex: Match either the piped format [ID|something] OR the plain ID [ID] (with optional markdown link)
+    const ticketPattern = /\[([A-Z]+-[A-Z]-\d{4}-\d{4}|[A-Z]\d{4}-\d{4}|SVC-\d{4}-\d{4})(?:\|([^\]]+))?\](?:[ \t]*[（(]([^）)]+)[）)])?/g;
+
+    return text.replace(ticketPattern, (_match, ticketNumber, rest, originalUrl) => {
+        // If the AI retained the original URL from the context prompt, preserve it!
+        if (originalUrl && originalUrl.includes('/service/')) {
+            return `[${ticketNumber}](${originalUrl})`;
+        }
+
+        const parts = rest ? rest.split('|') : [];
+        let pathRoute = 'inquiry-tickets';
+
+        if (ticketNumber.startsWith('RMA') || parts.includes('rma')) {
+            pathRoute = 'rma-tickets';
+        } else if (ticketNumber.startsWith('SVC') || parts.includes('dealer_repair')) {
+            pathRoute = 'dealer-repairs';
+        }
+
+        // Try extracting an ID from the piped string if it exists
+        let ticketId = '0';
+        const idPart = parts.find((p: string) => /^\d+$/.test(p));
+        if (idPart) ticketId = idPart;
+
+        return `[${ticketNumber}](/service/${pathRoute}/${ticketId})`;
+    });
 };
 
 export const KinefinityWiki: React.FC = () => {
@@ -745,6 +776,15 @@ export const KinefinityWiki: React.FC = () => {
                     performAiSearch(query)
                 ]);
 
+                // Fetch max history config
+                let maxHistory = 10;
+                try {
+                    const sysRes = await axios.get('/api/v1/system/public-settings');
+                    maxHistory = sysRes.data.data.ai_search_history_limit || 10;
+                } catch (e) {
+                    console.error('[Wiki] config error', e);
+                }
+
                 // Save Search History Snapshot
                 setSearchHistory(prev => {
                     const deduped = prev.filter(item => item.query !== query);
@@ -757,7 +797,7 @@ export const KinefinityWiki: React.FC = () => {
                         aiAnswer: aRes?.aiAnswer || '',
                         aiRelatedTickets: aRes?.aiRelatedTickets || []
                     };
-                    const updated = [newItem, ...deduped].slice(0, 10);
+                    const updated = [newItem, ...deduped].slice(0, maxHistory);
                     const userId = useAuthStore.getState().user?.id || 'guest';
                     localStorage.setItem(`wiki-search-history-${userId}`, JSON.stringify(updated));
                     return updated;
@@ -807,6 +847,7 @@ export const KinefinityWiki: React.FC = () => {
         } catch (err) {
             // 工单搜索失败不影响关键词搜索结果
             setKeywordTickets([]);
+            return { searchResults: articleResults, keywordTickets: [] };
         } finally {
             setIsTicketSearching(false);
         }
@@ -871,9 +912,9 @@ ${contextArticles.length > 0 ? `${t('wiki.ai.related_articles')}
 ${contextArticles.map((a: KnowledgeArticle) => `- [${a.title}](/tech-hub/wiki/${a.slug}): ${a.summary || ''}`).join('\n')}` : ''}${contextTickets.length > 0 ? `
 
 ${t('wiki.ai.related_tickets')}
-${contextTickets.map((t: any) => {
-                        const route = t.ticket_type === 'inquiry' ? 'inquiry-tickets' : t.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
-                        return `- [${t.ticket_number}](/service/${route}/${t.ticket_id || t.id}) ${t.title}: ${t.description || ''} → ${t.resolution || t('status.processing')}`;
+${contextTickets.map((ticket: any) => {
+                        const route = ticket.ticket_type === 'inquiry' ? 'inquiry-tickets' : ticket.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
+                        return `- [${ticket.ticket_number}](/service/${route}/${ticket.ticket_id || ticket.id}) ${ticket.title}: ${ticket.description || ''} → ${ticket.resolution || t('status.processing')}`;
                     }).join('\n')}` : ''}`
                 },
                 {
@@ -887,18 +928,20 @@ ${contextTickets.map((t: any) => {
                 context: { source: 'wiki_search', articles: contextArticles.map((a: KnowledgeArticle) => a.id) }
             }, { headers });
 
-            setAiAnswer(typeof aiRes.data.data === 'string' ? aiRes.data.data : (aiRes.data.data?.content || t('wiki.search.ai_error')));
+            const aiData = typeof aiRes.data.data === 'string' ? aiRes.data.data : (aiRes.data.data?.content || t('wiki.search.ai_error'));
+            setAiAnswer(aiData);
             setRelatedArticles(contextArticles);
             setAiRelatedTickets(contextTickets);
 
             // 重置展开状态
             setShowMoreAiArticles(false);
+            return { aiAnswer: aiData, aiRelatedTickets: contextTickets };
         } catch (err) {
             console.error('[Wiki] Bokeh search error:', err);
+            return { aiAnswer: '', aiRelatedTickets: [] };
         } finally {
             setIsAiSearching(false);
         }
-        return { aiAnswer: null, aiRelatedTickets: [] };
     };
 
     const fetchArticles = async () => {
@@ -1235,14 +1278,21 @@ ${contextTickets.map((t: any) => {
             title
         );
         if (confirmed) {
+            let updatedList: SearchHistoryItem[] = [];
             setSearchHistory(prev => {
-                const updated = prev.filter(h => h.query !== queryToDelete);
+                updatedList = prev.filter(h => h.query !== queryToDelete);
                 const userId = user?.id || 'guest';
-                localStorage.setItem(`wiki-search-history-${userId}`, JSON.stringify(updated));
-                return updated;
+                localStorage.setItem(`wiki-search-history-${userId}`, JSON.stringify(updatedList));
+                return updatedList;
             });
             if (activeSearchQuery === queryToDelete) {
-                handleCloseSearchTab();
+                setTimeout(() => {
+                    if (updatedList.length > 0) {
+                        handleSearchHistorySelect(updatedList[0]);
+                    } else {
+                        handleCloseSearchTab();
+                    }
+                }, 0);
             }
         }
     };
@@ -2546,12 +2596,13 @@ ${contextTickets.map((t: any) => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        border: `1px solid ${searchQuery.trim() ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
                                         borderRadius: '10px',
                                         padding: '0 12px',
-                                        width: '240px',
+                                        width: searchQuery.trim() ? '380px' : '240px',
                                         height: '38px',
-                                        flexShrink: 0
+                                        flexShrink: 0,
+                                        transition: 'width 0.3s ease, border-color 0.3s ease'
                                     }}>
                                         <Search size={14} color="#888" style={{ flexShrink: 0 }} />
                                         <input
@@ -2576,21 +2627,45 @@ ${contextTickets.map((t: any) => {
                                             }}
                                         />
                                         {searchQuery.trim() && (
-                                            <button
-                                                onClick={() => {
-                                                    setSearchQuery('');
-                                                }}
-                                                style={{
-                                                    background: 'transparent',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    padding: '2px',
-                                                    display: 'flex',
-                                                    flexShrink: 0
-                                                }}
-                                            >
-                                                <X size={12} color="#666" />
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        setPendingSearchQuery(searchQuery.trim());
+                                                    }}
+                                                    style={{
+                                                        background: 'rgba(255,215,0,0.15)',
+                                                        border: '1px solid rgba(255,215,0,0.3)',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        padding: '4px 8px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        flexShrink: 0,
+                                                        marginRight: '4px',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,215,0,0.25)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,215,0,0.15)'; }}
+                                                >
+                                                    <span style={{ fontSize: '11px', color: '#FFD700', fontWeight: 500 }}>{t('wiki.search.button')}</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchQuery('');
+                                                    }}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: '2px',
+                                                        display: 'flex',
+                                                        flexShrink: 0
+                                                    }}
+                                                >
+                                                    <X size={12} color="#666" />
+                                                </button>
+                                            </>
                                         )}
                                     </div>
 
@@ -2615,6 +2690,7 @@ ${contextTickets.map((t: any) => {
                                                 }}
                                             >
                                                 <Settings size={16} />
+                                                <span style={{ fontWeight: 600, fontSize: '13px' }}>{t('wiki.manage')}</span>
                                             </button>
 
                                             {/* 管理菜单下拉 */}
@@ -2687,10 +2763,10 @@ ${contextTickets.map((t: any) => {
                             }}>
                                 {/* A/B/C/D 产品族类 Tab */}
                                 {[
-                                    { line: 'A', label: t('wiki.line.a_desc') },
-                                    { line: 'B', label: t('wiki.line.b_desc') },
-                                    { line: 'C', label: t('wiki.line.c_desc') },
-                                    { line: 'D', label: t('wiki.line.d_desc') }
+                                    { line: 'A', label: t('wiki.line.a_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
+                                    { line: 'B', label: t('wiki.line.b_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
+                                    { line: 'C', label: t('wiki.line.c_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
+                                    { line: 'D', label: t('wiki.line.d_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') }
                                 ].map(item => {
                                     const lineArticles = articles.filter(a => a.product_line === item.line);
                                     const count = lineArticles.length;
@@ -2754,15 +2830,22 @@ ${contextTickets.map((t: any) => {
                                     );
                                 })}
 
+                                <div style={{ flex: 1 }} />
+
                                 {/* 搜索 Tab - 有搜索时显示 */}
-                                {activeSearchQuery && (
+                                {(activeSearchQuery || searchHistory.length > 0) && (
                                     <div ref={searchHistoryRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                         <button
                                             onClick={() => {
-                                                // 切换到搜索 Tab
-                                                setSelectedProductLine(null);
-                                                setIsSearchMode(true);
-                                                setShowSearchResults(true);
+                                                if (!activeSearchQuery && searchHistory.length > 0) {
+                                                    // 当前没有搜索内容时点击，恢复最近的一条历史快照
+                                                    handleSearchHistorySelect(searchHistory[0]);
+                                                } else {
+                                                    // 切换到搜索 Tab
+                                                    setSelectedProductLine(null);
+                                                    setIsSearchMode(true);
+                                                    setShowSearchResults(true);
+                                                }
                                             }}
                                             style={{
                                                 padding: '10px 14px',
@@ -2780,12 +2863,12 @@ ${contextTickets.map((t: any) => {
                                                 flexShrink: 0
                                             }}
                                         >
-                                            <Search size={14} />
+                                            <History size={14} />
                                             <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                「{activeSearchQuery.length > 10 ? activeSearchQuery.slice(0, 10) + '...' : activeSearchQuery}」
+                                                {activeSearchQuery ? `「${activeSearchQuery.length > 10 ? activeSearchQuery.slice(0, 10) + '...' : activeSearchQuery}」` : '搜索记录'}
                                             </span>
                                             {/* 历史下拉箭头 */}
-                                            {searchHistory.length > 1 && (
+                                            {searchHistory.length > 0 && (
                                                 <ChevronDown
                                                     size={12}
                                                     style={{
@@ -2800,15 +2883,6 @@ ${contextTickets.map((t: any) => {
                                                     }}
                                                 />
                                             )}
-                                            {/* 关闭按钮 */}
-                                            <X
-                                                size={12}
-                                                style={{ opacity: 0.5, cursor: 'pointer', marginLeft: '2px' }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCloseSearchTab();
-                                                }}
-                                            />
                                         </button>
 
                                         {/* 搜索历史下拉 */}
@@ -2894,6 +2968,286 @@ ${contextTickets.map((t: any) => {
                             {/* 搜索结果列表 - 搜索 Tab 激活时显示（位于 Tab 栏下方） */}
                             {isSearchMode && selectedProductLine === null && activeSearchQuery && (
                                 <div style={{ marginBottom: '24px' }}>
+                                    {/* AI 搜索 Panel - 只在搜索时显示 */}
+                                    {isSearchMode && (
+                                        <div style={{
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '16px',
+                                            padding: '20px',
+                                            marginBottom: '20px',
+                                            position: 'relative',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {/* Panel 头部：标签 + 折叠按钮 */}
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                marginBottom: '0'
+                                            }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px'
+                                                }}>
+                                                    <span style={{
+                                                        padding: '5px 14px',
+                                                        background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
+                                                        borderRadius: '8px',
+                                                        fontSize: '12px',
+                                                        color: '#a78bfa',
+                                                        fontWeight: 600,
+                                                        letterSpacing: '0.3px'
+                                                    }}>
+                                                        ✦ {t('wiki.search.ai_answer')}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        // 折叠/展开 AI Panel
+                                                        setShowAiPanel(!showAiPanel);
+                                                    }}
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        background: 'rgba(255,255,255,0.05)',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    }}
+                                                >
+                                                    <ChevronDown
+                                                        size={14}
+                                                        color="#999"
+                                                        style={{
+                                                            transform: showAiPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                            transition: 'transform 0.2s ease'
+                                                        }}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* Bokeh 回答区域 - 只在搜索时显示 */}
+                                            {showAiPanel && (isAiSearching || aiAnswer || relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                                <div style={{ marginTop: '16px' }}>
+                                                    {isAiSearching && !aiAnswer && (
+                                                        <div style={{
+                                                            padding: '40px 0',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '12px'
+                                                        }}>
+                                                            <Loader2 size={28} color="#06B6D4" style={{ animation: 'spin 1.5s linear infinite' }} />
+                                                            <span style={{
+                                                                fontSize: '14px',
+                                                                fontWeight: 600,
+                                                                background: 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+                                                                WebkitBackgroundClip: 'text',
+                                                                WebkitTextFillColor: 'transparent',
+                                                                display: 'inline-block'
+                                                            }}>
+                                                                Bokeh {t('wiki.search.analyzing')}
+                                                            </span>
+                                                            <span style={{ fontSize: '12px', color: '#666' }}>
+                                                                {t('wiki.search.retrieving')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {aiAnswer && (
+                                                        <div style={{
+                                                            background: 'rgba(255,255,255,0.015)',
+                                                            border: '1px solid rgba(255,255,255,0.04)',
+                                                            borderRadius: '16px',
+                                                            marginBottom: '20px',
+                                                            overflow: 'hidden',
+                                                            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.02)'
+                                                        }}>
+                                                            {/* AI回答内容 - 深度优化排版 */}
+                                                            <div style={{ padding: '28px 32px' }}>
+                                                                <div style={{
+                                                                    fontSize: '15px',
+                                                                    color: '#e5e5e5',
+                                                                    lineHeight: '1.9',
+                                                                    letterSpacing: '0.015em'
+                                                                }}>
+                                                                    <ReactMarkdown
+                                                                        remarkPlugins={[remarkGfm]}
+                                                                        rehypePlugins={[rehypeRaw]}
+                                                                        components={{
+                                                                            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.4em', margin: '20px 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px', color: '#fff' }} {...props} />,
+                                                                            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.2em', margin: '18px 0 8px 0', color: '#fff' }} {...props} />,
+                                                                            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', margin: '16px 0 6px 0', color: '#fff' }} {...props} />,
+                                                                            ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '12px 0' }} {...props} />,
+                                                                            li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
+                                                                            p: ({ node, ...props }) => <p style={{ marginBottom: '14px' }} {...props} />,
+                                                                            a: ({ node, ...props }) => {
+                                                                                const text = props.children?.toString() || '';
+                                                                                // 支持复杂前缀如 RMA-C-2601-0002，同时也支持 K2601-0001
+                                                                                const isTicket = text.match(/\[?([A-Z]+-)*[A-Z]?\d{4}-\d{4}\]?/) || props.href?.includes('/service/');
+
+                                                                                // Extract ticket type from URL if possible, or fallback
+                                                                                let typeStr = 'default';
+                                                                                if (props.href?.includes('inquiry')) typeStr = 'inquiry';
+                                                                                else if (props.href?.includes('rma')) typeStr = 'rma';
+                                                                                else if (props.href?.includes('dealer')) typeStr = 'dealer_repair';
+
+                                                                                const styles = isTicket ? getTicketStyles(typeStr, t) : getTicketStyles('article', t);
+
+                                                                                return (
+                                                                                    <a {...props}
+                                                                                        style={{
+                                                                                            display: 'inline-flex',
+                                                                                            alignItems: 'center',
+                                                                                            gap: '4px',
+                                                                                            background: styles.bg,
+                                                                                            border: `1px solid ${styles.border}`,
+                                                                                            padding: '1px 8px',
+                                                                                            borderRadius: '6px',
+                                                                                            color: styles.color,
+                                                                                            textDecoration: 'none',
+                                                                                            fontSize: '13px',
+                                                                                            fontWeight: 500,
+                                                                                            margin: '0 4px',
+                                                                                            verticalAlign: 'bottom',
+                                                                                            transition: 'all 0.2s'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => {
+                                                                                            e.currentTarget.style.background = styles.hoverBg;
+                                                                                            e.currentTarget.style.borderColor = styles.hoverBorder;
+                                                                                        }}
+                                                                                        onMouseLeave={(e) => {
+                                                                                            e.currentTarget.style.background = styles.bg;
+                                                                                            e.currentTarget.style.borderColor = styles.border;
+                                                                                        }}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                    >
+                                                                                        <span style={{ display: 'flex', marginTop: '-1px' }}>
+                                                                                            {isTicket ? styles.icon : <FileText size={14} />}
+                                                                                        </span>
+                                                                                        {props.children}
+                                                                                    </a>
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {preprocessAiAnswer(aiAnswer)}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 参考来源 */}
+                                                    {/* 参考来源 */}
+                                                    {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
+                                                        <div>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center',
+                                                                marginBottom: '12px'
+                                                            }}>
+                                                                <div style={{
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 700,
+                                                                    color: '#888',
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '1px'
+                                                                }}>
+                                                                    {t('wiki.search.sources')} · {relatedArticles.length + aiRelatedTickets.length}
+                                                                </div>
+                                                                {relatedArticles.length + aiRelatedTickets.length > AI_REF_SHOW_COUNT && (
+                                                                    <button
+                                                                        onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
+                                                                        style={{
+                                                                            background: 'transparent',
+                                                                            border: 'none',
+                                                                            color: '#00BFA5',
+                                                                            fontSize: '12px',
+                                                                            cursor: 'pointer',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px',
+                                                                            padding: 0
+                                                                        }}
+                                                                    >
+                                                                        {showMoreAiArticles ? (
+                                                                            <>{t('common.show_less')} <ChevronUp size={12} /></>
+                                                                        ) : (
+                                                                            <>{t('common.show_more', { count: relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT })} <ChevronDown size={12} /></>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            <div style={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                                gap: '10px'
+                                                            }}>
+                                                                {((showMoreAiArticles
+                                                                    ? [...relatedArticles, ...aiRelatedTickets]
+                                                                    : [...relatedArticles, ...aiRelatedTickets].slice(0, AI_REF_SHOW_COUNT)
+                                                                )).map((item: any) => {
+                                                                    // 如果有 summary 或 content，则是文章；否则视为工单
+                                                                    if (item.summary !== undefined || item.content !== undefined) {
+                                                                        return (
+                                                                            <ArticleCard
+                                                                                key={`ai-article-${item.id}`}
+                                                                                id={item.id}
+                                                                                title={item.title}
+                                                                                summary={item.summary}
+                                                                                productLine={item.product_line}
+                                                                                productModels={item.product_models}
+                                                                                category={item.category}
+                                                                                onClick={() => handleArticleClick(item)}
+                                                                                variant="reference"
+                                                                            />
+                                                                        );
+                                                                    } else {
+                                                                        return (
+                                                                            <TicketCard
+                                                                                key={`ai-ticket-${item.ticket_type}-${item.id}`}
+                                                                                id={item.id}
+                                                                                ticketNumber={item.ticket_number}
+                                                                                ticketType={item.ticket_type}
+                                                                                title={item.title || item.subject || t('wiki.search.untitled')}
+                                                                                status={item.status}
+                                                                                productModel={item.product_model}
+                                                                                customerName={item.customer_name}
+                                                                                contactName={item.contact_name}
+                                                                                onClick={() => {
+                                                                                    const route = item.ticket_type === 'inquiry' ? 'inquiry-tickets' : item.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
+                                                                                    window.open(`/service/${route}/${item.ticket_id || item.id}`, '_blank');
+                                                                                }}
+                                                                                variant="compact"
+                                                                            />
+                                                                        );
+                                                                    }
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
                                     {isSearchMode && (
                                         <div style={{
@@ -3148,279 +3502,6 @@ ${contextTickets.map((t: any) => {
                                                         </div>
                                                     </div>
                                                 </>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* AI 搜索 Panel - 只在搜索时显示 */}
-                                    {isSearchMode && (
-                                        <div style={{
-                                            background: 'rgba(255,255,255,0.03)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '16px',
-                                            padding: '20px',
-                                            position: 'relative',
-                                            overflow: 'hidden'
-                                        }}>
-                                            {/* Panel 头部：标签 + 折叠按钮 */}
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                marginBottom: '0'
-                                            }}>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '12px'
-                                                }}>
-                                                    <span style={{
-                                                        padding: '5px 14px',
-                                                        background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
-                                                        borderRadius: '8px',
-                                                        fontSize: '12px',
-                                                        color: '#a78bfa',
-                                                        fontWeight: 600,
-                                                        letterSpacing: '0.3px'
-                                                    }}>
-                                                        ✦ {t('wiki.search.ai_answer')}
-                                                    </span>
-                                                    {isAiSearching && (
-                                                        <span style={{ fontSize: '13px', color: '#666', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                            <Loader2 size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-                                                            {t('wiki.search.thinking')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        // 折叠/展开 AI Panel
-                                                        setShowAiPanel(!showAiPanel);
-                                                    }}
-                                                    style={{
-                                                        width: '28px',
-                                                        height: '28px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    }}
-                                                >
-                                                    <ChevronDown
-                                                        size={14}
-                                                        color="#999"
-                                                        style={{
-                                                            transform: showAiPanel ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                            transition: 'transform 0.2s ease'
-                                                        }}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {/* Bokeh 回答区域 - 只在搜索时显示 */}
-                                            {showAiPanel && (isAiSearching || aiAnswer || relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
-                                                <div style={{ marginTop: '16px' }}>
-                                                    {isAiSearching && !aiAnswer && (
-                                                        <div style={{
-                                                            background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(6,182,212,0.06))',
-                                                            border: '1px solid rgba(139,92,246,0.15)',
-                                                            borderRadius: '12px',
-                                                            padding: '24px',
-                                                            marginBottom: '20px',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            gap: '12px'
-                                                        }}>
-                                                            <Loader2 size={28} color="#a78bfa" style={{ animation: 'spin 1.5s linear infinite' }} />
-                                                            <span style={{ fontSize: '14px', color: '#a78bfa', fontWeight: 500 }}>
-                                                                {t('wiki.search.analyzing')}
-                                                            </span>
-                                                            <span style={{ fontSize: '12px', color: '#666' }}>
-                                                                {t('wiki.search.retrieving')}
-                                                            </span>
-                                                        </div>
-                                                    )}
-
-                                                    {aiAnswer && (
-                                                        <div style={{
-                                                            background: 'rgba(255,255,255,0.02)',
-                                                            borderRadius: '12px',
-                                                            marginBottom: '20px',
-                                                            overflow: 'hidden'
-                                                        }}>
-                                                            {/* AI回答内容 - 精心排版 */}
-                                                            <div style={{ padding: '20px 24px' }}>
-                                                                <div style={{
-                                                                    fontSize: '14.5px',
-                                                                    color: '#d4d4d4',
-                                                                    lineHeight: '1.85',
-                                                                    letterSpacing: '0.01em'
-                                                                }}>
-                                                                    <ReactMarkdown
-                                                                        remarkPlugins={[remarkGfm]}
-                                                                        rehypePlugins={[rehypeRaw]}
-                                                                        components={{
-                                                                            a: ({ node, ...props }) => {
-                                                                                const text = props.children?.toString() || '';
-                                                                                // 支持复杂前缀如 RMA-C-2601-0002，同时也支持 K2601-0001
-                                                                                const isTicket = text.match(/\[?([A-Z]+-)*[A-Z]?\d{4}-\d{4}\]?/) || props.href?.includes('/service/');
-
-                                                                                // Extract ticket type from URL if possible, or fallback
-                                                                                let typeStr = 'default';
-                                                                                if (props.href?.includes('inquiry')) typeStr = 'inquiry';
-                                                                                else if (props.href?.includes('rma')) typeStr = 'rma';
-                                                                                else if (props.href?.includes('dealer')) typeStr = 'dealer_repair';
-
-                                                                                const styles = isTicket ? getTicketStyles(typeStr, t) : getTicketStyles('article', t);
-
-                                                                                return (
-                                                                                    <a {...props}
-                                                                                        style={{
-                                                                                            display: 'inline-flex',
-                                                                                            alignItems: 'center',
-                                                                                            gap: '4px',
-                                                                                            background: styles.bg,
-                                                                                            border: `1px solid ${styles.border}`,
-                                                                                            padding: '1px 8px',
-                                                                                            borderRadius: '6px',
-                                                                                            color: styles.color,
-                                                                                            textDecoration: 'none',
-                                                                                            fontSize: '13px',
-                                                                                            fontWeight: 500,
-                                                                                            margin: '0 4px',
-                                                                                            verticalAlign: 'bottom',
-                                                                                            transition: 'all 0.2s'
-                                                                                        }}
-                                                                                        onMouseEnter={(e) => {
-                                                                                            e.currentTarget.style.background = styles.hoverBg;
-                                                                                            e.currentTarget.style.borderColor = styles.hoverBorder;
-                                                                                        }}
-                                                                                        onMouseLeave={(e) => {
-                                                                                            e.currentTarget.style.background = styles.bg;
-                                                                                            e.currentTarget.style.borderColor = styles.border;
-                                                                                        }}
-                                                                                        target="_blank"
-                                                                                        rel="noopener noreferrer"
-                                                                                    >
-                                                                                        <span style={{ display: 'flex', marginTop: '-1px' }}>
-                                                                                            {isTicket ? styles.icon : <FileText size={14} />}
-                                                                                        </span>
-                                                                                        {props.children}
-                                                                                    </a>
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        {aiAnswer}
-                                                                    </ReactMarkdown>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* 参考来源 */}
-                                                    {/* 参考来源 */}
-                                                    {(relatedArticles.length > 0 || aiRelatedTickets.length > 0) && (
-                                                        <div>
-                                                            <div style={{
-                                                                display: 'flex',
-                                                                justifyContent: 'space-between',
-                                                                alignItems: 'center',
-                                                                marginBottom: '12px'
-                                                            }}>
-                                                                <div style={{
-                                                                    fontSize: '13px',
-                                                                    fontWeight: 700,
-                                                                    color: '#888',
-                                                                    textTransform: 'uppercase',
-                                                                    letterSpacing: '1px'
-                                                                }}>
-                                                                    {t('wiki.search.sources')} · {relatedArticles.length + aiRelatedTickets.length}
-                                                                </div>
-                                                                {relatedArticles.length + aiRelatedTickets.length > AI_REF_SHOW_COUNT && (
-                                                                    <button
-                                                                        onClick={() => setShowMoreAiArticles(!showMoreAiArticles)}
-                                                                        style={{
-                                                                            background: 'transparent',
-                                                                            border: 'none',
-                                                                            color: '#a78bfa',
-                                                                            fontSize: '12px',
-                                                                            cursor: 'pointer',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: '4px',
-                                                                            padding: 0
-                                                                        }}
-                                                                    >
-                                                                        {showMoreAiArticles ? (
-                                                                            <>{t('common.show_less')} <ChevronUp size={12} /></>
-                                                                        ) : (
-                                                                            <>{t('common.show_more', { count: relatedArticles.length + aiRelatedTickets.length - AI_REF_SHOW_COUNT })} <ChevronDown size={12} /></>
-                                                                        )}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-
-                                                            <div style={{
-                                                                display: 'grid',
-                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                                                                gap: '10px'
-                                                            }}>
-                                                                {((showMoreAiArticles
-                                                                    ? [...relatedArticles, ...aiRelatedTickets]
-                                                                    : [...relatedArticles, ...aiRelatedTickets].slice(0, AI_REF_SHOW_COUNT)
-                                                                )).map((item: any) => {
-                                                                    // 如果有 summary 或 content，则是文章；否则视为工单
-                                                                    if (item.summary !== undefined || item.content !== undefined) {
-                                                                        return (
-                                                                            <ArticleCard
-                                                                                key={`ai-article-${item.id}`}
-                                                                                id={item.id}
-                                                                                title={item.title}
-                                                                                summary={item.summary}
-                                                                                productLine={item.product_line}
-                                                                                productModels={item.product_models}
-                                                                                category={item.category}
-                                                                                onClick={() => handleArticleClick(item)}
-                                                                                variant="reference"
-                                                                            />
-                                                                        );
-                                                                    } else {
-                                                                        return (
-                                                                            <TicketCard
-                                                                                key={`ai-ticket-${item.ticket_type}-${item.id}`}
-                                                                                id={item.id}
-                                                                                ticketNumber={item.ticket_number}
-                                                                                ticketType={item.ticket_type}
-                                                                                title={item.title || item.subject || t('wiki.search.untitled')}
-                                                                                status={item.status}
-                                                                                productModel={item.product_model}
-                                                                                customerName={item.customer_name}
-                                                                                contactName={item.contact_name}
-                                                                                onClick={() => {
-                                                                                    const route = item.ticket_type === 'inquiry' ? 'inquiry-tickets' : item.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
-                                                                                    window.open(`/service/${route}/${item.ticket_id || item.id}`, '_blank');
-                                                                                }}
-                                                                                variant="compact"
-                                                                            />
-                                                                        );
-                                                                    }
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -3951,18 +4032,28 @@ ${contextTickets.map((t: any) => {
                                         }}>
                                             {(showMoreRecent ? recentArticles : recentArticles.slice(0, RECENT_SHOW_COUNT)).map((recent) => {
                                                 const article = articles.find(a => a.slug === recent.slug);
-                                                if (!article) return null;
+
+                                                // 如果文章在当前列表中没找到（可能是未发布、被删除或尚未加载完整），提供一个降级渲染，避免卡片丢失
+                                                const displayArticle = article || {
+                                                    id: `fallback-${recent.slug}`,
+                                                    slug: recent.slug,
+                                                    title: recent.title || recent.slug,
+                                                    summary: t('wiki.article_unavailable') || '文章内容可能已更新或不可用',
+                                                    product_line: '',
+                                                    product_models: [],
+                                                    category: ''
+                                                } as any;
 
                                                 return (
                                                     <ArticleCard
                                                         key={recent.slug}
-                                                        id={article.id}
-                                                        title={article.title}
-                                                        summary={article.summary}
-                                                        productLine={article.product_line}
-                                                        productModels={article.product_models}
-                                                        category={article.category}
-                                                        onClick={() => handleArticleClick(article)}
+                                                        id={displayArticle.id}
+                                                        title={displayArticle.title}
+                                                        summary={displayArticle.summary}
+                                                        productLine={displayArticle.product_line}
+                                                        productModels={displayArticle.product_models}
+                                                        category={displayArticle.category}
+                                                        onClick={() => handleArticleClick(displayArticle)}
                                                         variant="compact"
                                                     />
                                                 );

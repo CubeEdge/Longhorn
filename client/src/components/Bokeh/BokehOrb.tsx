@@ -1,11 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '../../i18n/useLanguage';
 
 interface BokehOrbProps {
     onClick: () => void;
 }
 
 const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
+    const { t } = useLanguage();
     return (
         <div style={{ position: 'fixed', bottom: '32px', right: '32px', zIndex: 9999 }}>
             <motion.div
@@ -50,7 +52,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                 }} />
             </motion.div>
 
-            {/* Tooltip on Hover - simplified implementation */}
+            {/* Tooltip on Hover */}
             <div className="bokeh-tooltip" style={{
                 position: 'absolute',
                 right: '60px',
@@ -65,7 +67,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                 opacity: 0,
                 transition: 'opacity 0.2s',
             }}>
-                Ask Bokeh (⌘K)
+                {t('bokeh.orb.tooltip')}
             </div>
             <style>{`
                 div:hover > .bokeh-tooltip {

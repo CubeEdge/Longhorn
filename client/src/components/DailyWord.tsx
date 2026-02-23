@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import axios from 'axios';
 import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { getSpeechLang, getAvailableLevels } from '../data/dailyWords';
@@ -7,10 +8,26 @@ import { useDailyWordStore } from '../store/useDailyWordStore';
 // Supported languages for Daily Word
 const SUPPORTED_LANGS = ['en', 'de', 'ja', 'zh'];
 
-// 每日一词徽章 - 显示在TopBar
+// 每日一词徽章 - 显示在TopBar，受通用设置控制
 export const DailyWordBadge: React.FC = () => {
     const { t } = useLanguage();
     const [showModal, setShowModal] = React.useState(false);
+    const [visible, setVisible] = React.useState(false);
+
+    // Fetch visibility from system settings
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await axios.get('/api/v1/system/public-settings');
+                if (res.data.success) {
+                    setVisible(res.data.data.show_daily_word);
+                }
+            } catch (e) {
+                console.error('[DailyWord] Failed to fetch settings', e);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     // Use Store
     const {
@@ -26,6 +43,9 @@ export const DailyWordBadge: React.FC = () => {
     }, [words.length, fetchBatch]);
 
     const currentWord = words[currentIndex] || null;
+
+    // Respect admin settings
+    if (!visible) return null;
 
     const getLanguageLabel = (lang: string) => {
         switch (lang) {

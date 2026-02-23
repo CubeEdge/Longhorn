@@ -16,7 +16,6 @@ import {
   LayoutDashboard,
   ClipboardList,
   MessageCircleQuestion,
-  BookOpen,
   Book,
   Settings,
   Users,
@@ -49,7 +48,7 @@ import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
 import ProductManagement from './components/ProductManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
-import KnowledgeGenerator from './components/KnowledgeGenerator';
+
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
 import { KinefinityWiki } from './components/KinefinityWiki';
 import AppRail from './components/AppRail';
@@ -184,17 +183,9 @@ const App: React.FC = () => {
           } />
           <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 
-          {/* Knowledge Base - Internal Staff Only (Admin/Lead/Editor) */}
-          <Route path="/service/knowledge" element={
-            ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
-          } />
+          {/* Knowledge Audit Log - Internal Staff Only (Admin) */}
           <Route path="/service/knowledge/audit" element={
             user?.role === 'Admin' ? <KnowledgeAuditLog /> : <Navigate to="/" />
-          } />
-          <Route path="/knowledge" element={<Navigate to="/service/knowledge" replace />} />
-          {/* Knowledge Import Route (for Wiki management menu) */}
-          <Route path="/tech-hub/knowledge-import" element={
-            ['Admin', 'Lead', 'Editor'].includes(user?.role || '') ? <KnowledgeGenerator /> : <Navigate to="/" />
           } />
           <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />
           <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
@@ -400,14 +391,6 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             </Link>
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-
-            {/* Knowledge Base Import - Internal Staff Only */}
-            {['Admin', 'Lead', 'Editor'].includes(role) && (
-              <Link to="/service/knowledge" className={`sidebar-item ${location.pathname === '/service/knowledge' ? 'active' : ''} `} onClick={onClose}>
-                <BookOpen size={18} />
-                <span>{t('sidebar.knowledge')}</span>
-              </Link>
-            )}
 
             {/* Kinefinity WIKI - All Users */}
             <Link to="/tech-hub/wiki" className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `} onClick={onClose}>
@@ -862,7 +845,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
 
       </div>
 
-      {/* Center: Daily Word - visible in FILES and SERVICE modules */}
+      {/* Center: Daily Word - DailyWordBadge handles its own visibility via localStorage */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         {(currentModule === 'files' || currentModule === 'service') && <DailyWordBadge />}
       </div>
