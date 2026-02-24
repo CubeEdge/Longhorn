@@ -14,7 +14,11 @@ description: Standard procedure to finalize a task and sync Project docs and git
    - Validate if the actual workflow matches the scenario.
    - Update steps or screenshots to reflect the "As Built" state.
 
-4. **Git Commit & Push**:
+4. **Update `docs/Service_DataModel.md`**:
+   - Analyze recent code changes (e.g., database schema, migrations, or model files).
+   - Update table definitions, relationships, or field descriptions to reflect the current implementation.
+
+5. **Git Commit & Push**:
    - Stage all changed files (code and documentation).
    - Use a descriptive commit message following the project's milestones.
    - Execute `git push` to synchronize changes with the remote repository.

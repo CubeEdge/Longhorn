@@ -1,7 +1,7 @@
 # Service 数据模型设计
 
-**版本**: 0.8.1
-**最后更新**: 2026-02-22 (Deployed v12.1.5)
+**版本**: 0.8.2
+**最后更新**: 2026-02-25 (Deployed v1.5.33)
 
 > **v0.7.1 更新**：
 > - 账户类型更新：CORPORATE → ORGANIZATION
@@ -545,6 +545,7 @@ knowledge_articles (知识库条目)
 │
 ├── chapter_number: INT -- 章节号 (如 Chapter 3)
 ├── section_number: INT -- 小节号 (如 Section 3.1)
+├── parent_article_id: INT -- 父级文章ID (用于树形聚合)
 │
 ├── // FAQ特有
 ├── question: TEXT -- 问题 (FAQ类型)
@@ -553,11 +554,13 @@ knowledge_articles (知识库条目)
 │
 ├── // 内容与排版
 ├── summary: VARCHAR(1000) -- 摘要
+├── short_summary: VARCHAR(1000) -- 极简摘要 (用于卡片展示)
 ├── content: TEXT -- 原始内容 (HTML)
 ├── formatted_content: TEXT -- AI/人工优化后的排版内容
 ├── format_status: ENUM('none', 'draft', 'published') DEFAULT 'none' -- 排版状态
 ├── formatted_by: ENUM('ai', 'human', 'external') -- 排版人类型
 ├── formatted_at: TIMESTAMP -- 排版时间
+├── image_layout_meta: JSON -- 图片排版元数据 (如对齐、宽度等)
 │
 ├── // 分类与属性
 ├── category: VARCHAR(100) -- 大类
@@ -568,8 +571,9 @@ knowledge_articles (知识库条目)
 ├── visibility: ENUM('Public', 'Dealer', 'Internal', 'Department') DEFAULT 'Internal' -- 可见性
 │
 ├── // 导入溯源
-├── source_type: ENUM('Manual', 'PDF', 'DOCX', 'Web') DEFAULT 'Manual' -- 数据来源
+├── source_type: ENUM('Manual', 'PDF', 'DOCX', 'URL', 'Text') DEFAULT 'Manual' -- 数据来源
 ├── source_reference: VARCHAR(255) -- 原始文件名或引用链接
+├── source_url: VARCHAR(500) -- 导入的原始 URL (仅 URL 导入)
 ├── batch_id: VARCHAR(50) -- 批量导入批次ID
 │
 ├── // 统计与权重
@@ -588,6 +592,7 @@ knowledge_articles (知识库条目)
 
 FOREIGN KEY (created_by) REFERENCES users(id)
 FOREIGN KEY (updated_by) REFERENCES users(id)
+FOREIGN KEY (parent_article_id) REFERENCES knowledge_articles(id)
 ```
 
 **索引**：
@@ -687,6 +692,55 @@ compatibility_entries (兼容性条目)
 └── tested_by: VARCHAR(255) -- 测试人员
 
 FOREIGN KEY (knowledge_id) REFERENCES knowledge_articles(id)
+```
+
+---
+
+### 4.7 知识库审计日志 (knowledge_audit_log)
+
+```sql
+knowledge_audit_log (审计日志)
+├── id: SERIAL PRIMARY KEY
+├── operation: TEXT NOT NULL -- 'create', 'update', 'delete', 'import', 'publish_format', 'archive'
+├── operation_detail: TEXT -- 详细说明 (如: "发布 Bokeh 格式化内容")
+│
+├── // 文章快照 (解决文章删除后无法溯源问题)
+├── article_id: INTEGER -- 关联的文章ID (SET NULL on delete)
+├── article_title: TEXT NOT NULL -- 标题快照
+├── article_slug: TEXT -- Slug快照
+│
+├── // 分类与产品快照
+├── category: TEXT
+├── product_line: TEXT
+├── product_models: JSON
+│
+├── // 变更记录 (JSON)
+├── changes_summary: TEXT -- 具体修改了哪些字段
+├── old_status: TEXT
+├── new_status: TEXT
+│
+├── // 导入信息
+├── source_type: TEXT -- 'Manual', 'PDF', 'URL', 'DOCX'
+├── source_reference: TEXT
+├── batch_id: TEXT -- 批量操作 ID
+│
+├── // 操作人快照
+├── user_id: INTEGER NOT NULL
+├── user_name: TEXT NOT NULL
+├── user_role: TEXT
+│
+└── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEY (article_id) REFERENCES knowledge_articles(id) ON DELETE SET NULL
+FOREIGN KEY (user_id) REFERENCES users(id)
+```
+
+**索引**：
+- INDEX idx_audit_operation (operation)
+- INDEX idx_audit_article (article_id)
+- INDEX idx_audit_user (user_id)
+- INDEX idx_audit_time (created_at)
+- INDEX idx_audit_batch (batch_id)
 ```
 
 ---
@@ -1202,6 +1256,7 @@ ai_usage_logs (AI 使用审计)
 | 2026-02-11 | v1.2 | 重构客户模型为"账户+联系人"双层架构 | - | 引入 Account/Contact 模型，支持B2B场景 |
 | 2026-02-11 | v1.3 | 账户类型更新，新增经销商专属字段 | - | CORPORATE→ORGANIZATION，新增 dealer_level 等字段 |
 | 2026-02-22 | v1.4 | 新增 `search_synonyms` 同义词库支持 | - | 对应 Wiki 搜索召回优化需求 |
+| 2026-02-25 | v1.5 | 完善 `knowledge_articles` 章节字段与 `knowledge_audit_log` 审计日志 | Jihua | 对应 Phase 3/4 深度优化交付 |
 
 
 ---
@@ -1229,6 +1284,7 @@ Knowledge Base:
   knowledge_articles → knowledge_tags
   knowledge_articles → troubleshooting_steps
   knowledge_articles → compatibility_entries
+  knowledge_articles → knowledge_audit_log
   search_synonyms (用于搜索优化)
 
 
