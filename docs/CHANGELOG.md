@@ -1,5 +1,11 @@
 # Changelog
 
+## [12.1.37] - 2026-02-24
+### Added (Article Manager)
+- **Safe Delete Confirmation**: 实现了全新的批量/单篇文章删除确认弹窗，包含待删标题清单及 10 秒强制倒计时安全机制。
+- **Select All Refinement**: 优化了文章管理页的全选逻辑，使其仅对当前搜索过滤后的可见文章生效，防止误选后台项目。
+- **i18n**: 为删除安全机制补充了多语言支持。
+
 ## [Unreleased] - 2026-02-07
 ### Added (Knowledge Base)
 - **DOCX Import Pipeline**: 新增知识库DOCX→MD完整导入流程，支持MAVO Edge 6K操作手册导入（73章节、9表格、39图片）。

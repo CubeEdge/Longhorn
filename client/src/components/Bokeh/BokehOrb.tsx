@@ -20,22 +20,23 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, rgba(0, 191, 165, 0.6), rgba(142, 36, 170, 0.6))',
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    background: 'radial-gradient(circle at center, rgba(0, 191, 165, 0.2) 0%, rgba(142, 36, 170, 0.5) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 0 20px rgba(142, 36, 170, 0.4)',
+                    border: '1px solid rgba(0, 191, 165, 0.3)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    overflow: 'visible'
                 }}
                 animate={{
                     boxShadow: [
                         '0 0 15px rgba(0, 191, 165, 0.3)',
-                        '0 0 25px rgba(142, 36, 170, 0.5)',
+                        '0 0 35px rgba(142, 36, 170, 0.7)',
                         '0 0 15px rgba(0, 191, 165, 0.3)'
                     ],
-                    scale: [1, 1.05, 1],
+                    scale: [1, 1.03, 1],
                 }}
                 transition={{
                     duration: 4,
@@ -43,12 +44,27 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     ease: "easeInOut"
                 }}
             >
+                {/* 灵动核心 - 极致白亮中心 (对齐图2) */}
                 <div style={{
-                    width: '12px',
-                    height: '12px',
+                    width: '14px',
+                    height: '14px',
                     borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.8)',
-                    filter: 'blur(2px)'
+                    background: '#fff',
+                    boxShadow: '0 0 12px 4px #fff, 0 0 20px 8px rgba(0, 191, 165, 0.6)',
+                    filter: 'blur(1px)',
+                    position: 'relative',
+                    zIndex: 2
+                }} />
+
+                {/* 核心外层晕染 */}
+                <div style={{
+                    position: 'absolute',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(0, 191, 165, 0.8) 0%, rgba(142, 36, 170, 0.4) 100%)',
+                    filter: 'blur(4px)',
+                    zIndex: 1
                 }} />
             </motion.div>
 

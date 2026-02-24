@@ -46,7 +46,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
     // 摘要编辑状态
     const [summary, setSummary] = useState('');
     const [showSummaryDropdown, setShowSummaryDropdown] = useState(false);
-    const SUMMARY_MAX_LENGTH = 200;
+    const SUMMARY_MAX_LENGTH = 300;
 
     // Bokeh 优化下拉菜单
     const [showBokehDropdown, setShowBokehDropdown] = useState(false);

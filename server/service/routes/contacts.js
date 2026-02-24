@@ -7,7 +7,7 @@
 
 const express = require('express');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
@@ -21,12 +21,12 @@ module.exports = function(db, authenticate) {
      */
     router.get('/', authenticate, (req, res) => {
         try {
-            const { 
+            const {
                 account_id,
                 status,
                 search,
-                page = 1, 
-                page_size = 20 
+                page = 1,
+                page_size = 20
             } = req.query;
 
             let conditions = [];
@@ -186,16 +186,33 @@ module.exports = function(db, authenticate) {
 
             const fields = [];
             const values = [];
+            let setPrimary = false;
+            let clearPrimary = false;
 
             for (const [key, value] of Object.entries(updates)) {
                 if (allowedFields.includes(key)) {
-                    fields.push(`${key} = ?`);
                     if (key === 'is_primary') {
+                        fields.push(`${key} = ?`);
                         values.push(value ? 1 : 0);
+                        if (value) setPrimary = true;
+                        else clearPrimary = true;
+                    } else if (key === 'status') {
+                        fields.push(`${key} = ?`);
+                        values.push(value);
+                        if (value === 'PRIMARY') setPrimary = true;
                     } else {
+                        fields.push(`${key} = ?`);
                         values.push(value);
                     }
                 }
+            }
+
+            if (setPrimary && updates.status === undefined) {
+                fields.push(`status = ?`);
+                values.push('PRIMARY');
+            } else if (clearPrimary && updates.status === undefined) {
+                fields.push(`status = ?`);
+                values.push('ACTIVE');
             }
 
             if (fields.length === 0) {
@@ -206,7 +223,7 @@ module.exports = function(db, authenticate) {
             }
 
             // 特殊处理：如果设为 PRIMARY，先将该账户下其他 PRIMARY 改为 ACTIVE
-            if (updates.status === 'PRIMARY' || updates.is_primary === true) {
+            if (setPrimary) {
                 db.prepare(`
                     UPDATE contacts 
                     SET status = 'ACTIVE', is_primary = 0, updated_at = CURRENT_TIMESTAMP

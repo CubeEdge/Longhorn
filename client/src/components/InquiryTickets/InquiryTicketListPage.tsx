@@ -148,6 +148,7 @@ const InquiryTicketListPage: React.FC = () => {
     const [viewMode, setViewMode] = useState<'list' | 'card'>(savedViewMode === 'grouped' ? 'list' : 'card');
     const [customFamilyOpen, setCustomFamilyOpen] = useState(false);
     const [selectedFamilies, setSelectedFamilies] = useState<string[]>([]);
+    const [searchOpen, setSearchOpen] = useState(!!searchTerm);
 
     // Sort State
     const [sortBy, setSortBy] = useState<string>('created_at');
@@ -155,7 +156,6 @@ const InquiryTicketListPage: React.FC = () => {
 
     // Real-time Search State
     const [localSearch, setLocalSearch] = useState(searchTerm);
-    const [searchOpen, setSearchOpen] = useState(false);
     const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     // Initialize with default range: Start = 3 months ago, End = Today

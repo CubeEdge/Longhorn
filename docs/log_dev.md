@@ -4,6 +4,142 @@
 
 ---
 
+## 2026-02-24 16:20 - Knowledge Import Optimization & Web Scraping (v1.3.4)
+
+### Tasks Completed:
+1. **Web Scraping Engine**: Implemented automatic chapter splitting based on H1/H2 tags for both Turbo (Markdown) and Standard (HTML) modes in `knowledge.js`. 
+2. **Title Extraction**: Enhanced title recognition logic to prioritize Markdown headers and metadata, ensuring imported articles have accurate titles.
+3. **Import UI Refinement**:
+   - Fixed product model selection text color (Gray -> White) for better contrast.
+   - Dynamically adjusted progress step labels (e.g., hiding "Upload File" for URL imports).
+   - Updated "Complete" button color to **Kine Green (#00A650)**.
+4. **Content Cleaning**: Added logic to strip hardcoded white backgrounds from imported HTML content, ensuring better theme integration.
+
+### Technical Output:
+- **Modified**: `client/src/components/KnowledgeGenerator.tsx`, `server/service/routes/knowledge.js`
+- **Release**: Client v12.1.32, Server v1.5.26
+
+---
+
+## 2026-02-24 13:50 - Detail State Persistence & Navigation Restoration
+
+### Tasks Completed:
+1. **State Persistence**: Created `useDetailStore.ts` using Zustand `persist` middleware. Connected `expandedSection` and `showAllContacts` to it, keyed by `accountId`.
+2. **Navigation Restoration**: Reverted internal `navigate` to `window.open` for article and ticket cards in Wiki and Detail pages to satisfy multi-tasking requirements.
+3. **Wiki UI Refinement**: Adjusted search input width to be narrower and increased search history tab label width to 240px.
+
+### Technical Output:
+- **Modified**: `client/src/components/CustomerDetailPage.tsx`, `client/src/components/KinefinityWiki.tsx`, `client/src/package.json`, `package.json`
+- **New**: `client/src/store/useDetailStore.ts`
+
+---
+
+## 2026-02-24 13:20 - Detail Page Layout & Navigation Standardization
+
+### Tasks Completed:
+1. **Black Screen Resolution**: Corrected a layout conflict where detail pages (`InquiryTicketDetailPage.tsx`, `DealerRepairDetailPage.tsx`, `RMATicketDetailPage.tsx`) used `height: 100vh` and a solid black background inside a flex container. Changed to `flex: 1` and `background: transparent` to inherit from `MainLayout`.
+2. **Standardized SPA Navigation**: Replaced `window.open` calls in `KinefinityWiki.tsx` with standard `navigate`, ensuring authentication and application state are maintained consistently without triggering full-tab reloads or state drifts.
+3. **Machine Asset Linkage**: Restored the missing interaction on the Customer Detail Page's asset list. Clicking a `ProductCard` now navigates to the Tech Hub (Wiki) filtered by the device's serial number.
+
+### Technical Output:
+- **Modified**: `client/src/components/CustomerDetailPage.tsx`, `client/src/components/KinefinityWiki.tsx`, `client/src/components/InquiryTickets/InquiryTicketDetailPage.tsx`, `client/src/components/RMATickets/RMATicketDetailPage.tsx`, `client/src/components/DealerRepairs/DealerRepairDetailPage.tsx`
+
+---
+
+## 2026-02-24 13:03 - UI Responsive Grid & SVC Logic Contextualization
+
+### Tasks Completed:
+1. **Responsive Grid Layout**: Refactored `CustomerDetailPage.tsx` styling for stats grid and list containers to use `repeat(auto-fill, minmax(280px, 1fr))`, ensuring mobile-first compatibility and preventing horizontal scroll issues.
+2. **Multi-language Hardcoding Cleanup**: Wrapped all dashboard statistics and device category strings with `tc()` helper. Fixed TS2345 errors related to i18next parameter typing for default strings.
+3. **SVC Ticket Context Logic**: Modified data processing in `CustomerDetailPage.tsx` to pass context-aware names to `TicketCard`.
+   - When on Dealer page: Shows End Customer Name/Contact.
+   - When on Customer page: Shows Processor Dealer Name/Contact.
+4. **Contact API Bugfix**: Fixed `is_primary` logic in `server/service/routes/contacts.js` to ensure exclusive primary status per account (toggling one clears others).
+5. **Product UI Redesign**: Rewrote `ProductCard.tsx` with a new horizontal Pill-style layout, utilizing `var(--glass-bg)` and distinct border colors based on product family for better visual hierarchy vs. tickets.
+
+### Technical Output:
+- **Modified**: `client/src/components/CustomerDetailPage.tsx`, `client/src/components/ProductCard.tsx`, `client/src/components/TicketCard.tsx`, `server/service/routes/contacts.js`, `package.json` (v12.1.30)
+
+---
+
+## 2026-02-24 10:30 - Wiki State Persistence & UI Formatting
+
+### Tasks Completed:
+1. **Search History Alignment**: Modified `KinefinityWiki.tsx` to align the dynamic search history dropdown to the right (`right: 0`) instead of the default left to fit neatly below the floating search input.
+2. **Ticket List Search Expansion**: Updated the `searchOpen` initialization across `InquiryTicketListPage`, `RMATicketListPage`, and `DealerRepairListPage` to interpret active URL parameters and maintain an expanded standard text-box UI instead of defaulting back to a collapsed magnifying glass icon.
+3. **Wiki Global State Management**: Architected a new front-end service `client/src/store/useWikiStore.ts` utilizing Zustand and LocalStorage middleware.
+4. **Wiki Refactoring**: Replaced legacy `useState` instances representing user context (activeSearch, query keywords, product tab focus) with calls to the global store, enabling seamless route persistence without modifying URL schemas.
+5. **Quality Assurance**: Added automated test scripts executing in NodeJS (`client/src/store/useWikiStore.test.ts`) to validate state mutations mathematically.
+
+6. **Deployment**: Incremented software version to `12.1.29`, fixed TypeScript build blockers (bypass strict i18next key typing), and successfully deployed to the remote server using `deploy.sh`.
+
+### Technical Output:
+- **Created**: `client/src/store/useWikiStore.ts`, `client/src/store/useWikiStore.test.ts`
+- **Modified**: `client/src/components/KinefinityWiki.tsx`, `client/src/components/InquiryTickets/InquiryTicketListPage.tsx`, `client/src/components/RMATickets/RMATicketListPage.tsx`, `client/src/components/DealerRepairs/DealerRepairListPage.tsx`, `client/package.json`
+
+---
+
+## 2026-02-24 10:15 - Bokeh UI Refinement & Accounts Save Concurrency Lock
+
+### Tasks Completed:
+1. **AI Chat Bubbles UI**: Fixed the rendering of assistant messages by removing the green border (`1px solid rgba(0, 191, 165, 0.2)`) and stripped out inline widths (`width: 100%`) in `ReactMarkdown`'s `<p>` tag renderer to ensure ordered and unordered lists (`<ol>`, `<ul>`) do not unexpectedly indent.
+2. **Kinefinity Wiki Results Cards**: Removed the dot separator between category and product line in `ArticleCard`. Reverted the `Customer / Dealer | Contact` separator back to `·` on `TicketCard`. Implemented `t()` translation mapping for `TicketCard` statuses.
+3. **Customer Form Dialog**: Discovered a critical `SQLITE_BUSY` transaction locking bug in the React CRM Management interfaces. When editing contacts and switching the `is_primary` user, calling `Promise.all(axios.post)` triggered SQLite database lock exceptions. Converted saving loops to synchronous `for...of` iteration arrays.
+4. **CRM Form UI**: Increased the CSS width of the `KinefinityWiki` search field dynamically, enforced `minHeight: 600px` on `CustomerFormModal` wrapper to prevent height jitter when switching between "Basic Info" and "Contacts" tabs, and added primary contact selection tips below the contact table.
+
+### Technical Output:
+- **Modified**: `client/src/components/Bokeh/BokehPanel.tsx`, `client/src/components/KinefinityWiki.tsx`, `client/src/components/CustomerManagement.tsx`, `client/src/components/DealerManagement.tsx`, `client/src/components/CustomerFormModal.tsx`
+
+---
+
+## 会话: 2026-02-24 (Bokeh Search Fallback & Display Formality Fix)
+
+### 任务: 添加 FTS `LIKE` 降级兜底、注入 `contact_name` 上下文及重构卡片去重连接符
+- **状态**: ✅ 已完成
+- **技术产出**:
+    - **Search Fallback**: 在 `ai_service.js` 修复 `knowledge_articles_fts` 虚拟表名称，并在命中为空时强制调用 `LIKE` 执行兜底，彻底解决“端口定义”无法命中的 Bug。
+    - **Prompt Injection**: 将检索出的 `contact_name` 加入了推给大模型的 Context 信息区块中，修复了此前后台查出了联系人姓名但没有喂给 AI 的断链问题。
+    - **Format Cleanup**:移除了 `KinefinityWiki.tsx` 内对于 SVC工单中强加的 "经销商:" 前缀。将普通与维修单的去重合并符从小圆点 `·` 改为垂直线 `|`。
+    - **Release**: 版本号自增至 `12.1.28`，并完成在 `mini` 远端的自动部署。
+
+---
+
+## 会话: 2026-02-24 (Bokeh Search & Interaction Depth Optimization)
+
+### 任务: 知识库宽泛检索优化、新标签页交互转换及数据去重显示
+- **状态**: ✅ 已完成
+- **技术产出**:
+    - **RAG**: 在 `ai_service.js` 中引入分词处理与 `OR` 检索策略，替代原有严格模式，提升 AI 上下文关联度。
+    - **Interaction**: 更新 `BokehPanel.tsx` 交互逻辑，采用 `window.open` 实现平滑外链跳转，清理冗余 `TicketDetailDialog` 组件。
+    - **UI**: 重构 `TicketCard` 名称渲染逻辑，针对 SVC 与普通工单实施条件渲染与去重标识。
+    - **Ops**: 自动化版本迭代并完成远程同步。
+
+---
+
+## 会话: 2026-02-24 (Bokeh UI & Search Quality Optimization)
+
+### 任务: Bokeh UI 视觉打磨、搜索逻辑修复及 SVC 工单数据富化
+- **状态**: ✅ 已完成
+- **技术产出**:
+    - **UI**: 更新 `BokehPanel.tsx` 视觉样式，用户气泡改为 Kine Green (`#4CAF50`)，助手气泡采用深灰色半透明方案。
+    - **搜索**: 修复 `bokeh.js` 与 `ai_service.js` 中的 SQL 拼接 Bug，统一引入 `1=1` 前缀。
+    - **数据**: 在工单搜索中集成 `dealer_id` 富化，修正 SVC- 工单的经销商展示逻辑，并在 `TicketCard` 增加 "经销商:" 标识。
+    - **AI**: 增强链接生成约束，禁止编造 Slug。
+
+---
+
+## 会话: 2026-02-24 (Knowledge Importer Improvements)
+
+### 任务: 修复 URL 导入报错、支持产品型号多选及进度面板重构
+- **状态**: ✅ 已完成
+- **技术细节**:
+    - **URL 导入逻辑修复**: 在 `knowledge.js` 中重构了 `import/url` 路由。通过预定义关键变量（`articleTitle`, `summary`, `sourceReference`）并标准化 Turbo (Jina) 与 Standard 模式的分支输出，彻底消除了由于 `extractedContent` 作用域限制导致的 `ReferenceError` 导入失败问题。
+    - **产品型号多选实现**: 将 `KnowledgeGenerator.tsx` 中的单选下拉框替换为自研的多选标签组组件。利用 `productModels` 数组存储状态，并提供平滑的选中/取消点击交互，支持了单一文章跨多个产品机型的批量关联同步。
+    - **进度弹窗 UI 重构**: 遵循 macOS26 极简设计原则，将原本处于 Grid 布局中的多个碎片化信息图标重塑为一段叙述性文字描述。通过文字加粗与关键信息变色（Kine Yellow），让导入过程中的元数据一目了然，显著提升了品牌感。
+- **版本**: Client v12.1.25 (已同步)
+
+---
+
 ## 会话: 2026-02-24 (Wiki & Bokeh UI Polish)
 
 ### 任务: Wiki 来源过滤、工单卡片修复及 Bokeh 视觉增强

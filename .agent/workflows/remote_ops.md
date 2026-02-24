@@ -9,7 +9,7 @@ Use this workflow whenever you need to interact with the production server (`min
 ## 1. Context Check
 Before running any command, identify if you are in a **First Request** situation.
 - [ ] Read `docs/OPS.md` to refresh memory on current server status and paths.
-- [ ] Read `docs/SYSTEM_CONTEXT.md` to verify infrastructure details.
+- [ ] Read `docs/context.md` to verify infrastructure details.
 
 ## 2. The Golden Rule of SSH
 ⚠️ **CRITICAL**: Non-interactive SSH sessions DO NOT load the user profile (`.zshrc`, `.bash_profile`) by default.

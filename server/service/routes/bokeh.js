@@ -54,6 +54,7 @@ module.exports = (db, authenticate, aiService) => {
             }
 
             const whereClause = whereConditions.length > 0 ? 'AND ' + whereConditions.join(' AND ') : '';
+            const finalWhere = 'WHERE 1=1 ' + whereClause;
 
             // FTS5 Search Query
             // Use MATCH for full-text search on title, description, resolution, tags
@@ -72,11 +73,11 @@ module.exports = (db, authenticate, aiService) => {
                     tsi.status,
                     tsi.closed_at,
                     tsi.account_id,
+                    tsi.dealer_id,
                     fts.rank
                 FROM ticket_search_index tsi
                 INNER JOIN ticket_search_fts fts ON tsi.id = fts.rowid
-                WHERE fts MATCH @query
-                  ${whereClause}
+                ${finalWhere} AND fts MATCH @query
                 ORDER BY fts.rank
                 LIMIT @limit
             `;
@@ -98,10 +99,10 @@ module.exports = (db, authenticate, aiService) => {
                         tsi.category,
                         tsi.status,
                         tsi.closed_at,
-                        tsi.account_id
+                        tsi.account_id,
+                        tsi.dealer_id
                     FROM ticket_search_index tsi
-                    WHERE (tsi.title LIKE @likeQuery OR tsi.description LIKE @likeQuery OR tsi.resolution LIKE @likeQuery OR tsi.tags LIKE @likeQuery)
-                    ${whereClause}
+                    ${finalWhere} AND (tsi.title LIKE @likeQuery OR tsi.description LIKE @likeQuery OR tsi.resolution LIKE @likeQuery OR tsi.tags LIKE @likeQuery)
                     ORDER BY tsi.updated_at DESC
                     LIMIT @limit
                 `;
@@ -125,12 +126,13 @@ module.exports = (db, authenticate, aiService) => {
                         tsi.status,
                         tsi.closed_at,
                         tsi.account_id,
+                        tsi.dealer_id,
                         fts_match.rank AS rank
                     FROM ticket_search_index tsi
                     INNER JOIN (
                         SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
                     ) fts_match ON tsi.id = fts_match.rowid
-                    WHERE 1=1 ${whereClause}
+                    ${finalWhere}
                     ORDER BY fts_match.rank
                     LIMIT @limit
                 `;
@@ -177,21 +179,29 @@ module.exports = (db, authenticate, aiService) => {
                     const account = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
                     customer_name = account?.name;
                 }
-                // 获取联系人姓名（从源工单表）
+                // 获取联系人姓名
                 try {
+                    let contactIdQuery = null;
                     if (r.ticket_type === 'inquiry' && r.ticket_id) {
-                        const ticket = db.prepare('SELECT reporter_name FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
-                        contact_name = ticket?.reporter_name || null;
+                        contactIdQuery = db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
                     } else if (r.ticket_type === 'rma' && r.ticket_id) {
-                        // RMA table uses reporter_name instead of customer_name
-                        const ticket = db.prepare('SELECT reporter_name FROM rma_tickets WHERE id = ?').get(r.ticket_id);
-                        contact_name = ticket?.reporter_name || null;
+                        contactIdQuery = db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id);
                     } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
-                        const ticket = db.prepare('SELECT customer_name FROM dealer_repairs WHERE id = ?').get(r.ticket_id);
-                        contact_name = ticket?.customer_name || null;
+                        contactIdQuery = db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id);
+                    }
+
+                    if (contactIdQuery && contactIdQuery.contact_id) {
+                        const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
+                        contact_name = contact?.name || null;
                     }
                 } catch (enrichErr) {
                     console.warn(`[Bokeh Enrichment] Failed to fetch contact for ${r.ticket_type}:${r.ticket_id}`, enrichErr.message);
+                }
+
+                // If it's a dealer repair and we have a dealer_id, ensure customer_name is the Dealer name
+                if (r.ticket_type === 'dealer_repair' && r.dealer_id) {
+                    const dealer = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.dealer_id);
+                    customer_name = dealer?.name || customer_name;
                 }
                 return {
                     ticket_number: r.ticket_number,

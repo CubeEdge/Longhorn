@@ -175,7 +175,7 @@ const RMATicketDetailPage: React.FC = () => {
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#000' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, background: 'transparent', minHeight: 'calc(100vh - 120px)' }}>
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 {/* LEFT COLUMN: Main Content */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>

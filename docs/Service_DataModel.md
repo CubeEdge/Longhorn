@@ -553,7 +553,7 @@ knowledge_articles (知识库条目)
 │
 ├── // 内容与排版
 ├── summary: VARCHAR(1000) -- 摘要
-├── content: TEXT -- 原始 Markdown 内容
+├── content: TEXT -- 原始内容 (HTML)
 ├── formatted_content: TEXT -- AI/人工优化后的排版内容
 ├── format_status: ENUM('none', 'draft', 'published') DEFAULT 'none' -- 排版状态
 ├── formatted_by: ENUM('ai', 'human', 'external') -- 排版人类型

@@ -1,5 +1,5 @@
 ---
-description: Standard procedure to finalize a task and sync all documentation
+description: Standard procedure to finalize a task and sync Project docs and git
 ---
 
 1. **Update `docs/Service_API.md`**:
@@ -14,19 +14,7 @@ description: Standard procedure to finalize a task and sync all documentation
    - Validate if the actual workflow matches the scenario.
    - Update steps or screenshots to reflect the "As Built" state.
 
-
-4. **Update `docs/2_Promptlog.md`**:
-   - Record the session time.
-   - Summarize the User Prompt.
-   - Detail the Actions Taken (Root Cause Analysis, Code Changes).
-   - State the Result/Status.
-
-5. **Update `docs/1_Backlog.md`**:
-   - Mark completed feature/bug items as `[x]`.
-   - Move completed items from "Backlog/To Do" to "History/Completed".
-   - Add any newly discovered bugs to "Bug Tracker".
-
-6. **Update `docs/3_Devlog.md`**:
-   - Add a bullet point for the technical changes made.
-   - Mention any new technologies or patterns introduced.
-
+4. **Git Commit & Push**:
+   - Stage all changed files (code and documentation).
+   - Use a descriptive commit message following the project's milestones.
+   - Execute `git push` to synchronize changes with the remote repository.

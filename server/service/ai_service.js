@@ -251,6 +251,7 @@ Output raw JSON only, no markdown formatting blocks.`;
                         ticketContext += `${i + 1}. **[${t.ticket_number}|${t.ticket_id}|${t.ticket_type}]**\n`;
                         ticketContext += `   标题: ${t.title}\n`;
                         if (t.customer_name) ticketContext += `   客户: ${t.customer_name}\n`;
+                        if (t.contact_name) ticketContext += `   联系人: ${t.contact_name}\n`;
                         if (t.product_model) ticketContext += `   产品: ${t.product_model}\n`;
                         if (t.resolution) {
                             ticketContext += `   解决方案: ${t.resolution.substring(0, 150)}${t.resolution.length > 150 ? '...' : ''}\n`;
@@ -304,9 +305,9 @@ Output raw JSON only, no markdown formatting blocks.`;
 - 活跃数据源：${dataSources.join(', ')}
 
 **重要规则：**
-1. **必须完全基于下方提供的知识库文章和工单数据回答**。如果提供的内容中没有相关信息，明确告知用户"根据现有知识库资料，暂未找到相关信息"。
-2. 禁止编造知识库中没有的信息，禁止依赖训练数据中的通用知识。
-3. 回答时引用知识库文章标题和链接（如"根据[MAVO Edge 6K: 1.1 端口说明](/tech-hub/wiki/mavo-edge-6k-1-1-端口说明)..."）。
+1. **必须完全且仅基于下方提供的知识库文章和工单数据回答**。如果提供的内容中没有相关信息，明确告知用户"根据现有知识库资料，暂未找到相关信息"。
+2. 禁止编造知识库中没有的信息，禁止依赖训练数据中的通用知识。**严禁生成任何不在下方参考资料中出现的 Slug 或链接**。
+3. 回答时引用知识库文章标题和链接。**链接必须直接复制下方提供的地址（如 /tech-hub/wiki/xxx），不得自行猜测或修改**。
 4. 如果历史工单中有相关信息，引用工单编号（如 [K2602-0001]）。
 5. 保持回答简洁、专业、有帮助。
 6. 如果严格工作模式开启，礼貌拒绝回答与 Kinefinity/电影制作无关的电影、笑话或一般性 trivia 问题。
@@ -404,8 +405,7 @@ ${enhancedContext}`;
             whereConditions.push('tsi.dealer_id = @dealer_id');
             params.dealer_id = user.dealer_id;
         }
-
-        const whereClause = whereConditions.join(' AND ');
+        const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : 'WHERE 1=1';
 
         // FTS5 Search Query — use subquery pattern (FTS5 virtual tables don't support JOIN alias)
         const searchQuery = `
@@ -417,12 +417,13 @@ ${enhancedContext}`;
                 tsi.resolution,
                 tsi.product_model,
                 tsi.account_id,
+                tsi.dealer_id,
                 fts_match.rank AS rank
             FROM ticket_search_index tsi
             INNER JOIN (
                 SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
             ) fts_match ON tsi.id = fts_match.rowid
-            WHERE ${whereClause}
+            ${whereClause}
             ORDER BY fts_match.rank
             LIMIT @limit
         `;
@@ -441,12 +442,13 @@ ${enhancedContext}`;
                     tsi.resolution,
                     tsi.product_model,
                     tsi.account_id,
+                    tsi.dealer_id,
                     fts_match.rank
                 FROM ticket_search_index tsi
                 INNER JOIN (
                     SELECT rowid, rank FROM ticket_search_fts WHERE ticket_search_fts MATCH @query
                 ) fts_match ON tsi.id = fts_match.rowid
-                WHERE ${whereClause}
+                ${whereClause}
                 ORDER BY fts_match.rank
                 LIMIT @limit
             `;
@@ -468,10 +470,10 @@ ${enhancedContext}`;
                         tsi.resolution,
                         tsi.product_model,
                         tsi.account_id,
+                        tsi.dealer_id,
                         1.0 as rank
                     FROM ticket_search_index tsi
-                    WHERE (tsi.title LIKE @likePattern OR tsi.resolution LIKE @likePattern)
-                      AND ${whereClause}
+                    ${whereClause} AND (tsi.title LIKE @likePattern OR tsi.resolution LIKE @likePattern)
                     ORDER BY tsi.updated_at DESC
                     LIMIT @limit
                 `;
@@ -481,17 +483,44 @@ ${enhancedContext}`;
             }
         }
 
-        // Enrich with account names
+        // Enrich with account names and contact names
         try {
             return results.map(r => {
                 let customer_name = null;
+                let contact_name = null;
+
                 if (r.account_id) {
                     const account = this.db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
                     customer_name = account?.name;
                 }
+
+                // 获取联系人姓名
+                try {
+                    let contactIdQuery = null;
+                    if (r.ticket_type === 'inquiry' && r.ticket_id) {
+                        contactIdQuery = this.db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
+                    } else if (r.ticket_type === 'rma' && r.ticket_id) {
+                        contactIdQuery = this.db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id);
+                    } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
+                        contactIdQuery = this.db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id);
+                    }
+
+                    if (contactIdQuery && contactIdQuery.contact_id) {
+                        const contact = this.db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
+                        contact_name = contact?.name || null;
+                    }
+                } catch (enrichErr) {
+                    console.warn(`[AIService Enrichment] Failed to fetch contact for ${r.ticket_type}:${r.ticket_id}`, enrichErr.message);
+                }
+
+                if (r.ticket_type === 'dealer_repair' && r.dealer_id) {
+                    const account = this.db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.dealer_id);
+                    customer_name = account?.name || customer_name;
+                }
                 return {
                     ...r,
-                    customer_name
+                    customer_name,
+                    contact_name
                 };
             });
         } catch (err) {
@@ -511,7 +540,25 @@ ${enhancedContext}`;
 
         // Build WHERE clause based on user visibility
         let whereConditions = ["ka.status = 'published'"];
-        const safeQuery = '"' + query.replace(/"/g, '""') + '"';
+
+        // Sanitize query for FTS5 — split by space, expand with synonyms, use OR for lenient matching
+        const { expandWithSynonyms } = require('./routes/synonyms');
+
+        // Use the same stopWords logic as knowledge.js to strip conversational fluff
+        const stopWords = /的|是|有|了|在|和|与|或|也|都|被|把|对|从|到|给|让|着|过|不|没|会|能|可以|应该|关于|如何|什么|怎么|怎样|这个|那个|一些|相关|哪些|哪个|为什么|什么是|介绍|说明|支持|常见|一般|通常|经常|平时|总是|容易|可能|需要|建议|推荐|比较|正确|正常|具体|应当|请问|告诉|问题|帮忙/g;
+        const cleaned = query.replace(stopWords, ' ').replace(/[，。、！？；：""''（）【】\s]+/g, ' ').trim();
+
+        // Extract Chinese and English words
+        const chatWords = cleaned.split(/\s+/).filter(w => w.length > 0);
+        const allTerms = new Set();
+        chatWords.forEach(w => {
+            expandWithSynonyms(w).forEach(syn => allTerms.add(syn));
+        });
+
+        // Fallback to query if tokenization leaves us empty
+        if (allTerms.size === 0) allTerms.add(query);
+
+        const safeQuery = Array.from(allTerms).map(w => '"' + w.replace(/"/g, '""') + '"*').join(' OR ');
         let params = { query: safeQuery, limit: 3 }; // Top 3 articles
 
         // Visibility Filter based on user role
@@ -531,29 +578,8 @@ ${enhancedContext}`;
             whereConditions.push("ka.visibility = 'Public'");
         }
 
-        const whereClause = whereConditions.join(' AND ');
+        const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : 'WHERE 1=1';
 
-        // FTS5 Search Query for knowledge base — use subquery pattern
-        const searchQuery = `
-            SELECT 
-                ka.id,
-                ka.title,
-                ka.slug,
-                ka.summary,
-                ka.content,
-                ka.category,
-                ka.product_line,
-                ka.visibility,
-                ka.source_reference,
-                fts_match.rank AS rank
-            FROM knowledge_articles ka
-            INNER JOIN (
-                SELECT rowid, rank FROM knowledge_fts WHERE knowledge_fts MATCH @query
-            ) fts_match ON ka.id = fts_match.rowid
-            WHERE ${whereClause}
-            ORDER BY fts_match.rank
-            LIMIT @limit
-        `;
 
         let results = [];
         try {
@@ -574,7 +600,7 @@ ${enhancedContext}`;
                 INNER JOIN (
                     SELECT rowid, rank FROM knowledge_articles_fts WHERE knowledge_articles_fts MATCH @query
                 ) fts_match ON ka.id = fts_match.rowid
-                WHERE ${whereClause}
+                ${whereClause}
                 ORDER BY fts_match.rank
                 LIMIT @limit
             `;
@@ -587,6 +613,10 @@ ${enhancedContext}`;
         if (results.length === 0) {
             try {
                 const likePattern = `%${query}%`;
+                const likeWhere = whereConditions.length > 0
+                    ? 'WHERE ' + whereConditions.join(' AND ') + ' AND (ka.title LIKE @likePattern OR ka.summary LIKE @likePattern OR ka.content LIKE @likePattern)'
+                    : 'WHERE (ka.title LIKE @likePattern OR ka.summary LIKE @likePattern OR ka.content LIKE @likePattern)';
+
                 const likeQuery = `
                     SELECT 
                         ka.id,
@@ -600,8 +630,7 @@ ${enhancedContext}`;
                         ka.source_reference,
                         1.0 as rank
                     FROM knowledge_articles ka
-                    WHERE (ka.title LIKE @likePattern OR ka.summary LIKE @likePattern OR ka.content LIKE @likePattern)
-                      AND ${whereClause}
+                    ${likeWhere}
                     ORDER BY ka.updated_at DESC
                     LIMIT @limit
                 `;

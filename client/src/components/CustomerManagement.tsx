@@ -88,18 +88,18 @@ const CustomerManagement: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [saving, setSaving] = useState(false);
-    
+
     // More dropdown state
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
     const moreDropdownRef = useRef<HTMLDivElement>(null);
-    
+
     // Status filter (active/inactive/deleted)
     const statusFilter = searchParams.get('status') || 'active';
-    
+
     // Search expand state
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
-    
+
     // 彻底删除弹窗状态
     const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
     const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Customer | null>(null);
@@ -230,59 +230,71 @@ const CustomerManagement: React.FC = () => {
             if (editingCustomer) {
                 // Use account_id if available, otherwise fall back to id
                 const accountId = editingCustomer.account_id || editingCustomer.id;
-                
+
                 // 1. Update account basic info
                 await axios.patch(`/api/v1/accounts/${accountId}`, accountData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                
-                // 2. Sync contacts - 并行删除现有联系人
+
+                // 2. Sync contacts - Differential Sync
                 const existingContactsRes = await axios.get(`/api/v1/accounts/${accountId}/contacts`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const existingContacts = existingContactsRes.data.data || [];
-                
-                // 并行删除所有现有联系人
-                if (existingContacts.length > 0) {
-                    await Promise.all(
-                        existingContacts.map((contact: any) =>
-                            axios.delete(`/api/v1/contacts/${contact.id}`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+
+                const submittedContacts = formData.contacts;
+                const submittedIds = submittedContacts.map((c: any) => c.id).filter(Boolean);
+
+                const contactsToDelete = existingContacts.filter((ec: any) => !submittedIds.includes(ec.id));
+                const contactsToUpdate = submittedContacts.filter((sc: any) => sc.id);
+                const contactsToCreate = submittedContacts.filter((sc: any) => !sc.id);
+
+                // Sequential deletions
+                for (const contact of contactsToDelete) {
+                    try {
+                        await axios.delete(`/api/v1/contacts/${contact.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to delete contact', err); }
                 }
-                
-                // 并行创建新联系人
-                if (formData.contacts.length > 0) {
-                    await Promise.all(
-                        formData.contacts.map((contact: any) =>
-                            axios.post(`/api/v1/accounts/${accountId}/contacts`, {
-                                name: contact.name,
-                                email: contact.email,
-                                phone: contact.phone,
-                                job_title: contact.job_title,
-                                is_primary: contact.is_primary
-                            }, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+
+                // Sequential updates
+                for (const contact of contactsToUpdate) {
+                    try {
+                        await axios.patch(`/api/v1/contacts/${contact.id}`, {
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            job_title: contact.job_title,
+                            is_primary: contact.is_primary
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to update contact', err); }
+                }
+
+                // Sequential creations
+                for (const contact of contactsToCreate) {
+                    try {
+                        await axios.post(`/api/v1/accounts/${accountId}/contacts`, {
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            job_title: contact.job_title,
+                            is_primary: contact.is_primary
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to create contact', err); }
                 }
             } else {
                 // 新增账户
                 const createRes = await axios.post('/api/v1/accounts', accountData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                
+
                 // 如果有额外的联系人（除了主联系人），也需要创建
                 if (createRes.data.success && formData.contacts.length > 1) {
                     const newAccountId = createRes.data.data.id;
                     // 跳过第一个联系人（已通过 primary_contact 创建），创建其余联系人
                     const additionalContacts = formData.contacts.slice(1);
-                    await Promise.all(
-                        additionalContacts.map((contact: any) =>
-                            axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
+                    for (const contact of additionalContacts) {
+                        try {
+                            await axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
                                 name: contact.name,
                                 email: contact.email,
                                 phone: contact.phone,
@@ -290,9 +302,11 @@ const CustomerManagement: React.FC = () => {
                                 is_primary: contact.is_primary
                             }, {
                                 headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+                            });
+                        } catch (err) {
+                            console.error('Failed to create additional contact', err);
+                        }
+                    }
                 }
             }
             setIsModalOpen(false);
@@ -308,7 +322,7 @@ const CustomerManagement: React.FC = () => {
     // 恢复账户（从已删除/已停用状态恢复）
     const handleRestore = async (customer: Customer) => {
         try {
-            await axios.patch(`/api/v1/accounts/${customer.id}`, 
+            await axios.patch(`/api/v1/accounts/${customer.id}`,
                 { is_active: true, is_deleted: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -327,11 +341,11 @@ const CustomerManagement: React.FC = () => {
         } as any);
         setIsPermanentDeleteModalOpen(true);
     };
-    
+
     // 彻底删除 - 确认执行
     const handleConfirmPermanentDelete = async () => {
         if (!permanentDeleteTarget) return;
-        
+
         setPermanentDeleteLoading(true);
         try {
             await axios.delete(`/api/v1/accounts/${permanentDeleteTarget.id}?permanent=true`, {
@@ -377,9 +391,9 @@ const CustomerManagement: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}
-                    <div style={{ 
-                        position: 'relative', 
-                        display: 'flex', 
+                    <div style={{
+                        position: 'relative',
+                        display: 'flex',
                         alignItems: 'center',
                         justifyContent: isSearchExpanded ? 'flex-start' : 'center',
                         width: isSearchExpanded ? 280 : 40,
@@ -584,7 +598,7 @@ const CustomerManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th 
+                            <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('name')}
                             >
@@ -595,7 +609,7 @@ const CustomerManagement: React.FC = () => {
                                     )}
                                 </div>
                             </th>
-                            <th 
+                            <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('country')}
                             >
@@ -607,7 +621,7 @@ const CustomerManagement: React.FC = () => {
                                 </div>
                             </th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>Contact</th>
-                            <th 
+                            <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('service_tier')}
                             >
@@ -628,10 +642,10 @@ const CustomerManagement: React.FC = () => {
                             <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>No records found</td></tr>
                         ) : (
                             customers.map(c => (
-                                <tr 
-                                    key={c.id} 
-                                    className="row-hover" 
-                                    style={{ 
+                                <tr
+                                    key={c.id}
+                                    className="row-hover"
+                                    style={{
                                         borderBottom: '1px solid rgba(255,255,255,0.03)',
                                         cursor: 'pointer'
                                     }}
@@ -675,10 +689,10 @@ const CustomerManagement: React.FC = () => {
                                     </td>
                                     <td style={{ padding: 16 }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'flex', gap: 4 }}>
-                                            <button 
+                                            <button
                                                 onClick={() => handleOpenModal(c)}
                                                 title="编辑"
-                                                style={{ 
+                                                style={{
                                                     background: 'transparent',
                                                     border: 'none',
                                                     padding: '8px',
@@ -697,10 +711,10 @@ const CustomerManagement: React.FC = () => {
                                             </button>
                                             {/* 已停用/已删除列表显示恢复按钮 */}
                                             {(statusFilter === 'inactive' || statusFilter === 'deleted') && (
-                                                <button 
+                                                <button
                                                     onClick={() => handleRestore(c)}
                                                     title="恢复"
-                                                    style={{ 
+                                                    style={{
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',
@@ -720,10 +734,10 @@ const CustomerManagement: React.FC = () => {
                                             )}
                                             {/* 已删除列表显示彻底删除按钮 */}
                                             {statusFilter === 'deleted' && (
-                                                <button 
+                                                <button
                                                     onClick={() => handlePermanentDelete(c)}
                                                     title="彻底删除"
-                                                    style={{ 
+                                                    style={{
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',

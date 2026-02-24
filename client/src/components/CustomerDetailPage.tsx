@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { ArrowLeft, MapPin, Phone, Mail, Package, User, ChevronDown, ChevronUp, History, Wrench, MessageSquare, ArrowRight, Edit2, Trash2, MoreHorizontal, PowerOff, RotateCcw } from 'lucide-react';
+import { useLanguage } from '../i18n/useLanguage';
+import { ArrowLeft, MapPin, Phone, Mail, Package, User, ChevronDown, ChevronUp, History, Wrench, MessageSquare, Edit2, Trash2, MoreHorizontal, PowerOff, RotateCcw } from 'lucide-react';
 import CustomerFormModal from './CustomerFormModal';
 import DeleteAccountModal from './DeleteAccountModal';
+import { TicketCard } from './TicketCard';
+import { ProductCard } from './ProductCard';
+import { useDetailStore } from '../store/useDetailStore';
 
 interface Customer {
     id: number;
@@ -51,6 +55,8 @@ interface Ticket {
     problem_summary: string;
     created_at: string;
     product_name?: string;
+    customer_name?: string;
+    contact_name?: string;
 }
 
 interface Device {
@@ -74,6 +80,11 @@ const CustomerDetailPage: React.FC = () => {
     const customerType = isDealer ? 'Dealer' : (searchParams.get('type') || 'Customer');
     const isAdmin = user?.role === 'Admin';
     const canManageDealerStatus = user?.role === 'Admin' || user?.role === 'Lead';
+    const { t } = useLanguage();
+    const tc = (key: string, defaultText: string) => {
+        const text = (t as any)(key);
+        return text === key ? defaultText : text;
+    };
 
     const [customer, setCustomer] = useState<Customer | null>(null);
     const [stats, setStats] = useState<CustomerStats | null>(null);
@@ -81,11 +92,29 @@ const CustomerDetailPage: React.FC = () => {
     const [devices, setDevices] = useState<Device[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showAllContacts, setShowAllContacts] = useState(false);
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+    // Persistent UI states from detail store
+    const {
+        setExpandedSection: setPersistentExpanded,
+        setShowAllContacts: setPersistentShowContacts,
+        expandedSections,
+        showAllContacts: persistentShowContactsMap
+    } = useDetailStore();
+
+    const expandedSection = id ? (expandedSections[id] || null) : null;
+    const showAllContacts = id ? (persistentShowContactsMap[id] || false) : false;
+
+    const setExpandedSection = (section: string | null) => {
+        if (id) setPersistentExpanded(id, section);
+    };
+
+    const setShowAllContacts = (show: boolean) => {
+        if (id) setPersistentShowContacts(id, show);
+    };
+
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
-    
+
     // Delete/Deactivate modal state
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -131,7 +160,7 @@ const CustomerDetailPage: React.FC = () => {
                         dealer_level: dealer.dealer_level,
                         address: dealer.address
                     });
-                    
+
                     // Fetch contacts for this dealer
                     const contactsRes = await axios.get(`/api/v1/accounts/${dealer.id}/contacts`, {
                         headers: { Authorization: `Bearer ${token}` }
@@ -148,7 +177,7 @@ const CustomerDetailPage: React.FC = () => {
                 if (accountRes.data.success) {
                     const account = accountRes.data.data;
                     queryId = account.id;
-                    
+
                     // Transform account data to customer format
                     const primaryContact = account.contacts?.find((c: any) => c.is_primary) || account.contacts?.[0];
                     setCustomer({
@@ -167,7 +196,7 @@ const CustomerDetailPage: React.FC = () => {
                         created_at: account.created_at,
                         address: account.address
                     });
-                    
+
                     // Set contacts
                     if (account.contacts) {
                         setContacts(account.contacts);
@@ -185,7 +214,7 @@ const CustomerDetailPage: React.FC = () => {
             // 经销商工单通过 dealer_id 关联（经销商提交的工单）
             // 客户工单通过 account_id 关联
             // 注意：不使用 keyword 过滤，因为经销商提交的工单 customer_name 是终端客户，不是经销商名称
-            
+
             // 经销商查询 dealer_id（自己提交的工单），客户查询 account_id
             const idParam = isDealer ? `dealer_id=${queryId}` : `account_id=${queryId}`;
 
@@ -231,7 +260,9 @@ const CustomerDetailPage: React.FC = () => {
                 status: t.status,
                 problem_summary: t.problem_description || t.repair_content,
                 created_at: t.created_at,
-                product_name: t.product?.name
+                product_name: t.product?.name || t.product_name,
+                customer_name: isDealer ? t.account?.name || t.account_name : t.dealer?.name || t.dealer_name,
+                contact_name: isDealer ? t.contact?.name || t.contact_name : t.dealer_contact_name
             }));
 
             // Combine all tickets and sort by date
@@ -255,7 +286,7 @@ const CustomerDetailPage: React.FC = () => {
                     // Determine product family based on product name
                     const productName = t.product_name;
                     let productFamily = 'A'; // Default to A类
-                    
+
                     // A类: 在售电影摄影机 (Current Cinema Cameras)
                     if (/MAVO Edge|TERRA 4K|TERRA 6K/i.test(productName)) {
                         productFamily = 'A';
@@ -272,7 +303,7 @@ const CustomerDetailPage: React.FC = () => {
                     else if (/配件|电池|充电器|手柄|线缆|Accessory/i.test(productName)) {
                         productFamily = 'D';
                     }
-                    
+
                     uniqueDevices.set(t.product_name, {
                         id: uniqueDevices.size + 1,
                         serial_number: 'N/A', // Would need actual device data
@@ -289,25 +320,6 @@ const CustomerDetailPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const getTicketTypeColor = (type: string) => {
-        const map: Record<string, string> = {
-            'inquiry': '#60a5fa',
-            'rma': '#f59e0b',
-            'dealer_repair': '#10b981'
-        };
-        return map[type] || '#fff';
-    };
-
-    const getStatusColor = (status: string) => {
-        const map: Record<string, { bg: string; text: string }> = {
-            'Resolved': { bg: 'rgba(52, 211, 153, 0.1)', text: '#34d399' },
-            'Completed': { bg: 'rgba(52, 211, 153, 0.1)', text: '#34d399' },
-            'InProgress': { bg: 'rgba(59, 130, 246, 0.1)', text: '#60a5fa' },
-            'Open': { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b' }
-        };
-        return map[status] || { bg: 'rgba(255,255,255,0.1)', text: '#fff' };
     };
 
     const getTierLabel = (tier: string) => {
@@ -353,7 +365,7 @@ const CustomerDetailPage: React.FC = () => {
             const res = await axios.delete(`/api/v1/accounts/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             if (res.data.success) {
                 // 软删除成功，返回列表
                 navigate(isDealer ? '/service/dealers' : '/service/customers');
@@ -376,7 +388,7 @@ const CustomerDetailPage: React.FC = () => {
     const handleConfirmDeactivate = async () => {
         setDeleteLoading(true);
         try {
-            await axios.patch(`/api/v1/accounts/${id}`, 
+            await axios.patch(`/api/v1/accounts/${id}`,
                 { is_active: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -394,7 +406,7 @@ const CustomerDetailPage: React.FC = () => {
     const handleReactivate = async () => {
         setShowMoreMenu(false);
         try {
-            await axios.patch(`/api/v1/accounts/${id}`, 
+            await axios.patch(`/api/v1/accounts/${id}`,
                 { is_active: true },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -467,7 +479,7 @@ const CustomerDetailPage: React.FC = () => {
                             {isDealer ? getDealerLevelLabel(customer.dealer_level) : getTierLabel(customer.service_tier)}
                         </span>
                     </div>
-                    
+
                     {/* More Actions Menu */}
                     <div style={{ position: 'relative' }}>
                         <button
@@ -494,7 +506,7 @@ const CustomerDetailPage: React.FC = () => {
                             <MoreHorizontal size={18} />
                             <span style={{ fontSize: '0.85rem' }}>更多</span>
                         </button>
-                        
+
                         {/* Dropdown Menu */}
                         {showMoreMenu && (
                             <>
@@ -537,7 +549,7 @@ const CustomerDetailPage: React.FC = () => {
                                         <Edit2 size={16} color="var(--accent-blue)" />
                                         编辑
                                     </button>
-                                    
+
                                     {(isAdmin || user?.role === 'Lead') && (
                                         <button
                                             onClick={handleDeleteClick}
@@ -559,7 +571,7 @@ const CustomerDetailPage: React.FC = () => {
                                             删除
                                         </button>
                                     )}
-                                    
+
                                     {/* 已停用状态显示恢复按钮 */}
                                     {accountStatus === 'inactive' && (
                                         <button
@@ -582,7 +594,7 @@ const CustomerDetailPage: React.FC = () => {
                                             恢复账户
                                         </button>
                                     )}
-                                    
+
                                     {/* 经销商停用按钮 - 仅经销商显示 */}
                                     {isDealer && canManageDealerStatus && (
                                         <button
@@ -854,9 +866,9 @@ const CustomerDetailPage: React.FC = () => {
                             </button>
                         )}
                     </div>
-                    
+
                     {/* Stats Grid - Clickable */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'tickets' ? null : 'tickets')}
                             style={{
@@ -872,7 +884,7 @@ const CustomerDetailPage: React.FC = () => {
                             <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
                                 {stats.total_tickets}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>总工单</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>{tc('dashboard.total_tickets', '总工单')}</div>
                         </button>
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'inquiry' ? null : 'inquiry')}
@@ -889,7 +901,7 @@ const CustomerDetailPage: React.FC = () => {
                             <div style={{ fontSize: '2rem', fontWeight: 700, color: '#60a5fa' }}>
                                 {stats.inquiry_tickets}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>咨询工单</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>{tc('dashboard.inquiry_tickets', '咨询工单')}</div>
                         </button>
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'rma' ? null : 'rma')}
@@ -906,7 +918,7 @@ const CustomerDetailPage: React.FC = () => {
                             <div style={{ fontSize: '2rem', fontWeight: 700, color: '#f59e0b' }}>
                                 {stats.rma_tickets}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>RMA返厂</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>{tc('dashboard.rma_tickets', 'RMA返厂')}</div>
                         </button>
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'repair' ? null : 'repair')}
@@ -923,7 +935,7 @@ const CustomerDetailPage: React.FC = () => {
                             <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981' }}>
                                 {stats.dealer_repair_tickets}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>经销商维修</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginTop: 4 }}>{tc('dashboard.dealer_repairs', '经销商维修')}</div>
                         </button>
                     </div>
 
@@ -935,12 +947,12 @@ const CustomerDetailPage: React.FC = () => {
                                 {expandedSection === 'inquiry' && <MessageSquare size={16} color="#60a5fa" />}
                                 {expandedSection === 'rma' && <Wrench size={16} color="#f59e0b" />}
                                 {expandedSection === 'repair' && <Package size={16} color="#10b981" />}
-                                {expandedSection === 'tickets' && '全部服务记录'}
-                                {expandedSection === 'inquiry' && '咨询工单'}
-                                {expandedSection === 'rma' && 'RMA返修记录'}
-                                {expandedSection === 'repair' && '经销商维修记录'}
+                                {expandedSection === 'tickets' && tc('dashboard.all_service_records', '全部服务记录')}
+                                {expandedSection === 'inquiry' && tc('dashboard.inquiry_tickets', '咨询工单')}
+                                {expandedSection === 'rma' && tc('dashboard.rma_records', 'RMA返修记录')}
+                                {expandedSection === 'repair' && tc('dashboard.dealer_repair_records', '经销商维修记录')}
                             </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
                                 {tickets
                                     .filter(t => {
                                         if (expandedSection === 'tickets') return true;
@@ -949,50 +961,20 @@ const CustomerDetailPage: React.FC = () => {
                                         if (expandedSection === 'repair') return t.type === 'dealer_repair';
                                         return true;
                                     })
-                                    .slice(0, 10)
+                                    .slice(0, 12) // Show up to 12 cards (3 rows)
                                     .map(ticket => (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => navigate(`/service/${ticket.type === 'inquiry' ? 'inquiry-tickets' : ticket.type === 'rma' ? 'rma-tickets' : 'dealer-repairs'}/${ticket.id}`)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '12px 16px',
-                                            background: 'rgba(255,255,255,0.03)',
-                                            borderRadius: '10px',
-                                            border: '1px solid rgba(255,255,255,0.05)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{
-                                                width: 8,
-                                                height: 8,
-                                                borderRadius: '50%',
-                                                background: getTicketTypeColor(ticket.type)
-                                            }} />
-                                            <div>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{ticket.ticket_number}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                    {ticket.product_name || '无产品信息'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <span style={{
-                                                padding: '4px 10px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.75rem',
-                                                ...getStatusColor(ticket.status)
-                                            }}>
-                                                {ticket.status}
-                                            </span>
-                                            <ArrowRight size={14} color="var(--text-tertiary)" />
-                                        </div>
-                                    </div>
-                                ))}
+                                        <TicketCard
+                                            key={ticket.id}
+                                            ticketNumber={ticket.ticket_number}
+                                            ticketType={ticket.type}
+                                            title={ticket.problem_summary || tc('common.untitled', '无标题')}
+                                            status={ticket.status}
+                                            productModel={ticket.product_name}
+                                            customerName={ticket.customer_name || (customer ? customer.customer_name : '')}
+                                            contactName={ticket.contact_name || (customer ? customer.contact_person : '')}
+                                            onClick={() => window.open(`/service/${ticket.type === 'inquiry' ? 'inquiry-tickets' : ticket.type === 'rma' ? 'rma-tickets' : 'dealer-repairs'}/${ticket.id}`, '_blank')}
+                                        />
+                                    ))}
                                 {tickets.filter(t => {
                                     if (expandedSection === 'tickets') return true;
                                     if (expandedSection === 'inquiry') return t.type === 'inquiry';
@@ -1000,10 +982,10 @@ const CustomerDetailPage: React.FC = () => {
                                     if (expandedSection === 'repair') return t.type === 'dealer_repair';
                                     return true;
                                 }).length === 0 && (
-                                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
-                                        暂无相关记录
-                                    </div>
-                                )}
+                                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
+                                            {tc('common.no_records', '暂无相关记录')}
+                                        </div>
+                                    )}
                             </div>
                         </div>
                     )}
@@ -1050,183 +1032,143 @@ const CustomerDetailPage: React.FC = () => {
                     </button>
                 </div>
 
-                    {/* Product Family Dashboard */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-                        {[
-                            { key: 'A', name: '在售电影摄影机', color: '#FFD700' },
-                            { key: 'B', name: '历史机型', color: '#60a5fa' },
-                            { key: 'C', name: '电子寻像器', color: '#f59e0b' },
-                            { key: 'D', name: '通用配件', color: '#10b981' }
-                        ].map(family => {
-                            const familyDevices = devices.filter(d => d.product_family === family.key);
-                            const isExpanded = expandedSection === `family_${family.key}`;
+                {/* Product Family Dashboard */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+                    {[
+                        { key: 'A', name: tc('device.family_a', '在售电影摄影机'), color: '#FFD700' },
+                        { key: 'B', name: tc('device.family_b', '历史机型'), color: '#60a5fa' },
+                        { key: 'C', name: tc('device.family_c', '电子寻像器'), color: '#f59e0b' },
+                        { key: 'D', name: tc('device.family_d', '通用配件'), color: '#10b981' }
+                    ].map(family => {
+                        const familyDevices = devices.filter(d => d.product_family === family.key);
+                        const isExpanded = expandedSection === `family_${family.key}`;
+                        return (
+                            <button
+                                key={family.key}
+                                onClick={() => setExpandedSection(isExpanded ? null : `family_${family.key}`)}
+                                style={{
+                                    background: isExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${isExpanded ? family.color : 'rgba(255,255,255,0.05)'}`,
+                                    borderRadius: '12px',
+                                    padding: '16px 12px',
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: family.color }}>
+                                    {familyDevices.length}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                                    {family.name}
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Expanded Device List by Family */}
+                {expandedSection?.startsWith('family_') && (
+                    <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        {(() => {
+                            const familyKey = expandedSection.replace('family_', '');
+                            const familyDevices = devices.filter(d => d.product_family === familyKey);
+                            const familyInfo = {
+                                'A': { label: tc('device.family_a', '在售电影摄影机'), color: '#FFD700' },
+                                'B': { label: tc('device.family_b', '历史机型'), color: '#60a5fa' },
+                                'C': { label: tc('device.family_c', '电子寻像器'), color: '#f59e0b' },
+                                'D': { label: tc('device.family_d', '通用配件'), color: '#10b981' }
+                            }[familyKey];
+
                             return (
-                                <button
-                                    key={family.key}
-                                    onClick={() => setExpandedSection(isExpanded ? null : `family_${family.key}`)}
-                                    style={{
-                                        background: isExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${isExpanded ? family.color : 'rgba(255,255,255,0.05)'}`,
-                                        borderRadius: '12px',
-                                        padding: '16px 12px',
-                                        cursor: 'pointer',
-                                        textAlign: 'center',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: family.color }}>
-                                        {familyDevices.length}
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: familyInfo?.color }}>
+                                            {familyInfo?.label}
+                                        </h3>
+                                        <button
+                                            onClick={() => setExpandedSection(null)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--text-tertiary)',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            收起
+                                        </button>
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                                        {family.name}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                                        {familyDevices.map(device => (
+                                            <ProductCard
+                                                key={device.id}
+                                                productName={device.product_name}
+                                                serialNumber={device.serial_number}
+                                                warrantyStatus={device.warranty_status}
+                                                familyColor={familyInfo?.color}
+                                                onClick={() => navigate(`/tech-hub/wiki?serial_number=${device.serial_number}`)}
+                                            />
+                                        ))}
+                                        {familyDevices.length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
+                                                {tc('device.no_devices', '该分类暂无设备')}
+                                            </div>
+                                        )}
                                     </div>
-                                </button>
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
+
+                {/* Show all devices if no family expanded, or show all devices list when family_all is selected */}
+                {(!expandedSection?.startsWith('family_') || expandedSection === 'family_all') && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                        {(expandedSection === 'family_all' ? devices : devices.slice(0, 3)).map(device => {
+                            const familyInfo = {
+                                'A': { color: '#FFD700' },
+                                'B': { color: '#60a5fa' },
+                                'C': { color: '#f59e0b' },
+                                'D': { color: '#10b981' }
+                            }[device.product_family || 'A'];
+
+                            return (
+                                <ProductCard
+                                    key={device.id}
+                                    productName={device.product_name}
+                                    serialNumber={device.serial_number}
+                                    warrantyStatus={device.warranty_status}
+                                    familyColor={familyInfo?.color}
+                                />
                             );
                         })}
+                        {expandedSection !== 'family_all' && devices.length > 3 && (
+                            <button
+                                onClick={() => setExpandedSection('family_all')}
+                                style={{
+                                    background: 'none',
+                                    border: '1px dashed rgba(255,255,255,0.2)',
+                                    borderRadius: '8px',
+                                    color: 'var(--accent-blue)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    padding: '12px',
+                                    textAlign: 'center',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                            >
+                                查看全部 {devices.length} 台设备
+                            </button>
+                        )}
                     </div>
-
-                    {/* Expanded Device List by Family */}
-                    {expandedSection?.startsWith('family_') && (
-                        <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            {(() => {
-                                const familyKey = expandedSection.replace('family_', '');
-                                const familyDevices = devices.filter(d => d.product_family === familyKey);
-                                const familyInfo = {
-                                    'A': { label: '在售电影摄影机', color: '#FFD700' },
-                                    'B': { label: '历史机型', color: '#60a5fa' },
-                                    'C': { label: '电子寻像器', color: '#f59e0b' },
-                                    'D': { label: '通用配件', color: '#10b981' }
-                                }[familyKey];
-                                
-                                return (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: familyInfo?.color }}>
-                                                {familyInfo?.label}
-                                            </h3>
-                                            <button
-                                                onClick={() => setExpandedSection(null)}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--text-tertiary)',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.8rem'
-                                                }}
-                                            >
-                                                收起
-                                            </button>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                            {familyDevices.map(device => (
-                                                <div
-                                                    key={device.id}
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        padding: '12px 16px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        borderRadius: '10px',
-                                                        border: '1px solid rgba(255,255,255,0.05)'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                        <Package size={18} color={familyInfo?.color} />
-                                                        <div>
-                                                            <div style={{ fontWeight: 600 }}>{device.product_name}</div>
-                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                SN: {device.serial_number}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <span
-                                                            style={{
-                                                                padding: '4px 10px',
-                                                                borderRadius: '6px',
-                                                                fontSize: '0.75rem',
-                                                                background: device.warranty_status === '在保' || device.warranty_status === 'Active' 
-                                                                    ? 'rgba(16, 185, 129, 0.1)' : 'rgba(156, 163, 175, 0.1)',
-                                                                color: device.warranty_status === '在保' || device.warranty_status === 'Active' 
-                                                                    ? '#10b981' : '#9ca3af'
-                                                            }}
-                                                        >
-                                                            {device.warranty_status === 'Active' ? '在保' : device.warranty_status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {familyDevices.length === 0 && (
-                                                <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>
-                                                    该分类暂无设备
-                                                </div>
-                                            )}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    )}
-
-                    {/* Show all devices if no family expanded, or show all devices list when family_all is selected */}
-                    {(!expandedSection?.startsWith('family_') || expandedSection === 'family_all') && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {(expandedSection === 'family_all' ? devices : devices.slice(0, 3)).map(device => (
-                                <div
-                                    key={device.id}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '12px 16px',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: '10px',
-                                        border: '1px solid rgba(255,255,255,0.05)'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <Package size={18} color="var(--accent-blue)" />
-                                        <div>
-                                            <div style={{ fontWeight: 600 }}>{device.product_name}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                SN: {device.serial_number}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span
-                                        style={{
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem',
-                                            background: device.warranty_status === '在保' || device.warranty_status === 'Active' 
-                                                ? 'rgba(16, 185, 129, 0.1)' : 'rgba(156, 163, 175, 0.1)',
-                                            color: device.warranty_status === '在保' || device.warranty_status === 'Active' 
-                                                ? '#10b981' : '#9ca3af'
-                                        }}
-                                    >
-                                        {device.warranty_status === 'Active' ? '在保' : device.warranty_status}
-                                    </span>
-                                </div>
-                            ))}
-                            {expandedSection !== 'family_all' && devices.length > 3 && (
-                                <button
-                                    onClick={() => setExpandedSection('family_all')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--accent-blue)',
-                                        cursor: 'pointer',
-                                        fontSize: '0.85rem',
-                                        padding: '8px',
-                                        textAlign: 'center'
-                                    }}
-                                >
-                                    查看全部 {devices.length} 台设备
-                                </button>
-                            )}
-                        </div>
-                    )}
+                )}
             </div>
 
             {/* Quick Tips */}

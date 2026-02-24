@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Minimize2, Send, Paperclip, Box, FileText, Loader2, Sparkles, GripHorizontal, BookOpen } from 'lucide-react';
 import { getTicketStyles } from './TicketLink';
-import TicketDetailDialog from './TicketDetailDialog';
 import { useLanguage } from '../../i18n/useLanguage';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -131,13 +130,6 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
     const [isResizing, setIsResizing] = useState(false);
     const resizeStartRef = useRef({ x: 0, y: 0, width: 400, height: 600 });
 
-    // Ticket detail dialog state
-    const [ticketDetailOpen, setTicketDetailOpen] = useState(false);
-    const [selectedTicket, setSelectedTicket] = useState<{
-        ticketNumber: string;
-        ticketId: number;
-        ticketType: 'inquiry' | 'rma' | 'dealer_repair';
-    } | null>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -237,13 +229,9 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
         }
     };
 
-    const handleOpenTicketDetail = (ticketNumber: string, ticketId: number, ticketType: string) => {
-        setSelectedTicket({
-            ticketNumber,
-            ticketId,
-            ticketType: ticketType as 'inquiry' | 'rma' | 'dealer_repair'
-        });
-        setTicketDetailOpen(true);
+    const handleOpenTicketDetail = (_ticketNumber: string, ticketId: number, ticketType: string) => {
+        const route = ticketType === 'inquiry' ? 'inquiry-tickets' : ticketType === 'rma' ? 'rma-tickets' : 'dealer-repairs';
+        window.open(`/service/${route}/${ticketId}`, '_blank');
     };
 
     if (!isOpen) return null;
@@ -415,13 +403,13 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#FFD700' : 'rgba(0, 191, 165, 0.1)',
-                                color: msg.role === 'user' ? '#000' : 'white',
+                                background: msg.role === 'user' ? '#4CAF50' : 'rgba(255, 255, 255, 0.08)',
+                                color: '#fff',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
                                 borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                                 borderBottomLeftRadius: msg.role === 'user' ? '12px' : '2px',
-                                border: msg.role === 'assistant' ? '1px solid rgba(0, 191, 165, 0.2)' : 'none'
+                                border: 'none'
                             }}>
                                 {msg.role === 'assistant' ? (
                                     <div style={{
@@ -435,7 +423,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                             components={{
                                                 ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '8px 0' }} {...props} />,
                                                 li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
-                                                p: ({ node, ...props }) => <p style={{ marginBottom: '8px', display: 'inline-block', width: '100%' }} {...props} />,
+                                                p: ({ node, ...props }) => <p style={{ marginBottom: '8px' }} {...props} />,
                                                 a: ({ node, ...props }) => {
                                                     const text = props.children?.toString() || '';
                                                     const href = props.href || '';
@@ -705,18 +693,6 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                 </svg>
             </div >
 
-            {/* Ticket Detail Dialog */}
-            {
-                selectedTicket && (
-                    <TicketDetailDialog
-                        isOpen={ticketDetailOpen}
-                        onClose={() => setTicketDetailOpen(false)}
-                        ticketNumber={selectedTicket.ticketNumber}
-                        ticketId={selectedTicket.ticketId}
-                        ticketType={selectedTicket.ticketType}
-                    />
-                )
-            }
         </>
     );
 };

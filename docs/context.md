@@ -1,6 +1,6 @@
 # System Context (系统全景图)
 
-> **最后更新/Last Updated**: 2026-02-24 v2.0.4 (Wiki & Bokeh UI Polish)
+> **最后更新/Last Updated**: 2026-02-24 | **Current Version**: v12.1.39 (Knowledge Base Import Optimization)
 > **核心作用**: 本文档定义了 Longhorn 项目的“世界观”，包括硬件设施、部署架构、核心代码逻辑与已知限制。
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 
@@ -18,7 +18,7 @@
    - **显示规范**：在用户菜单中以**绿色**显示当前版本号
    - **文档版本号**：System Context 等系统文档有独立的版本号（如v2.0.0），**不需要**与软件版本号保持一致
 9. **Git 提交**：不需要每次执行完就自动 commit 和 push，**听从用户指示**再执行
-10. **UI风格**：所有UI设计风格，主题色锁定为 **Kine Yellow** (#FFD700)。所有UI设计风格，Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。成功 选中采用 **Kine Green**(#4CAF50);警示危险紧急 采用 **kine red**(#EF4444)；**Kine Blue** (#3B82F6)。**Bokeh 聊天**：用户气泡为 Kine Yellow (#FFD700)，助手气泡为官方 Cyan。
+10. **UI风格**：所有UI设计风格，主题色锁定为 **Kine Yellow** (#FFD700)。所有UI设计风格，Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。成功 选中采用 **Kine Green**(#4CAF50);警示危险紧急 采用 **kine red**(#EF4444)；**Kine Blue** (#3B82F6)。
 11. **多语言交互**：所有回复、任务、文档均使用中文。严禁硬编码文字，确保支持 简中、英、德、日 四国语言。
 12. **Documentation Versioning (文档版本号管理)**：凡对系统核心文档（PRD、API、UserScenarios、DataModel 等）进行内容更新，必须同步升级其内部版本号并刷新“最后更新”日期，以确保文档的可追溯性和一致性。**Wiki 引用**：仅在该列表展示知识库文章，隐藏工单关联。
 

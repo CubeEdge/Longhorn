@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, XCircle, Sparkles } from 'lucide-react';
+import { X, Sparkles, BookOpen } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 
 
@@ -72,8 +72,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
 
     // UI state
     const [loading, setLoading] = useState(false);
-    // result 状态保留用于 handleCancel 中的 setResult 调用
-    const [, setResult] = useState<ImportResult | null>(null);
+    const [result, setResult] = useState<ImportResult | null>(null);
     const [error, setError] = useState('');
     const [progress, setProgress] = useState<ImportProgress | null>(null);
     const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -87,20 +86,21 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
     }>({ visible: false, message: '' });
 
     const categories = [
-        { value: 'FAQ', label: 'FAQ - 常见问题' },
-        { value: 'Troubleshooting', label: 'Troubleshooting - 故障排查' },
-        { value: 'Compatibility', label: 'Compatibility - 兼容性' },
-        { value: 'Manual', label: 'Manual - 操作手册' },
-        { value: 'Firmware', label: 'Firmware - 固件知识' },
-        { value: 'Application Note', label: 'Application Note - 应用笔记' },
-        { value: 'Technical Spec', label: 'Technical Spec - 技术规格' }
+        { value: 'FAQ', label: t('wiki.category_faq') },
+        { value: 'Troubleshooting', label: t('wiki.category_troubleshooting') },
+        { value: 'Compatibility', label: t('wiki.category_compatibility') },
+        { value: 'Manual', label: t('wiki.category_manual') },
+        { value: 'Firmware', label: t('wiki.category_firmware') },
+        { value: 'Application Note', label: t('wiki.category_application_note') },
+        { value: 'Technical Spec', label: t('wiki.category_technical_spec') }
     ];
 
     const productLines = [
-        { value: 'A', label: 'A类 - 在售电影摄影机', desc: 'MAVO Edge系列、Mark2等' },
-        { value: 'B', label: 'B类 - 历史机型', desc: 'MAVO LF、Terra、MAVO S35等' },
-        { value: 'C', label: 'C类 - 电子寻像器', desc: 'Eagle系列（仅保证Kinefinity适配）' },
-        { value: 'D', label: 'D类 - 通用配件', desc: 'GripBAT、Magic Arm等跨代配件' }
+        { value: 'A', label: '在售电影机 (A)', desc: 'MAVO Edge, MAVO LF, MAVO Mark2 系列' },
+        { value: 'B', label: '历史机型 (B)', desc: 'Terra, MAVO (非Edge/Mark2) 等历史电影机' },
+        { value: 'C', label: '电子寻像器 (C)', desc: 'Eagle e-Viewfinder 系列' },
+        { value: 'D', label: '通用配件 (D)', desc: '电池、卡、转接环等全系配件' },
+        { value: 'GENERIC', label: '通用文档', desc: '不针对特定硬件的通用知识' }
     ];
 
     const productModelOptions: Record<string, string[]> = {
@@ -207,11 +207,15 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
         setError('');
         setResult(null);
 
-        // 初始化进度 - 简化为3个步骤
+        // 初始化进度 - 根据导入模式动态调整
         const initialSteps: ProgressStep[] = [
-            { id: 'upload', label: '上传文件', status: 'pending' },
-            { id: 'process', label: '处理文档', status: 'pending', details: '解析DOCX、提取内容、生成摘要' },
-            ...(bokehOptimize ? [{ id: 'optimize', label: 'Bokeh优化', status: 'pending' as const, details: 'AI优化排版和内容格式' }] : [])
+            ...(importMode === 'url'
+                ? [{ id: 'fetch', label: '初始化抓取', status: 'pending' as const }]
+                : importMode === 'docx'
+                    ? [{ id: 'upload', label: '上传文件', status: 'pending' as const }]
+                    : []), // text mode usually doesn't have an upload step but we can add one if needed
+            { id: 'process', label: '解析与生成内容', status: 'pending' as const, details: '提取核心干货、解析结构、生成摘要' },
+            ...(bokehOptimize ? [{ id: 'optimize', label: 'Bokeh 优化', status: 'pending' as const, details: '' }] : [])
         ];
 
         console.log('[Import] Setting initial progress...');
@@ -259,8 +263,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                 // 步骤1: 上传文件（分块上传 + 断点续传）
                 setProgress(prev => prev ? {
                     ...prev,
-                    currentStep: 'upload',
-                    steps: prev.steps.map(s => s.id === 'upload' ? { ...s, status: 'processing', progress: 0 } : s)
+                    currentStep: 'fetch',
+                    steps: prev.steps.map(s => s.id === 'fetch' ? { ...s, status: 'processing', progress: 0 } : s)
                 } : null);
 
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -456,23 +460,61 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     return;
                 }
 
-                response = await fetch(`${API_BASE_URL}/api/v1/knowledge/import/url`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        url: urlInput,
-                        title: title || undefined,
-                        category,
-                        product_line: productLine,
-                        product_models: productModels,
-                        visibility,
-                        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-                        turbo: turboMode
-                    })
-                });
+                const formDataUrl = new FormData();
+                if (urlInput) formDataUrl.append('url', urlInput);
+                if (title) formDataUrl.append('title', title);
+                formDataUrl.append('category', category);
+                formDataUrl.append('product_line', productLine);
+                formDataUrl.append('product_models', JSON.stringify(productModels));
+                formDataUrl.append('visibility', visibility);
+                formDataUrl.append('tags', tags);
+                formDataUrl.append('turbo', String(turboMode));
+
+                // 标记 fetch 开始处理
+                setProgress(prev => prev ? {
+                    ...prev,
+                    steps: prev.steps.map(s => s.id === 'fetch' ? { ...s, status: 'processing', progress: 0 } : s)
+                } : null);
+
+                // 启动模拟进度
+                let testProgress = 0;
+                const fetchInterval = setInterval(() => {
+                    testProgress += (90 - testProgress) * 0.05; // 渐近到90%
+                    setProgress(prev => prev ? {
+                        ...prev,
+                        steps: prev.steps.map(s => s.id === 'fetch' ? { ...s, progress: Math.floor(testProgress) } : s)
+                    } : null);
+                }, 500);
+
+                try {
+                    response = await fetch(`${API_BASE_URL}/api/v1/knowledge/import/url`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            url: urlInput,
+                            title: title || undefined,
+                            category,
+                            product_line: productLine,
+                            product_models: productModels,
+                            visibility,
+                            tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+                            turbo: turboMode
+                        })
+                    });
+                } finally {
+                    clearInterval(fetchInterval);
+                }
+
+                if (response.ok) {
+                    setProgress(prev => prev ? {
+                        ...prev,
+                        steps: prev.steps.map(s => s.id === 'fetch' ? { ...s, status: 'completed', progress: 100 } : s)
+                    } : null);
+                }
+
             } else {
                 // text mode
                 if (!textInput || !title) {
@@ -591,10 +633,31 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     try {
                         console.log(`[Import] Optimizing article ${i + 1}/${articleIds.length}: ID=${articleId}`);
 
-                        await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`,
-                            { mode: 'full' },
-                            { headers: { Authorization: `Bearer ${token}` } }
-                        );
+                        // 模拟进度动画 - 从当前进度缓慢增加到下一个台阶的 90%
+                        const basePercent = Math.round((optimizedCount / totalArticles) * 100);
+                        const nextStepPercent = Math.round(((optimizedCount + 1) / totalArticles) * 100);
+
+                        let currentSimulated = basePercent;
+                        const progressInterval = setInterval(() => {
+                            if (currentSimulated < nextStepPercent - 5) {
+                                currentSimulated += 2;
+                                setProgress(prev => prev ? {
+                                    ...prev,
+                                    steps: prev.steps.map(s =>
+                                        s.id === 'optimize' ? { ...s, progress: currentSimulated } : s
+                                    )
+                                } : null);
+                            }
+                        }, 800);
+
+                        try {
+                            await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`,
+                                { mode: 'full' },
+                                { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                        } finally {
+                            clearInterval(progressInterval);
+                        }
 
                         optimizedCount++;
 
@@ -628,8 +691,14 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                 steps: prev.steps.map(s => ({ ...s, status: 'completed' }))
             } : null);
 
-            // 导入完成，不显示成功panel，直接完成
-            // setResult({...});
+            // 导入完成，设置结果以显示“阅读文章”按钮
+            setResult({
+                success: true,
+                imported_count: data.data?.chapter_count || data.data?.imported_count || 0,
+                skipped_count: data.data?.skipped_count || 0,
+                failed_count: 0,
+                article_ids: articleIds
+            });
 
         } catch (err: any) {
             console.error('Import error:', err);
@@ -764,9 +833,9 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     border: '1px solid rgba(255,255,255,0.05)'
                                 }}>
                                     {[
-                                        { mode: 'docx' as const, label: 'Word文档' },
-                                        { mode: 'url' as const, label: '网页URL' },
-                                        { mode: 'text' as const, label: '文本输入' }
+                                        { mode: 'docx' as const, label: t('wiki.import_mode_docx') },
+                                        { mode: 'url' as const, label: t('wiki.import_mode_url') },
+                                        { mode: 'text' as const, label: t('wiki.import_mode_text') }
                                     ].map(({ mode, label }) => (
                                         <button
                                             key={mode}
@@ -1111,7 +1180,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         </select>
                                     </div>
 
-                                    {/* Product Models - Dropdown */}
+                                    {/* Product Models - Multi-select Tags */}
                                     <div>
                                         <label style={{
                                             display: 'block',
@@ -1120,34 +1189,53 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             marginBottom: '8px',
                                             fontWeight: 500
                                         }}>
-                                            产品型号 *
+                                            {t('wiki.import_product_models')} *
                                             <span style={{
                                                 color: '#ff6b6b',
                                                 marginLeft: '4px',
                                                 fontSize: '12px'
                                             }}>
-                                                (必选)
+                                                {t('wiki.import_required')}
                                             </span>
                                         </label>
-                                        <select
-                                            value={productModels[0] || ''}
-                                            onChange={(e) => setProductModels(e.target.value ? [e.target.value] : [])}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 12px',
-                                                background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontSize: '14px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="">请选择产品型号</option>
-                                            {productModelOptions[productLine].map(model => (
-                                                <option key={model} value={model}>{model}</option>
-                                            ))}
-                                        </select>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: '8px',
+                                            padding: '12px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '10px'
+                                        }}>
+                                            {productModelOptions[productLine].map(model => {
+                                                const isSelected = productModels.includes(model);
+                                                return (
+                                                    <button
+                                                        key={model}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                setProductModels(productModels.filter(m => m !== model));
+                                                            } else {
+                                                                setProductModels([...productModels, model]);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            background: isSelected ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)',
+                                                            border: `1px solid ${isSelected ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                                            borderRadius: '6px',
+                                                            color: isSelected ? '#FFFFFF' : '#888',
+                                                            fontSize: '12px',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {model}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     {/* Visibility */}
@@ -1229,46 +1317,30 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     border: '1px solid rgba(255,215,0,0.1)'
                                 }}>
                                     {/* Header */}
-                                    <div style={{ marginBottom: '28px', textAlign: 'center' }}>
+                                    <div style={{ marginBottom: '28px' }}>
                                         <h3 style={{
                                             fontSize: '20px',
                                             fontWeight: 600,
                                             color: '#fff',
-                                            margin: 0,
-                                            letterSpacing: '0.5px'
+                                            margin: '0 0 16px 0',
+                                            letterSpacing: '0.5px',
+                                            textAlign: 'center'
                                         }}>
-                                            导入进度
+                                            正在导入知识
                                         </h3>
-                                        {/* Import Info Summary */}
+                                        {/* Import Info Summary - Redesigned to text description */}
                                         <div style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: '1fr 1fr',
-                                            gap: '8px 16px',
-                                            marginTop: '16px',
-                                            padding: '14px 16px',
+                                            padding: '16px 20px',
                                             background: 'rgba(255,255,255,0.03)',
-                                            border: '1px solid rgba(255,255,255,0.06)',
-                                            borderRadius: '12px',
-                                            fontSize: '13px'
+                                            borderLeft: '3px solid #FFD700',
+                                            borderRadius: '8px',
+                                            lineHeight: '1.6',
+                                            color: '#aaa',
+                                            fontSize: '14px'
                                         }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#666' }}>📄</span>
-                                                <span style={{ color: '#999' }}>{docxFile?.name || '—'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#666' }}>📦</span>
-                                                <span style={{ color: bokehOptimize ? '#a78bfa' : '#FFD700', fontWeight: 500 }}>
-                                                    {bokehOptimize ? 'Bokeh 优化' : '直接导入'}
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#666' }}>🎬</span>
-                                                <span style={{ color: '#ccc' }}>{productModels.length > 0 ? productModels.join(', ') : '—'}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#666' }}>📁</span>
-                                                <span style={{ color: '#ccc' }}>{productLine} · {category}</span>
-                                            </div>
+                                            正在为 <span style={{ color: '#fff', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 <span style={{ color: '#FFD700', fontWeight: 600 }}>{docxFile?.name || urlInput || '文本输入'}</span> 的知识。
+                                            <br />
+                                            导入分类：<span style={{ color: '#fff' }}>{category}</span>，源模式：<span style={{ color: '#fff' }}>{importMode.toUpperCase()}</span>{bokehOptimize && '，已开启 Bokeh 优化'}。
                                         </div>
                                     </div>
 
@@ -1281,11 +1353,11 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 gap: '14px',
                                                 padding: '16px',
                                                 background: step.status === 'processing'
-                                                    ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.03)')
+                                                    ? 'rgba(255,255,255,0.03)'
                                                     : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
                                                         step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
                                                 border: `1px solid ${step.status === 'processing'
-                                                    ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.08)') :
+                                                    ? 'rgba(255,255,255,0.08)' :
                                                     step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
                                                         step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
                                                 borderRadius: '12px',
@@ -1296,16 +1368,14 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     minWidth: '32px',
                                                     height: '32px',
                                                     borderRadius: '50%',
-                                                    background: step.status === 'processing'
-                                                        ? (step.id === 'bokeh_optimize' ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.08)') :
+                                                    background: step.status === 'processing' ? 'rgba(255,255,255,0.08)' :
                                                         step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     fontSize: '14px',
                                                     fontWeight: 700,
-                                                    color: step.status === 'processing'
-                                                        ? (step.id === 'bokeh_optimize' ? '#a78bfa' : '#fff') :
+                                                    color: step.status === 'processing' ? '#fff' :
                                                         step.status === 'failed' ? '#fff' : '#666'
                                                 }}>
                                                     {index + 1}
@@ -1317,8 +1387,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         <div style={{
                                                             fontSize: '15px',
                                                             fontWeight: 600,
-                                                            color: step.status === 'processing'
-                                                                ? (step.id === 'optimize' ? '#a78bfa' : '#fff') :
+                                                            color: step.status === 'processing' ? '#fff' :
                                                                 step.status === 'completed' ? '#fff' : '#999'
                                                         }}>
                                                             {step.label}
@@ -1385,7 +1454,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     color: '#888',
                                                                     marginTop: '6px'
                                                                 }}>
-                                                                    <span>{step.details || 'AI优化中...'}</span>
+                                                                    {/* 移除硬编码文本，详情由 step.details 提供 */}
                                                                     <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
                                                                 </div>
                                                             </div>
@@ -1413,12 +1482,43 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     <div style={{
                                                                         width: `${step.progress || 0}%`,
                                                                         height: '100%',
-                                                                        background: '#FFFFFF',
+                                                                        background: '#00A88E', // Kine Green
                                                                         transition: 'width 0.3s ease-out'
                                                                     }} />
                                                                 </div>
                                                             </div>
                                                         )}
+                                                        {/* Fetch Progress Bar */}
+                                                        {step.id === 'fetch' && step.status === 'processing' && (
+                                                            <div style={{ marginTop: '10px' }}>
+                                                                <div style={{
+                                                                    width: '100%',
+                                                                    height: '4px',
+                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    borderRadius: '2px',
+                                                                    overflow: 'hidden'
+                                                                }}>
+                                                                    <div style={{
+                                                                        width: `${step.progress || 0}%`,
+                                                                        height: '100%',
+                                                                        background: '#FFFFFF',
+                                                                        transition: 'width 0.3s ease-out',
+                                                                        borderRadius: '2px'
+                                                                    }} />
+                                                                </div>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    fontSize: '11px',
+                                                                    color: '#888',
+                                                                    marginTop: '6px'
+                                                                }}>
+                                                                    <span>正在获取...</span>
+                                                                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                     </div>
 
                                                     {/* Completed Checkmark - Right side */}
@@ -1447,8 +1547,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
-                                                                width: '28px',
-                                                                height: '28px',
+                                                                width: '36px',
+                                                                height: '36px',
                                                                 background: 'rgba(239, 68, 68, 0.1)',
                                                                 border: '1px solid rgba(239, 68, 68, 0.3)',
                                                                 borderRadius: '50%',
@@ -1460,14 +1560,17 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             }}
                                                             onMouseEnter={(e) => {
                                                                 e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                                                e.currentTarget.style.transform = 'scale(1.05)';
                                                             }}
                                                             onMouseLeave={(e) => {
                                                                 e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                                e.currentTarget.style.transform = 'scale(1)';
                                                             }}
                                                             title="停止优化"
                                                         >
-                                                            <XCircle size={16} />
+                                                            <X size={20} />
                                                         </button>
+
                                                     )}
 
                                                     {/* Failed indicator */}
@@ -1496,7 +1599,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     {(progress.stats.chapters > 0 || progress.stats.images > 0) && (
                                         <div style={{
                                             display: 'grid',
-                                            gridTemplateColumns: 'repeat(4, 1fr)',
+                                            gridTemplateColumns: importMode === 'docx' ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
                                             gap: '12px',
                                             padding: '20px',
                                             background: 'rgba(255,255,255,0.02)',
@@ -1509,7 +1612,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     {progress.stats.chapters}
                                                 </div>
                                                 <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                                    知识章节
+                                                    知识文章
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'center' }}>
@@ -1528,14 +1631,16 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     转换表格
                                                 </div>
                                             </div>
-                                            <div style={{ textAlign: 'center' }}>
-                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-                                                    {progress.stats.totalSize.split(' ')[0]}
+                                            {importMode === 'docx' && (
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                        {progress.stats.totalSize.split(' ')[0]}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                        文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
+                                                    </div>
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
-                                                    文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -1568,31 +1673,65 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             </button>
                                         )}
                                         {!loading && (
-                                            <button
-                                                onClick={() => setProgress(null)}
-                                                style={{
-                                                    padding: '12px 32px',
-                                                    background: '#FFD700',
-                                                    border: 'none',
-                                                    borderRadius: '10px',
-                                                    color: '#fff',
-                                                    fontSize: '14px',
-                                                    fontWeight: 700,
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    boxShadow: '0 4px 12px rgba(139,92,246,0.3)'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(139,92,246,0.4)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = 'translateY(0)';
-                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.3)';
-                                                }}
-                                            >
-                                                完成
-                                            </button>
+                                            <>
+                                                {result?.article_ids && result.article_ids.length > 0 && (
+                                                    <button
+                                                        onClick={() => {
+                                                            window.open(`/tech-hub/wiki/${result.article_ids![0]}`, '_blank');
+                                                        }}
+                                                        style={{
+                                                            padding: '12px 24px',
+                                                            background: 'rgba(255, 215, 0, 0.1)',
+                                                            border: '1px solid rgba(255, 215, 0, 0.3)',
+                                                            borderRadius: '10px',
+                                                            color: '#FFD700',
+                                                            fontSize: '14px',
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                        }}
+                                                    >
+                                                        <BookOpen size={16} />
+                                                        阅读文章
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => setProgress(null)}
+                                                    style={{
+                                                        padding: '12px 32px',
+                                                        background: '#00A650',
+                                                        border: 'none',
+                                                        borderRadius: '10px',
+                                                        color: '#fff',
+                                                        fontSize: '14px',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: '0 4px 12px rgba(0,166,80,0.3)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,166,80,0.4)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,166,80,0.3)';
+                                                    }}
+                                                >
+                                                    完成
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 </div>

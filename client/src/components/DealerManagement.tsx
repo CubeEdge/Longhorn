@@ -65,7 +65,7 @@ const DealerManagement: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
     const [saving, setSaving] = useState(false);
-    
+
     // More dropdown state
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
     const moreDropdownRef = useRef<HTMLDivElement>(null);
@@ -76,7 +76,7 @@ const DealerManagement: React.FC = () => {
     // Search expand state
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
-    
+
     // 彻底删除弹窗状态
     const [isPermanentDeleteModalOpen, setIsPermanentDeleteModalOpen] = useState(false);
     const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Dealer | null>(null);
@@ -196,54 +196,66 @@ const DealerManagement: React.FC = () => {
                 await axios.patch(`/api/v1/accounts/${editingDealer.id}`, accountData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                
-                // 2. Sync contacts - 并行删除现有联系人
+
+                // 2. Sync contacts - Differential Sync
                 const existingContactsRes = await axios.get(`/api/v1/accounts/${editingDealer.id}/contacts`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const existingContacts = existingContactsRes.data.data || [];
-                
-                // 并行删除所有现有联系人
-                if (existingContacts.length > 0) {
-                    await Promise.all(
-                        existingContacts.map((contact: any) =>
-                            axios.delete(`/api/v1/contacts/${contact.id}`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+
+                const submittedContacts = formData.contacts;
+                const submittedIds = submittedContacts.map((c: any) => c.id).filter(Boolean);
+
+                const contactsToDelete = existingContacts.filter((ec: any) => !submittedIds.includes(ec.id));
+                const contactsToUpdate = submittedContacts.filter((sc: any) => sc.id);
+                const contactsToCreate = submittedContacts.filter((sc: any) => !sc.id);
+
+                // Sequential deletions
+                for (const contact of contactsToDelete) {
+                    try {
+                        await axios.delete(`/api/v1/contacts/${contact.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to delete contact', err); }
                 }
-                
-                // 并行创建新联系人
-                if (formData.contacts.length > 0) {
-                    await Promise.all(
-                        formData.contacts.map((contact: any) =>
-                            axios.post(`/api/v1/accounts/${editingDealer.id}/contacts`, {
-                                name: contact.name,
-                                email: contact.email,
-                                phone: contact.phone,
-                                job_title: contact.job_title,
-                                is_primary: contact.is_primary
-                            }, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+
+                // Sequential updates
+                for (const contact of contactsToUpdate) {
+                    try {
+                        await axios.patch(`/api/v1/contacts/${contact.id}`, {
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            job_title: contact.job_title,
+                            is_primary: contact.is_primary
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to update contact', err); }
+                }
+
+                // Sequential creations
+                for (const contact of contactsToCreate) {
+                    try {
+                        await axios.post(`/api/v1/accounts/${editingDealer.id}/contacts`, {
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            job_title: contact.job_title,
+                            is_primary: contact.is_primary
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                    } catch (err) { console.error('Failed to create contact', err); }
                 }
             } else {
                 // 新增经销商
                 const createRes = await axios.post('/api/v1/accounts', accountData, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                
+
                 // 如果有额外的联系人（除了主联系人），也需要创建
                 if (createRes.data.success && formData.contacts.length > 1) {
                     const newAccountId = createRes.data.data.id;
                     // 跳过第一个联系人（已通过 primary_contact 创建），创建其余联系人
                     const additionalContacts = formData.contacts.slice(1);
-                    await Promise.all(
-                        additionalContacts.map((contact: any) =>
-                            axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
+                    for (const contact of additionalContacts) {
+                        try {
+                            await axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
                                 name: contact.name,
                                 email: contact.email,
                                 phone: contact.phone,
@@ -251,9 +263,11 @@ const DealerManagement: React.FC = () => {
                                 is_primary: contact.is_primary
                             }, {
                                 headers: { Authorization: `Bearer ${token}` }
-                            })
-                        )
-                    );
+                            });
+                        } catch (err) {
+                            console.error('Failed to create additional contact', err);
+                        }
+                    }
                 }
             }
             setIsModalOpen(false);
@@ -269,7 +283,7 @@ const DealerManagement: React.FC = () => {
     // 恢复账户（从已删除/已停用状态恢复）
     const handleRestore = async (dealer: Dealer) => {
         try {
-            await axios.patch(`/api/v1/accounts/${dealer.id}`, 
+            await axios.patch(`/api/v1/accounts/${dealer.id}`,
                 { is_active: true, is_deleted: false },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -285,11 +299,11 @@ const DealerManagement: React.FC = () => {
         setPermanentDeleteTarget(dealer);
         setIsPermanentDeleteModalOpen(true);
     };
-    
+
     // 彻底删除 - 确认执行
     const handleConfirmPermanentDelete = async () => {
         if (!permanentDeleteTarget) return;
-        
+
         setPermanentDeleteLoading(true);
         try {
             await axios.delete(`/api/v1/accounts/${permanentDeleteTarget.id}?permanent=true`, {
@@ -335,9 +349,9 @@ const DealerManagement: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}
-                    <div style={{ 
-                        position: 'relative', 
-                        display: 'flex', 
+                    <div style={{
+                        position: 'relative',
+                        display: 'flex',
                         alignItems: 'center',
                         justifyContent: isSearchExpanded ? 'flex-start' : 'center',
                         width: isSearchExpanded ? 280 : 40,
@@ -496,7 +510,7 @@ const DealerManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <th 
+                            <th
                                 style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('name')}
                             >
@@ -507,7 +521,7 @@ const DealerManagement: React.FC = () => {
                                     )}
                                 </div>
                             </th>
-                            <th 
+                            <th
                                 style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('dealer_code')}
                             >
@@ -518,7 +532,7 @@ const DealerManagement: React.FC = () => {
                                     )}
                                 </div>
                             </th>
-                            <th 
+                            <th
                                 style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('country')}
                             >
@@ -530,7 +544,7 @@ const DealerManagement: React.FC = () => {
                                 </div>
                             </th>
                             <th style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>联系人</th>
-                            <th 
+                            <th
                                 style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('dealer_level')}
                             >
@@ -608,10 +622,10 @@ const DealerManagement: React.FC = () => {
                                     </td>
                                     <td style={{ padding: 16 }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                            <button 
+                                            <button
                                                 onClick={() => handleOpenModal(dealer)}
                                                 title="编辑"
-                                                style={{ 
+                                                style={{
                                                     background: 'transparent',
                                                     border: 'none',
                                                     padding: '8px',
@@ -630,10 +644,10 @@ const DealerManagement: React.FC = () => {
                                             </button>
                                             {/* 已停用/已删除列表显示恢复按钮 */}
                                             {(statusFilter === 'inactive' || statusFilter === 'deleted') && (
-                                                <button 
+                                                <button
                                                     onClick={() => handleRestore(dealer)}
                                                     title="恢复"
-                                                    style={{ 
+                                                    style={{
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',
@@ -653,10 +667,10 @@ const DealerManagement: React.FC = () => {
                                             )}
                                             {/* 已删除列表显示彻底删除按钮 */}
                                             {statusFilter === 'deleted' && (
-                                                <button 
+                                                <button
                                                     onClick={() => handlePermanentDelete(dealer)}
                                                     title="彻底删除"
-                                                    style={{ 
+                                                    style={{
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',

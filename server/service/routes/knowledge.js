@@ -458,7 +458,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     const result = insertStmt.run({
                         title: section.title,
                         slug,
-                        summary: section.content.substring(0, 200).trim(),
+                        summary: section.content.replace(/<[^>]+>/g, '').substring(0, 300).trim(),
                         content: section.content,
                         category,
                         product_line,
@@ -693,13 +693,11 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                         continue;
                     }
 
-                    // 不在导入时生成摘要，全部放到 Bokeh 优化步骤
                     const summaryText = chapter.content
                         .replace(/<[^>]+>/g, '')
                         .replace(/\s+/g, ' ')
                         .trim()
                         .substring(0, 300);
-                    const shortSummary = summaryText.substring(0, 100);
 
                     // 解析章节号（支持两种格式）
                     // 格式1：带前缀 "MAVO Edge 8K: 3. SDI监看" 或 "MAVO Edge 8K: 3.1 SDI监看"
@@ -830,7 +828,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
      */
     router.post('/import/url', authenticate, async (req, res) => {
         try {
-            if (!['Employee', 'Internal'].includes(req.user.user_type)) {
+            if (!['Employee', 'Internal'].includes(req.user.user_type) && req.user.role !== 'Admin') {
                 return res.status(403).json({
                     success: false,
                     error: { code: 'FORBIDDEN', message: '只有内部员工可以导入知识' }
@@ -838,14 +836,8 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             }
 
             const {
-                url,
-                title,
-                category = 'Application Note',
-                product_line,
-                product_models = [],
-                visibility = 'Public',
-                tags = [],
-                turbo = true // Default to true for better results
+                url, title, category = 'Application Note', product_line,
+                product_models = [], visibility = 'Public', tags = [], turbo = true
             } = req.body;
 
             if (!url) {
@@ -857,162 +849,149 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
             console.log(`[Knowledge Import URL] Fetching: ${url} (Turbo: ${turbo})`);
 
-            let htmlContent = '';
-            let articleTitle = title || 'Web Import';
-            let summary = '';
+            let chapters = [];
+            let articleTitle = title;
+            let sourceReference = '';
 
             if (turbo) {
-                // Turbo Mode: Use Jina Reader
-                try {
-                    const jinaUrl = `https://r.jina.ai/${url}`;
-                    const response = await axios.get(jinaUrl, {
-                        headers: {
-                            'Accept': 'text/plain',
-                            'X-No-Cache': 'true'
-                        },
-                        timeout: 45000 // Jina can be slow for complex pages
-                    });
-
-                    const markdown = response.data;
-                    if (!markdown || markdown.length < 100) {
-                        throw new Error('Jina returned empty or too short content');
-                    }
-
-                    // Extract title from first line if it looks like a header
-                    const lines = markdown.split('\n');
-                    if (lines[0].startsWith('# ')) {
-                        articleTitle = title || lines[0].replace('# ', '').trim();
-                    }
-
-                    // Download images from Markdown
-                    const imagesDir = './data/Knowledge/Images';
-                    if (!fs.existsSync(imagesDir)) {
-                        fs.mkdirSync(imagesDir, { recursive: true });
-                    }
-
-                    console.log('[Knowledge Import URL] Downloading images from Markdown...');
-                    const downloadedImages = await downloadMarkdownImages(markdown, imagesDir);
-
-                    let finalMarkdown = markdown;
-                    downloadedImages.forEach(img => {
-                        // Replace exact URL matches in Markdown ![alt](url)
-                        finalMarkdown = finalMarkdown.split(img.original).join(img.local);
-                    });
-
-                    htmlContent = finalMarkdown; // Store as Markdown (client renders it)
-                    summary = htmlContent.substring(0, 300).replace(/[#*`]/g, '');
-                } catch (jinaErr) {
-                    console.error(`[Knowledge Import URL] Jina error fallback to standard: ${jinaErr.message}`);
-                    // Fallback to standard axios if Jina fails
-                    return res.status(500).json({
-                        success: false,
-                        error: { code: 'JINA_ERROR', message: `Jina 抓取失败: ${jinaErr.message}` }
-                    });
-                }
-            } else {
-                // Standard Mode: Axios + Cheerio
-                const response = await axios.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                        'Accept': 'text/html,application/xhtml+xml'
-                    },
-                    timeout: 30000
+                // Turbo Mode: Jina (Markdown)
+                const response = await axios.get(`https://r.jina.ai/${url}`, {
+                    headers: { 'Accept': 'text/plain', 'X-No-Cache': 'true' },
+                    timeout: 45000
                 });
 
-                const html = response.data;
-                const $ = cheerio.load(html);
+                let markdown = response.data;
+                if (!markdown || markdown.length < 100) throw new Error('Jina content too short');
 
-                // Extract meaningful content
-                const extractedContent = extractWebContent($, url);
-
-                if (!extractedContent.content || extractedContent.content.length < 100) {
-                    return res.status(400).json({
-                        success: false,
-                        error: { code: 'NO_CONTENT', message: '无法提取有效内容' }
-                    });
+                const lines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
+                let detectedTitle = '';
+                // 搜索 # 标题
+                for (const line of lines) {
+                    if (line.startsWith('# ')) {
+                        detectedTitle = line.replace(/^#+\s*/, '').trim();
+                        break;
+                    }
+                }
+                // 兜底：如果没有 # 标题，尝试使用第一行（且长度适中）
+                if (!detectedTitle && lines.length > 0 && lines[0].length < 250) {
+                    detectedTitle = lines[0].trim();
                 }
 
-                // Download images from webpage
-                console.log('[Knowledge Import URL] Downloading images from HTML...');
+                // 清洗标题：移除 "Title: " 前缀及 SEO 后缀
+                if (detectedTitle) {
+                    detectedTitle = detectedTitle
+                        .replace(/^Title:\s*/i, '')
+                        .replace(/\s*[\|-]\s*(SmallHD|Kinefinity|User Guide|User Manual).*$/i, '')
+                        .replace(/\s*[\|-]\s*\[MASTER\].*$/i, '')
+                        .trim();
+                }
+
+                articleTitle = title || detectedTitle || 'Web Import';
+                sourceReference = articleTitle;
+
                 const imagesDir = './data/Knowledge/Images';
-                if (!fs.existsSync(imagesDir)) {
-                    fs.mkdirSync(imagesDir, { recursive: true });
+                if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+                const downloadedImages = await downloadMarkdownImages(markdown, imagesDir);
+                let finalMarkdown = markdown;
+                downloadedImages.forEach(img => {
+                    finalMarkdown = finalMarkdown.split(img.original).join(img.local);
+                });
+
+                chapters = [{ title: articleTitle, content: finalMarkdown }];
+            } else {
+                // Standard Mode: Clean HTML
+                console.log(`[Knowledge Import URL] Fetching Standard content: ${url}`);
+                const webResponse = await axios.get(url, {
+                    timeout: 30000,
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' }
+                });
+                const $ = cheerio.load(webResponse.data);
+                const webContent = extractWebContent($, url);
+                articleTitle = title || webContent.title;
+                sourceReference = articleTitle;
+                chapters = [{ title: articleTitle, content: webContent.content }];
+            }
+
+            // AI Title Translation/Polishing
+            if (aiService && articleTitle && articleTitle !== 'Web Import') {
+                try {
+                    console.log(`[Knowledge Import] AI Polishing title: ${articleTitle}`);
+                    const titlePrompt = `你是一个技术翻译。请将以下网页标题翻译成简洁的中文技术文档标题，不要包含网站名称（如 SmallHD, Kinefinity），只要文章核心内容。
+如果标题已经是中文，请进行排版微调（如数字与英文间加空格）。
+标题：${articleTitle}
+直接输出翻译后的标题，不要有任何解释。`;
+                    const polishedTitle = await aiService.generateResponse(titlePrompt, { temperature: 0.3, maxTokens: 100 });
+                    if (polishedTitle && polishedTitle.length < 200) {
+                        articleTitle = polishedTitle.trim().replace(/^"|"$/g, '');
+                        console.log(`[Knowledge Import] AI Polished title: ${articleTitle}`);
+                    }
+                } catch (aiErr) {
+                    console.warn(`[Knowledge Import] AI title polish failed: ${aiErr.message}`);
+                }
+            }
+
+            const article_ids = [];
+            let imported_count = 0;
+            let skipped_count = 0;
+
+            for (const chapter of chapters) {
+                const slug = generateSlug(chapter.title || articleTitle);
+                const existing = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?').get(slug);
+                if (existing) {
+                    skipped_count++;
+                    continue;
                 }
 
-                const downloadedImages = await downloadWebImages($, url, imagesDir);
+                const cleanSummary = chapter.content
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/[#*`><]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .substring(0, 300);
 
-                htmlContent = extractedContent.content;
-                articleTitle = title || extractedContent.title || 'Web Import';
-                summary = extractedContent.summary || htmlContent.replace(/<[^>]+>/g, '').substring(0, 200);
-
-                // Replace images
-                downloadedImages.forEach(img => {
-                    htmlContent = htmlContent.replace(img.original, img.local);
+                const result = db.prepare(`
+                    INSERT INTO knowledge_articles (
+                        title, slug, summary, content, category,
+                        product_line, product_models, tags, visibility, status,
+                        source_type, source_reference, source_url,
+                        chapter_number, section_number,
+                        created_by, created_at, updated_at, published_at
+                    ) VALUES (
+                        @title, @slug, @summary, @content, @category,
+                        @product_line, @product_models, @tags, @visibility, 'Published',
+                        'URL', @source_reference, @source_url,
+                        1, 1,
+                        @created_by, datetime('now'), datetime('now'), datetime('now')
+                    )
+                `).run({
+                    title: chapter.title || articleTitle,
+                    slug,
+                    summary: cleanSummary,
+                    content: chapter.content,
+                    category,
+                    product_line: product_line || 'General',
+                    product_models: JSON.stringify(product_models),
+                    tags: JSON.stringify([...tags, 'Web Import', category]),
+                    visibility,
+                    source_reference: sourceReference,
+                    source_url: url,
+                    created_by: req.user.id
                 });
+
+                article_ids.push(result.lastInsertRowid);
+                imported_count++;
             }
-
-            const slug = generateSlug(articleTitle);
-
-            // Check duplicate
-            const existing = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?').get(slug);
-            if (existing) {
-                return res.json({
-                    success: true,
-                    data: {
-                        imported_count: 0,
-                        skipped_count: 1,
-                        failed_count: 0,
-                        article_ids: [],
-                        message: '文章已存在'
-                    }
-                });
-            }
-
-            // Insert article
-            const insertResult = db.prepare(`
-                INSERT INTO knowledge_articles (
-                    title, slug, summary, content, category,
-                    product_line, product_models, tags, visibility, status,
-                    source_type, source_reference, source_url,
-                    created_by, created_at, updated_at, published_at
-                ) VALUES (
-                    @title, @slug, @summary, @content, @category,
-                    @product_line, @product_models, @tags, @visibility, 'Published',
-                    'URL', @source_reference, @source_url,
-                    @created_by, datetime('now'), datetime('now'), datetime('now')
-                )
-            `).run({
-                title: articleTitle,
-                slug,
-                summary: extractedContent.summary || htmlContent.replace(/<[^>]+>/g, '').substring(0, 200),
-                content: htmlContent,
-                category,
-                product_line: product_line || 'General',
-                product_models: JSON.stringify(product_models),
-                tags: JSON.stringify([...tags, 'Web Import', category]),
-                visibility,
-                source_reference: extractedContent.title || articleTitle,
-                source_url: url,
-                created_by: req.user.id
-            });
-
-            console.log(`[Knowledge Import URL] Success: ${articleTitle}`);
 
             res.json({
                 success: true,
                 data: {
-                    imported_count: 1,
-                    skipped_count: 0,
-                    failed_count: 0,
-                    article_ids: [insertResult.lastInsertRowid]
+                    imported_count, skipped_count, article_ids,
+                    message: imported_count > 0 ? `成功导入文章: ${articleTitle}` : '导入失败或文章已存在'
                 }
             });
         } catch (err) {
             console.error('[Knowledge Import URL] Error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'IMPORT_ERROR', message: err.message }
-            });
+            res.status(500).json({ success: false, error: { code: 'IMPORT_ERROR', message: err.message } });
         }
     });
 
@@ -1711,7 +1690,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
         for (let i = 0; i < images.length; i++) {
             const $img = $(images[i]);
-            let src = $img.attr('src');
+            let src = $img.attr('src') || $img.attr('data-src') || $img.attr('data-original') || $img.attr('lazy-src');
             if (!src) continue;
 
             const localMapping = await saveImageLocally(src, baseUrl, outputDir);
@@ -1727,8 +1706,9 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
      */
     async function downloadMarkdownImages(markdown, outputDir) {
         const downloadedImages = [];
-        // Match Markdown images: ![alt](url)
-        const matches = markdown.matchAll(/!\[.*?\]\((https?:\/\/.*?)\)/g);
+        // Match Markdown images: ![alt](url) - handle various URL formats, avoid greedy match with )
+        // Match Markdown images: ![alt](url) - handle complex URLs and ensure it captures standard Jina/Markdown links
+        const matches = markdown.matchAll(/!\[[^\]]*\]\(\s*([^\)\s]+)\s*\)/g);
 
         for (const match of matches) {
             const src = match[1];
@@ -1744,6 +1724,8 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
      * Helper to download a single image, convert to WebP and save locally
      */
     async function saveImageLocally(src, baseUrl, outputDir) {
+        if (!src) return null;
+        console.log(`[Knowledge Image] Attempting to download: ${src}`);
         try {
             let fullSrc = src;
             // Convert relative URL to absolute if baseUrl provided
@@ -1758,33 +1740,39 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
             if (!fullSrc.startsWith('http') || fullSrc.startsWith('data:')) return null;
 
-            // Download image
+            // Download image with enhanced anti-leeching headers
             const response = await axios.get(fullSrc, {
                 responseType: 'arraybuffer',
-                timeout: 8000,
+                timeout: 30000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Referer': baseUrl || new URL(fullSrc).origin,
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
                 }
             });
 
             const buffer = Buffer.from(response.data);
             if (buffer.length < 1024) return null; // Skip too small
 
-            // Generate filename
+            // Generate filename based on hash and original extension (preserve GIF)
             const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 12);
-            const filename = `web_${hash}.webp`;
+            const isGif = fullSrc.toLowerCase().includes('.gif') || response.headers['content-type'] === 'image/gif';
+            const ext = isGif ? 'gif' : 'webp';
+            const filename = `web_${hash}.${ext}`;
             const filepath = path.join(outputDir, filename);
 
             if (fs.existsSync(filepath)) {
                 return { original: src, local: `/data/knowledge_images/${filename}` };
             }
 
-            // Convert to WebP using Python script
-            const tempPngPath = filepath.replace('.webp', '.png');
-            fs.writeFileSync(tempPngPath, buffer);
+            // Convert non-GIFs to WebP using Python script
+            if (!isGif) {
+                const tempPngPath = filepath.replace('.webp', '.png');
+                fs.writeFileSync(tempPngPath, buffer);
 
-            try {
-                execSync(`python3 -c "
+                try {
+                    execSync(`python3 -c "
 import sys
 from PIL import Image
 img = Image.open('${tempPngPath}')
@@ -1797,9 +1785,13 @@ elif img.mode != 'RGB':
     img = img.convert('RGB')
 img.save('${filepath}', 'WEBP', quality=85, method=6)
 "`, { encoding: 'utf8', timeout: 5000 });
-                fs.unlinkSync(tempPngPath);
-            } catch (convertErr) {
-                fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
+                    fs.unlinkSync(tempPngPath);
+                } catch (convertErr) {
+                    fs.renameSync(tempPngPath, filepath.replace('.webp', '.png'));
+                }
+            } else {
+                // For GIFs, just write the original buffer
+                fs.writeFileSync(filepath, buffer);
             }
 
             return {
@@ -1824,11 +1816,11 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
         let content = '';
         let summary = '';
 
-        // Try to extract title
+        // Try to extract title (prioritize h1 then meta)
         title = $('h1').first().text().trim() ||
-            $('title').text().trim() ||
             $('meta[property="og:title"]').attr('content') ||
-            '';
+            $('title').text().trim() ||
+            'Web Import';
 
         // Try to extract meta description as summary
         summary = $('meta[name="description"]').attr('content') ||
@@ -1876,12 +1868,40 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             }
         });
 
+        // Clean HTML: Remove redundant styles/classes but preserve critical image attributes
+        // Clean and Simplify HTML: Preserve only critical attributes
+        $contentArea.find('*').each((i, elem) => {
+            const attribs = elem.attribs || {};
+            const tagName = elem.name ? elem.name.toLowerCase() : '';
+
+            // 1. Handle lazy loading images
+            if (tagName === 'img') {
+                const realSrc = attribs['data-src'] || attribs['data-original'] || attribs['lazy-src'] || attribs['src'];
+                if (realSrc) $(elem).attr('src', realSrc);
+            }
+
+            // 2. Comprehensive Attribute Cleanup
+            Object.keys(attribs).forEach(attr => {
+                const lowerAttr = attr.toLowerCase();
+                if (tagName === 'img') {
+                    if (lowerAttr === 'src' || lowerAttr === 'alt' || lowerAttr === 'title') return;
+                } else if (tagName === 'a') {
+                    if (lowerAttr === 'href' || lowerAttr === 'target') return;
+                } else if (['table', 'tr', 'td', 'th'].includes(tagName)) {
+                    if (lowerAttr === 'colspan' || lowerAttr === 'rowspan') return;
+                } else if (lowerAttr === 'id' || lowerAttr === 'name') {
+                    return; // Keep for internal links
+                }
+                $(elem).removeAttr(attr);
+            });
+        });
+
         content = $contentArea.html() || '';
 
         return {
             title: title.substring(0, 200),
             summary: summary.substring(0, 500),
-            content
+            content: content.trim()
         };
     }
 
@@ -2474,21 +2494,24 @@ ${isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸�
             // 任务1：排版优化
             if (mode === 'full' || mode === 'layout') {
                 const layoutPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
-请分析以下技术文章，并进行排版优化：
+请分析以下技术文章，并进行全量翻译（由外文翻译为中文）及排版优化：
 
-**标题**: ${article.title}
+**原始标题**: ${article.title}
 
 **原始内容**:
-${article.content.substring(0, 8000)}
+${article.content.substring(0, 10000)}
 
-**优化任务**:
-1. 识别并优化文章结构（添加缺失的小标题、将长段落拆分为短段落或列表）
-2. 保持技术准确性，不随意扩写
-3. 如有步骤操作，改为编号列表
-4. 保留所有图片引用（<img> 标签），不删除
-5. 保留表格格式
+**必须遵守的优化规则**:
+1. **中文化翻译 (核心)**: 如果原始内容是英文或其他非中文语言，请将其**全文翻译为专业的中文技术文档**。标题也需要同步进行精练且专业的中文翻译（移除多余的外链说明或无关后缀）。
+2. **结构化排版**: 
+   - 识别并优化文章结构，添加缺失的小标题（h2/h3 等）。
+   - 将长段落拆分为语义明确的短段落或列表。
+   - 正确识别并格式化操作步骤（使用有序列表）。
+3. **技术精度**: 严禁扩写、重写或修改任何具体的技术参数、数值、专用名词及操作指令。保持技术原意的 100% 准确。
+4. **媒体强制保留**: 必须保留所有图片引用（<img> 或 Markdown 图片语法 ![alt](url)）。严禁删除或移动图片标签位置。
+5. **格式规范**: 仅输出 HTML 格式的内容。严禁添加除优化后的正文以外的任何说明文字、引导语或 Markdown 标签。
 
-请直接输出HTML格式的优化内容，不要添加额外说明。`;
+请直接输出优化后的文章 HTML 内容。`;
 
                 try {
                     formattedContent = await aiService.generate('logic',
@@ -2502,24 +2525,24 @@ ${article.content.substring(0, 8000)}
                 }
             }
 
-            // 任务2：生成详细摘要
+            // 任务2：生成详细摘要 (300字)
             if (mode === 'full' || mode === 'summary') {
                 const summaryPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
-请为以下技术文章生成一个详细摘要（3-5句话，最多190字），概括文章的核心内容：
+请为以下技术文章生成一个精准的中文摘要（概括核心结论、参数或操作，限制在280字以内）：
 
 **标题**: ${article.title}
 
-**内容片段**:
+**内容**:
 ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
 
 请直接输出摘要文本，不要添加引号或额外说明。`;
 
                 try {
                     summaryText = await aiService.generate('logic',
-                        'You are Bokeh. Generate comprehensive summaries for technical documentation.',
+                        'You are Bokeh. Generate precise technical summaries.',
                         summaryPrompt
                     );
-                    summaryText = summaryText.trim().substring(0, 190);
+                    summaryText = summaryText.trim().substring(0, 300);
                     console.log('[Knowledge Format] Summary generation completed');
                 } catch (aiErr) {
                     console.error('[Knowledge Format] Summary AI error:', aiErr.message);
@@ -2527,12 +2550,9 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                         .replace(/<[^>]+>/g, '')
                         .replace(/\s+/g, ' ')
                         .trim()
-                        .substring(0, 190);
+                        .substring(0, 300);
                 }
             }
-
-            // 生成简短摘要（从详细摘要截取，不调用AI）
-            const shortSummary = summaryText.substring(0, 100);
 
             // 分析图片布局
             const imageMatches = formattedContent.match(/<img[^>]*>/g) || [];
@@ -2547,11 +2567,10 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
             const chapterNumber = chapterMatch ? parseInt(chapterMatch[1]) : null;
             const sectionNumber = chapterMatch && chapterMatch[2] ? parseInt(chapterMatch[2]) : null;
 
-            // 直接更新正文内容（不再保留草稿状态）
+            // 直接更新正文内容（不再保留草稿状态，移除 short_summary）
             db.prepare(`
                 UPDATE knowledge_articles SET
                     content = ?,
-                    summary = ?,
                     summary = ?,
                     image_layout_meta = ?,
                     chapter_number = ?,
@@ -2564,7 +2583,6 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
             `).run(
                 formattedContent,
                 summaryText,
-                shortSummary,
                 imageLayoutMeta ? JSON.stringify(imageLayoutMeta) : null,
                 chapterNumber,
                 sectionNumber,
@@ -2643,11 +2661,10 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                 FROM knowledge_articles WHERE id = ?
             `).run(article.id, req.user.id, article.id);
 
-            // Publish: copy formatted_content to content, update summary
+            // Publish: copy formatted_content to content
             db.prepare(`
                 UPDATE knowledge_articles SET
                     content = formatted_content,
-                    summary = summary,
                     format_status = 'published',
                     updated_by = ?,
                     updated_at = CURRENT_TIMESTAMP

@@ -1943,7 +1943,64 @@
 }
 ```
 
-### 10.8 知识库树形结构
+#### 10.7.3 网页/URL 导入知识条目 (Turbo Mode)
+
+**POST** `/api/v1/knowledge/import/web`
+
+**权限**: 编辑者+
+
+**说明**: 使用 `r.jina.ai` 引擎抓取指定网页，自动提取正文、图片及 GIF。支持自动标题翻译。
+
+**Request**:
+- `url`: 目标网页 URL (必填)
+- `category`: 分类
+- `product_line`: 产品线
+- `product_models`: 关联机型
+- `visibility`: 可见性
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "article_id": 459,
+    "title": "MAVO Edge 8K 固件升级指南",
+    "image_count": 8,
+    "source_url": "https://guide.smallhd.com/a/808524"
+  }
+}
+```
+
+### 10.8 知识库排版与 Bokeh 优化
+
+**POST** `/api/v1/knowledge/{id}/format`
+
+**权限**: 编辑者+
+
+**说明**: 调用 Bokeh AI 助手对文章进行深度排版优化、全量翻译及摘要生成。
+
+**Request**:
+```json
+{
+  "mode": "full" // full: 排版+翻译+摘要 | layout: 仅排版翻译 | summary: 仅摘要
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "title": "已翻译/优化的标题",
+    "summary": "AI 生成的文章摘要",
+    "formatted_content": "<html>...</html>",
+    "status": "Published"
+  }
+}
+```
+
+### 10.9 知识库树形结构 (原10.8)
 
 **GET** `/api/v1/knowledge/tree`
 

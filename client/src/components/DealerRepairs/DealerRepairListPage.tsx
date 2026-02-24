@@ -142,7 +142,7 @@ const DealerRepairListPage: React.FC = () => {
 
     // Local States - use saved view mode from store
     const [groupMode, setGroupMode] = useState<'grouped' | 'flat'>(savedViewMode);
-    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(!!searchTerm);
     const [localSearch, setLocalSearch] = useState(searchTerm);
     const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);

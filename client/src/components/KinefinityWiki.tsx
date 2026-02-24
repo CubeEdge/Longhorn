@@ -5,13 +5,16 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
 import { useLanguage } from '../i18n/useLanguage';
-import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, Ticket, MessageCircleQuestion, RefreshCw, Wrench, History } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, History } from 'lucide-react';
 import { SynonymManager } from './Knowledge/SynonymManager';
 import KnowledgeGenerator from './KnowledgeGenerator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import WikiEditorModal from './Knowledge/WikiEditorModal';
+import { useWikiStore } from '../store/useWikiStore';
+
+// Types
 // Legacy components missing after version upgrade, inline replacements
 const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onClick }) => {
     const { t } = useLanguage();
@@ -28,99 +31,13 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
             {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
                 {displayCategory && <span>{displayCategory}</span>}
-                {productLine && <span>· {productLine}</span>}
+                {productLine && <span>{productLine}</span>}
             </div>
         </div>
     );
 };
 
-const getTicketStyles = (type: string | undefined, t: any, isDark = true) => {
-    switch (type) {
-        case 'inquiry':
-        case 'Inquiry':
-            return {
-                bg: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)',
-                border: isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.4)',
-                hoverBg: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.25)',
-                hoverBorder: isDark ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.6)',
-                color: '#60A5FA', // Blue
-                icon: <MessageCircleQuestion size={14} />,
-                label: t('wiki.ticket.inquiry')
-            };
-        case 'rma':
-        case 'RMA':
-            return {
-                bg: isDark ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.15)',
-                border: isDark ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.4)',
-                hoverBg: isDark ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.25)',
-                hoverBorder: isDark ? 'rgba(249, 115, 22, 0.5)' : 'rgba(249, 115, 22, 0.6)',
-                color: '#FB923C', // Orange
-                icon: <RefreshCw size={14} />,
-                label: t('wiki.ticket.rma')
-            };
-        case 'dealer_repair':
-        case 'Dealer Repair':
-            return {
-                bg: isDark ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.15)',
-                border: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.4)',
-                hoverBg: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.25)',
-                hoverBorder: isDark ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.6)',
-                color: '#C084FC', // Purple
-                icon: <Wrench size={14} />,
-                label: t('wiki.ticket.dealer_repair')
-            };
-        default:
-            return {
-                bg: isDark ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.15)',
-                border: isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(76, 175, 80, 0.4)',
-                hoverBg: isDark ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.25)',
-                hoverBorder: isDark ? 'rgba(76, 175, 80, 0.5)' : 'rgba(76, 175, 80, 0.6)',
-                color: '#4CAF50', // Green
-                icon: <Ticket size={14} />,
-                label: type === 'maintenance' ? t('wiki.ticket.maintenance') : (type || t('common.all'))
-            };
-    }
-};
-
-const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, status, productModel, customerName, contactName, onClick }) => {
-    const { t } = useLanguage();
-    const styles = getTicketStyles(ticketType, t);
-    return (
-        <div onClick={onClick} style={{
-            padding: '12px',
-            background: 'rgba(255,255,255,0.02)',
-            border: `1px solid ${styles.border}`,
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            borderLeft: `3px solid ${styles.color}`
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ color: styles.color, display: 'flex' }}>{styles.icon}</span>
-                    {ticketNumber || `TICKET-${Math.floor(Math.random() * 1000)}`}
-                </span>
-                <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: styles.bg, color: styles.color }}>{status || styles.label}</span>
-            </div>
-            <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {productModel && <span style={{ fontSize: '11px', color: '#666' }}>{productModel}</span>}
-                {(() => {
-                    const isValid = (name?: string) => name && name !== 'null' && name !== 'undefined';
-                    const validCus = isValid(customerName) ? customerName : '';
-                    const validCon = isValid(contactName) ? contactName : '';
-                    if (!validCus && !validCon) return null;
-                    const display = (validCus && validCon && validCus !== validCon) ? `${validCus} · ${validCon}` : (validCus || validCon);
-                    return (
-                        <span style={{ fontSize: '11px', color: '#888' }}>
-                            {productModel && '· '} {display}
-                        </span>
-                    );
-                })()}
-            </div>
-        </div>
-    );
-};
+import { TicketCard, getTicketStyles } from './TicketCard';
 
 interface KnowledgeArticle {
     id: number;
@@ -264,7 +181,6 @@ export const KinefinityWiki: React.FC = () => {
 
     const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('wiki-expanded-nodes');
         return saved ? new Set(JSON.parse(saved)) : new Set(['a-camera']);
@@ -295,8 +211,16 @@ export const KinefinityWiki: React.FC = () => {
     });
     const [groupedExpandedChapters, setGroupedExpandedChapters] = useState<Set<string>>(new Set());
     const [expandedModalChapters, setExpandedModalChapters] = useState<Set<string>>(new Set());
-    const [showSearchResults, setShowSearchResults] = useState(false);
-    const [isSearchMode, setIsSearchMode] = useState(false); // 区分搜索模式和分组视图模式
+
+    // Wiki Global States - Moved up to be accessible by useEffects and other states
+    const {
+        activeSearchQuery, setActiveSearchQuery,
+        searchQuery, setSearchQuery,
+        pendingSearchQuery, setPendingSearchQuery,
+        isSearchMode, setIsSearchMode,
+        showSearchResults, setShowSearchResults,
+        selectedProductLine, setSelectedProductLine
+    } = useWikiStore();
 
     // 简化调试信息输出
     useEffect(() => {
@@ -311,9 +235,6 @@ export const KinefinityWiki: React.FC = () => {
     // 搜索栏状态 - 当前始终展开
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [_isSearchExpanded, _setIsSearchExpanded] = useState(true);
-
-    // 当前选中的产品族类 - 默认选中A类
-    const [selectedProductLine, setSelectedProductLine] = useState<string | null>('A');
 
     // Bokeh formatting & chapter view states
     const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
@@ -335,6 +256,22 @@ export const KinefinityWiki: React.FC = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [managerSearchQuery, setManagerSearchQuery] = useState('');
     const [managerSort, setManagerSort] = useState<{ field: 'title' | 'product_line' | 'product_model' | 'category'; order: 'asc' | 'desc' } | null>(null);
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [articlesToDeleteList, setArticlesToDeleteList] = useState<KnowledgeArticle[]>([]);
+    const [deleteCountdown, setDeleteCountdown] = useState(0);
+
+    // 删除倒计时逻辑
+    useEffect(() => {
+        let timer: any;
+        if (showDeleteConfirmModal && deleteCountdown > 0) {
+            timer = setInterval(() => {
+                setDeleteCountdown(prev => prev - 1);
+            }, 1000);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [showDeleteConfirmModal, deleteCountdown]);
 
     // 搜索结果显示控制
     const [showKeywordPanel, setShowKeywordPanel] = useState(true);
@@ -379,10 +316,8 @@ export const KinefinityWiki: React.FC = () => {
     const [isAiSearching, setIsAiSearching] = useState(false);
     const [isTicketSearching, setIsTicketSearching] = useState(false);
     const [relatedArticles, setRelatedArticles] = useState<KnowledgeArticle[]>([]);
-    const [pendingSearchQuery, setPendingSearchQuery] = useState(''); // 待搜索的查询内容
 
     // 搜索 Tab 状态
-    const [activeSearchQuery, setActiveSearchQuery] = useState<string | null>(null); // 当前搜索 Tab 的查询内容
     const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     // Dynamic History loading
     useEffect(() => {
@@ -597,6 +532,11 @@ export const KinefinityWiki: React.FC = () => {
 
         // 如果有 URL 参数，构建对应的面包屑路径和筛选视图
         if (productLine || productModel || category) {
+            // 如果 URL 中有 slug（正在查看文章），不要因为后台 search 参数而跳转
+            if (slug && searchParam) {
+                return;
+            }
+
             const newBreadcrumb: BreadcrumbItem[] = [{ label: 'WIKI', type: 'home' }];
 
             if (productLine) {
@@ -665,11 +605,15 @@ export const KinefinityWiki: React.FC = () => {
     }, [location.search, articles]);
 
     useEffect(() => {
-        if (slug && articles.length > 0) {
-            const article = articles.find(a => a.slug === slug);
-            if (article) {
-                loadArticleDetail(article);
-                buildBreadcrumb(article);
+        if (slug) {
+            // 如果有 slug，直接从 API 加载详情，不论 articles 是否已加载
+            const articleFromList = articles.find(a => a.slug === slug);
+            if (articleFromList) {
+                loadArticleDetail(articleFromList);
+                buildBreadcrumb(articleFromList);
+            } else {
+                // 如果列表里没找到（可能还没加载完或者文章太多），直接用 slug 尝试加载
+                loadArticleDetail({ slug } as KnowledgeArticle);
             }
             setIsNavigationRestored(true);
         } else if (!slug) {
@@ -813,6 +757,8 @@ export const KinefinityWiki: React.FC = () => {
             } finally {
                 setIsSearching(false);
                 setIsAiSearching(false);
+                // 搜索完成后清理 pending 状态
+                setPendingSearchQuery('');
             }
         };
 
@@ -833,8 +779,14 @@ export const KinefinityWiki: React.FC = () => {
         setShowSearchResults(true);
         setIsSearchMode(true);
 
-        // 更新URL，支持分享和浏览器回退
-        navigate(`/tech-hub/wiki?search=${encodeURIComponent(query)}`, { replace: false });
+        // 更新URL，支持分享和浏览器回退。
+        // FIXED: 如果当前正在查看具体文章（有 slug），不要跳转 URL 破坏当前页面
+        const currentSlug = window.location.pathname.split('/').pop();
+        const isInArticle = window.location.pathname.includes('/tech-hub/wiki/') && currentSlug && currentSlug !== 'wiki';
+
+        if (!isInArticle) {
+            navigate(`/tech-hub/wiki?search=${encodeURIComponent(query)}`, { replace: false });
+        }
 
         // 重置展开状态
         setShowMoreArticles(false);
@@ -1256,10 +1208,10 @@ ${contextTickets.map((ticket: any) => {
     const handleBackClick = () => {
         if (navigationHistory.length > 0) {
             const previousPath = navigationHistory[navigationHistory.length - 1];
-            setNavigationHistory(prev => prev.slice(0, -1));
+            setNavigationHistory(prev => [...prev, location.pathname]); // Save current path before navigating back
             navigate(previousPath);
         } else {
-            // 如果在搜索模式下，先返回搜索结果；否则返回首页
+            // If in search mode and an article is selected, go back to search results
             if (isSearchMode && selectedArticle) {
                 setSelectedArticle(null);
                 selectedArticleRef.current = null;
@@ -2057,59 +2009,7 @@ ${contextTickets.map((ticket: any) => {
                                 fontSize: '15px',
                                 lineHeight: '1.8',
                                 color: '#ccc'
-                            }}>
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeRaw]}
-                                    components={{
-                                        h1: ({ node, ...props }: any) => <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '32px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }} {...props} />,
-                                        h2: ({ node, ...props }: any) => <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#fff', marginTop: '28px', marginBottom: '14px' }} {...props} />,
-                                        h3: ({ node, ...props }: any) => <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#FFD700', marginTop: '24px', marginBottom: '12px' }} {...props} />,
-                                        h4: ({ node, ...props }: any) => <h4 style={{ fontSize: '17px', fontWeight: 500, color: '#FFD700', marginTop: '20px', marginBottom: '10px' }} {...props} />,
-                                        p: ({ node, ...props }: any) => <p style={{ marginBottom: '16px', lineHeight: '1.8' }} {...props} />,
-                                        ul: ({ node, ...props }: any) => <ul style={{ marginLeft: '20px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
-                                        ol: ({ node, ...props }: any) => <ol style={{ marginLeft: '20px', marginBottom: '16px' }} {...props} />,
-                                        li: ({ node, ...props }: any) => <li style={{ marginBottom: '8px', lineHeight: '1.6' }} {...props} />,
-                                        code: ({ node, inline, ...props }: any) => inline
-                                            ? <code style={{ background: 'rgba(255,215,0,0.1)', padding: '2px 6px', borderRadius: '6px', fontSize: '13px', color: '#FFD700' }} {...props} />
-                                            : <code style={{ display: 'block', background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px', overflow: 'auto', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.08)' }} {...props} />,
-                                        img: ({ node, ...props }: any) => (
-                                            <img
-                                                {...props}
-                                                style={{
-                                                    maxWidth: '100%',
-                                                    height: 'auto',
-                                                    borderRadius: '12px',
-                                                    marginTop: '20px',
-                                                    marginBottom: '20px',
-                                                    border: '1px solid rgba(255,255,255,0.08)'
-                                                }}
-                                            />
-                                        ),
-                                        table: ({ node, ...props }: any) => (
-                                            <div style={{ overflowX: 'auto', marginBottom: '20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                <table style={{ width: '100%', borderCollapse: 'collapse' }} {...props} />
-                                            </div>
-                                        ),
-                                        th: ({ node, ...props }: any) => <th style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left', fontWeight: 600, fontSize: '13px' }} {...props} />,
-                                        td: ({ node, ...props }: any) => <td style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }} {...props} />,
-                                        blockquote: ({ node, ...props }: any) => (
-                                            <blockquote style={{
-                                                borderLeft: '3px solid #FFD700',
-                                                paddingLeft: '20px',
-                                                marginLeft: '0',
-                                                marginBottom: '20px',
-                                                color: '#999',
-                                                fontStyle: 'italic'
-                                            }} {...props} />
-                                        ),
-                                        a: ({ node, ...props }: any) => <a style={{ color: '#FFD700', textDecoration: 'none', borderBottom: '1px solid rgba(255,215,0,0.3)' }} {...props} />,
-                                        hr: ({ node, ...props }: any) => <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '32px', marginBottom: '32px' }} {...props} />,
-                                    }}
-                                >
-                                    {getDisplayContent()}
-                                </ReactMarkdown>
-                            </div>
+                            }} dangerouslySetInnerHTML={{ __html: getDisplayContent() || '' }} />
 
                             {/* Feedback Section */}
                             <div style={{
@@ -2377,64 +2277,7 @@ ${contextTickets.map((ticket: any) => {
                                         fontSize: '15px',
                                         lineHeight: '1.8',
                                         color: '#ccc'
-                                    }}>
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
-                                            rehypePlugins={[rehypeRaw]}
-                                            components={{
-                                                h1: ({ node, ...props }: any) => <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginTop: '40px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }} {...props} />,
-                                                h2: ({ node, ...props }: any) => <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#FFD700', marginTop: '32px', marginBottom: '14px' }} {...props} />,
-                                                h3: ({ node, ...props }: any) => <h3 style={{ fontSize: '20px', fontWeight: 600, color: '#00BFA5', marginTop: '24px', marginBottom: '12px' }} {...props} />,
-                                                h4: ({ node, ...props }: any) => <h4 style={{ fontSize: '17px', fontWeight: 500, color: '#FFD700', marginTop: '20px', marginBottom: '10px' }} {...props} />,
-                                                p: ({ node, ...props }: any) => <p style={{ marginBottom: '16px', lineHeight: '1.8' }} {...props} />,
-                                                ul: ({ node, ...props }: any) => <ul style={{ marginLeft: '20px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
-                                                ol: ({ node, ...props }: any) => <ol style={{ marginLeft: '20px', marginBottom: '16px' }} {...props} />,
-                                                li: ({ node, ...props }: any) => <li style={{ marginBottom: '8px', lineHeight: '1.6' }} {...props} />,
-                                                code: ({ node, inline, ...props }: any) => inline
-                                                    ? <code style={{ background: 'rgba(255,215,0,0.1)', padding: '2px 6px', borderRadius: '6px', fontSize: '13px', color: '#FFD700' }} {...props} />
-                                                    : <code style={{ display: 'block', background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '10px', overflow: 'auto', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.08)' }} {...props} />,
-                                                img: ({ node, ...props }: any) => (
-                                                    <img
-                                                        {...props}
-                                                        style={{
-                                                            maxWidth: '100%',
-                                                            height: 'auto',
-                                                            borderRadius: '12px',
-                                                            marginTop: '20px',
-                                                            marginBottom: '20px',
-                                                            border: '1px solid rgba(255,255,255,0.08)'
-                                                        }}
-                                                    />
-                                                ),
-                                                table: ({ node, ...props }: any) => (
-                                                    <div style={{ overflowX: 'auto', marginBottom: '20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                        <table style={{ width: '100%', borderCollapse: 'collapse' }} {...props} />
-                                                    </div>
-                                                ),
-                                                th: ({ node, ...props }: any) => <th style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left', fontWeight: 600, fontSize: '13px' }} {...props} />,
-                                                td: ({ node, ...props }: any) => <td style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '13px' }} {...props} />,
-                                                blockquote: ({ node, ...props }: any) => (
-                                                    <blockquote style={{
-                                                        borderLeft: '3px solid #00BFA5',
-                                                        paddingLeft: '20px',
-                                                        marginLeft: '0',
-                                                        marginBottom: '20px',
-                                                        color: '#999',
-                                                        fontStyle: 'italic'
-                                                    }} {...props} />
-                                                ),
-                                                hr: ({ node, ...props }: any) => (
-                                                    <hr style={{
-                                                        border: 'none',
-                                                        borderTop: '2px dashed rgba(0, 191, 165, 0.3)',
-                                                        margin: '32px 0'
-                                                    }} {...props} />
-                                                ),
-                                            }}
-                                        >
-                                            {fullChapterContent}
-                                        </ReactMarkdown>
-                                    </div>
+                                    }} dangerouslySetInnerHTML={{ __html: fullChapterContent || '' }} />
                                 </div>
                             )}
 
@@ -2604,7 +2447,7 @@ ${contextTickets.map((ticket: any) => {
                                         border: `1px solid ${searchQuery.trim() ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
                                         borderRadius: '10px',
                                         padding: '0 12px',
-                                        width: searchQuery.trim() ? '380px' : '240px',
+                                        width: searchQuery.trim() ? '380px' : '280px',
                                         height: '38px',
                                         flexShrink: 0,
                                         transition: 'width 0.3s ease, border-color 0.3s ease'
@@ -2869,8 +2712,8 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                         >
                                             <History size={14} />
-                                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {activeSearchQuery ? `「${activeSearchQuery.length > 10 ? activeSearchQuery.slice(0, 10) + '...' : activeSearchQuery}」` : '搜索记录'}
+                                            <span style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {activeSearchQuery ? `「${activeSearchQuery.length > 20 ? activeSearchQuery.slice(0, 20) + '...' : activeSearchQuery}」` : '搜索记录'}
                                             </span>
                                             {/* 历史下拉箭头 */}
                                             {searchHistory.length > 0 && (
@@ -2895,7 +2738,7 @@ ${contextTickets.map((ticket: any) => {
                                             <div style={{
                                                 position: 'absolute',
                                                 top: '100%',
-                                                left: 0,
+                                                right: 0,
                                                 marginTop: '6px',
                                                 width: '240px',
                                                 background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
@@ -3475,7 +3318,8 @@ ${contextTickets.map((ticket: any) => {
                                                                             contactName={ticket.contact_name}
                                                                             onClick={() => {
                                                                                 const route = ticket.ticket_type === 'inquiry' ? 'inquiry-tickets' : ticket.ticket_type === 'rma' ? 'rma-tickets' : 'dealer-repairs';
-                                                                                window.open(`/service/${route}/${ticket.ticket_id || ticket.id}`, '_blank');
+                                                                                const path = `/service/${route}/${ticket.ticket_id || ticket.id}`;
+                                                                                window.open(path, "_blank");
                                                                             }}
                                                                             variant="compact"
                                                                         />
@@ -4248,7 +4092,7 @@ ${contextTickets.map((ticket: any) => {
                                 borderRadius: '20px',
                                 width: '90%',
                                 maxWidth: '900px',
-                                maxHeight: '80vh',
+                                height: '80vh',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
@@ -4330,73 +4174,69 @@ ${contextTickets.map((ticket: any) => {
                                     </div>
 
                                     {/* 全选复选框 */}
-                                    <button
-                                        onClick={() => {
-                                            if (selectedArticleIds.size === manageArticles.length) {
-                                                setSelectedArticleIds(new Set());
-                                            } else {
-                                                setSelectedArticleIds(new Set(manageArticles.map(a => a.id)));
-                                            }
-                                        }}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '8px 14px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            borderRadius: '8px',
-                                            color: '#ccc',
-                                            fontSize: '13px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: '16px',
-                                            height: '16px',
-                                            border: `2px solid ${selectedArticleIds.size === manageArticles.length ? '#FFD700' : '#666'}`,
-                                            borderRadius: '4px',
-                                            background: selectedArticleIds.size === manageArticles.length ? 'rgba(255,215,0,0.2)' : 'transparent',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                            {selectedArticleIds.size === manageArticles.length && <Check size={12} color="#FFD700" />}
-                                        </div>
-                                        {t('common.select_all')}
-                                    </button>
+                                    {/* 全选按钮 */}
+                                    {(() => {
+                                        const filteredArticles = manageArticles.filter(article => {
+                                            if (managerSearchQuery.trim() === '') return true;
+                                            const query = managerSearchQuery.toLowerCase();
+                                            const models = Array.isArray(article.product_models) ? article.product_models.join(' ') : article.product_models || '';
+                                            return article.title.toLowerCase().includes(query) ||
+                                                article.category?.toLowerCase().includes(query) ||
+                                                article.product_line?.toLowerCase().includes(query) ||
+                                                models.toLowerCase().includes(query);
+                                        });
+                                        const filteredIds = filteredArticles.map(a => a.id);
+                                        const isAllFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedArticleIds.has(id));
+
+                                        return (
+                                            <button
+                                                onClick={() => {
+                                                    const newSet = new Set(selectedArticleIds);
+                                                    if (isAllFilteredSelected) {
+                                                        filteredIds.forEach(id => newSet.delete(id));
+                                                    } else {
+                                                        filteredIds.forEach(id => newSet.add(id));
+                                                    }
+                                                    setSelectedArticleIds(newSet);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    padding: '8px 14px',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '8px',
+                                                    color: '#ccc',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '16px',
+                                                    height: '16px',
+                                                    border: `2px solid ${isAllFilteredSelected ? '#FFD700' : '#666'}`,
+                                                    borderRadius: '4px',
+                                                    background: isAllFilteredSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {isAllFilteredSelected && <Check size={12} color="#FFD700" />}
+                                                </div>
+                                                {t('common.select_all')}
+                                            </button>
+                                        );
+                                    })()}
 
                                     {/* 批量删除 */}
                                     {selectedArticleIds.size > 0 && (
                                         <button
-                                            onClick={async () => {
-                                                const confirmed = await confirm(
-                                                    t('wiki.manage.delete_confirm', { count: selectedArticleIds.size }),
-                                                    t('wiki.manage.delete_batch'),
-                                                    t('common.confirm_delete'),
-                                                    t('action.cancel')
-                                                );
-                                                if (!confirmed) return;
-
-                                                setIsDeleting(true);
-                                                const headers = { Authorization: `Bearer ${token}` };
-                                                const idsToDelete = Array.from(selectedArticleIds);
-                                                let successCount = 0;
-
-                                                for (const id of idsToDelete) {
-                                                    try {
-                                                        await axios.delete(`/api/v1/knowledge/${id}`, { headers });
-                                                        successCount++;
-                                                    } catch (err) {
-                                                        console.error(`Failed to delete article ${id}:`, err);
-                                                    }
-                                                }
-
-                                                // 刷新列表
-                                                await fetchArticles();
-                                                setManageArticles(prev => prev.filter(a => !selectedArticleIds.has(a.id)));
-                                                setSelectedArticleIds(new Set());
-                                                setIsDeleting(false);
+                                            onClick={() => {
+                                                const selectedArticles = manageArticles.filter(a => selectedArticleIds.has(a.id));
+                                                setArticlesToDeleteList(selectedArticles);
+                                                setDeleteCountdown(10);
+                                                setShowDeleteConfirmModal(true);
                                             }}
                                             disabled={isDeleting}
                                             style={{
@@ -4579,23 +4419,10 @@ ${contextTickets.map((ticket: any) => {
                                                             </td>
                                                             <td style={{ padding: '12px 8px', textAlign: 'center' }}>
                                                                 <button
-                                                                    onClick={async () => {
-                                                                        const confirmed = await confirm(
-                                                                            t('wiki.manage.delete_single_confirm', { title: article.title }),
-                                                                            t('wiki.manage.delete_article'),
-                                                                            t('common.confirm_delete'),
-                                                                            t('action.cancel')
-                                                                        );
-                                                                        if (!confirmed) return;
-
-                                                                        try {
-                                                                            const headers = { Authorization: `Bearer ${token}` };
-                                                                            await axios.delete(`/api/v1/knowledge/${article.id}`, { headers });
-                                                                            await fetchArticles();
-                                                                            setManageArticles(prev => prev.filter(a => a.id !== article.id));
-                                                                        } catch (err) {
-                                                                            console.error('Delete article failed:', err);
-                                                                        }
+                                                                    onClick={() => {
+                                                                        setArticlesToDeleteList([article]);
+                                                                        setDeleteCountdown(10);
+                                                                        setShowDeleteConfirmModal(true);
                                                                     }}
                                                                     style={{
                                                                         padding: '6px 10px',
@@ -4623,6 +4450,179 @@ ${contextTickets.map((ticket: any) => {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* 底部提示区域 - 固定在底部 */}
+                                <div style={{
+                                    padding: '12px 24px',
+                                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.02)'
+                                }}>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                        {t('wiki.total_articles', {
+                                            count: manageArticles.filter(article => {
+                                                if (managerSearchQuery.trim() === '') return true;
+                                                const query = managerSearchQuery.toLowerCase();
+                                                const models = Array.isArray(article.product_models) ? article.product_models.join(' ') : article.product_models || '';
+                                                return article.title.toLowerCase().includes(query) ||
+                                                    article.category?.toLowerCase().includes(query) ||
+                                                    article.product_line?.toLowerCase().includes(query) ||
+                                                    models.toLowerCase().includes(query);
+                                            }).length
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* 删除确认二次弹窗 */}
+                                {showDeleteConfirmModal && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        background: 'rgba(0,0,0,0.85)',
+                                        backdropFilter: 'blur(10px)',
+                                        WebkitBackdropFilter: 'blur(10px)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        zIndex: 1100,
+                                        borderRadius: '20px'
+                                    }}>
+                                        <div style={{
+                                            width: '80%',
+                                            maxWidth: '450px',
+                                            background: '#1a1a1a',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            borderRadius: '16px',
+                                            padding: '32px',
+                                            boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '24px'
+                                        }}>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    width: '56px', height: '56px',
+                                                    background: 'rgba(239,68,68,0.1)',
+                                                    borderRadius: '50%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    margin: '0 auto 20px',
+                                                    color: '#EF4444'
+                                                }}>
+                                                    <Trash2 size={28} />
+                                                </div>
+                                                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: '0 0 12px' }}>
+                                                    {t('wiki.manage.delete_batch')}
+                                                </h3>
+                                                <p style={{ fontSize: '14px', color: '#888', margin: 0, lineHeight: 1.6 }}>
+                                                    {t('wiki.manage.delete_warning_list', { count: articlesToDeleteList.length })}
+                                                </p>
+                                            </div>
+
+                                            {/* 文章标题清单 */}
+                                            <div style={{
+                                                maxHeight: '160px',
+                                                overflowY: 'auto',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                borderRadius: '8px',
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                padding: '12px'
+                                            }}>
+                                                {articlesToDeleteList.map(a => (
+                                                    <div key={a.id} style={{
+                                                        fontSize: '13px',
+                                                        color: '#ccc',
+                                                        padding: '6px 0',
+                                                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}>
+                                                        • {a.title}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (deleteCountdown > 0 || isDeleting) return;
+
+                                                        setIsDeleting(true);
+                                                        const headers = { Authorization: `Bearer ${token}` };
+                                                        for (const article of articlesToDeleteList) {
+                                                            try {
+                                                                await axios.delete(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/knowledge/${article.id}`, { headers });
+                                                            } catch (err) {
+                                                                console.error(`Delete failed for ${article.id}`, err);
+                                                            }
+                                                        }
+
+                                                        await fetchArticles();
+                                                        setManageArticles(prev => prev.filter(a => !articlesToDeleteList.some(ad => ad.id === a.id)));
+                                                        setSelectedArticleIds(new Set(Array.from(selectedArticleIds).filter(id => !articlesToDeleteList.some(ad => ad.id === id))));
+
+                                                        setIsDeleting(false);
+                                                        setShowDeleteConfirmModal(false);
+                                                        setArticlesToDeleteList([]);
+                                                    }}
+                                                    disabled={deleteCountdown > 0 || isDeleting}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '14px',
+                                                        background: deleteCountdown > 0 ? 'rgba(239,68,68,0.1)' : '#EF4444',
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        color: deleteCountdown > 0 ? 'rgba(239,68,68,0.5)' : '#fff',
+                                                        fontSize: '15px',
+                                                        fontWeight: 600,
+                                                        cursor: (deleteCountdown > 0 || isDeleting) ? 'not-allowed' : 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px'
+                                                    }}
+                                                >
+                                                    {isDeleting ? (
+                                                        <Loader2 className="animate-spin" size={18} />
+                                                    ) : (
+                                                        <>
+                                                            {deleteCountdown > 0 ? (
+                                                                <span>{t('wiki.manage.delete_wait', { seconds: deleteCountdown })}</span>
+                                                            ) : (
+                                                                <span>{t('common.confirm_delete')}</span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowDeleteConfirmModal(false);
+                                                        setArticlesToDeleteList([]);
+                                                    }}
+                                                    disabled={isDeleting}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '14px',
+                                                        background: 'transparent',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        borderRadius: '12px',
+                                                        color: '#888',
+                                                        fontSize: '15px',
+                                                        fontWeight: 500,
+                                                        cursor: isDeleting ? 'not-allowed' : 'pointer'
+                                                    }}
+                                                >
+                                                    {t('action.cancel')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )
