@@ -41,11 +41,11 @@ export const getTicketStyles = (type: string | undefined) => {
             };
         default:
             return {
-                bg: 'rgba(0, 191, 165, 0.15)',
-                border: 'rgba(0, 191, 165, 0.4)',
-                hoverBg: 'rgba(0, 191, 165, 0.25)',
-                hoverBorder: 'rgba(0, 191, 165, 0.6)',
-                color: '#00BFA5', // Teal
+                bg: 'rgba(16, 185, 129, 0.15)',
+                border: 'rgba(16, 185, 129, 0.4)',
+                hoverBg: 'rgba(16, 185, 129, 0.25)',
+                hoverBorder: 'rgba(16, 185, 129, 0.6)',
+                color: '#10B981', // Kine Green
                 icon: <Ticket size={14} />,
             };
     }

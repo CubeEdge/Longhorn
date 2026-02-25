@@ -452,16 +452,16 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 </div>
                             )}
 
-                            {/* Bokeh 优化下拉菜单 - PRD规定的青紫渐变(#00BFA5 -> #8E24AA) */}
+                            {/* Bokeh 优化下拉菜单 - 青紫渐变(#10B981 -> #8E24AA) */}
                             <div ref={bokehDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
                                 <button
                                     onClick={() => setShowBokehDropdown(!showBokehDropdown)}
                                     disabled={isOptimizing}
                                     style={{
                                         padding: '8px 14px',
-                                        background: isOptimizing 
-                                            ? 'rgba(0, 191, 165, 0.1)' 
-                                            : 'linear-gradient(135deg, #00BFA5 0%, #8E24AA 100%)',
+                                        background: isOptimizing
+                                            ? 'rgba(16, 185, 129, 0.1)'
+                                            : 'linear-gradient(135deg, #10B981 0%, #8E24AA 100%)',
                                         border: 'none',
                                         borderRadius: '8px',
                                         color: '#fff',
@@ -472,7 +472,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         alignItems: 'center',
                                         gap: '6px',
                                         transition: 'all 0.2s',
-                                        boxShadow: isOptimizing ? 'none' : '0 0 12px rgba(0, 191, 165, 0.3)',
+                                        boxShadow: isOptimizing ? 'none' : '0 0 12px rgba(16, 185, 129, 0.3)',
                                         opacity: isOptimizing ? 0.7 : 1,
                                         whiteSpace: 'nowrap'
                                     }}

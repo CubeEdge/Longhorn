@@ -46,14 +46,14 @@ interface DealerRepair {
 }
 
 // Status colors using Kine brand colors from context.md
-// Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444
+// Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
 const statusColors: Record<string, string> = {
     Received: '#FFD700',       // Kine Yellow - received
     Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
     Diagnosing: '#8b5cf6',     // Purple - in diagnosis
     AwaitingParts: '#f97316',  // Orange - waiting for parts
     InRepair: '#3b82f6',       // Blue - in repair
-    Completed: '#4CAF50',      // Kine Green - completed
+    Completed: '#10B981',      // Kine Green - completed
     Returned: '#06b6d4',       // Cyan - returned
     Cancelled: '#6b7280'       // Gray - cancelled
 };

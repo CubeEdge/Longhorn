@@ -96,11 +96,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
     ];
 
     const productLines = [
-        { value: 'A', label: '在售电影机 (A)', desc: 'MAVO Edge, MAVO LF, MAVO Mark2 系列' },
-        { value: 'B', label: '历史机型 (B)', desc: 'Terra, MAVO (非Edge/Mark2) 等历史电影机' },
-        { value: 'C', label: '电子寻像器 (C)', desc: 'Eagle e-Viewfinder 系列' },
-        { value: 'D', label: '通用配件 (D)', desc: '电池、卡、转接环等全系配件' },
-        { value: 'GENERIC', label: '通用文档', desc: '不针对特定硬件的通用知识' }
+        { value: 'A', label: t('wiki.import_line_a'), desc: t('wiki.import_line_a_desc') },
+        { value: 'B', label: t('wiki.import_line_b'), desc: t('wiki.import_line_b_desc') },
+        { value: 'C', label: t('wiki.import_line_c'), desc: t('wiki.import_line_c_desc') },
+        { value: 'D', label: t('wiki.import_line_d'), desc: t('wiki.import_line_d_desc') }
     ];
 
     const productModelOptions: Record<string, string[]> = {
@@ -433,7 +432,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                 formData.append('mergedFilePath', mergedFile.path); // 后端返回的合并文件路径
                 formData.append('title_prefix', title || '');
                 formData.append('category', category);
-                formData.append('product_line', productLine);
+                formData.append('product_line', productModels.length > 0 ? productLine : 'GENERIC');
                 formData.append('product_models', JSON.stringify(productModels));
                 formData.append('visibility', visibility);
                 formData.append('tags', tags);
@@ -453,18 +452,13 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     return;
                 }
 
-                // 验证产品型号必填
-                if (!productModels || productModels.length === 0) {
-                    setError('请选择产品型号');
-                    setLoading(false);
-                    return;
-                }
+
 
                 const formDataUrl = new FormData();
                 if (urlInput) formDataUrl.append('url', urlInput);
                 if (title) formDataUrl.append('title', title);
                 formDataUrl.append('category', category);
-                formDataUrl.append('product_line', productLine);
+                formDataUrl.append('product_line', productModels.length > 0 ? productLine : 'GENERIC');
                 formDataUrl.append('product_models', JSON.stringify(productModels));
                 formDataUrl.append('visibility', visibility);
                 formDataUrl.append('tags', tags);
@@ -497,7 +491,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                             url: urlInput,
                             title: title || undefined,
                             category,
-                            product_line: productLine,
+                            product_line: productModels.length > 0 ? productLine : 'GENERIC',
                             product_models: productModels,
                             visibility,
                             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -541,7 +535,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                         title,
                         content: textInput,
                         category,
-                        product_line: productLine,
+                        product_line: productModels.length > 0 ? productLine : 'GENERIC',
                         product_models: productModels,
                         visibility,
                         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -1090,7 +1084,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         letterSpacing: '0.3px',
                                         margin: 0
                                     }}>
-                                        知识属性
+                                        {t('wiki.import_metadata')}
                                     </h3>
                                     <button
                                         onClick={handleImport}
@@ -1128,16 +1122,19 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     </button>
                                 </div>
 
-                                {/* Metadata Form */}
+                                {/* Metadata Form - Layout: Title → Product Line → Product Models → (Category + Visibility) → Tags */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-                                    {/* Category */}
+                                    {/* Title Input (optional) */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                            分类 *
+                                            {t('wiki.import_title_label')}
+                                            <span style={{ color: '#666', marginLeft: '4px', fontSize: '11px' }}>{t('common.optional')}</span>
                                         </label>
-                                        <select
-                                            value={category}
-                                            onChange={(e) => setCategory(e.target.value)}
+                                        <input
+                                            type="text"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            placeholder={t('wiki.import_title_placeholder')}
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
@@ -1146,19 +1143,15 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 borderRadius: '8px',
                                                 color: '#fff',
                                                 fontSize: '14px',
-                                                cursor: 'pointer'
+                                                transition: 'all 0.2s'
                                             }}
-                                        >
-                                            {categories.map(cat => (
-                                                <option key={cat.value} value={cat.value}>{cat.label}</option>
-                                            ))}
-                                        </select>
+                                        />
                                     </div>
 
                                     {/* Product Line */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                            产品族群 *
+                                            {t('wiki.import_product_line')} *
                                         </label>
                                         <select
                                             value={productLine}
@@ -1194,13 +1187,13 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             marginBottom: '8px',
                                             fontWeight: 500
                                         }}>
-                                            {t('wiki.import_product_models')} *
+                                            {t('wiki.import_product_models')}
                                             <span style={{
-                                                color: '#ff6b6b',
+                                                color: '#666',
                                                 marginLeft: '4px',
-                                                fontSize: '12px'
+                                                fontSize: '11px'
                                             }}>
-                                                {t('wiki.import_required')}
+                                                {t('common.optional')}
                                             </span>
                                         </label>
                                         <div style={{
@@ -1212,7 +1205,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             border: '1px solid rgba(255,255,255,0.1)',
                                             borderRadius: '10px'
                                         }}>
-                                            {productModelOptions[productLine].map(model => {
+                                            {(productModelOptions[productLine] || []).map(model => {
                                                 const isSelected = productModels.includes(model);
                                                 return (
                                                     <button
@@ -1229,7 +1222,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             background: isSelected ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)',
                                                             border: `1px solid ${isSelected ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.1)'}`,
                                                             borderRadius: '6px',
-                                                            color: isSelected ? '#FFFFFF' : '#888',
+                                                            color: isSelected ? '#FFFFFF' : '#ccc',
                                                             fontSize: '12px',
                                                             fontWeight: 600,
                                                             cursor: 'pointer',
@@ -1243,43 +1236,71 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         </div>
                                     </div>
 
-                                    {/* Visibility */}
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                            可见性 *
-                                        </label>
-                                        <select
-                                            value={visibility}
-                                            onChange={(e) => setVisibility(e.target.value as any)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '10px 12px',
-                                                background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '8px',
-                                                color: '#fff',
-                                                fontSize: '14px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {visibilityOptions.map(opt => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    {/* Category + Visibility side by side */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        {/* Category */}
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                                {t('wiki.import_category')} *
+                                            </label>
+                                            <select
+                                                value={category}
+                                                onChange={(e) => setCategory(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '8px',
+                                                    color: '#fff',
+                                                    fontSize: '14px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {categories.map(cat => (
+                                                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Visibility */}
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                                {t('wiki.import_visibility')} *
+                                            </label>
+                                            <select
+                                                value={visibility}
+                                                onChange={(e) => setVisibility(e.target.value as any)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '8px',
+                                                    color: '#fff',
+                                                    fontSize: '14px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {visibilityOptions.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     {/* Tags */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
-                                            标签 (逗号分隔)
+                                            {t('wiki.import_tags')}
                                         </label>
                                         <input
                                             type="text"
                                             value={tags}
                                             onChange={(e) => setTags(e.target.value)}
-                                            placeholder="固件升级, SDI, 故障排查"
+                                            placeholder={t('wiki.import_tags_placeholder')}
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
@@ -1344,10 +1365,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             fontSize: '14px'
                                         }}>
                                             正在为 <span style={{ color: '#fff', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 {importMode === 'url' && urlInput ? (
-                                                <a 
-                                                    href={urlInput} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
+                                                <a
+                                                    href={urlInput}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
                                                     style={{ color: '#FFD700', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >{urlInput}</a>
@@ -1533,7 +1554,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             width: '24px',
                                                             height: '24px',
                                                             borderRadius: '50%',
-                                                            background: '#4CAF50',
+                                                            background: '#10B981',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',

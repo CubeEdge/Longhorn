@@ -20,11 +20,11 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    // PRD定义: 青色(Teal #00BFA5)到淡紫色(Lavender #8E24AA)渐变
-                    background: 'radial-gradient(circle at center, rgba(0, 191, 165, 0.35) 0%, rgba(142, 36, 170, 0.65) 100%)',
+                    // Kine Green(#10B981)到淡紫色(Lavender #8E24AA)渐变
+                    background: 'radial-gradient(circle at center, rgba(16, 185, 129, 0.35) 0%, rgba(142, 36, 170, 0.65) 100%)',
                     backdropFilter: 'blur(8px)',
-                    boxShadow: '0 0 24px rgba(142, 36, 170, 0.5), 0 0 12px rgba(0, 191, 165, 0.3)',
-                    border: '1px solid rgba(0, 191, 165, 0.4)',
+                    boxShadow: '0 0 24px rgba(142, 36, 170, 0.5), 0 0 12px rgba(16, 185, 129, 0.3)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -33,9 +33,9 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                 }}
                 animate={{
                     boxShadow: [
-                        '0 0 18px rgba(0, 191, 165, 0.4), 0 0 8px rgba(0, 191, 165, 0.2)',
+                        '0 0 18px rgba(16, 185, 129, 0.4), 0 0 8px rgba(16, 185, 129, 0.2)',
                         '0 0 40px rgba(142, 36, 170, 0.8), 0 0 15px rgba(142, 36, 170, 0.4)',
-                        '0 0 18px rgba(0, 191, 165, 0.4), 0 0 8px rgba(0, 191, 165, 0.2)'
+                        '0 0 18px rgba(16, 185, 129, 0.4), 0 0 8px rgba(16, 185, 129, 0.2)'
                     ],
                     scale: [1, 1.03, 1],
                 }}
@@ -51,7 +51,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     height: '14px',
                     borderRadius: '50%',
                     background: '#fff',
-                    boxShadow: '0 0 12px 4px #fff, 0 0 20px 8px rgba(0, 191, 165, 0.6)',
+                    boxShadow: '0 0 12px 4px #fff, 0 0 20px 8px rgba(16, 185, 129, 0.6)',
                     filter: 'blur(1px)',
                     position: 'relative',
                     zIndex: 2
@@ -63,7 +63,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     width: '24px',
                     height: '24px',
                     borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(0, 191, 165, 0.8) 0%, rgba(142, 36, 170, 0.4) 100%)',
+                    background: 'radial-gradient(circle, rgba(16, 185, 129, 0.8) 0%, rgba(142, 36, 170, 0.4) 100%)',
                     filter: 'blur(4px)',
                     zIndex: 1
                 }} />

@@ -47,12 +47,12 @@ interface InquiryTicket {
 }
 
 // Status colors using Kine brand colors from context.md
-// Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444
+// Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
 const statusColors: Record<string, string> = {
     Pending: '#EF4444',        // Kine Red - urgent attention
     InProgress: '#3b82f6',     // Blue - in progress
     AwaitingFeedback: '#d946ef', // Purple - waiting
-    Resolved: '#4CAF50',       // Kine Green - completed
+    Resolved: '#10B981',       // Kine Green - completed
     AutoClosed: '#9ca3af',     // Gray - closed
     Upgraded: '#22d3ee'        // Cyan - upgraded
 };
@@ -942,7 +942,7 @@ const InquiryTicketListPage: React.FC = () => {
                                 title={t('inquiry_ticket.status.resolved')}
                                 count={groupedTickets.done.length}
                                 icon={CheckCircle}
-                                color="#4CAF50"
+                                color="#10B981"
                                 sectionKey="done"
                                 defaultOpen={false}
                                 initialOpen={!isInquirySectionCollapsed('done', false)}

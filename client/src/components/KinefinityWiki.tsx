@@ -545,7 +545,8 @@ export const KinefinityWiki: React.FC = () => {
                     'A': t('wiki.line.a'),
                     'B': t('wiki.line.b'),
                     'C': t('wiki.line.c'),
-                    'D': t('wiki.line.d')
+                    'D': t('wiki.line.d'),
+                    'GENERIC': t('wiki.line.generic')
                 };
                 newBreadcrumb.push({
                     label: lineLabels[productLine],
@@ -622,7 +623,7 @@ export const KinefinityWiki: React.FC = () => {
             // Do NOT auto-restore last article - user explicitly wants to see the listing
             const searchParams = new URLSearchParams(location.search);
             const hasExplicitNavigation = searchParams.has('line') || searchParams.has('model') || searchParams.has('category');
-            
+
             if (hasExplicitNavigation) {
                 // User clicked Wiki menu or breadcrumb - clear selected article
                 setSelectedArticle(null);
@@ -630,7 +631,7 @@ export const KinefinityWiki: React.FC = () => {
                 setIsNavigationRestored(true);
                 return;
             }
-            
+
             // Only auto-restore if no explicit navigation params (first load with no params)
             const lastSlug = localStorage.getItem('wiki-last-article');
             if (lastSlug && articles.length > 0) {
@@ -1117,7 +1118,8 @@ ${contextTickets.map((ticket: any) => {
             'A': t('wiki.line.a'),
             'B': t('wiki.line.b'),
             'C': t('wiki.line.c'),
-            'D': t('wiki.line.d')
+            'D': t('wiki.line.d'),
+            'GENERIC': t('wiki.line.generic')
         };
 
         const newBreadcrumb: BreadcrumbItem[] = [{
@@ -1434,7 +1436,7 @@ ${contextTickets.map((ticket: any) => {
     // Get current display content based on view mode
     const getDisplayContent = () => {
         if (!selectedArticle) return '';
-        
+
         // Show content based on viewMode tab selection
         if (viewMode === 'draft') {
             // Draft tab: show formatted_content (draft)
@@ -1573,8 +1575,8 @@ ${contextTickets.map((ticket: any) => {
                         <button
                             onClick={handleChapterClick}
                             style={{
-                                background: 'rgba(0, 191, 165, 0.1)',
-                                border: '1px solid rgba(0, 191, 165, 0.3)',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
                                 borderRadius: '6px',
                                 padding: '4px 8px',
                                 cursor: 'pointer',
@@ -1585,14 +1587,14 @@ ${contextTickets.map((ticket: any) => {
                                 marginRight: '4px'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.2)';
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(0, 191, 165, 0.1)';
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
                             }}
                             title={t('wiki.chapter_overview')}
                         >
-                            <Layers size={12} color="#00BFA5" />
+                            <Layers size={12} color="#10B981" />
                         </button>
                     )}
                 </div>
@@ -1901,8 +1903,8 @@ ${contextTickets.map((ticket: any) => {
                                     gap: '12px',
                                     marginBottom: '20px',
                                     padding: '12px 16px',
-                                    background: 'rgba(0, 191, 165, 0.05)',
-                                    border: '1px solid rgba(0, 191, 165, 0.15)',
+                                    background: 'rgba(16, 185, 129, 0.05)',
+                                    border: '1px solid rgba(16, 185, 129, 0.15)',
                                     borderRadius: '12px'
                                 }}>
                                     {/* View Mode Toggle */}
@@ -2225,13 +2227,13 @@ ${contextTickets.map((ticket: any) => {
                                 gap: '12px',
                                 marginBottom: '24px',
                                 padding: '16px 20px',
-                                background: 'rgba(0, 191, 165, 0.05)',
-                                border: '1px solid rgba(0, 191, 165, 0.15)',
+                                background: 'rgba(16, 185, 129, 0.05)',
+                                border: '1px solid rgba(16, 185, 129, 0.15)',
                                 borderRadius: '12px'
                             }}>
-                                <BookOpen size={20} color="#00BFA5" />
+                                <BookOpen size={20} color="#10B981" />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#00BFA5' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#10B981' }}>
                                         {showFullChapter ? t('wiki.toc.reading_full') : t('wiki.toc.read_full_title')}
                                     </div>
                                     <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
@@ -2251,7 +2253,7 @@ ${contextTickets.map((ticket: any) => {
                                         padding: '10px 20px',
                                         background: showFullChapter
                                             ? 'rgba(255,255,255,0.1)'
-                                            : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                            : 'linear-gradient(135deg, #10B981, #8E24AA)',
                                         border: 'none',
                                         borderRadius: '8px',
                                         color: '#fff',
@@ -2278,7 +2280,7 @@ ${contextTickets.map((ticket: any) => {
                             {showFullChapter && fullChapterContent && (
                                 <div style={{
                                     background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid rgba(0, 191, 165, 0.2)',
+                                    border: '1px solid rgba(16, 185, 129, 0.2)',
                                     borderRadius: '16px',
                                     padding: '32px',
                                     marginBottom: '32px'
@@ -2619,12 +2621,13 @@ ${contextTickets.map((ticket: any) => {
                                 borderBottom: '1px solid rgba(255,255,255,0.08)',
                                 marginBottom: '32px'
                             }}>
-                                {/* A/B/C/D 产品族类 Tab */}
+                                {/* A/B/C/D/通用 产品族类 Tab */}
                                 {[
                                     { line: 'A', label: t('wiki.line.a_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
                                     { line: 'B', label: t('wiki.line.b_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
                                     { line: 'C', label: t('wiki.line.c_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
-                                    { line: 'D', label: t('wiki.line.d_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') }
+                                    { line: 'D', label: t('wiki.line.d_desc').replace(/^[A-D]\s*(?:类|Class)[：:\s]*/i, '') },
+                                    { line: 'GENERIC', label: t('wiki.line.generic_desc') }
                                 ].map(item => {
                                     const lineArticles = articles.filter(a => a.product_line === item.line);
                                     const count = lineArticles.length;
@@ -3365,15 +3368,15 @@ ${contextTickets.map((ticket: any) => {
                                     );
                                 }
 
-                                // 按产品型号分组
+                                // 按产品型号分组（GENERIC 文章按分类分组）
                                 const groupedByModel = new Map<string, KnowledgeArticle[]>();
                                 lineArticles.forEach(a => {
                                     const model = Array.isArray(a.product_models) ? a.product_models[0] : a.product_models;
-                                    if (!model) return;
-                                    if (!groupedByModel.has(model)) {
-                                        groupedByModel.set(model, []);
+                                    const groupKey = model || a.category || 'Other';
+                                    if (!groupedByModel.has(groupKey)) {
+                                        groupedByModel.set(groupKey, []);
                                     }
-                                    groupedByModel.get(model)!.push(a);
+                                    groupedByModel.get(groupKey)!.push(a);
                                 });
 
                                 return (

@@ -39,11 +39,11 @@ export const getTicketStyles = (type: string | undefined, t: any, isDark = true)
             };
         default:
             return {
-                bg: isDark ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.15)',
-                border: isDark ? 'rgba(76, 175, 80, 0.3)' : 'rgba(76, 175, 80, 0.4)',
-                hoverBg: isDark ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.25)',
-                hoverBorder: isDark ? 'rgba(76, 175, 80, 0.5)' : 'rgba(76, 175, 80, 0.6)',
-                color: '#4CAF50', // Green
+                bg: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.15)',
+                border: isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.4)',
+                hoverBg: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.25)',
+                hoverBorder: isDark ? 'rgba(16, 185, 129, 0.5)' : 'rgba(16, 185, 129, 0.6)',
+                color: '#10B981', // Kine Green
                 icon: <Ticket size={14} />,
                 label: type === 'maintenance' ? (t as any)('wiki.ticket.maintenance', '维护记录') : (type || (t as any)('common.all', '全部'))
             };

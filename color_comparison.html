@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinefinity 颜色对比测试</title>
+    <style>
+        body {
+            background-color: #1c1c1e;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .swatch {
+            width: 100%;
+            height: 120px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 4px;
+        }
+
+        .code {
+            font-family: monospace;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        /* Specific Colors */
+        .kine-green {
+            background-color: #4CAF50;
+        }
+
+        .assistant-teal {
+            background-color: #00BFA5;
+        }
+
+        .vibrant-green {
+            background-color: #00F294;
+        }
+
+        /* Possible variant in screenshots */
+
+        .button-demo {
+            margin-top: 20px;
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Kinefinity 颜色对比</h1>
+
+    <div class="grid">
+        <!-- Kine Yellow -->
+        <div class="card" style="border-color: #FFD700;">
+            <div class="label">主题色 (Main)</div>
+            <div class="swatch" style="background-color: #FFD700; color: #000;">Kine Yellow</div>
+            <div class="code">#FFD700</div>
+            <div class="desc">@[/uiux] 官方定义。高饱和金黄色。</div>
+        </div>
+
+        <!-- Kine Red -->
+        <div class="card" style="border-color: #EF4444;">
+            <div class="label">警示色 (Danger)</div>
+            <div class="swatch" style="background-color: #EF4444;">Kine Red</div>
+            <div class="code">#EF4444</div>
+            <div class="desc">@[/uiux] 官方定义。鲜艳的正红色。</div>
+        </div>
+
+        <!-- Kine Blue -->
+        <div class="card" style="border-color: #3B82F6;">
+            <div class="label">信息色 (Info)</div>
+            <div class="swatch" style="background-color: #3B82F6;">Kine Blue</div>
+            <div class="code">#3B82F6</div>
+            <div class="desc">@[/uiux] 官方定义。明亮的蓝色。</div>
+        </div>
+
+        <!-- Kine Green (Standard) -->
+        <div class="card" style="border-color: #4CAF50;">
+            <div class="label">规范成功色 (Standard)</div>
+            <div class="swatch" style="background-color: #4CAF50;">#4CAF50</div>
+            <div class="code">Kine Green</div>
+            <div class="desc">@[/uiux] 官方定义。偏深、沉稳的经典绿色。</div>
+        </div>
+
+        <!-- Backup UI Green -->
+        <div class="card" style="border-color: #10B981;">
+            <div class="label">现代变体 (Emerald)</div>
+            <div class="swatch" style="background-color: #10B981;">#10B981</div>
+            <div class="code">Backup Green</div>
+            <div class="desc">备份系统中使用。清脆透亮的翠绿色。</div>
+        </div>
+
+        <!-- Assistant Teal -->
+        <div class="card" style="border-color: #00BFA5;">
+            <div class="label">功能变体 (Teal)</div>
+            <div class="swatch" style="background-color: #00BFA5;">#00BFA5</div>
+            <div class="code">Assistant Teal</div>
+            <div class="desc">Bokeh 助手的品牌色。偏青的科技绿。</div>
+        </div>
+    </div>
+
+    <!-- Triple Blend Test -->
+    <div
+        style="margin-top: 40px; width: 100%; max-width: 1000px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 16px;">
+        <h3 style="text-align: center; margin-bottom: 20px; font-weight: 300;">三色匹配测试 (Yellow + Red + Green)</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+            <!-- Standard Match -->
+            <div style="flex: 1; min-width: 280px; text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">方案 A: 官方平衡</div>
+                <div
+                    style="display: flex; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="flex:1; background:#FFD700"></div>
+                    <div style="flex:1; background:#EF4444"></div>
+                    <div style="flex:1; background:#4CAF50"></div>
+                </div>
+                <p style="font-size: 11px; margin-top: 8px; color: #4CAF50;">
+                    视觉感受：经典、保守、厚重。<br>适合工业感强、稳定的后台。但暗色模式下略显“浑浊”。</p>
+            </div>
+
+            <!-- Modern Match -->
+            <div style="flex: 1; min-width: 280px; text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">方案 B: 现代 premium (推荐)
+                </div>
+                <div
+                    style="display: flex; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="flex:1; background:#FFD700"></div>
+                    <div style="flex:1; background:#EF4444"></div>
+                    <div style="flex:1; background:#10B981"></div>
+                </div>
+                <p style="font-size: 11px; margin-top: 8px; color: #10B981;">视觉感受：通透、清爽、能量对等。<br>更符合 macOS26 的剔透质感，与
+                    Yellow/Red 的饱和度更匹配。</p>
+            </div>
+
+            <!-- Tech Match -->
+            <div style="flex: 1; min-width: 280px; text-align: center;">
+                <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">方案 C: 科技感特化</div>
+                <div
+                    style="display: flex; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="flex:1; background:#FFD700"></div>
+                    <div style="flex:1; background:#EF4444"></div>
+                    <div style="flex:1; background:#00BFA5"></div>
+                </div>
+                <p style="font-size: 11px; margin-top: 8px; color: #00BFA5;">视觉感受：亮眼、跳跃、冷暖对比强烈。<br>适合 Bokeh 助手等需要“破次元”的
+                    AI 场景。</p>
+            </div>
+
+        </div>
+    </div>
+
+    <div
+        style="margin-top: 40px; max-width: 800px; background: rgba(16, 185, 129, 0.1); padding: 30px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+        <h3 style="margin-top: 0; color: #10B981;">🎨 选型深度思考：</h3>
+        <p style="color: rgba(255,255,255,0.8); line-height: 1.8;">
+            为了匹配 <b>Kine Yellow (#FFD700)</b> 的高阶张力和 <b>Kine Red (#EF4444)</b> 的明艳度：
+            <br><br>
+            1. <b>颜色能量理论</b>：#FFD700 和 #EF4444 都是非常“纯”且“亮”的颜色。官方定义的 <b>#4CAF50</b>
+            由于混入了一些灰色调（低明度），在它们中间显得有些“乏力”，甚至会让界面看起来有些陈旧。
+            <br>
+            2. <b>暗色模式兼容性</b>：在暗背景下，<b>#10B981</b> 的发光感更好，能与 macOS 风格的毛玻璃质感（Backdrop Filter）产生更好的共鸣。
+            <br><br>
+            <b>💡 结论：</b> 虽然规范文档写的是 #4CAF50，但如果要实现 **macOS26** 的极致美感，我强烈建议使用 <b>#10B981</b>。
+        </p>
+    </div>
+</body>
+
+</html>

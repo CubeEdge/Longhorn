@@ -49,15 +49,15 @@ interface RMATicket {
 }
 
 // Status colors using Kine brand colors from context.md
-// Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444
+// Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
 const statusColors: Record<string, string> = {
     Pending: '#FFD700',        // Kine Yellow - received/waiting
     Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
     Diagnosing: '#8b5cf6',     // Purple - in diagnosis
     InRepair: '#3b82f6',       // Blue - in repair
-    Repaired: '#4CAF50',       // Kine Green - repaired
+    Repaired: '#10B981',       // Kine Green - repaired
     Shipped: '#06b6d4',        // Cyan - shipped
-    Completed: '#4CAF50',      // Kine Green - completed
+    Completed: '#10B981',      // Kine Green - completed
     Cancelled: '#6b7280'       // Gray - cancelled
 };
 

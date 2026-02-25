@@ -180,7 +180,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                     {ticketNumber}
                 </div>
             </div>
-            
+
             <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
@@ -189,7 +189,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             }}>
                 {title}
             </div>
-            
+
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -202,9 +202,9 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                     </span>
                 )}
                 <span style={{ color: '#444' }}>·</span>
-                <span style={{ 
-                    fontSize: '12px', 
-                    color: status === 'Closed' || status === 'Resolved' ? '#4CAF50' : '#888'
+                <span style={{
+                    fontSize: '12px',
+                    color: status === 'Closed' || status === 'Resolved' ? '#10B981' : '#888'
                 }}>
                     {statusMap[status] || status}
                 </span>

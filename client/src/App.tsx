@@ -393,9 +393,9 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
             {/* Kinefinity WIKI - All Users */}
-            <Link 
-              to="/tech-hub/wiki?line=A" 
-              className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `} 
+            <Link
+              to="/tech-hub/wiki?line=A"
+              className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `}
               onClick={() => {
                 // Clear wiki state to ensure navigating to homepage
                 localStorage.removeItem('wiki-last-article');
@@ -751,7 +751,7 @@ const ServiceTopBarStats: React.FC = () => {
       }}
     >
       {/* Status colors using Kine brand colors from context.md:
-          Kine Yellow: #FFD700, Kine Green: #4CAF50, Kine Red: #EF4444 */}
+          Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444 */}
       {context === 'inquiry' && (
         <>
           {renderStatItem('all', '全部', '#6b7280')}
@@ -762,7 +762,7 @@ const ServiceTopBarStats: React.FC = () => {
           {divider}
           {renderStatItem('AwaitingFeedback', '待反馈', '#d946ef')} {/* Purple */}
           {divider}
-          {renderStatItem('Resolved', '已解决', '#4CAF50')}     {/* Kine Green */}
+          {renderStatItem('Resolved', '已解决', '#10B981')}     {/* Kine Green */}
           {divider}
           {renderStatItem('AutoClosed', '已关闭', '#9ca3af')}   {/* Gray */}
           {divider}
@@ -782,7 +782,7 @@ const ServiceTopBarStats: React.FC = () => {
           {divider}
           {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
           {divider}
-          {renderStatItem('Completed', '已完成', '#4CAF50')}    {/* Kine Green - 使用Completed状态 */}
+          {renderStatItem('Completed', '已完成', '#10B981')}    {/* Kine Green - 使用Completed状态 */}
         </>
       )}
 
@@ -798,7 +798,7 @@ const ServiceTopBarStats: React.FC = () => {
           {divider}
           {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
           {divider}
-          {renderStatItem('Completed', '已完成', '#4CAF50')}    {/* Kine Green */}
+          {renderStatItem('Completed', '已完成', '#10B981')}    {/* Kine Green */}
         </>
       )}
     </div>

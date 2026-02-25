@@ -855,10 +855,34 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
             if (turbo) {
                 // Turbo Mode: Jina (Markdown)
-                const response = await axios.get(`https://r.jina.ai/${url}`, {
-                    headers: { 'Accept': 'text/plain', 'X-No-Cache': 'true' },
-                    timeout: 45000
-                });
+                // Try with target selector first, fallback without if 422 (no matching elements)
+                let response;
+                try {
+                    response = await axios.get(`https://r.jina.ai/${url}`, {
+                        headers: {
+                            'Accept': 'text/plain',
+                            'X-No-Cache': 'true',
+                            'X-Target-Selector': 'article, main, [role="main"], .article-content, .post-content, .entry-content, .content, #content, .main-content',
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                        },
+                        timeout: 45000
+                    });
+                } catch (selectorErr) {
+                    // Fallback: retry without X-Target-Selector (422 = no matching elements on page)
+                    if (selectorErr.response && selectorErr.response.status === 422) {
+                        console.log(`[Knowledge Import URL] Target selector failed for ${url}, retrying without selector...`);
+                        response = await axios.get(`https://r.jina.ai/${url}`, {
+                            headers: {
+                                'Accept': 'text/plain',
+                                'X-No-Cache': 'true',
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                            },
+                            timeout: 45000
+                        });
+                    } else {
+                        throw selectorErr;
+                    }
+                }
 
                 let markdown = response.data;
                 if (!markdown || markdown.length < 100) throw new Error('Jina content too short');
@@ -934,25 +958,45 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             let imported_count = 0;
             let skipped_count = 0;
 
-            // Helper function to remove ALL H1 tags from content
-            function removeAllH1(content) {
-                if (!content) return content;
-                
-                // Remove Markdown H1 (# Title)
+            // Helper: remove content heading that duplicates the article title
+            function removeContentTitle(content, articleTitle) {
+                if (!content || !articleTitle) return content;
+
+                // Normalize title for comparison (strip whitespace, case-insensitive)
+                const normalizedTitle = articleTitle.replace(/\s+/g, '').toLowerCase();
+
+                // Remove Markdown headings (# / ## / ###) that match the article title
+                content = content.replace(/^(#{1,3})\s+(.+)$/gm, (match, hashes, headingText) => {
+                    const normalizedHeading = headingText.trim().replace(/\s+/g, '').toLowerCase();
+                    if (normalizedHeading === normalizedTitle) {
+                        return ''; // Remove matching heading
+                    }
+                    return match; // Keep non-matching headings
+                });
+
+                // Remove HTML headings (h1/h2/h3) that match the article title
+                content = content.replace(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi, (match, headingText) => {
+                    const stripped = headingText.replace(/<[^>]+>/g, '').trim();
+                    const normalizedHeading = stripped.replace(/\s+/g, '').toLowerCase();
+                    if (normalizedHeading === normalizedTitle) {
+                        return ''; // Remove matching heading
+                    }
+                    return match; // Keep non-matching headings
+                });
+
+                // Also remove all H1 tags (article should never have H1 in body)
                 content = content.replace(/^#\s+.+$/gm, '');
-                
-                // Remove HTML H1 (<h1>...</h1>)
                 content = content.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, '');
-                
+
                 // Clean up extra blank lines
                 content = content.replace(/\n{3,}/g, '\n\n');
-                
+
                 return content.trim();
             }
 
             for (const chapter of chapters) {
-                // Remove all H1 from content before saving
-                const cleanedContent = removeAllH1(chapter.content);
+                // Remove content headings that duplicate the article title
+                const cleanedContent = removeContentTitle(chapter.content, chapter.title || articleTitle);
                 const slug = generateSlug(chapter.title || articleTitle);
                 const existing = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?').get(slug);
                 if (existing) {
@@ -1827,8 +1871,8 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      * Intelligently detects article body, removes nav/ads/footer
      */
     function extractWebContent($, url) {
-        // Remove unwanted elements
-        $('script, style, nav, header, footer, .nav, .menu, .sidebar, .ad, .advertisement, .comments').remove();
+        // Remove unwanted elements: nav, sidebar, ads, banners, QR codes, social widgets, etc.
+        $('script, style, nav, header, footer, .nav, .menu, .sidebar, aside, .aside, .ad, .advertisement, .comments, .comment, .qrcode, .qr-code, .banner, .widget, .related-articles, .related-posts, .social-share, .share-bar, .breadcrumb, .pagination, .recommend, .hot-articles, .download-app, [class*="sidebar"], [class*="banner"], [class*="qrcode"], [class*="recommend"], [id*="sidebar"]').remove();
 
         let title = '';
         let content = '';
