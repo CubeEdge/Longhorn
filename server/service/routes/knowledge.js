@@ -11,6 +11,7 @@ const fs = require('fs');
 const pdf = require('pdf-parse');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { marked } = require('marked');
 const TurndownService = require('turndown');
 const { gfm } = require('turndown-plugin-gfm');
 const crypto = require('crypto');
@@ -393,7 +394,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             console.log(`[Knowledge Import] PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} chars`);
 
             // Extract images from PDF
-            const imagesDir = './data/Knowledge/Images';
+            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
             if (!fs.existsSync(imagesDir)) {
                 fs.mkdirSync(imagesDir, { recursive: true });
             }
@@ -568,7 +569,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             const timestamp = Date.now();
             const tempDir = `/tmp/docx_import_${timestamp}`;
             const htmlPath = path.join(tempDir, 'output.html');
-            const imagesDir = './data/Knowledge/Images';
+            const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
 
             // 创建临时目录
             fs.mkdirSync(tempDir, { recursive: true });
@@ -905,15 +906,14 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 if (detectedTitle) {
                     detectedTitle = detectedTitle
                         .replace(/^Title:\s*/i, '')
-                        .replace(/\s*[\|-]\s*(SmallHD|Kinefinity|User Guide|User Manual).*$/i, '')
-                        .replace(/\s*[\|-]\s*\[MASTER\].*$/i, '')
+                        .split(/\s+[\|–—]\s+|\s+-\s+/)[0] // Take first segment before site suffix
                         .trim();
                 }
 
                 articleTitle = title || detectedTitle || 'Web Import';
                 sourceReference = articleTitle;
 
-                const imagesDir = './data/Knowledge/Images';
+                const imagesDir = '/Volumes/fileserver/Service/Knowledge/Images';
                 if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
                 const downloadedImages = await downloadMarkdownImages(markdown, imagesDir);
                 let finalMarkdown = markdown;
@@ -921,7 +921,37 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     finalMarkdown = finalMarkdown.split(img.original).join(img.local);
                 });
 
-                chapters = [{ title: articleTitle, content: finalMarkdown }];
+                // Clean Jina Reader metadata and truncate at comment sections
+                finalMarkdown = finalMarkdown
+                    .replace(/^Title:\s*.+$/gm, '')
+                    .replace(/^URL Source:\s*.+$/gm, '')
+                    .replace(/^Markdown Content:\s*$/gm, '');
+
+                // Truncate at comment section (e.g., 热门评论, 精彩评论, Popular Comments)
+                const commentMarkers = [
+                    /^.*热门评论/m, /^.*精彩评论/m, /^.*用户评论/m, /^.*全部评论/m,
+                    /^.*相关推荐/m, /^.*相关文章/m, /^.*猜你喜欢/m, /^.*更多精彩/m,
+                    /^.*Popular Comments/im, /^.*Related Articles/im, /^.*You May Also Like/im,
+                    /^.*Leave a [Cc]omment/m, /^.*Comments?\s*\(\d+\)/m,
+                    /^.*上一篇[:：]/m, /^.*下一篇[:：]/m
+                ];
+                for (const marker of commentMarkers) {
+                    const match = finalMarkdown.match(marker);
+                    if (match) {
+                        const idx = finalMarkdown.indexOf(match[0]);
+                        if (idx > finalMarkdown.length * 0.2) { // Only truncate if marker is past 20% of content
+                            console.log(`[Knowledge Import] Truncating at comment marker: "${match[0].trim().substring(0, 40)}"`);
+                            finalMarkdown = finalMarkdown.substring(0, idx).trim();
+                            break;
+                        }
+                    }
+                }
+
+                finalMarkdown = finalMarkdown.replace(/^\n{2,}/, '\n'); // Clean leading blank lines
+
+                // Convert Markdown to HTML for consistent storage and rendering
+                const htmlContent = marked.parse(finalMarkdown);
+                chapters = [{ title: articleTitle, content: htmlContent }];
             } else {
                 // Standard Mode: Clean HTML
                 console.log(`[Knowledge Import URL] Fetching Standard content: ${url}`);
@@ -958,38 +988,37 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             let imported_count = 0;
             let skipped_count = 0;
 
-            // Helper: remove content heading that duplicates the article title
+            // Helper: remove the first heading (H1/H2/H3) from body content
+            // and clean leading breadcrumb/navigation noise from Jina results
             function removeContentTitle(content, articleTitle) {
-                if (!content || !articleTitle) return content;
+                if (!content) return content;
 
-                // Normalize title for comparison (strip whitespace, case-insensitive)
-                const normalizedTitle = articleTitle.replace(/\s+/g, '').toLowerCase();
-
-                // Remove Markdown headings (# / ## / ###) that match the article title
-                content = content.replace(/^(#{1,3})\s+(.+)$/gm, (match, hashes, headingText) => {
-                    const normalizedHeading = headingText.trim().replace(/\s+/g, '').toLowerCase();
-                    if (normalizedHeading === normalizedTitle) {
-                        return ''; // Remove matching heading
+                // Remove first HTML heading (h1, h2, or h3) found in content
+                let removed = false;
+                content = content.replace(/<h[1-3][^>]*>[\s\S]*?<\/h[1-3]>/i, (match) => {
+                    if (!removed) {
+                        removed = true;
+                        return ''; // Remove first heading only
                     }
-                    return match; // Keep non-matching headings
+                    return match;
                 });
 
-                // Remove HTML headings (h1/h2/h3) that match the article title
-                content = content.replace(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi, (match, headingText) => {
-                    const stripped = headingText.replace(/<[^>]+>/g, '').trim();
-                    const normalizedHeading = stripped.replace(/\s+/g, '').toLowerCase();
-                    if (normalizedHeading === normalizedTitle) {
-                        return ''; // Remove matching heading
-                    }
-                    return match; // Keep non-matching headings
-                });
+                // Remove leading breadcrumb/navigation paragraph that contains the article title
+                // (e.g., <p><strong><a>首页>动态></a></strong> 梅洛：尤文已发生...</p>)
+                if (articleTitle) {
+                    const titleSnippet = articleTitle.substring(0, 20);
+                    content = content.replace(/^(\s*<p>[\s\S]{0,500}?<\/p>\s*){0,3}/i, (match) => {
+                        const text = match.replace(/<[^>]+>/g, '').trim();
+                        // If this leading paragraph reproduces the title or is a breadcrumb, remove it
+                        if (text.includes(titleSnippet) && text.includes('>')) {
+                            return '';
+                        }
+                        return match;
+                    });
+                }
 
-                // Also remove all H1 tags (article should never have H1 in body)
-                content = content.replace(/^#\s+.+$/gm, '');
-                content = content.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, '');
-
-                // Clean up extra blank lines
-                content = content.replace(/\n{3,}/g, '\n\n');
+                // Clean up leading whitespace and extra blank lines
+                content = content.replace(/^\s+/, '').replace(/\n{3,}/g, '\n\n');
 
                 return content.trim();
             }
@@ -1872,16 +1901,17 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
      */
     function extractWebContent($, url) {
         // Remove unwanted elements: nav, sidebar, ads, banners, QR codes, social widgets, etc.
-        $('script, style, nav, header, footer, .nav, .menu, .sidebar, aside, .aside, .ad, .advertisement, .comments, .comment, .qrcode, .qr-code, .banner, .widget, .related-articles, .related-posts, .social-share, .share-bar, .breadcrumb, .pagination, .recommend, .hot-articles, .download-app, [class*="sidebar"], [class*="banner"], [class*="qrcode"], [class*="recommend"], [id*="sidebar"]').remove();
+        $('script, style, nav, header, footer, .nav, .menu, .sidebar, aside, .aside, .ad, .advertisement, .comments, .comment, .qrcode, .qr-code, .banner, .widget, .related-articles, .related-posts, .social-share, .share-bar, .breadcrumb, .pagination, .recommend, .hot-articles, .download-app, [class*="sidebar"], [class*="banner"], [class*="qrcode"], [class*="recommend"], [id*="sidebar"], .wp-sidebar, .site-footer, .site-header, .prev-next, .post-navigation, .page-navigation, .toc, .table-of-contents, [class*="toc"], [class*="navigation"], [class*="footer"], [class*="prev-next"]').remove();
 
         let title = '';
         let content = '';
         let summary = '';
 
-        // Try to extract title (prioritize h1 then meta)
-        title = $('h1').first().text().trim() ||
-            $('meta[property="og:title"]').attr('content') ||
-            $('title').text().trim() ||
+        // Try to extract title (prioritize h1 then meta) and clean site suffix
+        const cleanSiteSuffix = (t) => t ? t.split(/\s+[\|–—]\s+|\s+-\s+/)[0].trim() : '';
+        title = cleanSiteSuffix($('h1').first().text().trim()) ||
+            cleanSiteSuffix($('meta[property="og:title"]').attr('content')) ||
+            cleanSiteSuffix($('title').text().trim()) ||
             'Web Import';
 
         // Try to extract meta description as summary

@@ -1,6 +1,6 @@
 # System Context (系统全景图)
 
-> **最后更新/Last Updated**: 2026-02-25 | **Current Version**: v12.1.47 (Knowledge Base Import Optimization)
+> **最后更新/Last Updated**: 2026-02-25 | **Current Version**: v12.1.49 (Knowledge Base Import Optimization)
 > **核心作用**: 本文档定义了 Longhorn 项目的“世界观”，包括硬件设施、部署架构、核心代码逻辑与已知限制。
 > **AI 助手必读**: 每次开始任务前，请先阅读本文档以获取环境上下文。
 

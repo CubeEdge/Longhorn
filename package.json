@@ -1,6 +1,6 @@
 {
     "name": "longhorn-project",
-    "version": "1.5.33",
+    "version": "1.5.34",
     "scripts": {
         "install-all": "npm install && cd client && npm install && cd ../server && npm install",
         "build-client": "cd client && npm run build",
