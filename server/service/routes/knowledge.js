@@ -934,7 +934,25 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             let imported_count = 0;
             let skipped_count = 0;
 
+            // Helper function to remove ALL H1 tags from content
+            function removeAllH1(content) {
+                if (!content) return content;
+                
+                // Remove Markdown H1 (# Title)
+                content = content.replace(/^#\s+.+$/gm, '');
+                
+                // Remove HTML H1 (<h1>...</h1>)
+                content = content.replace(/<h1[^>]*>[\s\S]*?<\/h1>/gi, '');
+                
+                // Clean up extra blank lines
+                content = content.replace(/\n{3,}/g, '\n\n');
+                
+                return content.trim();
+            }
+
             for (const chapter of chapters) {
+                // Remove all H1 from content before saving
+                const cleanedContent = removeAllH1(chapter.content);
                 const slug = generateSlug(chapter.title || articleTitle);
                 const existing = db.prepare('SELECT id FROM knowledge_articles WHERE slug = ?').get(slug);
                 if (existing) {
@@ -967,7 +985,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     title: chapter.title || articleTitle,
                     slug,
                     summary: cleanSummary,
-                    content: chapter.content,
+                    content: cleanedContent,
                     category,
                     product_line: product_line || 'General',
                     product_models: JSON.stringify(product_models),

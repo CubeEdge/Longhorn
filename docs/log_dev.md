@@ -1,6 +1,32 @@
 # 开发会话日志 (Development Session Log)
 
-**概述**: 本文档记录每次开发会话的内容、投入的"Prompt轮数/精力"以及具体的技术产出。
+**概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
+
+---
+
+## 2026-02-25 17:00 - Knowledge Import H1 Removal & DOCX Progress Fix
+
+### Tasks Completed:
+1. **H1 Tag Removal Fix**: Fixed `knowledge.js` line 988 to use `cleanedContent` (with all H1 tags removed) instead of `chapter.content` when saving web import content. The `removeAllH1()` function was correctly implemented but not properly used.
+2. **DOCX Upload Progress Bar**: Fixed `KnowledgeGenerator.tsx` lines 264-267, changing step id from incorrect `'fetch'` to correct `'upload'` for DOCX mode, enabling proper progress bar state updates.
+
+### Technical Output:
+- **Modified**: `server/service/routes/knowledge.js` (line 988), `client/src/components/KnowledgeGenerator.tsx` (lines 264-267)
+- **Deployment**: Successfully deployed via `./scripts/deploy.sh`
+
+---
+
+## 2026-02-25 15:30 - Knowledge Web Import Robustness & Content Extraction Enhancement
+
+### Tasks Completed:
+1. **Web Import Failure Handling**: Added content length validation (minimum 100 characters) in `knowledge.js`. Returns 400 error with user-friendly message suggesting Jina Reader mode when content extraction fails.
+2. **Content Extraction Enhancement**: Refactored `extractWebContent()` function with 30+ CSS selectors to filter out sidebars, QR codes, banners, ads, recommendations, and other non-content elements.
+3. **Image Deduplication**: Implemented image URL deduplication using Set tracking, plus filtering of non-content images (logos, icons, avatars, loading placeholders).
+4. **Wiki Navigation Fix**: Modified `KinefinityWiki.tsx` to clear selected article state when URL has navigation parameters (line/model/category), preventing auto-restoration of last viewed article.
+
+### Technical Output:
+- **Modified**: `server/service/routes/knowledge.js`, `client/src/components/KinefinityWiki.tsx`
+- **Release**: Client v12.1.43, Server v1.5.21
 
 ---
 

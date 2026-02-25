@@ -47,7 +47,7 @@ interface KnowledgeGeneratorProps {
 }
 
 export default function KnowledgeGenerator({ isOpen = true, onClose }: KnowledgeGeneratorProps) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
 
 
@@ -263,8 +263,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                 // 步骤1: 上传文件（分块上传 + 断点续传）
                 setProgress(prev => prev ? {
                     ...prev,
-                    currentStep: 'fetch',
-                    steps: prev.steps.map(s => s.id === 'fetch' ? { ...s, status: 'processing', progress: 0 } : s)
+                    currentStep: 'upload',
+                    steps: prev.steps.map(s => s.id === 'upload' ? { ...s, status: 'processing', progress: 0 } : s)
                 } : null);
 
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -501,7 +501,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                             product_models: productModels,
                             visibility,
                             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-                            turbo: turboMode
+                            turbo: turboMode,
+                            locale: language === 'en' ? 'en-US' : language === 'zh' ? 'zh-CN' : language  // Pass current app language for title translation
                         })
                     });
                 } finally {
@@ -633,22 +634,26 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     try {
                         console.log(`[Import] Optimizing article ${i + 1}/${articleIds.length}: ID=${articleId}`);
 
-                        // 模拟进度动画 - 从当前进度缓慢增加到下一个台阶的 90%
+                        // 优化进度动画 - 使用更平滑的增量，在90%前快速，90%后减慢
                         const basePercent = Math.round((optimizedCount / totalArticles) * 100);
                         const nextStepPercent = Math.round(((optimizedCount + 1) / totalArticles) * 100);
 
                         let currentSimulated = basePercent;
+                        const maxProgress = nextStepPercent - 2; // 留2%给完成跳转
                         const progressInterval = setInterval(() => {
-                            if (currentSimulated < nextStepPercent - 5) {
-                                currentSimulated += 2;
+                            if (currentSimulated < maxProgress) {
+                                // 渐进式增速：前期快，后期慢，避免卡顿感
+                                const remaining = maxProgress - currentSimulated;
+                                const increment = remaining > 30 ? 3 : remaining > 15 ? 2 : 1;
+                                currentSimulated = Math.min(currentSimulated + increment, maxProgress);
                                 setProgress(prev => prev ? {
                                     ...prev,
                                     steps: prev.steps.map(s =>
-                                        s.id === 'optimize' ? { ...s, progress: currentSimulated } : s
+                                        s.id === 'optimize' ? { ...s, progress: currentSimulated, details: `正在优化... ${currentSimulated}%` } : s
                                     )
                                 } : null);
                             }
-                        }, 800);
+                        }, 400); // 更频繁更新，动画更平滑
 
                         try {
                             await axios.post(`${API_BASE_URL}/api/v1/knowledge/${articleId}/format`,
@@ -1338,7 +1343,17 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             color: '#aaa',
                                             fontSize: '14px'
                                         }}>
-                                            正在为 <span style={{ color: '#fff', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 <span style={{ color: '#FFD700', fontWeight: 600 }}>{docxFile?.name || urlInput || '文本输入'}</span> 的知识。
+                                            正在为 <span style={{ color: '#fff', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 {importMode === 'url' && urlInput ? (
+                                                <a 
+                                                    href={urlInput} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    style={{ color: '#FFD700', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >{urlInput}</a>
+                                            ) : (
+                                                <span style={{ color: '#FFD700', fontWeight: 600 }}>{docxFile?.name || urlInput || '文本输入'}</span>
+                                            )} 的知识。
                                             <br />
                                             导入分类：<span style={{ color: '#fff' }}>{category}</span>，源模式：<span style={{ color: '#fff' }}>{importMode.toUpperCase()}</span>{bokehOptimize && '，已开启 Bokeh 优化'}。
                                         </div>
@@ -1447,16 +1462,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                         borderRadius: '2px'
                                                                     }} />
                                                                 </div>
-                                                                <div style={{
-                                                                    display: 'flex',
-                                                                    justifyContent: 'space-between',
-                                                                    fontSize: '11px',
-                                                                    color: '#888',
-                                                                    marginTop: '6px'
-                                                                }}>
-                                                                    {/* 移除硬编码文本，详情由 step.details 提供 */}
-                                                                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
-                                                                </div>
+                                                                {/* 移除重复的百分比显示，details中已包含进度信息 */}
                                                             </div>
                                                         )}
                                                         {/* Upload Progress Bar and Info */}
