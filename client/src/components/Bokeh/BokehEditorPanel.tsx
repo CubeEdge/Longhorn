@@ -249,17 +249,17 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                 alignItems: 'center'
             }}
         >
-            {/* 底部栏按钮 - Bokeh 渐变色风格 */}
+            {/* 底部栏按钮 - PRD规定的青紫渐变(#00BFA5 -> #8E24AA) */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 style={{
                     padding: '6px 12px',
                     background: isExpanded
-                        ? 'linear-gradient(135deg, #7C3AED, #06B6D4)'
-                        : 'rgba(139, 92, 246, 0.15)',
-                    border: '1px solid rgba(139, 92, 246, 0.4)',
+                        ? 'linear-gradient(135deg, #00BFA5, #8E24AA)'
+                        : 'rgba(0, 191, 165, 0.15)',
+                    border: '1px solid rgba(0, 191, 165, 0.4)',
                     borderRadius: '6px',
-                    color: isExpanded ? '#fff' : '#a78bfa',
+                    color: isExpanded ? '#fff' : '#00BFA5',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -294,7 +294,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             width: '400px',
                             maxHeight: '350px',
                             background: 'rgba(30, 30, 35, 0.98)',
-                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            border: '1px solid rgba(0, 191, 165, 0.3)',
                             borderRadius: '12px',
                             boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
                             overflow: 'hidden',
@@ -310,7 +310,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             justifyContent: 'space-between'
                         }}>
                             <span style={{
-                                color: '#a78bfa',
+                                color: '#00BFA5',
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 display: 'flex',
@@ -350,10 +350,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                         disabled={loading}
                                         style={{
                                             padding: '4px 10px',
-                                            background: 'rgba(139, 92, 246, 0.1)',
-                                            border: '1px solid rgba(139, 92, 246, 0.2)',
+                                            background: 'rgba(0, 191, 165, 0.1)',
+                                            border: '1px solid rgba(0, 191, 165, 0.2)',
                                             borderRadius: '14px',
-                                            color: '#a78bfa',
+                                            color: '#00BFA5',
                                             fontSize: '11px',
                                             cursor: loading ? 'not-allowed' : 'pointer',
                                             opacity: loading ? 0.5 : 1,
@@ -394,9 +394,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                                 fontSize: '11px',
                                                 maxWidth: '90%',
                                                 background: msg.role === 'user'
-                                                    ? 'rgba(139, 92, 246, 0.15)'
+                                                    ? 'rgba(0, 191, 165, 0.15)'
                                                     : 'rgba(255,255,255,0.08)',
-                                                color: msg.role === 'user' ? '#a78bfa' : 'rgba(255,255,255,0.85)',
+                                                color: msg.role === 'user' ? '#00BFA5' : 'rgba(255,255,255,0.85)',
                                                 lineHeight: '1.4'
                                             }}>
                                                 {msg.content}
@@ -411,13 +411,13 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 <div style={{
                                     marginBottom: '10px',
                                     padding: '10px',
-                                    background: 'rgba(139, 92, 246, 0.08)',
-                                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                                    background: 'rgba(0, 191, 165, 0.08)',
+                                    border: '1px solid rgba(0, 191, 165, 0.2)',
                                     borderRadius: '6px'
                                 }}>
                                     <div style={{
                                         fontSize: '11px',
-                                        color: '#a78bfa',
+                                        color: '#00BFA5',
                                         marginBottom: '6px',
                                         fontWeight: 600
                                     }}>
@@ -436,7 +436,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                             style={{
                                                 flex: 1,
                                                 padding: '6px',
-                                                background: 'linear-gradient(135deg, #7C3AED, #06B6D4)',
+                                                background: 'linear-gradient(135deg, #00BFA5, #8E24AA)',
                                                 border: 'none',
                                                 borderRadius: '5px',
                                                 color: '#fff',
@@ -511,7 +511,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                         height: '34px',
                                         background: loading || !input.trim()
                                             ? 'rgba(76, 175, 80, 0.15)'
-                                            : 'linear-gradient(135deg, #7C3AED, #06B6D4)',
+                                            : 'linear-gradient(135deg, #00BFA5, #8E24AA)',
                                         border: 'none',
                                         borderRadius: '8px',
                                         color: loading || !input.trim() ? 'rgba(255,255,255,0.3)' : '#000',

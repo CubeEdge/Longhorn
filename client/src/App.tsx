@@ -393,7 +393,15 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
 
             {/* Kinefinity WIKI - All Users */}
-            <Link to="/tech-hub/wiki" className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `} onClick={onClose}>
+            <Link 
+              to="/tech-hub/wiki?line=A" 
+              className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `} 
+              onClick={() => {
+                // Clear wiki state to ensure navigating to homepage
+                localStorage.removeItem('wiki-last-article');
+                onClose();
+              }}
+            >
               <Book size={18} />
               <span>Kinefinity WIKI</span>
             </Link>
@@ -802,8 +810,16 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { language: currentLanguage, setLanguage, t } = useLanguage();
+
+  // Fetch server version on mount
+  React.useEffect(() => {
+    axios.get('/api/status')
+      .then(res => setServerVersion(res.data?.version || null))
+      .catch(() => setServerVersion(null));
+  }, []);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -921,18 +937,27 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
 
-          {/* Version Display */}
+          {/* Version Display - Client & Server */}
           <div className="hidden-mobile" style={{
             color: '#10b981',
             fontWeight: 700,
-            fontSize: '0.9rem',
+            fontSize: '0.85rem',
             background: 'rgba(16, 185, 129, 0.1)',
-            padding: '4px 8px',
+            padding: '4px 10px',
             borderRadius: '6px',
             marginRight: '12px',
-            border: '1px solid rgba(16, 185, 129, 0.2)'
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
           }}>
-            v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}
+            <span>v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}</span>
+            {serverVersion && (
+              <>
+                <span style={{ opacity: 0.5 }}>|</span>
+                <span style={{ opacity: 0.8 }}>s{serverVersion}</span>
+              </>
+            )}
           </div>
 
           {/* User Dropdown Menu */}

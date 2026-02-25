@@ -921,7 +921,8 @@ app.post('/api/admin/forge/trigger', authenticate, (req, res) => {
 
 
 app.get('/api/status', (req, res) => {
-    res.json({ name: "Longhorn API", status: "Running", version: "1.0.0" });
+    const packageJson = require('./package.json');
+    res.json({ name: "Longhorn API", status: "Running", version: packageJson.version });
 });
 
 // Thumbnail API - generates and caches small WebP thumbnails for faster loading

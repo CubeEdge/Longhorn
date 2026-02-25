@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
 import { useLanguage } from '../i18n/useLanguage';
-import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Sparkles, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, History } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, History } from 'lucide-react';
 import { SynonymManager } from './Knowledge/SynonymManager';
 import KnowledgeGenerator from './KnowledgeGenerator';
 import ReactMarkdown from 'react-markdown';
@@ -238,7 +238,8 @@ export const KinefinityWiki: React.FC = () => {
 
     // Bokeh formatting & chapter view states
     const [viewMode, setViewMode] = useState<'published' | 'draft'>('published');
-    const [isFormatting, setIsFormatting] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_isFormatting, _setIsFormatting] = useState(false);
     const [chapterView, setChapterView] = useState<ChapterAggregate | null>(null);
     const [showChapterView, setShowChapterView] = useState(false);
     const [fullChapterContent, setFullChapterContent] = useState<string | null>(null);
@@ -617,6 +618,20 @@ export const KinefinityWiki: React.FC = () => {
             }
             setIsNavigationRestored(true);
         } else if (!slug) {
+            // IMPORTANT: If URL has explicit params (line/model/category), user navigated to homepage/listing
+            // Do NOT auto-restore last article - user explicitly wants to see the listing
+            const searchParams = new URLSearchParams(location.search);
+            const hasExplicitNavigation = searchParams.has('line') || searchParams.has('model') || searchParams.has('category');
+            
+            if (hasExplicitNavigation) {
+                // User clicked Wiki menu or breadcrumb - clear selected article
+                setSelectedArticle(null);
+                selectedArticleRef.current = null;
+                setIsNavigationRestored(true);
+                return;
+            }
+            
+            // Only auto-restore if no explicit navigation params (first load with no params)
             const lastSlug = localStorage.getItem('wiki-last-article');
             if (lastSlug && articles.length > 0) {
                 const article = articles.find(a => a.slug === lastSlug);
@@ -628,7 +643,7 @@ export const KinefinityWiki: React.FC = () => {
             }
             setIsNavigationRestored(true);
         }
-    }, [slug, articles.length > 0]);
+    }, [slug, articles.length > 0, location.search]);
 
 
     // 点击面包屑WIKI按钮时，重置到A类视图
@@ -1294,7 +1309,9 @@ ${contextTickets.map((ticket: any) => {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    // Bokeh formatting functions
+    // Bokeh formatting functions - DEPRECATED: removed from UI
+    // This function is no longer used but kept for potential future use
+    /*
     const handleBokehFormat = async () => {
         if (!selectedArticle || !token) return;
 
@@ -1318,6 +1335,7 @@ ${contextTickets.map((ticket: any) => {
             setIsFormatting(false);
         }
     };
+    */
 
     const handlePublishFormat = async () => {
         if (!selectedArticle || !token) return;
@@ -1416,15 +1434,26 @@ ${contextTickets.map((ticket: any) => {
     // Get current display content based on view mode
     const getDisplayContent = () => {
         if (!selectedArticle) return '';
-        // Priority: content (published) > formatted_content (draft)
-        // Page should show published content, editor shows draft
-        if (selectedArticle.content && selectedArticle.content !== t('wiki.content.empty')) {
-            return selectedArticle.content;
+        
+        // Show content based on viewMode tab selection
+        if (viewMode === 'draft') {
+            // Draft tab: show formatted_content (draft)
+            if (selectedArticle.formatted_content) {
+                return selectedArticle.formatted_content;
+            }
+            // No draft available, show empty message
+            return t('wiki.content.no_draft');
+        } else {
+            // Published tab: show content (published)
+            if (selectedArticle.content && selectedArticle.content !== t('wiki.content.empty')) {
+                return selectedArticle.content;
+            }
+            // Fall back to formatted_content if no published content
+            if (selectedArticle.formatted_content) {
+                return selectedArticle.formatted_content;
+            }
+            return t('wiki.content.empty');
         }
-        if (selectedArticle.formatted_content) {
-            return selectedArticle.formatted_content;
-        }
-        return t('wiki.content.empty');
     };
 
     // Get current display summary based on view mode
@@ -1818,12 +1847,15 @@ ${contextTickets.map((ticket: any) => {
                                 marginBottom: '20px'
                             }}>
                                 <h1 style={{
-                                    fontSize: '1.8rem',
+                                    fontSize: selectedArticle.title.length > 40 ? '1.4rem' : '1.8rem',
                                     fontWeight: 800,
                                     color: '#fff',
                                     lineHeight: '1.3',
                                     letterSpacing: '-0.5px',
-                                    flex: 1
+                                    flex: 1,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
                                 }}>
                                     {selectedArticle.title}
                                 </h1>
@@ -1845,7 +1877,8 @@ ${contextTickets.map((ticket: any) => {
                                             alignItems: 'center',
                                             gap: '6px',
                                             transition: 'all 0.2s',
-                                            flexShrink: 0
+                                            flexShrink: 0,
+                                            whiteSpace: 'nowrap'
                                         }}
                                         onMouseEnter={(e) => {
                                             e.currentTarget.style.background = 'rgba(255,215,0,0.25)';
@@ -1919,29 +1952,6 @@ ${contextTickets.map((ticket: any) => {
 
                                     <div style={{ flex: 1 }} />
 
-                                    {/* Bokeh Format Button */}
-                                    <button
-                                        onClick={handleBokehFormat}
-                                        disabled={isFormatting}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: isFormatting ? 'rgba(139,92,246,0.1)' : 'linear-gradient(135deg, #8B5CF6, #06B6D4)',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            color: '#fff',
-                                            fontSize: '13px',
-                                            fontWeight: 600,
-                                            cursor: isFormatting ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <Sparkles size={14} />
-                                        {isFormatting ? t('wiki.toolbar.bokeh_processing') : t('wiki.toolbar.bokeh_format')}
-                                    </button>
-
                                     {/* Manual Edit Button */}
                                     <button
                                         onClick={() => setShowEditorModal(true)}
@@ -1964,16 +1974,16 @@ ${contextTickets.map((ticket: any) => {
                                         {t('action.edit')}
                                     </button>
 
-                                    {/* Publish Button - Only show when draft exists */}
+                                    {/* Publish Button - Only show when draft exists - Kine Yellow style */}
                                     {viewMode === 'draft' && (
                                         <button
                                             onClick={handlePublishFormat}
                                             style={{
                                                 padding: '8px 16px',
-                                                background: 'linear-gradient(135deg, #D4A017, #B8860B)',
+                                                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
                                                 border: 'none',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: '#000',
                                                 fontSize: '13px',
                                                 fontWeight: 600,
                                                 cursor: 'pointer',

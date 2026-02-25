@@ -59,6 +59,25 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
     const summaryDropdownRef = useRef<HTMLDivElement>(null);
     const bokehDropdownRef = useRef<HTMLDivElement>(null);
 
+    // 点击外部关闭下拉框
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            // 关闭摘要下拉框
+            if (showSummaryDropdown && summaryDropdownRef.current && !summaryDropdownRef.current.contains(event.target as Node)) {
+                setShowSummaryDropdown(false);
+            }
+            // 关闭Bokeh下拉框
+            if (showBokehDropdown && bokehDropdownRef.current && !bokehDropdownRef.current.contains(event.target as Node)) {
+                setShowBokehDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showSummaryDropdown, showBokehDropdown]);
+
     // Load article content when modal opens
     useEffect(() => {
         if (isOpen && article) {
@@ -322,30 +341,36 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             </button>
 
                             <h2 style={{
-                                fontSize: '1.8rem',
+                                fontSize: article && article.title.length > 40 ? '1.4rem' : '1.8rem',
                                 fontWeight: 800,
                                 color: '#fff',
                                 letterSpacing: '-0.5px',
-                                margin: 0
+                                margin: 0,
+                                flex: 1,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                minWidth: 0
                             }}>
                                 {article?.title || '编辑文章'}
                             </h2>
 
                             {/* 摘要下拉按钮 */}
-                            <div ref={summaryDropdownRef} style={{ position: 'relative' }}>
+                            <div ref={summaryDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
                                 <button
                                     onClick={() => setShowSummaryDropdown(!showSummaryDropdown)}
                                     style={{
                                         padding: '6px 12px',
-                                        background: summary ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255,255,255,0.05)',
-                                        border: summary ? '1px solid rgba(76, 175, 80, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.15)',
                                         borderRadius: '6px',
-                                        color: summary ? '#4CAF50' : 'rgba(255,255,255,0.6)',
+                                        color: summary ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
                                         fontSize: '12px',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '4px'
+                                        gap: '4px',
+                                        whiteSpace: 'nowrap'
                                     }}
                                 >
                                     <FileText size={13} />
@@ -427,15 +452,17 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 </div>
                             )}
 
-                            {/* Bokeh 优化下拉菜单 */}
-                            <div ref={bokehDropdownRef} style={{ position: 'relative' }}>
+                            {/* Bokeh 优化下拉菜单 - PRD规定的青紫渐变(#00BFA5 -> #8E24AA) */}
+                            <div ref={bokehDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
                                 <button
                                     onClick={() => setShowBokehDropdown(!showBokehDropdown)}
                                     disabled={isOptimizing}
                                     style={{
                                         padding: '8px 14px',
-                                        background: isOptimizing ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)',
-                                        border: `2px solid ${isOptimizing ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}`,
+                                        background: isOptimizing 
+                                            ? 'rgba(0, 191, 165, 0.1)' 
+                                            : 'linear-gradient(135deg, #00BFA5 0%, #8E24AA 100%)',
+                                        border: 'none',
                                         borderRadius: '8px',
                                         color: '#fff',
                                         fontSize: '13px',
@@ -445,7 +472,9 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         alignItems: 'center',
                                         gap: '6px',
                                         transition: 'all 0.2s',
-                                        boxShadow: isOptimizing ? 'none' : '0 0 8px rgba(139, 92, 246, 0.15)',
+                                        boxShadow: isOptimizing ? 'none' : '0 0 12px rgba(0, 191, 165, 0.3)',
+                                        opacity: isOptimizing ? 0.7 : 1,
+                                        whiteSpace: 'nowrap'
                                     }}
                                 >
                                     {isOptimizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -515,7 +544,9 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0
                                 }}
                             >
                                 <History size={14} />
@@ -557,17 +588,18 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 currentContent={currentMarkdown || editorContent}
                                 onApplyChanges={handleBokehChanges}
                             />
-                            {/* 右侧: 操作按钮 */}
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            {/* 右侧: 操作按钮 - 分组布局 */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {/* 次要操作组 */}
                                 <button
                                     onClick={onClose}
                                     style={{
-                                        padding: '8px 16px',
+                                        padding: '8px 14px',
                                         background: 'transparent',
-                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.15)',
                                         borderRadius: '6px',
-                                        color: '#ccc',
-                                        fontSize: '13px',
+                                        color: 'rgba(255,255,255,0.6)',
+                                        fontSize: '12px',
                                         cursor: 'pointer'
                                     }}
                                 >
@@ -588,41 +620,45 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     }}
                                     disabled={isDeleting}
                                     style={{
-                                        padding: '8px 16px',
-                                        background: 'rgba(239, 68, 68, 0.15)',
-                                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                                        padding: '8px 14px',
+                                        background: 'transparent',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
                                         borderRadius: '6px',
                                         color: '#ef4444',
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         fontWeight: 500,
                                         cursor: isDeleting ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '6px'
+                                        gap: '4px'
                                     }}
                                 >
-                                    {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                    {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                                     删除草稿
                                 </button>
 
+                                {/* 分隔线 */}
+                                <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+
+                                {/* 主要操作组 */}
                                 <button
                                     onClick={handleSaveDraft}
                                     disabled={isSaving}
                                     style={{
-                                        padding: '8px 16px',
-                                        background: 'rgba(255,255,255,0.1)',
+                                        padding: '8px 14px',
+                                        background: 'rgba(255,255,255,0.08)',
                                         border: 'none',
                                         borderRadius: '6px',
                                         color: '#fff',
-                                        fontSize: '13px',
+                                        fontSize: '12px',
                                         fontWeight: 500,
                                         cursor: isSaving ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '6px'
+                                        gap: '4px'
                                     }}
                                 >
-                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                    {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
                                     存草稿
                                 </button>
 
@@ -631,20 +667,20 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     disabled={isSaving || !currentMarkdown}
                                     style={{
                                         padding: '8px 16px',
-                                        background: 'rgba(255, 215, 0, 0.15)',
-                                        border: '1px solid #FFD700',
+                                        background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                                        border: 'none',
                                         borderRadius: '6px',
-                                        color: '#FFD700',
-                                        fontSize: '13px',
+                                        color: '#000',
+                                        fontSize: '12px',
                                         fontWeight: 600,
                                         cursor: isSaving || !currentMarkdown ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '6px',
+                                        gap: '4px',
                                         opacity: !currentMarkdown ? 0.5 : 1
                                     }}
                                 >
-                                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                    {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                                     发布草稿
                                 </button>
                             </div>
