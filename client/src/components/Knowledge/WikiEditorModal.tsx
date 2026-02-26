@@ -633,10 +633,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         disabled={isOptimizing}
                                         style={{
                                             padding: '8px 16px',
-                                            background: 'rgba(16, 185, 129, 0.1)',
-                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            background: 'linear-gradient(135deg, #00BFA5, #8E24AA)',
+                                            border: 'none',
                                             borderRadius: '8px',
-                                            color: '#10B981',
+                                            color: '#fff',
                                             fontSize: '13px',
                                             fontWeight: 600,
                                             cursor: isOptimizing ? 'not-allowed' : 'pointer',
@@ -644,18 +644,18 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             alignItems: 'center',
                                             gap: '6px',
                                             transition: 'all 0.2s',
-                                            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.15)'
+                                            boxShadow: '0 4px 15px rgba(142, 36, 170, 0.25)'
                                         }}
                                         onMouseEnter={e => {
                                             if (!isOptimizing) {
-                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)';
                                                 e.currentTarget.style.transform = 'translateY(-1px)';
+                                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(142, 36, 170, 0.35)';
                                             }
                                         }}
                                         onMouseLeave={e => {
                                             if (!isOptimizing) {
-                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
                                                 e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(142, 36, 170, 0.25)';
                                             }
                                         }}
                                     >

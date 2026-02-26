@@ -1015,7 +1015,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 12px',
-                                                background: bokehOptimize ? 'linear-gradient(135deg, #10B981, #8E24AA)' : 'rgba(255,255,255,0.02)',
+                                                background: bokehOptimize ? 'linear-gradient(135deg, #00BFA5, #8E24AA)' : 'rgba(255,255,255,0.02)',
                                                 border: `1px solid ${bokehOptimize ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
