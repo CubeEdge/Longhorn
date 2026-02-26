@@ -288,8 +288,8 @@ const RestockOrderCreatePage: React.FC = () => {
                                             {inCart ? (
                                                 <span style={{
                                                     padding: '6px 12px',
-                                                    background: 'rgba(34, 197, 94, 0.15)',
-                                                    color: '#22c55e',
+                                                    background: 'rgba(16, 185, 129, 0.15)',
+                                                    color: '#10B981',
                                                     borderRadius: 20,
                                                     fontSize: '0.8rem'
                                                 }}>

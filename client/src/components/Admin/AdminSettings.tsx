@@ -748,7 +748,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             <div style={{ padding: 32, maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
                                 <div>
                                     <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                                        <Sparkles size={24} color="#00A650" />
+                                        <Sparkles size={24} color="#10B981" />
                                         AI 场景提示词管理
                                     </h2>
                                     <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
@@ -844,7 +844,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 </button>
                                             </div>
                                             <div style={{ marginBottom: 12 }}>
-                                                <div style={{ fontSize: '0.8rem', color: '#00A650', marginBottom: 8, fontFamily: 'monospace' }}>可用变量: {scenario.variables}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#10B981', marginBottom: 8, fontFamily: 'monospace' }}>可用变量: {scenario.variables}</div>
                                                 <textarea
                                                     value={currentVal}
                                                     onChange={e => {

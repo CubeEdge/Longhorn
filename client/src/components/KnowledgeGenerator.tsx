@@ -1015,7 +1015,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 12px',
-                                                background: bokehOptimize ? 'linear-gradient(135deg, #00A650, #8E24AA)' : 'rgba(255,255,255,0.02)',
+                                                background: bokehOptimize ? 'linear-gradient(135deg, #10B981, #8E24AA)' : 'rgba(255,255,255,0.02)',
                                                 border: `1px solid ${bokehOptimize ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
@@ -1552,7 +1552,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             width: '24px',
                                                             height: '24px',
                                                             borderRadius: '50%',
-                                                            background: '#00A650',
+                                                            background: '#10B981',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
@@ -1735,7 +1735,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     onClick={() => setProgress(null)}
                                                     style={{
                                                         padding: '12px 32px',
-                                                        background: '#00A650',
+                                                        background: '#10B981',
                                                         border: 'none',
                                                         borderRadius: '10px',
                                                         color: '#fff',

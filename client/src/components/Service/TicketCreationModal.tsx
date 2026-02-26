@@ -165,7 +165,7 @@ const TicketCreationModal: React.FC = () => {
         switch (ticketType) {
             case 'Inquiry': return <MessageSquare style={{ color: '#3b82f6' }} size={24} />;
             case 'RMA': return <ShieldCheck style={{ color: '#f97316' }} size={24} />;
-            case 'DealerRepair': return <Wrench style={{ color: '#22c55e' }} size={24} />;
+            case 'DealerRepair': return <Wrench style={{ color: '#10B981' }} size={24} />;
         }
     };
 
@@ -180,7 +180,7 @@ const TicketCreationModal: React.FC = () => {
         switch (ticketType) {
             case 'Inquiry': return { ...base, background: 'rgba(59, 130, 246, 0.05)', borderLeft: '3px solid rgba(59, 130, 246, 0.5)' };
             case 'RMA': return { ...base, background: 'rgba(249, 115, 22, 0.05)', borderLeft: '3px solid rgba(249, 115, 22, 0.5)' };
-            case 'DealerRepair': return { ...base, background: 'rgba(34, 197, 94, 0.05)', borderLeft: '3px solid rgba(34, 197, 94, 0.5)' };
+            case 'DealerRepair': return { ...base, background: 'rgba(16, 185, 129, 0.05)', borderLeft: '3px solid rgba(16, 185, 129, 0.5)' };
             default: return base;
         }
     };
@@ -520,7 +520,7 @@ const TicketCreationModal: React.FC = () => {
                     justifyContent: 'space-between'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
                         草稿已自动保存
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

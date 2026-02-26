@@ -633,10 +633,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         disabled={isOptimizing}
                                         style={{
                                             padding: '8px 16px',
-                                            background: 'rgba(0, 166, 80, 0.1)',
-                                            border: '1px solid rgba(0, 166, 80, 0.3)',
+                                            background: 'rgba(16, 185, 129, 0.1)',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
                                             borderRadius: '8px',
-                                            color: '#00A650',
+                                            color: '#10B981',
                                             fontSize: '13px',
                                             fontWeight: 600,
                                             cursor: isOptimizing ? 'not-allowed' : 'pointer',
@@ -644,17 +644,17 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             alignItems: 'center',
                                             gap: '6px',
                                             transition: 'all 0.2s',
-                                            boxShadow: '0 4px 15px rgba(0, 166, 80, 0.15)'
+                                            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.15)'
                                         }}
                                         onMouseEnter={e => {
                                             if (!isOptimizing) {
-                                                e.currentTarget.style.background = 'rgba(0, 166, 80, 0.2)';
+                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)';
                                                 e.currentTarget.style.transform = 'translateY(-1px)';
                                             }
                                         }}
                                         onMouseLeave={e => {
                                             if (!isOptimizing) {
-                                                e.currentTarget.style.background = 'rgba(0, 166, 80, 0.1)';
+                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
                                                 e.currentTarget.style.transform = 'translateY(0)';
                                             }
                                         }}
@@ -786,7 +786,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     disabled={isSaving}
                                     style={{
                                         padding: '8px 24px',
-                                        background: '#00A650',
+                                        background: '#10B981',
                                         border: 'none',
                                         borderRadius: '8px',
                                         color: '#fff',
@@ -797,20 +797,20 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         alignItems: 'center',
                                         gap: '8px',
                                         transition: 'all 0.2s',
-                                        boxShadow: '0 4px 12px rgba(0, 166, 80, 0.3)'
+                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
                                     }}
                                     onMouseEnter={e => {
                                         if (!isSaving) {
-                                            e.currentTarget.style.background = '#008b43';
+                                            e.currentTarget.style.background = '#0d9466';
                                             e.currentTarget.style.transform = 'translateY(-1px)';
-                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 166, 80, 0.4)';
+                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
                                         }
                                     }}
                                     onMouseLeave={e => {
                                         if (!isSaving) {
-                                            e.currentTarget.style.background = '#00A650';
+                                            e.currentTarget.style.background = '#10B981';
                                             e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 166, 80, 0.3)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
                                         }
                                     }}
                                 >
@@ -1099,7 +1099,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         boxShadow: '0 20px 60px rgba(0,0,0,0.6)'
                     }}>
                         <div style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
-                            <Sparkles className="animate-pulse" style={{ color: '#00A650' }} />
+                            <Sparkles className="animate-pulse" style={{ color: '#10B981' }} />
                             Bokeh 正在优化中...
                         </div>
 
@@ -1107,7 +1107,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             <div style={{
                                 width: `${optimizationProgress}%`,
                                 height: '100%',
-                                background: 'linear-gradient(90deg, #00A650 0%, #8E24AA 100%)',
+                                background: 'linear-gradient(90deg, #00BFA5 0%, #8E24AA 100%)',
                                 transition: 'width 0.2s',
                                 borderRadius: '4px'
                             }} />
@@ -1183,10 +1183,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{
-                                    background: 'linear-gradient(135deg, rgba(0, 166, 80, 0.2), rgba(142, 36, 170, 0.2))',
+                                    background: 'linear-gradient(135deg, rgba(0, 191, 165, 0.2), rgba(142, 36, 170, 0.2))',
                                     padding: '8px',
                                     borderRadius: '8px',
-                                    color: '#00A650'
+                                    color: '#10B981'
                                 }}>
                                     <Sparkles size={20} />
                                 </div>
@@ -1223,13 +1223,13 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
 
                             {/* Right Side - Optimized */}
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ padding: '12px 20px', background: 'rgba(0, 166, 80, 0.05)', borderBottom: '1px solid rgba(0, 166, 80, 0.1)', color: '#00A650', fontSize: '13px', fontWeight: 600, textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ padding: '12px 20px', background: 'rgba(16, 185, 129, 0.05)', borderBottom: '1px solid rgba(16, 185, 129, 0.1)', color: '#10B981', fontSize: '13px', fontWeight: 600, textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
                                     <Sparkles size={14} /> Bokeh 优化版
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: '#fff' }} className="markdown-content">
                                     {(bokehReviewMode === 'summary' || bokehReviewMode === 'full') && bokehReviewSummary && (
                                         <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
-                                            <h4 style={{ color: '#00A650', marginBottom: '8px' }}>优化后摘要:</h4>
+                                            <h4 style={{ color: '#10B981', marginBottom: '8px' }}>优化后摘要:</h4>
                                             <p>{bokehReviewSummary}</p>
                                         </div>
                                     )}
@@ -1266,7 +1266,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 onClick={handleApplyBokehOptimization}
                                 style={{
                                     padding: '10px 24px',
-                                    background: '#00A650',
+                                    background: '#10B981',
                                     border: 'none',
                                     borderRadius: '8px',
                                     color: '#fff',
@@ -1276,15 +1276,15 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    boxShadow: '0 4px 15px rgba(0, 166, 80, 0.3)',
+                                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
                                     transition: 'all 0.2s'
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.background = '#008b43';
+                                    e.currentTarget.style.background = '#0d9466';
                                     e.currentTarget.style.transform = 'translateY(-1px)';
                                 }}
                                 onMouseLeave={e => {
-                                    e.currentTarget.style.background = '#00A650';
+                                    e.currentTarget.style.background = '#10B981';
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }}
                             >

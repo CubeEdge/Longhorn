@@ -348,9 +348,9 @@ const ProductManagement: React.FC = () => {
                                         gap: 8,
                                         width: '100%',
                                         padding: '10px 12px',
-                                        background: statusFilter === 'active' ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                                        background: statusFilter === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
                                         border: 'none',
-                                        color: statusFilter === 'active' ? '#22c55e' : 'white',
+                                        color: statusFilter === 'active' ? '#10B981' : 'white',
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
                                         textAlign: 'left'

@@ -584,7 +584,7 @@ const CustomerDetailPage: React.FC = () => {
                                                 padding: '10px 16px',
                                                 background: 'none',
                                                 border: 'none',
-                                                color: '#22c55e',
+                                                color: '#10B981',
                                                 cursor: 'pointer',
                                                 fontSize: '0.9rem',
                                                 textAlign: 'left'

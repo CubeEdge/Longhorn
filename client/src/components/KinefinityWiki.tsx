@@ -2858,7 +2858,7 @@ ${contextTickets.map((ticket: any) => {
                                                     {(aiAnswer || !isAiSearching) && (
                                                         <span style={{
                                                             padding: '5px 14px',
-                                                            background: 'linear-gradient(135deg, #00A650, #8E24AA)',
+                                                            background: 'linear-gradient(135deg, #10B981, #8E24AA)',
                                                             borderRadius: '8px',
                                                             fontSize: '12px',
                                                             color: '#fff',

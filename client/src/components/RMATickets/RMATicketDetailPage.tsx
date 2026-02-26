@@ -76,7 +76,7 @@ const statusConfig: Record<string, { color: string, icon: any }> = {
     Repaired: { color: '#10b981', icon: CheckCircle }, // 已修复 - Green
     Shipped: { color: '#06b6d4', icon: Truck },     // 已发货 - Cyan
     Returned: { color: '#10b981', icon: CheckCircle }, // 已寄回 - Green (same as Dashboard)
-    Completed: { color: '#22c55e', icon: CheckCircle }, // 已完成
+    Completed: { color: '#10B981', icon: CheckCircle }, // 已完成
     Cancelled: { color: '#6b7280', icon: XCircle }  // 已取消
 };
 

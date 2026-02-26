@@ -156,12 +156,12 @@ const DealerDetailPage: React.FC = () => {
     const getRepairLevelColor = (level: string | undefined) => {
         if (!level) return { bg: 'rgba(156, 163, 175, 0.1)', text: '#9ca3af' };
         const colors: Record<string, { bg: string; text: string }> = {
-            'simple': { bg: 'rgba(34, 197, 94, 0.1)', text: '#22c55e' },
+            'simple': { bg: 'rgba(16, 185, 129, 0.1)', text: '#10B981' },
             'advanced': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
             'full': { bg: 'rgba(255, 215, 0, 0.15)', text: '#FFD700' },
             // 兼容旧数据
             'intermediate': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
-            'SimpleRepair': { bg: 'rgba(34, 197, 94, 0.1)', text: '#22c55e' },
+            'SimpleRepair': { bg: 'rgba(16, 185, 129, 0.1)', text: '#10B981' },
             'MediumRepair': { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' },
             'FullRepair': { bg: 'rgba(255, 215, 0, 0.15)', text: '#FFD700' }
         };
@@ -460,7 +460,7 @@ const DealerDetailPage: React.FC = () => {
                                                 padding: '10px 16px',
                                                 background: 'none',
                                                 border: 'none',
-                                                color: '#22c55e',
+                                                color: '#10B981',
                                                 cursor: 'pointer',
                                                 fontSize: '0.9rem',
                                                 textAlign: 'left'

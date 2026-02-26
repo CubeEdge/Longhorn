@@ -53,7 +53,7 @@ const statusFlow = ['Draft', 'Submitted', 'Approved', 'Shipped', 'Delivered'];
 const statusConfig: Record<string, { color: string; bg: string; icon: any }> = {
     'Draft': { color: '#9ca3af', bg: 'rgba(156, 163, 175, 0.15)', icon: Clock },
     'Submitted': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Clock },
-    'Approved': { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', icon: CheckCircle },
+    'Approved': { color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', icon: CheckCircle },
     'Shipped': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', icon: Truck },
     'Delivered': { color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', icon: CheckCircle },
     'Cancelled': { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', icon: XCircle }
@@ -230,14 +230,14 @@ const RestockOrderDetailPage: React.FC = () => {
                                         width: 32,
                                         height: 32,
                                         borderRadius: '50%',
-                                        background: isCurrent ? sConfig.bg : isPast ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
+                                        background: isCurrent ? sConfig.bg : isPast ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         marginBottom: 8
                                     }}>
                                         {isPast ? (
-                                            <Check size={16} style={{ color: '#22c55e' }} />
+                                            <Check size={16} style={{ color: '#10B981' }} />
                                         ) : (
                                             <sConfig.icon size={14} style={{ color: isCurrent ? sConfig.color : 'var(--text-secondary)' }} />
                                         )}
@@ -254,7 +254,7 @@ const RestockOrderDetailPage: React.FC = () => {
                                     <div style={{
                                         flex: 1,
                                         height: 2,
-                                        background: isPast ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)',
+                                        background: isPast ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.1)',
                                         margin: '0 8px'
                                     }} />
                                 )}
