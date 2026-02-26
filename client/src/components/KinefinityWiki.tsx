@@ -2713,8 +2713,8 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                             style={{
                                                 padding: '10px 14px',
-                                                background: selectedProductLine === null ? 'rgba(59,130,246,0.12)' : 'transparent',
-                                                border: `1px solid ${selectedProductLine === null ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                background: selectedProductLine === null ? 'rgba(255,215,0,0.12)' : 'transparent',
+                                                border: `1px solid ${selectedProductLine === null ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
                                                 borderRadius: '10px',
                                                 color: selectedProductLine === null ? '#fff' : '#888',
                                                 fontSize: '14px',
@@ -2725,6 +2725,20 @@ ${contextTickets.map((ticket: any) => {
                                                 alignItems: 'center',
                                                 gap: '6px',
                                                 flexShrink: 0
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (selectedProductLine !== null) {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.color = '#ccc';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (selectedProductLine !== null) {
+                                                    e.currentTarget.style.background = 'transparent';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.color = '#888';
+                                                }
                                             }}
                                         >
                                             <History size={14} />
@@ -2781,10 +2795,10 @@ ${contextTickets.map((ticket: any) => {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         borderBottom: i < searchHistory.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                                                        background: hItem.query === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent'
+                                                        background: hItem.query === activeSearchQuery ? 'rgba(255,215,0,0.1)' : 'transparent'
                                                     }}
                                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = hItem.query === activeSearchQuery ? 'rgba(59,130,246,0.1)' : 'transparent'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = hItem.query === activeSearchQuery ? 'rgba(255,215,0,0.1)' : 'transparent'}
                                                     >
                                                         <button
                                                             onClick={() => handleSearchHistorySelect(hItem)}
@@ -2793,7 +2807,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 padding: '10px 12px',
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: hItem.query === activeSearchQuery ? '#3B82F6' : '#ccc',
+                                                                color: hItem.query === activeSearchQuery ? '#FFD700' : '#ccc',
                                                                 fontSize: '13px',
                                                                 cursor: 'pointer',
                                                                 textAlign: 'left',
