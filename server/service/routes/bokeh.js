@@ -3,6 +3,22 @@ const express = require('express');
 module.exports = (db, authenticate, aiService) => {
     const router = express.Router();
 
+    // Helper to fetch custom AI prompts from DB
+    const getAIPrompt = (key, defaultPrompt) => {
+        try {
+            const settings = db.prepare('SELECT ai_prompts FROM system_settings LIMIT 1').get();
+            if (settings && settings.ai_prompts) {
+                const prompts = JSON.parse(settings.ai_prompts);
+                if (prompts && prompts[key] && prompts[key].trim()) {
+                    return prompts[key];
+                }
+            }
+        } catch (e) {
+            console.error('[Bokeh] Failed to parse ai_prompts', e);
+        }
+        return defaultPrompt;
+    };
+
     /**
      * POST /api/v1/bokeh/search-tickets
      * Search historical tickets with permission isolation
@@ -158,7 +174,10 @@ module.exports = (db, authenticate, aiService) => {
                     `${i + 1}. [${r.ticket_number}] ${r.title} → ${r.resolution || '未解决'}`
                 ).join('\n');
 
-                const summaryPrompt = `Based on the following historical tickets, provide a brief helpful answer to: "${query}"\n\nTickets:\n${context}\n\nAnswer in Chinese, be concise and cite ticket numbers.`;
+                const defaultSummaryPrompt = `Based on the following historical tickets, provide a brief helpful answer to: "{{query}}"\n\nTickets:\n{{context}}\n\nAnswer in Chinese, be concise and cite ticket numbers.`;
+                const summaryPrompt = getAIPrompt('ticket_summary', defaultSummaryPrompt)
+                    .replace(/{{query}}/g, query)
+                    .replace(/{{context}}/g, context);
 
                 try {
                     aiSummary = await aiService.generate('chat',

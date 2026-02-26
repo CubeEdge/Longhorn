@@ -286,7 +286,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             width: '12px',
                             height: '12px',
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #10B981, #8E24AA)',
+                            background: 'linear-gradient(135deg, #00A650, #8E24AA)',
                             boxShadow: '0 0 10px rgba(142, 36, 170, 0.5)'
                         }} />
                         <span style={{ fontWeight: 600, color: 'white', fontSize: '14px' }}>Bokeh Assistant</span>
@@ -315,11 +315,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                         };
                                     case 'wiki_article_view':
                                         return {
-                                            icon: <FileText size={14} color="#10B981" />,
+                                            icon: <FileText size={14} color="#00A650" />,
                                             label: t('bokeh.context.viewing'),
                                             title: wikiContext.articleTitle,
                                             subtitle: null,
-                                            color: '#10B981'
+                                            color: '#00A650'
                                         };
                                     case 'wiki_home':
                                         return {
@@ -369,7 +369,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                         {banner.title}
                                     </div>
                                     {banner.subtitle && (
-                                        <div style={{ marginTop: '6px', fontSize: '11px', color: '#10B981' }}>
+                                        <div style={{ marginTop: '6px', fontSize: '11px', color: '#00A650' }}>
                                             {banner.subtitle}
                                         </div>
                                     )}
@@ -384,10 +384,10 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 width: '64px', height: '64px', margin: '0 auto 20px',
                                 borderRadius: '50%',
-                                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(142, 36, 170, 0.2))',
+                                background: 'linear-gradient(135deg, rgba(0, 166, 80, 0.2), rgba(142, 36, 170, 0.2))',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
-                                <Sparkles size={32} color="#10B981" />
+                                <Sparkles size={32} color="#00A650" />
                             </div>
                             <p style={{ color: 'white', fontSize: '14px', marginBottom: '8px' }}>
                                 {t('bokeh.welcome')}
@@ -403,7 +403,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#10B981' : 'rgba(255, 255, 255, 0.08)',
+                                background: msg.role === 'user' ? '#00A650' : 'rgba(255, 255, 255, 0.08)',
                                 color: '#fff',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
@@ -472,11 +472,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                                                 display: 'inline-flex',
                                                                 alignItems: 'center',
                                                                 gap: '4px',
-                                                                background: 'rgba(16, 185, 129, 0.1)',
-                                                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                                                background: 'rgba(0, 166, 80, 0.1)',
+                                                                border: '1px solid rgba(0, 166, 80, 0.3)',
                                                                 padding: '1px 8px',
                                                                 borderRadius: '6px',
-                                                                color: '#10B981',
+                                                                color: '#00A650',
                                                                 textDecoration: 'none',
                                                                 fontSize: '13px',
                                                                 margin: '0 4px',
@@ -485,10 +485,10 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                                                 whiteSpace: 'nowrap'
                                                             }}
                                                             onMouseEnter={(e) => {
-                                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)';
+                                                                e.currentTarget.style.background = 'rgba(0, 166, 80, 0.2)';
                                                             }}
                                                             onMouseLeave={(e) => {
-                                                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
+                                                                e.currentTarget.style.background = 'rgba(0, 166, 80, 0.1)';
                                                             }}
                                                         >
                                                             <span style={{ display: 'flex', marginTop: '-1px' }}><BookOpen size={14} /></span>
@@ -510,7 +510,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
 
                     {loading && (
                         <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', opacity: 0.6 }}>
-                            <Loader2 size={16} className="animate-spin" color="#10B981" />
+                            <Loader2 size={16} className="animate-spin" color="#00A650" />
                             <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{t('bokeh.focusing')}</span>
                         </div>
                     )}
@@ -626,7 +626,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                 onClick={handleSend}
                                 disabled={!input.trim()}
                                 style={{
-                                    background: input.trim() ? '#10B981' : 'rgba(255,255,255,0.1)',
+                                    background: input.trim() ? '#00A650' : 'rgba(255,255,255,0.1)',
                                     color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)',
                                 }}
                             >

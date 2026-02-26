@@ -1277,30 +1277,36 @@ select.form-control option {
    ============================================ */
 .toast-container {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
-  z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 400px;
+  z-index: 99999;
   pointer-events: none;
 }
 
 .toast-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: rgba(28, 28, 30, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 12px;
-  border-left: 4px solid #3b82f6;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  color: #fff;
-  font-size: 0.9rem;
   pointer-events: auto;
-  animation: toast-slide-in 0.3s ease-out;
+  min-width: 320px;
+  max-width: 480px;
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  display: flex;
+  gap: 12px;
+  animation: toast-in-top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  color: #fff;
+  /* Retained from original */
+  font-size: 0.9rem;
+  /* Retained from original */
 }
 
 .toast-item:hover {
@@ -1704,22 +1710,135 @@ select.form-control option {
 .ticket-textarea:focus {
   outline: none;
   border-color: rgba(255, 210, 0, 0.3);
-}/* Knowledge Base Content */
-.markdown-content h1 { font-size: 28px; font-weight: 700; color: #fff; margin-top: 32px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; }
-.markdown-content h2 { font-size: 24px; font-weight: 600; color: #fff; margin-top: 28px; margin-bottom: 14px; }
-.markdown-content h3 { font-size: 20px; font-weight: 600; color: #FFD700; margin-top: 24px; margin-bottom: 12px; }
-.markdown-content h4 { font-size: 17px; font-weight: 500; color: #FFD700; margin-top: 20px; margin-bottom: 10px; }
-.markdown-content p { margin-bottom: 16px; line-height: 1.8; }
-.markdown-content ul { margin-left: 20px; margin-bottom: 16px; list-style-type: disc; }
-.markdown-content ol { margin-left: 20px; margin-bottom: 16px; }
-.markdown-content li { margin-bottom: 8px; line-height: 1.6; }
-.markdown-content code { background: rgba(255,215,0,0.1); padding: 2px 6px; border-radius: 6px; font-size: 13px; color: #FFD700; }
-.markdown-content pre code { display: block; background: rgba(0,0,0,0.4); padding: 16px; border-radius: 10px; overflow: auto; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.08); }
-.markdown-content img { max-width: 100%; height: auto; border-radius: 12px; margin-top: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); display: block; }
-.markdown-content table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); overflow: auto; display: block; }
-.markdown-content th { padding: 12px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; font-weight: 600; font-size: 13px; }
-.markdown-content td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
-.markdown-content blockquote { border-left: 3px solid #FFD700; padding-left: 20px; margin-left: 0; margin-bottom: 20px; color: #999; font-style: italic; }
-.markdown-content a { color: #FFD700; text-decoration: none; border-bottom: 1px solid rgba(255,215,0,0.3); }
-.markdown-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 32px; margin-bottom: 32px; }
+}
 
+/* Knowledge Base Content */
+.markdown-content h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 32px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.markdown-content h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 28px;
+  margin-bottom: 14px;
+}
+
+.markdown-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FFD700;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.markdown-content h4 {
+  font-size: 17px;
+  font-weight: 500;
+  color: #FFD700;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.markdown-content p {
+  margin-bottom: 16px;
+  line-height: 1.8;
+}
+
+.markdown-content ul {
+  margin-left: 20px;
+  margin-bottom: 16px;
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  margin-left: 20px;
+  margin-bottom: 16px;
+}
+
+.markdown-content li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.markdown-content code {
+  background: rgba(255, 215, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #FFD700;
+}
+
+.markdown-content pre code {
+  display: block;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 16px;
+  border-radius: 10px;
+  overflow: auto;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: block;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: auto;
+  display: block;
+}
+
+.markdown-content th {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.markdown-content td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid #FFD700;
+  padding-left: 20px;
+  margin-left: 0;
+  margin-bottom: 20px;
+  color: #999;
+  font-style: italic;
+}
+
+.markdown-content a {
+  color: #FFD700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 32px;
+  margin-bottom: 32px;
+}

@@ -410,7 +410,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <>
                 <div style={{ marginTop: 'auto' }} />
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-                <Link to="/service/admin/settings" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''} `} onClick={onClose}>
+                <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''} `} onClick={onClose}>
                   <Settings size={18} />
                   <span>{t('sidebar.service_admin')}</span>
                 </Link>
@@ -467,7 +467,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             {role === 'Admin' && (
               <>
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
-                <Link to="/admin/dashboard" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
+                <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
                   <LayoutDashboard size={20} />
                   <span>{t('sidebar.files_admin')}</span>
                 </Link>

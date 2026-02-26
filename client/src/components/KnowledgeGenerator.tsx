@@ -88,9 +88,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
     const categories = [
         { value: 'FAQ', label: t('wiki.category_faq') },
         { value: 'Troubleshooting', label: t('wiki.category_troubleshooting') },
-        { value: 'Compatibility', label: t('wiki.category_compatibility') },
         { value: 'Manual', label: t('wiki.category_manual') },
-        { value: 'Firmware', label: t('wiki.category_firmware') },
         { value: 'Application Note', label: t('wiki.category_application_note') },
         { value: 'Technical Spec', label: t('wiki.category_technical_spec') }
     ];
@@ -940,70 +938,6 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 </button>
                                             </div>
                                         )}
-
-                                        {/* 导入方式选项 - 紧凑单选 */}
-                                        <div style={{
-                                            marginTop: '16px',
-                                            padding: '12px',
-                                            background: 'rgba(255,255,255,0.02)',
-                                            borderRadius: '10px',
-                                            border: '1px solid rgba(255,255,255,0.06)'
-                                        }}>
-                                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
-                                                导入方式
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    onClick={() => setBokehOptimize(true)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '10px 12px',
-                                                        background: bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
-                                                        border: `1px solid ${bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                                        borderRadius: '8px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        position: 'relative',
-                                                        overflow: 'hidden',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: bokehOptimize ? '#fff' : '#888' }}>
-                                                        <Sparkles size={14} style={{ opacity: bokehOptimize ? 1 : 0.6 }} />
-                                                        <div style={{ fontSize: '13px', fontWeight: 700 }}>
-                                                            Bokeh 优化
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: '10px', color: bokehOptimize ? '#666' : '#666', marginTop: '2px' }}>
-                                                        优化排版 + 摘要
-                                                    </div>
-                                                </button>
-                                                <button
-                                                    onClick={() => setBokehOptimize(false)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '10px 12px',
-                                                        background: !bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
-                                                        border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                                        borderRadius: '8px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center'
-                                                    }}
-                                                >
-                                                    <div style={{ fontSize: '13px', fontWeight: 700, color: !bokehOptimize ? '#fff' : '#888', textAlign: 'center' }}>
-                                                        直接导入
-                                                    </div>
-                                                    <div style={{ fontSize: '10px', color: !bokehOptimize ? '#666' : '#666', marginTop: '2px', textAlign: 'center' }}>
-                                                        保持原始格式
-                                                    </div>
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
 
@@ -1063,6 +997,70 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         />
                                     </div>
                                 )}
+
+                                {/* 导入方式选项 - 提出来使其始终可见 */}
+                                <div style={{
+                                    marginTop: 'auto',
+                                    padding: '12px',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '10px',
+                                    border: '1px solid rgba(255,255,255,0.06)'
+                                }}>
+                                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
+                                        导入方式配置
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            onClick={() => setBokehOptimize(true)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px 12px',
+                                                background: bokehOptimize ? 'linear-gradient(135deg, #00A650, #8E24AA)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${bokehOptimize ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: bokehOptimize ? '#fff' : '#888' }}>
+                                                <Sparkles size={14} style={{ opacity: bokehOptimize ? 1 : 0.6 }} />
+                                                <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                                                    Bokeh 优化
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: bokehOptimize ? 'rgba(255,255,255,0.6)' : '#666', marginTop: '2px' }}>
+                                                优化排版 + 摘要
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => setBokehOptimize(false)}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px 12px',
+                                                background: !bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center'
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '13px', fontWeight: 700, color: !bokehOptimize ? '#fff' : '#888', textAlign: 'center' }}>
+                                                直接导入
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: !bokehOptimize ? '#666' : '#666', marginTop: '2px', textAlign: 'center' }}>
+                                                保持原始格式
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Right: Metadata */}
@@ -1554,7 +1552,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             width: '24px',
                                                             height: '24px',
                                                             borderRadius: '50%',
-                                                            background: '#10B981',
+                                                            background: '#00A650',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',

@@ -35,6 +35,13 @@ module.exports = (db, authenticate, backupService) => {
                     settings.ai_data_sources = ['tickets', 'knowledge'];
                 }
 
+                // Parse ai_prompts JSON
+                try {
+                    settings.ai_prompts = settings.ai_prompts ? JSON.parse(settings.ai_prompts) : {};
+                } catch (e) {
+                    settings.ai_prompts = {};
+                }
+
                 // Normalize Primary Backup Settings
                 settings.ai_search_history_limit = parseInt(settings.ai_search_history_limit) || 10;
                 settings.show_daily_word = Boolean(settings.show_daily_word);
@@ -80,12 +87,21 @@ module.exports = (db, authenticate, backupService) => {
                     dataSources = JSON.stringify(dataSources);
                 }
 
+                // Parse ai_prompts if it's an object
+                let aiPrompts = settings.ai_prompts;
+                if (aiPrompts && typeof aiPrompts === 'object') {
+                    aiPrompts = JSON.stringify(aiPrompts);
+                } else if (!aiPrompts) {
+                    aiPrompts = '{}';
+                }
+
                 db.prepare(`
                     UPDATE system_settings SET 
                         ai_enabled = @ai_enabled,
                         ai_work_mode = @ai_work_mode,
                         ai_data_sources = @ai_data_sources,
                         ai_system_prompt = @ai_system_prompt,
+                        ai_prompts = @ai_prompts,
                         ai_search_history_limit = @ai_search_history_limit,
                         show_daily_word = @show_daily_word,
 
@@ -105,6 +121,7 @@ module.exports = (db, authenticate, backupService) => {
                     ai_work_mode: settings.ai_work_mode ? 1 : 0,
                     ai_data_sources: dataSources,
                     ai_system_prompt: settings.ai_system_prompt || null,
+                    ai_prompts: aiPrompts,
                     ai_search_history_limit: Math.max(1, Math.min(30, parseInt(settings.ai_search_history_limit) || 10)),
                     show_daily_word: settings.show_daily_word ? 1 : 0,
                     backup_enabled: settings.backup_enabled ? 1 : 0,

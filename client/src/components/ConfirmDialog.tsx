@@ -4,18 +4,38 @@ import { useLanguage } from '../i18n/useLanguage';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 export const ConfirmDialog: React.FC = () => {
-    const { isOpen, title, message, confirmLabel, cancelLabel, close } = useConfirm();
+    const { isOpen, title, message, confirmLabel, cancelLabel, countdownSeconds, close } = useConfirm();
     const { t } = useLanguage();
+    const [countdown, setCountdown] = React.useState<number>(0);
+
+    useEffect(() => {
+        if (isOpen && countdownSeconds) {
+            setCountdown(countdownSeconds);
+        } else {
+            setCountdown(0);
+        }
+    }, [isOpen, countdownSeconds]);
+
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [countdown]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isOpen) return;
             if (e.key === 'Escape') close(false);
-            if (e.key === 'Enter') close(true);
+            if (e.key === 'Enter' && countdown === 0) close(true);
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, close]);
+    }, [isOpen, close, countdown]);
+
+    const isDangerous = confirmLabel?.includes('删除') || title?.includes('删除');
+    const primaryColor = isDangerous ? '#EF4444' : '#FFD700';
+    const primaryGlow = isDangerous ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 215, 0, 0.3)';
 
     if (!isOpen) return null;
 
@@ -44,12 +64,12 @@ export const ConfirmDialog: React.FC = () => {
                 onClick={e => e.stopPropagation()}
                 style={{
                     background: 'rgba(30, 30, 30, 0.95)',
-                    border: '1px solid rgba(255, 215, 0, 0.2)',
+                    border: `1px solid ${isDangerous ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 215, 0, 0.2)'}`,
                     width: '90%',
                     maxWidth: '420px',
                     borderRadius: '20px',
                     padding: '0',
-                    boxShadow: '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 215, 0, 0.1)',
+                    boxShadow: `0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px ${isDangerous ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 215, 0, 0.1)'}`,
                     animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     overflow: 'hidden'
                 }}
@@ -63,15 +83,15 @@ export const ConfirmDialog: React.FC = () => {
                     gap: '16px'
                 }}>
                     <div style={{
-                        background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
+                        background: isDangerous ? 'rgba(239, 68, 68, 0.15)' : 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
                         padding: '12px',
                         borderRadius: '14px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.1)'
+                        boxShadow: `0 4px 12px ${isDangerous ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 215, 0, 0.1)'}`
                     }}>
-                        <AlertTriangle size={24} color="#FFD700" strokeWidth={2} />
+                        <AlertTriangle size={24} color={primaryColor} strokeWidth={2} />
                     </div>
                     <h3 style={{
                         margin: 0,
@@ -132,13 +152,16 @@ export const ConfirmDialog: React.FC = () => {
                     </button>
                     <button
                         onClick={() => close(true)}
+                        disabled={countdown > 0}
                         style={{
                             padding: '12px 24px',
-                            background: 'linear-gradient(135deg, #FFD700, #FFC000)',
+                            background: countdown > 0
+                                ? (isDangerous ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 215, 0, 0.4)')
+                                : primaryColor,
                             border: 'none',
                             borderRadius: '12px',
-                            color: '#000',
-                            cursor: 'pointer',
+                            color: isDangerous ? '#fff' : '#000',
+                            cursor: countdown > 0 ? 'not-allowed' : 'pointer',
                             fontSize: '15px',
                             fontWeight: 600,
                             display: 'flex',
@@ -147,19 +170,25 @@ export const ConfirmDialog: React.FC = () => {
                             gap: '8px',
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             minWidth: '90px',
-                            boxShadow: '0 4px 15px rgba(255, 215, 0, 0.3)'
+                            boxShadow: countdown > 0 ? 'none' : `0 4px 15px ${primaryGlow}`
                         }}
                         onMouseEnter={e => {
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.4)';
+                            if (countdown === 0) {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.background = isDangerous ? '#ff5252' : '#ffe14d';
+                                e.currentTarget.style.boxShadow = `0 6px 20px ${isDangerous ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 215, 0, 0.4)'}`;
+                            }
                         }}
                         onMouseLeave={e => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.3)';
+                            if (countdown === 0) {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.background = primaryColor;
+                                e.currentTarget.style.boxShadow = `0 4px 15px ${primaryGlow}`;
+                            }
                         }}
                     >
-                        <CheckCircle size={16} strokeWidth={2.5} />
-                        {confirmLabel || t('common.confirm') || 'Confirm'}
+                        {countdown === 0 && <CheckCircle size={16} strokeWidth={2.5} />}
+                        {countdown > 0 ? `${confirmLabel || t('common.confirm') || 'Confirm'} (${countdown})` : (confirmLabel || t('common.confirm') || 'Confirm')}
                     </button>
                 </div>
             </div>

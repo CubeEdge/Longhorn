@@ -53,6 +53,22 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
     // AI Service 注入（从 index.js 传入）
     // 用于文章排版优化和摘要生成
 
+    // Helper to fetch custom AI prompts from DB
+    const getAIPrompt = (key, defaultPrompt) => {
+        try {
+            const settings = db.prepare('SELECT ai_prompts FROM system_settings LIMIT 1').get();
+            if (settings && settings.ai_prompts) {
+                const prompts = JSON.parse(settings.ai_prompts);
+                if (prompts && prompts[key] && prompts[key].trim()) {
+                    return prompts[key];
+                }
+            }
+        } catch (e) {
+            console.error('[Knowledge] Failed to parse ai_prompts', e);
+        }
+        return defaultPrompt;
+    };
+
     // 审计日志函数（从 knowledge_audit 路由注入）
     let logAudit = null;
     let generateBatchId = null;
@@ -1097,13 +1113,16 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 try {
                     console.log(`[Knowledge Import] AI Polishing title: ${articleTitle} (locale: ${locale})`);
                     const targetLang = locale.startsWith('zh') ? '简练中文' : locale.startsWith('de') ? 'German' : locale.startsWith('ja') ? 'Japanese' : 'English';
-                    const titlePrompt = `你是一个技术文档翻译专家。请将以下网页标题翻译成${targetLang}。
+                    const defaultTitlePrompt = `你是一个技术文档翻译专家。请将以下网页标题翻译成{{targetLang}}。
 **重要规则**:
-1. 如果标题是技术术语（如 Zebra, False Color, Histogram），请翻译为对应的${targetLang}术语（如：斑马纹, 伪色, 直方图）。
+1. 如果标题是技术术语（如 Zebra, False Color, Histogram），请翻译为对应的{{targetLang}}术语（如：斑马纹, 伪色, 直方图）。
 2. 移除所有网站后缀或前缀（如 SmallHD, Kinefinity, EAGLE, e-Viewfinder Store）。
 3. 保持简洁，不要有任何解释。
-标题：${articleTitle}
+标题：{{articleTitle}}
 直接输出翻译后的标题。`;
+                    const titlePrompt = getAIPrompt('knowledge_translate', defaultTitlePrompt)
+                        .replace(/{{targetLang}}/g, targetLang)
+                        .replace(/{{articleTitle}}/g, articleTitle);
                     const polishedTitle = await aiService.generate('chat',
                         'You are a technical documentation translator. Output only the translated title, nothing else.',
                         titlePrompt
@@ -1212,7 +1231,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 'category', 'subcategory', 'tags',
                 'product_line', 'product_models', 'firmware_versions',
                 'visibility', 'department_ids', 'status',
-                // Wiki editor fields: content, formatted_content, format_status, summary
+                'formatted_content', 'format_status'
             ];
 
             const updates = [];
@@ -2173,13 +2192,13 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             if (content.length > 100 || (match[1] === '1')) { // Always keep h1 (parent chapters) even if empty
                 chapters.push({
                     title: fullTitle,
-                    content: `<h${match[1]}>${chapterTitle}</h${match[1]}>\n${content}`
+                    content: content
                 });
             } else if (match[1] === '2' && /^[\d\.]+/.test(cleanedTitle)) {
                 // Keep h2 if it looks like a numbered section (e.g., 3.1) even if short, to be safe.
                 chapters.push({
                     title: fullTitle,
-                    content: `<h${match[1]}>${chapterTitle}</h${match[1]}>\n${content}`
+                    content: content
                 });
             }
         }
@@ -2546,19 +2565,7 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
             const isStyleInstruction = /颜色|color|样式|style|黄色|yellow|红色|red|蓝色|blue|绿色|green/i.test(instruction);
             const isSizeInstruction = /大小|尺寸|size|缩放|scale|宽度|width|高度|height/i.test(instruction);
 
-            const optimizePrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
-
-**当前上下文**：用户正在 Wiki 编辑器中编辑文章「${article.title}」，你可以直接修改编辑器中的内容。
-
-**用户修改指令**: ${instruction}
-
-**当前编辑器中的 HTML 内容**:
-${contentToOptimize.substring(0, 8000)}
-
-**你的任务**:
-根据用户的修改指令，直接修改上述 HTML 内容。这是编辑器中的实时内容，修改后会立即呈现给用户。
-
-${isStyleInstruction ? `**样式修改指南**（用户指令涉及颜色/样式）：
+            const styleGuide = isStyleInstruction ? `**样式修改指南**（用户指令涉及颜色/样式）：
 - "标题改为黄色/kine yellow" = 为所有 <h1>, <h2>, <h3> 标签添加 style="color: #FFD700;"
 - "文字改为黄色" = 为 <p>, <span> 等标签添加 style="color: #FFD700;"
 - 注意：用户说的是"改颜色"，不是"改文字内容"，不要修改标签内的文字，只添加 style 属性
@@ -2567,11 +2574,27 @@ ${isStyleInstruction ? `**样式修改指南**（用户指令涉及颜色/样式
 **示例**：
 输入指令："把标题改为 kine yellow"
 正确输出：<h1 style="color: #FFD700;">原标题文字</h1>（只改颜色，不改文字）
-错误输出：<h1>kine yellow</h1>（这是把标题文字改成了"kine yellow"）` : ''}
+错误输出：<h1>kine yellow</h1>（这是把标题文字改成了"kine yellow"）` : '';
 
-${isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸）：
+            const sizeGuide = isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸）：
 - "图片改为1/2" = 为 <img> 标签添加 style="max-width: 50%;" 或 style="width: 50%;"
-- "图片居中" = 为 <img> 标签添加 style="display: block; margin: 0 auto;"` : ''}
+- "图片居中" = 为 <img> 标签添加 style="display: block; margin: 0 auto;"` : '';
+
+            const defaultOptimizePrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+
+**当前上下文**：用户正在 Wiki 编辑器中编辑文章「{{articleTitle}}」，你可以直接修改编辑器中的内容。
+
+**用户修改指令**: {{instruction}}
+
+**当前编辑器中的 HTML 内容**:
+{{content}}
+
+**你的任务**:
+根据用户的修改指令，直接修改上述 HTML 内容。这是编辑器中的实时内容，修改后会立即呈现给用户。
+
+{{styleGuide}}
+
+{{sizeGuide}}
 
 **通用规则**：
 1. 区分"改颜色"和"改文字"：用户说"标题改为黄色"是改颜色，不是把标题文字改成"黄色"
@@ -2582,6 +2605,13 @@ ${isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸�
 
 **输出格式**：
 直接输出修改后的完整 HTML 内容，不要添加任何解释或说明。`;
+
+            const optimizePrompt = getAIPrompt('knowledge_optimize', defaultOptimizePrompt)
+                .replace(/{{articleTitle}}/g, article.title)
+                .replace(/{{instruction}}/g, instruction)
+                .replace(/{{content}}/g, contentToOptimize.substring(0, 8000))
+                .replace(/{{styleGuide}}/g, styleGuide)
+                .replace(/{{sizeGuide}}/g, sizeGuide);
 
             let optimizedContent;
             try {
@@ -2685,22 +2715,25 @@ ${isSizeInstruction ? `**图片尺寸修改指南**（用户指令涉及尺寸�
 
             // 任务1：排版优化
             if (mode === 'full' || mode === 'layout') {
-                const layoutPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+                const defaultLayoutPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
 请分析以下技术文章，并进行全量翻译（由外文翻译为中文）及排版优化：
 
-**原始标题**: ${article.title}
+**原始标题**: {{articleTitle}}
 
 **原始内容**:
-${article.content.substring(0, 10000)}
+{{content}}
 
 **必须遵守的优化规则**:
 1. **中文化翻译 (核心)**: 如果原始内容是英文或其他非中文语言，请将其**全文翻译为专业的中文技术文档**。标题也需要同步进行精练且专业的中文翻译（移除多余的外链说明或无关后缀）。
 2. **结构化排版**: 
-   - 识别并优化文章结构，添加缺失的小标题（h2/h3 等）。
-   - 将长段落拆分为语义明确的短段落或列表。
-   - 正确识别并格式化操作步骤（使用有序列表）。
+   - 识别并优化文章结构，添加缺失的小标题（h2/h3 等），确保层级清晰。
+   - 将长段落拆分为语义明确的短段落，适合网页端和移动端阅读。
+   - 正确识别并格式化操作步骤（使用有序列表，配合加粗等强调格式）。
+   - **强调重点**：将说明书特权提示、重要警告块用 blockquote 引用包裹，使之突出显示。
 3. **技术精度**: 严禁扩写、重写或修改任何具体的技术参数、数值、专用名词及操作指令。保持技术原意的 100% 准确。
-4. **媒体强制保留**: 必须保留所有图片引用（<img> 或 Markdown 图片语法 ![alt](url)）。严禁删除或移动图片标签位置。
+4. **媒体强制保留与排版**: 
+   - 必须保留所有图片引用（<img> 或 Markdown 图片语法 ![alt](url)）。严禁删除或改变图片插入的相对段落位置。
+   - 若图片使用的是 <img> 标签，为提升排版美观度，请为其添加内联样式（例如：\`style="max-width:100%; height:auto; border-radius:8px; margin: 16px 0;"\`）。
 5. **格式规范 (绝对要求)**: 你的回复必须且仅能包含以下两个标签包装的内容：
    - <title>这里放翻译后的标题</title>
    - <content>这里放优化后的 HTML 正文内容</content>
@@ -2709,6 +2742,10 @@ ${article.content.substring(0, 10000)}
    - Eagle = 猎影（Kinefinity 电子寻像器产品名称）
    - MAVO / Terra / KineMON = 保留原名不翻译
 7. **内容清洁**: 移除所有评论区内容（如"热门评论""精彩评论"等）、免责声明、版权声明、文章来源信息。只保留正文内容。`;
+
+                const layoutPrompt = getAIPrompt('knowledge_layout', defaultLayoutPrompt)
+                    .replace(/{{articleTitle}}/g, article.title)
+                    .replace(/{{content}}/g, article.content.substring(0, 10000));
 
                 try {
                     const fullAiResponse = await aiService.generate('logic',
@@ -2778,15 +2815,19 @@ ${article.content.substring(0, 10000)}
 
             // 任务2：生成详细摘要 (300字)
             if (mode === 'full' || mode === 'summary') {
-                const summaryPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
+                const defaultSummaryPrompt = `你是Bokeh，Kinefinity的专业知识库编辑助手。
 请为以下技术文章生成一个精准的中文摘要（概括核心结论、参数或操作，限制在280字以内）：
 
-**标题**: ${article.title}
+**标题**: {{articleTitle}}
 
 **内容**:
-${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
+{{content}}
 
 请直接输出摘要文本，不要添加引号或额外说明。`;
+
+                const summaryPrompt = getAIPrompt('knowledge_summary', defaultSummaryPrompt)
+                    .replace(/{{articleTitle}}/g, article.title)
+                    .replace(/{{content}}/g, formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000));
 
                 try {
                     summaryText = await aiService.generate('logic',
@@ -2866,6 +2907,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                     formatted_by: 'ai',
                     formatted_at: new Date().toISOString(),
                     summary: summaryText,
+                    formatted_content: formattedContent,
                     image_count: imageMatches.length
                 }
             });

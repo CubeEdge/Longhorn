@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-02-27 01:20 - UI/UX精细化与Bokeh样式精修 (v12.1.61 / s1.5.39)
+
+### Tasks Completed:
+1. **Wiki Bokeh AI 输出样式精修**: 优化了搜索结果中的回答排版，将正文颜色设为灰色 (#888)，而标题与加粗内容设为纯白色 (#fff)，显著提升了视觉层次感。
+2. **Toast 消息标准化**: 弹出位置移动至右上角，并采用顶部向下的滑动动画，符合现代交互习惯。
+3. **品牌色一致性 (Kine Green)**: 全局统一 AI 相关组件色值为标准 Kine Green (#00A650)。
+4. **Wiki 编辑器逻辑增强**: “保存修改”按钮现已完美集成自动保存草稿功能，确保内容更新与本地持久化同步执行。
+5. **AI 场景提示词管理升级**: 支持在管理后台在线编辑“工单智能解析”场景的 System Prompt，后端逻辑改为优先读取数据库。
+6. **版本发布准备**: 递增版本至 Client v12.1.61, Server v1.5.39。
+
+### Technical Output:
+- **Modified**: `client/src/components/KinefinityWiki.tsx`, `client/src/components/Knowledge/WikiEditorModal.tsx`, `client/src/components/Admin/AdminSettings.tsx`, `server/service/ai_service.js`, `client/package.json`, `server/package.json`
+
+---
+
+## 2026-02-27 01:00 - UI/UX Refinement & Deployment (v12.1.59 / s1.5.37)
+- **Deployment**: v12.1.59 / s1.5.37 via `mini` (Verified)
+
+---
+
 ## 2026-02-26 10:30 - Wiki Import 评论区清理 & Bokeh 术语映射 (v12.1.53 / s1.5.31)
 
 ### Tasks Completed:

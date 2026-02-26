@@ -27,6 +27,10 @@ export const DailyWordBadge: React.FC = () => {
             }
         };
         fetchSettings();
+
+        // Listen for setting changes
+        window.addEventListener('system-settings-updated', fetchSettings);
+        return () => window.removeEventListener('system-settings-updated', fetchSettings);
     }, []);
 
     // Use Store

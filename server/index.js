@@ -68,6 +68,7 @@ db.exec(`
         ai_allow_search BOOLEAN DEFAULT 0,
         ai_provider TEXT DEFAULT 'DeepSeek',
         ai_data_sources TEXT DEFAULT '["tickets","knowledge"]',  -- JSON array: ["tickets", "knowledge", "web_search"]
+        ai_prompts TEXT, -- JSON string for scene specific prompts
         ai_search_history_limit INTEGER DEFAULT 10,
         show_daily_word BOOLEAN DEFAULT 0,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -283,6 +284,7 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_enable
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_frequency INTEGER DEFAULT 4320").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN secondary_backup_retention_days INTEGER DEFAULT 30").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_system_prompt TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_prompts TEXT").run(); } catch (e) { }
 
 // Migration for inquiry_tickets: add knowledge_article_id
 try { db.prepare("ALTER TABLE inquiry_tickets ADD COLUMN knowledge_article_id INTEGER REFERENCES knowledge_articles(id)").run(); } catch (e) { }

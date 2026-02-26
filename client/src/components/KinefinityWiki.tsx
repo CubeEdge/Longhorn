@@ -21,9 +21,14 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
     const categoryLabels: Record<string, string> = {
         'Manual': t('wiki.category.manual'),
         'Troubleshooting': t('wiki.category.troubleshooting'),
-        'FAQ': t('wiki.category.faq')
+        'FAQ': t('wiki.category.faq'),
+        'Application Note': t('wiki.category.application_note'),
+        'Technical Spec': t('wiki.category_technical_spec'),
+        'Compatibility': t('wiki.category_application_note'),
+        'Firmware': t('wiki.category_application_note')
     };
     const displayCategory = categoryLabels[category] || category;
+    const displayProductLine = productLine === 'GENERIC' ? 'E' : productLine;
 
     return (
         <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'rgba(255,255,255,0.05)' } } as any}>
@@ -31,7 +36,7 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
             {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
                 {displayCategory && <span>{displayCategory}</span>}
-                {productLine && <span>{productLine}</span>}
+                {displayProductLine && <span>{displayProductLine}</span>}
             </div>
         </div>
     );
@@ -260,6 +265,7 @@ export const KinefinityWiki: React.FC = () => {
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
     const [articlesToDeleteList, setArticlesToDeleteList] = useState<KnowledgeArticle[]>([]);
     const [deleteCountdown, setDeleteCountdown] = useState(0);
+    const [globalToast, setGlobalToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // 删除倒计时逻辑
     useEffect(() => {
@@ -1010,6 +1016,13 @@ ${contextTickets.map((ticket: any) => {
                     title: detailed.title,
                     slug: detailed.slug
                 });
+
+                // 自动同步草稿或发布视图
+                if (detailed.format_status === 'draft') {
+                    setViewMode('draft');
+                } else {
+                    setViewMode('published');
+                }
             } else {
                 setSelectedArticle(article);
                 selectedArticleRef.current = article;
@@ -1346,7 +1359,8 @@ ${contextTickets.map((ticket: any) => {
             t('wiki.publish.confirm_desc'),
             t('wiki.publish.confirm_title'),
             t('wiki.publish.confirm_button'),
-            t('action.cancel')
+            t('action.cancel'),
+            3 // 3 second countdown for publishing
         );
         if (!confirmed) return;
 
@@ -1861,96 +1875,84 @@ ${contextTickets.map((ticket: any) => {
                                 }}>
                                     {selectedArticle.title}
                                 </h1>
-
-                                {/* Edit Button - Only show when no draft exists */}
-                                {canEdit && selectedArticle.format_status !== 'draft' && (
-                                    <button
-                                        onClick={() => setShowEditorModal(true)}
-                                        style={{
-                                            padding: '8px 16px',
-                                            background: 'rgba(255,215,0,0.15)',
-                                            border: '1px solid rgba(255,215,0,0.3)',
-                                            borderRadius: '8px',
-                                            color: '#FFD700',
-                                            fontSize: '13px',
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            transition: 'all 0.2s',
-                                            flexShrink: 0,
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,215,0,0.25)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
-                                        }}
-                                    >
-                                        <Edit3 size={14} />
-                                        {t('action.edit')}
-                                    </button>
-                                )}
                             </div>
 
-                            {/* Bokeh Formatting Toolbar - Only for editors and only when draft exists */}
-                            {canEdit && selectedArticle.format_status === 'draft' && (
+                            {/* Editor Action Bar - Always visible for editors */}
+                            {canEdit && (
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '12px',
                                     marginBottom: '20px',
                                     padding: '12px 16px',
-                                    background: 'rgba(16, 185, 129, 0.05)',
-                                    border: '1px solid rgba(16, 185, 129, 0.15)',
+                                    background: selectedArticle.format_status === 'draft'
+                                        ? 'rgba(16, 185, 129, 0.05)'
+                                        : 'rgba(255,255,255,0.03)',
+                                    border: selectedArticle.format_status === 'draft'
+                                        ? '1px solid rgba(16, 185, 129, 0.15)'
+                                        : '1px solid rgba(255,255,255,0.08)',
                                     borderRadius: '12px'
                                 }}>
-                                    {/* View Mode Toggle */}
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: '4px',
-                                        padding: '4px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        borderRadius: '8px'
-                                    }}>
-                                        <button
-                                            onClick={() => setViewMode('published')}
-                                            style={{
-                                                padding: '6px 12px',
-                                                background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                                border: 'none',
-                                                borderRadius: '6px',
-                                                color: viewMode === 'published' ? '#fff' : '#888',
-                                                fontSize: '12px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <Eye size={14} /> {t('wiki.toolbar.published')}
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('draft')}
-                                            style={{
-                                                padding: '6px 12px',
-                                                background: viewMode === 'draft' ? '#10B981' : 'transparent',
-                                                border: 'none',
-                                                borderRadius: '6px',
-                                                color: viewMode === 'draft' ? '#fff' : '#888',
-                                                fontSize: '12px',
-                                                fontWeight: viewMode === 'draft' ? 600 : 400,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                        >
-                                            <EyeOff size={14} /> {t('wiki.toolbar.draft')}
-                                        </button>
-                                    </div>
+                                    {/* View Mode Toggle - Only when draft exists */}
+                                    {selectedArticle.format_status === 'draft' && (
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '4px',
+                                            padding: '4px',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <button
+                                                onClick={() => setViewMode('published')}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    color: viewMode === 'published' ? '#fff' : '#888',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <Eye size={14} /> {t('wiki.toolbar.published')}
+                                            </button>
+                                            <button
+                                                onClick={() => setViewMode('draft')}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: viewMode === 'draft' ? '#10B981' : 'transparent',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    color: viewMode === 'draft' ? '#fff' : '#888',
+                                                    fontSize: '12px',
+                                                    fontWeight: viewMode === 'draft' ? 600 : 400,
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <EyeOff size={14} /> {t('wiki.toolbar.draft')}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Status indicator - when no draft */}
+                                    {selectedArticle.format_status !== 'draft' && (
+                                        <span style={{
+                                            fontSize: '12px',
+                                            color: '#888',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}>
+                                            <Eye size={14} />
+                                            {t('wiki.toolbar.published')}
+                                        </span>
+                                    )}
 
                                     <div style={{ flex: 1 }} />
 
@@ -1976,13 +1978,13 @@ ${contextTickets.map((ticket: any) => {
                                         {t('action.edit')}
                                     </button>
 
-                                    {/* Publish Button - Only show when draft exists - Kine Yellow style */}
-                                    {viewMode === 'draft' && (
+                                    {/* Publish Button - Only show when draft exists and viewing draft */}
+                                    {selectedArticle.format_status === 'draft' && viewMode === 'draft' && (
                                         <button
                                             onClick={handlePublishFormat}
                                             style={{
                                                 padding: '8px 16px',
-                                                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                                                background: '#FFD700',
                                                 border: 'none',
                                                 borderRadius: '8px',
                                                 color: '#000',
@@ -2433,19 +2435,101 @@ ${contextTickets.map((ticket: any) => {
                                 marginBottom: '24px'
                             }}>
                                 <div>
-                                    <h1 style={{
-                                        fontSize: '1.8rem',
-                                        fontWeight: 800,
-                                        margin: '0 0 8px 0',
-                                        color: '#fff',
-                                        letterSpacing: '-0.5px'
-                                    }}>
-                                        Kinefinity WIKI
-                                    </h1>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <h1 style={{
+                                            fontSize: '1.8rem',
+                                            fontWeight: 800,
+                                            margin: '0',
+                                            color: '#fff',
+                                            letterSpacing: '-0.5px'
+                                        }}>
+                                            Kinefinity WIKI
+                                        </h1>
+                                        {/* 管理按钮 - 紧跟标题 */}
+                                        {hasWikiAdminAccess && (
+                                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                <button
+                                                    onClick={() => setShowAdminMenu(!showAdminMenu)}
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                                        border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                                        borderRadius: '8px',
+                                                        color: showAdminMenu ? '#FFD700' : '#999',
+                                                        fontSize: '13px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        height: '32px'
+                                                    }}
+                                                >
+                                                    <Settings size={14} />
+                                                    <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('wiki.manage')}</span>
+                                                </button>
+
+                                                {/* 管理菜单下拉 */}
+                                                {showAdminMenu && (
+                                                    <>
+                                                        <div
+                                                            onClick={() => setShowAdminMenu(false)}
+                                                            style={{
+                                                                position: 'fixed',
+                                                                inset: 0,
+                                                                zIndex: 99
+                                                            }}
+                                                        />
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            top: '100%',
+                                                            left: 0,
+                                                            marginTop: '8px',
+                                                            background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: '12px',
+                                                            padding: '8px',
+                                                            minWidth: '180px',
+                                                            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                                            zIndex: 100
+                                                        }}>
+                                                            <div
+                                                                onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <Upload size={16} color="#FFD700" />
+                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
+                                                            </div>
+                                                            <div
+                                                                onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <FileText size={16} color="#FFD700" />
+                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
+                                                            </div>
+                                                            <div
+                                                                onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <BookOpen size={16} color="#60A5FA" />
+                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     <p style={{
                                         fontSize: '14px',
                                         color: '#666',
-                                        margin: 0
+                                        margin: '8px 0 0 0'
                                     }}>
                                         {t('wiki.subtitle')}
                                     </p>
@@ -2528,87 +2612,6 @@ ${contextTickets.map((ticket: any) => {
                                             </>
                                         )}
                                     </div>
-
-                                    {/* 管理按钮 */}
-                                    {hasWikiAdminAccess && (
-                                        <div style={{ position: 'relative', flexShrink: 0 }}>
-                                            <button
-                                                onClick={() => setShowAdminMenu(!showAdminMenu)}
-                                                style={{
-                                                    padding: '8px 14px',
-                                                    background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                                    border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                                                    borderRadius: '10px',
-                                                    color: showAdminMenu ? '#FFD700' : '#999',
-                                                    fontSize: '13px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    height: '38px'
-                                                }}
-                                            >
-                                                <Settings size={16} />
-                                                <span style={{ fontWeight: 600, fontSize: '13px' }}>{t('wiki.manage')}</span>
-                                            </button>
-
-                                            {/* 管理菜单下拉 */}
-                                            {showAdminMenu && (
-                                                <>
-                                                    <div
-                                                        onClick={() => setShowAdminMenu(false)}
-                                                        style={{
-                                                            position: 'fixed',
-                                                            inset: 0,
-                                                            zIndex: 99
-                                                        }}
-                                                    />
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        top: '100%',
-                                                        right: 0,
-                                                        marginTop: '8px',
-                                                        background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: '12px',
-                                                        padding: '8px',
-                                                        minWidth: '180px',
-                                                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                                                        zIndex: 100
-                                                    }}>
-                                                        <div
-                                                            onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
-                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <Upload size={16} color="#FFD700" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
-                                                        </div>
-                                                        <div
-                                                            onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
-                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <FileText size={16} color="#FFD700" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
-                                                        </div>
-                                                        <div
-                                                            onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
-                                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                        >
-                                                            <BookOpen size={16} color="#60A5FA" />
-                                                            <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -2852,17 +2855,19 @@ ${contextTickets.map((ticket: any) => {
                                                     alignItems: 'center',
                                                     gap: '12px'
                                                 }}>
-                                                    <span style={{
-                                                        padding: '5px 14px',
-                                                        background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
-                                                        borderRadius: '8px',
-                                                        fontSize: '12px',
-                                                        color: '#a78bfa',
-                                                        fontWeight: 600,
-                                                        letterSpacing: '0.3px'
-                                                    }}>
-                                                        ✦ {t('wiki.search.ai_answer')}
-                                                    </span>
+                                                    {(aiAnswer || !isAiSearching) && (
+                                                        <span style={{
+                                                            padding: '5px 14px',
+                                                            background: 'linear-gradient(135deg, #00A650, #8E24AA)',
+                                                            borderRadius: '8px',
+                                                            fontSize: '12px',
+                                                            color: '#fff',
+                                                            fontWeight: 600,
+                                                            letterSpacing: '0.3px'
+                                                        }}>
+                                                            ✦ {t('wiki.search.ai_answer')}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <button
                                                     onClick={() => {
@@ -2875,6 +2880,7 @@ ${contextTickets.map((ticket: any) => {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
+                                                        visibility: (aiAnswer || !isAiSearching) ? 'visible' : 'hidden',
                                                         background: 'rgba(255,255,255,0.05)',
                                                         border: '1px solid rgba(255,255,255,0.1)',
                                                         borderRadius: '6px',
@@ -2941,7 +2947,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div style={{ padding: '28px 32px' }}>
                                                                 <div style={{
                                                                     fontSize: '15px',
-                                                                    color: '#e5e5e5',
+                                                                    color: '#888',
                                                                     lineHeight: '1.9',
                                                                     letterSpacing: '0.015em'
                                                                 }}>
@@ -2952,6 +2958,8 @@ ${contextTickets.map((ticket: any) => {
                                                                             h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.4em', margin: '20px 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px', color: '#fff' }} {...props} />,
                                                                             h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.2em', margin: '18px 0 8px 0', color: '#fff' }} {...props} />,
                                                                             h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', margin: '16px 0 6px 0', color: '#fff' }} {...props} />,
+                                                                            strong: ({ node, ...props }) => <strong style={{ color: '#fff', fontWeight: 600 }} {...props} />,
+                                                                            b: ({ node, ...props }) => <b style={{ color: '#fff', fontWeight: 600 }} {...props} />,
                                                                             ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '12px 0' }} {...props} />,
                                                                             li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
                                                                             p: ({ node, ...props }) => <p style={{ marginBottom: '14px' }} {...props} />,
@@ -3453,11 +3461,11 @@ ${contextTickets.map((ticket: any) => {
                                                                 fontSize: '12px',
                                                                 fontWeight: 700
                                                             }}>
-                                                                {productLine}
+                                                                {productLine === 'GENERIC' ? 'E' : productLine}
                                                             </span>
 
                                                             <span style={{ flex: 1, fontWeight: 600, color: '#fff', fontSize: '15px' }}>
-                                                                {model}
+                                                                {selectedProductLine === 'GENERIC' ? t('wiki.line.generic_desc') : model}
                                                             </span>
 
                                                             <span style={{
@@ -3495,7 +3503,11 @@ ${contextTickets.map((ticket: any) => {
                                                                     const categoryLabels: Record<string, string> = {
                                                                         'Manual': t('wiki.category.manual'),
                                                                         'Troubleshooting': t('wiki.category.troubleshooting'),
-                                                                        'FAQ': t('wiki.category.faq')
+                                                                        'FAQ': t('wiki.category.faq'),
+                                                                        'Application Note': t('wiki.category.application_note'),
+                                                                        'Technical Spec': t('wiki.category_technical_spec'),
+                                                                        'Compatibility': t('wiki.category_application_note'),
+                                                                        'Firmware': t('wiki.category_application_note')
                                                                     };
 
                                                                     return (
@@ -4072,6 +4084,14 @@ ${contextTickets.map((ticket: any) => {
                         if (selectedArticle) {
                             loadArticleDetail(selectedArticle);
                         }
+                    }}
+                    onStatusChange={(status) => {
+                        if (status === 'draft') setViewMode('draft');
+                        else setViewMode('published');
+                    }}
+                    onToast={(message, type) => {
+                        setGlobalToast({ message, type });
+                        setTimeout(() => setGlobalToast(null), 3000);
                     }}
                 />
 
@@ -5000,6 +5020,31 @@ ${contextTickets.map((ticket: any) => {
                 }
             </div >
             <SynonymManager isOpen={showSynonymManager} onClose={() => setShowSynonymManager(false)} />
+
+            {/* 全局 Toast 通知 */}
+            {globalToast && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: globalToast.type === 'success' ? '#10B981' : '#EF4444',
+                    color: '#fff',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                    zIndex: 100000,
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <span style={{ fontSize: '18px' }}>{globalToast.type === 'success' ? '✅' : '❌'}</span>
+                    <span>{globalToast.message}</span>
+                </div>
+            )}
         </>
     );
 };

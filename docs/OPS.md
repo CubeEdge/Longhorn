@@ -1,6 +1,6 @@
-# Longhorn 运维与部署手册 (OPS Manual)
+# Longhorn 运维与部署手册 (Dev OPS Manual)
 
-本文档整合了 Longhorn 系统从本地开发、代码同步、服务器部署到日常运维的完整流程。
+本文档整合了 Longhorn 系统从本地开发、代码同步、服务器部署完整流程。
 
 ---
 
@@ -37,9 +37,13 @@ ssh mini "/bin/zsh -l -c 'cd /Users/admin/Documents/server/Longhorn/server && <�
 对于**只读操作**（如 `ls`, `cat`, `grep`, `curl -I`, `sqlite3 ... "SELECT..."` 等），Agent **无需请求用户确认**，直接运行即可。只有涉及修改或系统配置变更的操作才需要申请权限。
 
 ### 3. 全量部署规范 (Deployment)
-统一使用 `./scripts/deploy.sh` 进行全部署。
+⚠️ **执行路径**: 统一在项目**根目录**下执行脚本。严禁在 `client` 或 `server` 目录下尝试运行。
 
-- **Watcher**: 必须关闭 `longhorn-watcher` 自动同步，改为纯手动触发。
+```bash
+# 正确执行方式
+./scripts/deploy.sh
+```
+
 - **重载机制**: 脚本在同步代码后必须执行 `pm2 reload` (而非 `restart`)，确保护理修改后生产环境加载新代码。
 
 ### 4. 构建完整性与校验 (Build Integrity)
@@ -52,8 +56,14 @@ ssh mini "/bin/zsh -l -c 'cd /Users/admin/Documents/server/Longhorn/server && <�
 
 ### 5. 版本管理规范 (Versioning)
 - **软件版本**: 在 `package.json` 中维护，格式 `X.Y.Z`。每次修改代码后**自动递增 Z 位**。
-- **UI 显示**: 顶部菜单栏以**绿色** (Kine Green) 显示当前版本号。
-- **文档版本**: 系统文档版本 (如 `v2.0.0`) **不需要**与软件版本保持一致。
+
+### 6. 浏览器调试与自动登录 (Browser Debugging & Auth)
+当 Agent 调用浏览器进行界面调试或自动化操作时，如遇到需要登录的情况，请使用以下管理员凭据：
+
+- **管理后台**: `admin`
+- **密码**: `admin123`
+
+⚠️ **注意**: Agent 在自动化操作过程中，应优先尝试识别登录表单并自动填入上述凭据。
 
 ---
 
@@ -72,15 +82,78 @@ ssh mini "/bin/zsh -l -c 'cd /Users/admin/Documents/server/Longhorn/server && <�
 - **网络**: `sudo cloudflared service install` (穿透自启)。
 
 ### 3. 文件存储架构 (Fileserver)
-外部存储挂载点： `/Volumes/fileserver/`
+
+所有用户文件（Files应用、Service应用）统一存储在远程服务器的 `/Volumes/fileserver/` 目录下。
 - **软链接**: `server/data/DiskA` -> `/Volumes/fileserver/Files`
 - **附件路径**: `Service/Tickets/{类型}/`
 - **知识库路径**: `Service/Knowledge/Images/`
 
-### 4. 数据库备份策略 (Backup)
-- **主备份**: 每 24 小时，保留 7 天，存储于 `fileserver`。
-- **次级备份**: 每 72 小时，保留 30 天，存储于系统盘。
+### 目录结构
+```
+/Volumes/fileserver/
+├── 📁 Files/                    # Files 应用根目录
+│   ├── MS/                      # 市场部部门文件
+│   ├── OP/                      # 运营部部门文件
+│   ├── RD/                      # 研发部部门文件
+│   ├── RE/                      # 通用台面
+│   ├── GE/                      # 旧目录（保留）
+│   └── MEMBERS/                 # 个人空间
+│       └── {username}/
+│
+├── 📁 Service/                  # Service 应用根目录
+│   ├── 📁 Tickets/              # 工单附件
+│   │   ├── Inquiry/             # 咨询工单
+│   │   ├── RMA/                 # RMA返厂单
+│   │   └── DealerRepair/        # 经销商维修单
+│   │
+│   ├── 📁 Knowledge/            # 知识库资源
+│   │   ├── Images/              # 知识库图片
+│   │   ├── Videos/              # 知识库视频
+│   │   └── Documents/           # 知识库文档
+│   │
+│   ├── 📁 Products/             # 产品相关
+│   │   ├── Photos/              # 产品照片
+│   │   ├── Manuals/             # 说明书
+│   │   └── Firmware/            # 固件文件
+│   │
+│   └── 📁 Temp/                 # 临时上传目录
+│       └── Chunks/              # 分块上传临时文件
+│
+├── 📁 System/                   # 系统文件
+│   ├── Backups/db/              # 数据库备份
+│   ├── Thumbnails/              # 缩略图缓存
+│   └── RecycleBin/              # 回收站
+│
+└── 📁 Shared/                   # 共享资源
+    ├── Public/                  # 公开访问文件
+    └── Templates/               # 模板文件
+```
 
+### 4. 数据库备份策略 (Backup)
+- **主备份**: 每 3 小时，保留 7 天，存储于 `fileserver`。
+- **次级备份**: 每 24 小时，保留 30 天，存储于系统盘。
+
+### 备份架构
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Mac mini 服务器                           │
+│                                                             │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐  │
+│  │      主备份 (Primary)    │  │    次级备份 (Secondary)  │  │
+│  │                         │  │                         │  │
+│  │  /Volumes/fileserver/   │  │  ~/Documents/server/    │  │
+│  │  System/Backups/db/     │  │  Longhorn/server/       │  │
+│  │  └── backups/           │  │  backups/secondary/     │  │
+│  │                         │  │                         │  │
+│  │  频率: 3小时 (可配置)   │  │  频率: 24小时 (可配置)   │  │
+│  │  保留: 7天 (可配置)      │  │  保留: 30天 (可配置)     │  │
+│  │  存储: fileserver SSD   │  │  存储: 系统盘            │  │
+│  └─────────────────────────┘  └─────────────────────────┘  │
+│           ↑                              ↑                  │
+│           │                              │                  │
+│      应用内自动备份                 应用内自动备份           │
+│    (BackupService调度)            (BackupService调度)       │
+└─────────────────────────────────────────────────────────────┘
 ---
 
 ## 📂 部署路径参考

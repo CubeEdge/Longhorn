@@ -155,7 +155,8 @@ class AIService {
         const client = this._getClient(provider);
         if (!client) throw new Error("Active AI Provider has no API Key configured.");
 
-        const systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
+        const settings = this._getSystemSettings();
+        let systemPrompt = `You are Bokeh, Kinefinity's professional AI service assistant.
 Your task is to extract consultation ticket information from raw text (emails, chat logs, messages).
 Return ONLY a JSON object with the following fields (if missing, use null):
 
@@ -184,6 +185,18 @@ Return ONLY a JSON object with the following fields (if missing, use null):
 - Set urgency based on language: "urgent", "ASAP", "critical", "production", "deadline"
 
 Output raw JSON only, no markdown formatting blocks.`;
+
+        // Attempt to load from database prompts
+        if (settings.ai_prompts) {
+            try {
+                const prompts = JSON.parse(settings.ai_prompts);
+                if (prompts.ticket_parse) {
+                    systemPrompt = prompts.ticket_parse;
+                }
+            } catch (e) {
+                console.warn('[AIService] Failed to parse ai_prompts JSON');
+            }
+        }
 
         const model = this._getModel('chat');
 
