@@ -857,6 +857,49 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             }
         }
 
+        // Truncate at comment sections and article footer noise (HTML stage)
+        // Strong signals: unambiguous markers that are never part of article body — use low threshold (5%)
+        const strongCommentPatterns = [
+            /<p>[^<]*\u70ED\u95E8\u8BC4\u8BBA/i, /<p>[^<]*\u7CBE\u5F69\u8BC4\u8BBA/i,
+            /<p>[^<]*\u7528\u6237\u8BC4\u8BBA/i, /<p>[^<]*\u5168\u90E8\u8BC4\u8BBA/i,
+            /<p>[^<]*Popular Comments/i, /<p>[^<]*Comments?\s*[\uFF08(]\d+[)\uFF09]/i,
+            /<p>[^<]*Leave a [Cc]omment/i,
+            /<p>\s*<(strong|em)>\s*\u514D\u8D23\u58F0\u660E/i,
+        ];
+        // Normal signals: could theoretically appear in article text — use conservative threshold (20%)
+        const normalCommentPatterns = [
+            /<p>[^<]*\u76F8\u5173\u63A8\u8350/i, /<p>[^<]*\u76F8\u5173\u6587\u7AE0/i,
+            /<p>[^<]*\u731C\u4F60\u559C\u6B22/i,
+            /<p>[^<]*\u4E0A\u4E00\u7BC7[\uFF1A:]/i, /<p>[^<]*\u4E0B\u4E00\u7BC7[\uFF1A:]/i,
+        ];
+        // Also remove trailing article source & copyright lines (keep real content above them)
+        const sourcePatterns = [
+            /<p>\s*<em>\u6587\u7AE0\u6765\u6E90[^<]{0,200}<\/em>\s*<\/p>/i,
+        ];
+
+        const truncateAtPattern = (patterns, minRatio) => {
+            for (const pattern of patterns) {
+                const match = content.match(pattern);
+                if (match) {
+                    const idx = content.indexOf(match[0]);
+                    if (idx > content.length * minRatio) {
+                        const preview = match[0].replace(/<[^>]+>/g, '').substring(0, 60);
+                        console.log(`[Knowledge] Truncating at comment/footer: "${preview}..."`);
+                        content = content.substring(0, idx).trim();
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+        if (!truncateAtPattern(strongCommentPatterns, 0.05)) {
+            truncateAtPattern(normalCommentPatterns, 0.2);
+        }
+        // Remove source/copyright lines (strip but don't truncate everything after)
+        for (const pattern of sourcePatterns) {
+            content = content.replace(pattern, '');
+        }
+
         // Remove short nav-like paragraphs at the start (breadcrumb text only, max 80 chars)
         // IMPORTANT: Do NOT match long paragraphs — those are real content
         const breadcrumbPatterns = [
@@ -2661,7 +2704,11 @@ ${article.content.substring(0, 10000)}
 5. **格式规范 (绝对要求)**: 你的回复必须且仅能包含以下两个标签包装的内容：
    - <title>这里放翻译后的标题</title>
    - <content>这里放优化后的 HTML 正文内容</content>
-   不要添加任何解释或引导语。`;
+   不要添加任何解释或引导语。
+6. **专有名词翻译对照**: 翻译时请使用以下对照表：
+   - Eagle = 猎影（Kinefinity 电子寻像器产品名称）
+   - MAVO / Terra / KineMON = 保留原名不翻译
+7. **内容清洁**: 移除所有评论区内容（如"热门评论""精彩评论"等）、免责声明、版权声明、文章来源信息。只保留正文内容。`;
 
                 try {
                     const fullAiResponse = await aiService.generate('logic',
