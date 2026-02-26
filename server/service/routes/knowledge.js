@@ -823,6 +823,67 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
         }
     });
 
+    // ──────── Shared helper: clean content noise ────────
+    // Available to both /import/url and /:id/format routes
+    function removeContentTitle(content, articleTitle) {
+        if (!content) return content;
+
+        // Remove ALL HTML headings (h1, h2, h3) found in content
+        content = content.replace(/<h[1-3][^>]*>[\s\S]*?<\/h[1-3]>/gi, '');
+
+        // Remove leading breadcrumb <ul>...<li>CurrentPage</li></ul>
+        content = content.replace(/^\s*<ul>\s*(?:<li>[\s\S]*?<\/li>\s*)*<\/ul>/i, '');
+
+        // Remove standalone "Print" paragraph (Jina artifact)
+        content = content.replace(/<p>\s*Print\s*<\/p>/gi, '');
+
+        // Truncate at navigation patterns (Previous/Next links, footer)
+        const navPatterns = [
+            /<p>\s*<a[^>]*>Previous\s/i,
+            /<p>\s*<a[^>]*>Next\s/i,
+            /<p>\s*How Can We Help/i,
+            /<p>\s*Search\s*<\/p>/i,
+            /<p>\s*Table of Contents\s*<\/p>/i,
+            /<hr\s*\/?>\s*<pre>/i,
+        ];
+        for (const pattern of navPatterns) {
+            const match = content.match(pattern);
+            if (match) {
+                const idx = content.indexOf(match[0]);
+                if (idx > content.length * 0.15) {
+                    console.log(`[Knowledge] Truncating at nav: "${match[0].substring(0, 50).replace(/<[^>]+>/g, '')}..."`);
+                    content = content.substring(0, idx).trim();
+                }
+            }
+        }
+
+        // Remove short nav-like paragraphs at the start (breadcrumb text only, max 80 chars)
+        // IMPORTANT: Do NOT match long paragraphs — those are real content
+        const breadcrumbPatterns = [
+            /(\s*<p>[^<]{0,80}<\/p>\s*){1,3}/i,
+            /(\s*<div[^>]*(?:breadcrumb|nav)[^>]*>[\s\S]{0,500}?<\/div>\s*){1,2}/i
+        ];
+        const noiseStrings = ['首页', '主页面', '所有主题', 'All Topics', 'Previous', 'Next', 'Home', 'Back to', '上一项', '下一项', 'breadcrumbs', 'prev-next'];
+        for (const pattern of breadcrumbPatterns) {
+            content = content.replace(pattern, (match) => {
+                const text = match.replace(/<[^>]+>/g, '').trim();
+                const isNoise = noiseStrings.some(s => text.toLowerCase().includes(s.toLowerCase())) && text.length < 120;
+                if (isNoise) {
+                    console.log(`[Knowledge] Removing nav noise: "${text.substring(0, 50)}..."`);
+                    return '';
+                }
+                return match;
+            });
+        }
+
+        // Target nav divs anywhere
+        content = content.replace(/<div[^>]*(?:prev-next|breadcrumbs|navigation|footer)[^>]*>[\s\S]*?<\/div>/gi, '');
+
+        // Clean up whitespace
+        content = content.replace(/^\s+/, '').replace(/\n{3,}/g, '\n\n');
+        return content.trim();
+    }
+
     /**
      * POST /api/v1/knowledge/import/url
      * Import knowledge from web page URL
@@ -838,7 +899,8 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
             const {
                 url, title, category = 'Application Note', product_line,
-                product_models = [], visibility = 'Public', tags = [], turbo = true
+                product_models = [], visibility = 'Public', tags = [], turbo = true,
+                locale = 'zh-CN'
             } = req.body;
 
             if (!url) {
@@ -927,13 +989,18 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     .replace(/^URL Source:\s*.+$/gm, '')
                     .replace(/^Markdown Content:\s*$/gm, '');
 
-                // Truncate at comment section (e.g., 热门评论, 精彩评论, Popular Comments)
+                // Truncate at comment section, navigation, sidebar, footer
                 const commentMarkers = [
                     /^.*热门评论/m, /^.*精彩评论/m, /^.*用户评论/m, /^.*全部评论/m,
                     /^.*相关推荐/m, /^.*相关文章/m, /^.*猜你喜欢/m, /^.*更多精彩/m,
                     /^.*Popular Comments/im, /^.*Related Articles/im, /^.*You May Also Like/im,
                     /^.*Leave a [Cc]omment/m, /^.*Comments?\s*\(\d+\)/m,
-                    /^.*上一篇[:：]/m, /^.*下一篇[:：]/m
+                    /^.*上一篇[:：]/m, /^.*下一篇[:：]/m,
+                    // Navigation / footer patterns
+                    /^\[Previous\s*$/m, /^\[Next\s*$/m,
+                    /^- \[My account\]/m, /^- \[Where to Buy\]/m, /^- \[Contact Us\]/m,
+                    /^\[My account\]/m, /^\[Where to Buy\]/m, /^\[Contact Us\]/m,
+                    /^- No products in the cart/m, /^\[Return to shop\]/m
                 ];
                 for (const marker of commentMarkers) {
                     const match = finalMarkdown.match(marker);
@@ -947,10 +1014,26 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     }
                 }
 
+                // Remove sidebar/TOC-like blocks: consecutive ### headings with link lists (not part of main article)
+                // Detect sections like "### Tools-Exposure\n- [link]\n- [link]\n### Tools-Focus\n..." 
+                finalMarkdown = finalMarkdown.replace(/(?:^### .+\n(?:- \s*\n?\t*\[.+\]\(.+\).*\n?)+){2,}/gm, '');
+                // Remove repeated standalone link lists at the end (e.g., duplicated nav links)
+                finalMarkdown = finalMarkdown.replace(/(\[.+\]\(https?:\/\/.+\)\s*\n){3,}$/gm, '');
+
                 finalMarkdown = finalMarkdown.replace(/^\n{2,}/, '\n'); // Clean leading blank lines
 
                 // Convert Markdown to HTML for consistent storage and rendering
-                const htmlContent = marked.parse(finalMarkdown);
+                let htmlContent = marked.parse(finalMarkdown);
+
+                // Sanitize HTML: remove inline styles, classes, and divs that break dark theme
+                htmlContent = htmlContent
+                    .replace(/\s+style\s*=\s*"[^"]*"/gi, '')   // Remove style="..."
+                    .replace(/\s+style\s*=\s*'[^']*'/gi, '')   // Remove style='...'
+                    .replace(/\s+class\s*=\s*"[^"]*"/gi, '')   // Remove class="..."
+                    .replace(/\s+class\s*=\s*'[^']*'/gi, '')   // Remove class='...'
+                    .replace(/<\/?div[^>]*>/gi, '')             // Remove <div> wrappers
+                    .replace(/<\/?span[^>]*>/gi, '');           // Remove <span> wrappers
+
                 chapters = [{ title: articleTitle, content: htmlContent }];
             } else {
                 // Standard Mode: Clean HTML
@@ -966,15 +1049,22 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 chapters = [{ title: articleTitle, content: webContent.content }];
             }
 
-            // AI Title Translation/Polishing
+            // AI Title Translation/Polishing - use locale from frontend
             if (aiService && articleTitle && articleTitle !== 'Web Import') {
                 try {
-                    console.log(`[Knowledge Import] AI Polishing title: ${articleTitle}`);
-                    const titlePrompt = `你是一个技术翻译。请将以下网页标题翻译成简洁的中文技术文档标题，不要包含网站名称（如 SmallHD, Kinefinity），只要文章核心内容。
-如果标题已经是中文，请进行排版微调（如数字与英文间加空格）。
+                    console.log(`[Knowledge Import] AI Polishing title: ${articleTitle} (locale: ${locale})`);
+                    const targetLang = locale.startsWith('zh') ? '简练中文' : locale.startsWith('de') ? 'German' : locale.startsWith('ja') ? 'Japanese' : 'English';
+                    const titlePrompt = `你是一个技术文档翻译专家。请将以下网页标题翻译成${targetLang}。
+**重要规则**:
+1. 如果标题是技术术语（如 Zebra, False Color, Histogram），请翻译为对应的${targetLang}术语（如：斑马纹, 伪色, 直方图）。
+2. 移除所有网站后缀或前缀（如 SmallHD, Kinefinity, EAGLE, e-Viewfinder Store）。
+3. 保持简洁，不要有任何解释。
 标题：${articleTitle}
-直接输出翻译后的标题，不要有任何解释。`;
-                    const polishedTitle = await aiService.generateResponse(titlePrompt, { temperature: 0.3, maxTokens: 100 });
+直接输出翻译后的标题。`;
+                    const polishedTitle = await aiService.generate('chat',
+                        'You are a technical documentation translator. Output only the translated title, nothing else.',
+                        titlePrompt
+                    );
                     if (polishedTitle && polishedTitle.length < 200) {
                         articleTitle = polishedTitle.trim().replace(/^"|"$/g, '');
                         console.log(`[Knowledge Import] AI Polished title: ${articleTitle}`);
@@ -988,40 +1078,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             let imported_count = 0;
             let skipped_count = 0;
 
-            // Helper: remove the first heading (H1/H2/H3) from body content
-            // and clean leading breadcrumb/navigation noise from Jina results
-            function removeContentTitle(content, articleTitle) {
-                if (!content) return content;
-
-                // Remove first HTML heading (h1, h2, or h3) found in content
-                let removed = false;
-                content = content.replace(/<h[1-3][^>]*>[\s\S]*?<\/h[1-3]>/i, (match) => {
-                    if (!removed) {
-                        removed = true;
-                        return ''; // Remove first heading only
-                    }
-                    return match;
-                });
-
-                // Remove leading breadcrumb/navigation paragraph that contains the article title
-                // (e.g., <p><strong><a>首页>动态></a></strong> 梅洛：尤文已发生...</p>)
-                if (articleTitle) {
-                    const titleSnippet = articleTitle.substring(0, 20);
-                    content = content.replace(/^(\s*<p>[\s\S]{0,500}?<\/p>\s*){0,3}/i, (match) => {
-                        const text = match.replace(/<[^>]+>/g, '').trim();
-                        // If this leading paragraph reproduces the title or is a breadcrumb, remove it
-                        if (text.includes(titleSnippet) && text.includes('>')) {
-                            return '';
-                        }
-                        return match;
-                    });
-                }
-
-                // Clean up leading whitespace and extra blank lines
-                content = content.replace(/^\s+/, '').replace(/\n{3,}/g, '\n\n');
-
-                return content.trim();
-            }
+            // removeContentTitle is now defined at the module scope (above)
 
             for (const chapter of chapters) {
                 // Remove content headings that duplicate the article title
@@ -1050,7 +1107,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                     ) VALUES (
                         @title, @slug, @summary, @content, @category,
                         @product_line, @product_models, @tags, @visibility, 'Published',
-                        'URL', @source_reference, @source_url,
+                        'url', @source_reference, @source_url,
                         1, 1,
                         @created_by, datetime('now'), datetime('now'), datetime('now')
                     )
@@ -1715,6 +1772,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             view_count: article.view_count,
             helpful_count: article.helpful_count,
             not_helpful_count: article.not_helpful_count,
+            source_type: article.source_type,
             author: article.author_name,
             published_at: article.published_at,
             created_at: article.created_at
@@ -1734,7 +1792,6 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             id: article.id,
             title: article.title,
             slug: article.slug,
-            summary: article.summary,
             summary: article.summary,
             content: article.content,
             formatted_content: article.formatted_content,
@@ -2601,16 +2658,71 @@ ${article.content.substring(0, 10000)}
    - 正确识别并格式化操作步骤（使用有序列表）。
 3. **技术精度**: 严禁扩写、重写或修改任何具体的技术参数、数值、专用名词及操作指令。保持技术原意的 100% 准确。
 4. **媒体强制保留**: 必须保留所有图片引用（<img> 或 Markdown 图片语法 ![alt](url)）。严禁删除或移动图片标签位置。
-5. **格式规范**: 仅输出 HTML 格式的内容。严禁添加除优化后的正文以外的任何说明文字、引导语或 Markdown 标签。
-
-请直接输出优化后的文章 HTML 内容。`;
+5. **格式规范 (绝对要求)**: 你的回复必须且仅能包含以下两个标签包装的内容：
+   - <title>这里放翻译后的标题</title>
+   - <content>这里放优化后的 HTML 正文内容</content>
+   不要添加任何解释或引导语。`;
 
                 try {
-                    formattedContent = await aiService.generate('logic',
-                        'You are Bokeh, a professional knowledge base editor. Optimize article layout while preserving technical accuracy.',
+                    const fullAiResponse = await aiService.generate('logic',
+                        'You are Bokeh, a professional knowledge base editor. Optimize article layout and translate to Chinese while preserving technical accuracy. YOU MUST wrap the translated title in <title>...</title> and the HTML content in <content>...</content> tags.',
                         layoutPrompt
                     );
-                    console.log('[Knowledge Format] Layout optimization completed');
+
+                    console.log(`[Knowledge Format] AI response length: ${fullAiResponse.length}`);
+
+                    // Extract title - try XML-style tags first, then HTML <title> in <head>
+                    let extractedTitle = '';
+                    const xmlTitleMatch = fullAiResponse.match(/<title>([^<]{1,200})<\/title>/i);
+                    if (xmlTitleMatch && xmlTitleMatch[1]) {
+                        extractedTitle = xmlTitleMatch[1].trim();
+                    }
+
+                    // Extract content - try <content> tags first
+                    const contentMatch = fullAiResponse.match(/<content>([\s\S]*?)<\/content>/i);
+
+                    if (contentMatch && contentMatch[1]) {
+                        formattedContent = contentMatch[1].trim();
+                    } else {
+                        // AI returned raw HTML (possibly a full page) - extract body content
+                        let rawContent = fullAiResponse.trim();
+
+                        // If AI returned a full HTML document, extract only the body
+                        const bodyMatch = rawContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                        if (bodyMatch) {
+                            rawContent = bodyMatch[1].trim();
+                            console.log('[Knowledge Format] Extracted body from full HTML page');
+                        }
+
+                        // Strip page-level elements that should never be in article content
+                        rawContent = rawContent
+                            .replace(/<!DOCTYPE[^>]*>/gi, '')
+                            .replace(/<html[^>]*>|<\/html>/gi, '')
+                            .replace(/<head>[\s\S]*?<\/head>/gi, '')
+                            .replace(/<body[^>]*>|<\/body>/gi, '')
+                            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                            .replace(/<meta[^>]*>/gi, '')
+                            .replace(/<link[^>]*>/gi, '')
+                            .replace(/\s+style\s*=\s*"[^"]*"/gi, '')   // Remove inline styles
+                            .replace(/\s+style\s*=\s*'[^']*'/gi, '')
+                            .replace(/\s+class\s*=\s*"[^"]*"/gi, '')   // Remove class attrs
+                            .replace(/\s+class\s*=\s*'[^']*'/gi, '')
+                            .replace(/<\/?div[^>]*>/gi, '')             // Remove div wrappers
+                            .replace(/<\/?span[^>]*>/gi, '');           // Remove span wrappers
+
+                        formattedContent = rawContent.trim();
+                    }
+
+                    if (extractedTitle) {
+                        article.title = extractedTitle;
+                        console.log(`[Knowledge Format] Extracted new title: ${article.title}`);
+                    }
+
+                    // Run noise removal and cleanup on formatted content
+                    formattedContent = removeContentTitle(formattedContent, article.title);
+
+                    console.log('[Knowledge Format] Layout optimization and translation completed');
                 } catch (aiErr) {
                     console.error('[Knowledge Format] Layout AI error:', aiErr.message);
                     formattedContent = article.content;
@@ -2662,6 +2774,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
             // 直接更新正文内容（不再保留草稿状态，移除 short_summary）
             db.prepare(`
                 UPDATE knowledge_articles SET
+                    title = ?,
                     content = ?,
                     summary = ?,
                     image_layout_meta = ?,
@@ -2673,6 +2786,7 @@ ${formattedContent.replace(/<[^>]+>/g, '').substring(0, 3000)}
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             `).run(
+                article.title,
                 formattedContent,
                 summaryText,
                 imageLayoutMeta ? JSON.stringify(imageLayoutMeta) : null,

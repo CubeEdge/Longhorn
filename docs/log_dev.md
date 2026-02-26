@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-02-26 09:00 - Wiki Import Deep Fix & UI Optimization (v12.1.51 / s1.5.29)
+
+### Tasks Completed:
+1. **Wiki Import Deep Fix**: 
+   - Fixed `removeContentTitle` scoping issue in `knowledge.js`.
+   - Enhanced HTML cleaning: breadcrumbs, navigation (Previous/Next), and generic noise removal.
+   - Refined AI prompts for translation and formatting to prevent full HTML page returns.
+   - Fixed `aiService.generate` method name mismatch.
+2. **UI Optimization**: 
+   - Redesigned TopBar version display: changed from single horizontal row to dual-row vertical layout for better readability on narrow viewports.
+3. **Internal Release**: 
+   - Incremented versions: Client `12.1.51`, Server `1.5.29`.
+   - Updated deployment infrastructure and verified on Article 750.
+
+### Technical Output:
+- **Modified**: `server/service/routes/knowledge.js`, `client/src/App.tsx`, `client/package.json`, `server/package.json`
+- **Deployment**: Local build confirmed; Remote deployment via `./scripts/deploy.sh`.
+
+---
+
 ## 2026-02-25 17:00 - Knowledge Import H1 Removal & DOCX Progress Fix
 
 ### Tasks Completed:

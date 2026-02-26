@@ -937,26 +937,24 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
 
-          {/* Version Display - Client & Server */}
+          {/* Version Display - Client & Server (Two rows) */}
           <div className="hidden-mobile" style={{
             color: '#10b981',
             fontWeight: 700,
-            fontSize: '0.85rem',
-            background: 'rgba(16, 185, 129, 0.1)',
-            padding: '4px 10px',
+            fontSize: '0.75rem',
+            background: 'rgba(16, 185, 129, 0.08)',
+            padding: '2px 8px',
             borderRadius: '6px',
             marginRight: '12px',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            border: '1px solid rgba(16, 185, 129, 0.15)',
             display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            lineHeight: '1.2'
           }}>
-            <span>v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}</span>
+            <div style={{ opacity: 0.9 }}>v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}</div>
             {serverVersion && (
-              <>
-                <span style={{ opacity: 0.5 }}>|</span>
-                <span style={{ opacity: 0.8 }}>s{serverVersion}</span>
-              </>
+              <div style={{ opacity: 0.6, fontSize: '0.7rem' }}>s{serverVersion}</div>
             )}
           </div>
 

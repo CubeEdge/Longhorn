@@ -2046,7 +2046,7 @@ ${contextTickets.map((ticket: any) => {
                                         {selectedArticle.source_type && (
                                             <div style={{ marginBottom: '4px' }}>
                                                 <span style={{ color: '#666' }}>{t('wiki.source.type_prefix')}</span>
-                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_type === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
+                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
                                             </div>
                                         )}
                                         {selectedArticle.source_reference && (
