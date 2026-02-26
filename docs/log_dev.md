@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-02-26 10:30 - Wiki Import 评论区清理 & Bokeh 术语映射 (v12.1.53 / s1.5.31)
+
+### Tasks Completed:
+1. **评论区清理 (Article 756)**:
+   - 在 `removeContentTitle` 增加 HTML 阶段分层截断：强信号(热门评论/免责声明) 5% 阈值，普通信号(相关推荐) 20% 阈值。
+   - 新增"文章来源"版权行移除。
+   - 直接清理 Article 756 数据库内容（从 5826→466 字节）。
+2. **Bokeh 术语映射**:
+   - Layout 提示词增加 Eagle=猎影 专有名词翻译对照表。
+   - 增加内容清洁规则（自动移除评论区、免责声明等）。
+
+### Technical Output:
+- **Modified**: `server/service/routes/knowledge.js`, `client/package.json`, `server/package.json`
+- **Deployment**: v12.1.53 / s1.5.31 via `./scripts/deploy.sh`
+
+---
+
 ## 2026-02-26 09:00 - Wiki Import Deep Fix & UI Optimization (v12.1.51 / s1.5.29)
 
 ### Tasks Completed:
