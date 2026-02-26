@@ -1098,8 +1098,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         gap: '20px',
                         boxShadow: '0 20px 60px rgba(0,0,0,0.6)'
                     }}>
-                        <div style={{ color: '#00A650', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
-                            <Sparkles className="animate-pulse" />
+                        <div style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
+                            <Sparkles className="animate-pulse" style={{ color: '#00A650' }} />
                             Bokeh 正在优化中...
                         </div>
 
@@ -1125,9 +1125,9 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             }}
                             style={{
                                 padding: '8px 24px',
-                                background: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                color: '#ddd',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#EF4444',
                                 borderRadius: '8px',
                                 fontSize: '14px',
                                 cursor: 'pointer',
@@ -1135,10 +1135,12 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
                             }}
                             onMouseLeave={e => {
-                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                             }}
                         >
                             取消优化

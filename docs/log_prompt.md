@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-02-27 01:31 (耗时: 15m)
+
+**User Prompt**:
+1. 优化 Wiki 导入：移除 Docx/URL 导入时内容开头的重复标题。
+2. 知识库导入器 UI：将“Bokeh 优化”按钮背景改为品牌色渐变（绿-紫）。
+3. Bokeh 进度 UI：将“Bokeh 正在优化中...”文字改为白色，并将“取消优化”按钮改为 Kine Red (#EF4444) 风格。
+
+**Agent Response**:
+1. **导入逻辑修复**：修改了 `server/service/routes/knowledge.js` 中的 `splitHtmlIntoChapters` 函数，移除自动注入的 `h1/h2` 标签，解决了与 Wiki 详请页标题重复的问题。
+2. **UI 深度精修**：
+   - 更新了 `KnowledgeGenerator.tsx`，为“Bokeh 优化”按钮应用了 `linear-gradient` 品牌渐变。
+   - 更新了 `WikiEditorModal.tsx`，将加载状态文字设为白色，并将取消操作统一为醒目的 Kine Red 风格。
+3. **版本发布 (v12.1.63)**：执行了全量本地构建与远程同步，版本号递增至 Client v12.1.63 / Server v1.5.41，保障生产环境与开发环境同步。
+
+**Result**:
+Wiki 导入生成的文档结构更加规范，Bokeh 相关交互界面视觉层次感显著提升，操作导向更加明确。
+
+---
+
 ## 2026-02-27 01:28 (耗时: 5m)
 
 **User Prompt**:

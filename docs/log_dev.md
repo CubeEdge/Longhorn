@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-02-27 01:46 - Bokeh 体验精修与导入功能优化 (v12.1.63 / s1.5.41)
+
+### Tasks Completed:
+1. **Bokeh 进度 UI 精细化**: 
+   - 状态文字 “Bokeh 正在优化中...” 颜色改为白色 (#fff)，提升在深色背景下的对比度。
+   - “取消优化” 按钮改为 Kine Red (#EF4444) 风格，语义更明确且视觉更协调。
+2. **知识库素材导入优化**:
+   - 移除从 Docx 或 URL 导入内容时，正文开头出现的冗余重复标题，提升内容纯净度。
+   - 导入器的 “Bokeh 优化” 按钮背景更新为品牌渐变色（绿-紫）。
+3. **版本迭代**:
+   - 客户端版本递增至 `12.1.63`。
+   - 服务端版本递增至 `1.5.41`。
+4. **自动化部署**: 
+   - 执行 `./scripts/deploy.sh` 同步变更至远程服务器 `mini`。
+
+### Technical Output:
+- **Modified**: `client/src/components/Knowledge/WikiEditorModal.tsx`, `client/package.json`, `server/package.json`, `docs/log_dev.md`, `docs/log_backlog.md`, `docs/log_prompt.md`
+
+---
+
 ## 2026-02-27 01:20 - UI/UX精细化与Bokeh样式精修 (v12.1.61 / s1.5.39)
 
 ### Tasks Completed:

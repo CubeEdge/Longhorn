@@ -21,12 +21,9 @@
 2.  **Remote Ops**: 远程执行必须遵循 `OPS.md` 的 Non-interactive SSH 规范 (login shell)。
 3.  **Deployment & Verification**: 统一使用 `./scripts/deploy.sh` 部署。**代码修改执行后必须立即发布到远程服务器**。严禁仅在本地验证，所有功能修改必须在远程环境验证后方可交付。
 4.  **构建完整性**: 修改前端后**必须**执行 `npm run build` 并验证产物。部署前物理删除旧 `dist`。
-5.  **UI 风格**: 主题色锁定为 **Kine Yellow** (#FFD700)，遵循 **macOS26/iOS26** 设计规范。
-6.  **AI 设计规范**: 
-    - 核心色: **Kine Green** (#00A650) 用于 AI 相关组件（如 Bokeh）。
-    - 渐变色: **AI 渐变色 (Bokeh Gradient)** 统一定义为 `linear-gradient(135deg, #00A650, #8E24AA)`。
-7.  **多语言交互**: 严禁硬编码文字，确保支持 简中、英、德、日。
-8.  **版本管理**: 每次修改代码后，**必须**同步递增 `client` 和 `server` 的版本号（通常在 `package.json` 中维护 Z 位版本）。
+5.  **UI风格**：主题色为 **Kine Yellow** (#FFD700)。所有UI设计风格，Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。成功 选中采用 **Kine Green**(#10B981);警示危险紧急 采用 **kine red**(#EF4444)；**Kine Blue** (#3B82F6)。**AI 渐变色** (Bokeh Gradient)：linear-gradient(135deg, #00A650, #8E24AA)。
+6.  **多语言交互**: 严禁硬编码文字，确保支持 简中、英、德、日。
+7.  **版本管理**: 每次修改代码后，**必须**同步递增 `client` 和 `server` 的版本号（通常在 `package.json` 中维护 Z 位版本）。
 
 ## 2. 技术栈 (Tech Stack)
 
