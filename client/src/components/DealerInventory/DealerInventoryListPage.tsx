@@ -13,8 +13,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../i18n/useLanguage';
 import axios from 'axios';
-import { 
-    Package, AlertTriangle, Plus, ChevronRight, 
+import {
+    Package, AlertTriangle, Plus, ChevronRight,
     RefreshCw, TrendingDown, ArrowUpRight,
     Loader2, Search
 } from 'lucide-react';
@@ -101,8 +101,8 @@ const DealerInventoryListPage: React.FC = () => {
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             return item.part.name.toLowerCase().includes(term) ||
-                   item.part.number.toLowerCase().includes(term) ||
-                   item.dealer.name.toLowerCase().includes(term);
+                item.part.number.toLowerCase().includes(term) ||
+                item.dealer.name.toLowerCase().includes(term);
         }
         return true;
     });
@@ -119,15 +119,15 @@ const DealerInventoryListPage: React.FC = () => {
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>
                         {t('inventory.title') || '配件库存'}
                     </h1>
-                    <p className="hint">
-                        {isDealer 
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
+                        {isDealer
                             ? t('inventory.dealer_desc') || '查看和管理您的配件库存'
                             : t('inventory.admin_desc') || '管理所有经销商的配件库存'
                         }
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
-                    <button 
+                    <button
                         className="btn-glass"
                         onClick={fetchInventory}
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
@@ -135,7 +135,7 @@ const DealerInventoryListPage: React.FC = () => {
                         <RefreshCw size={16} />
                         {t('common.refresh') || '刷新'}
                     </button>
-                    <button 
+                    <button
                         className="btn-primary"
                         onClick={() => navigate('/service/inventory/restock/new')}
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
@@ -182,7 +182,7 @@ const DealerInventoryListPage: React.FC = () => {
                             </div>
                         ))}
                         {lowStockAlerts.length > 5 && (
-                            <button 
+                            <button
                                 onClick={() => setShowLowStockOnly(true)}
                                 style={{
                                     background: 'rgba(255, 193, 7, 0.2)',
@@ -225,7 +225,7 @@ const DealerInventoryListPage: React.FC = () => {
                         {lowStockCount}
                     </div>
                 </div>
-                <div 
+                <div
                     style={{
                         background: 'rgba(255,255,255,0.03)',
                         borderRadius: 16,
@@ -275,7 +275,7 @@ const DealerInventoryListPage: React.FC = () => {
                         }}
                     />
                 </div>
-                
+
                 <select
                     value={selectedCategory}
                     onChange={e => setSelectedCategory(e.target.value)}
@@ -358,9 +358,9 @@ const DealerInventoryListPage: React.FC = () => {
                         </thead>
                         <tbody>
                             {filteredInventory.map(item => (
-                                <tr 
+                                <tr
                                     key={item.id}
-                                    style={{ 
+                                    style={{
                                         borderTop: '1px solid var(--glass-border)',
                                         background: item.is_low_stock ? 'rgba(255, 193, 7, 0.05)' : undefined
                                     }}
@@ -383,8 +383,8 @@ const DealerInventoryListPage: React.FC = () => {
                                         </td>
                                     )}
                                     <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                                        <span style={{ 
-                                            fontWeight: 600, 
+                                        <span style={{
+                                            fontWeight: 600,
                                             fontSize: '1.1rem',
                                             color: item.is_low_stock ? '#FFC107' : undefined
                                         }}>

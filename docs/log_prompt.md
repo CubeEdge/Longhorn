@@ -2,6 +2,38 @@
 
 ---
 
+## 2026-02-27 16:21 (耗时: 15m)
+
+**User Prompt**:
+1. Tech Hub 两行显示间距增大。
+2. 执行 `/upd`。
+
+**Agent Response**:
+- 增大了侧边栏 "Tech Hub" 与 "知识中心" 的行间距 (gap: 5px) 以及首页 Header 标题与副标题的间距 (marginTop: 8px)。
+- 执行了 `/upd` 流水线，版本升至 v12.1.77。
+
+**Result**:
+UI 视觉更舒展，版本已上线。
+
+---
+
+## 2026-02-27 15:37 (耗时: 3m)
+
+**User Prompt**:
+`@[/upd]`
+
+**Agent Response**:
+执行了 `/upd` 流水线：
+1. 递增 client 与 server 的版本号至 v12.1.76 和 v1.5.49。
+2. 运行 `npm run build` 确保前端构建无误。
+3. 执行 `./scripts/deploy.sh` 进行全量远程部署至 `mini` 服务器并完成 PM2 的热重载。
+4. 执行 `/pmlog` 更新文档记录。
+
+**Result**:
+更新平稳上线，系统准备就绪。
+
+---
+
 ## 2026-02-27 15:32 (耗时: 30m)
 
 **User Prompt**:

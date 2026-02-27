@@ -342,6 +342,12 @@ export const KinefinityWiki: React.FC = () => {
     const [showSearchHistory, setShowSearchHistory] = useState(false);
     const [lastProductLine, setLastProductLine] = useState<string>('A'); // 关闭搜索 Tab 时恢复的产品线
     const searchHistoryRef = React.useRef<HTMLDivElement>(null);
+    const [searchTabWidth, setSearchTabWidth] = useState(110);
+    React.useLayoutEffect(() => {
+        if (searchHistoryRef.current) {
+            setSearchTabWidth(searchHistoryRef.current.offsetWidth);
+        }
+    }, [activeSearchQuery, searchHistory.length]);
 
     // Build tree structure from articles
     const buildTree = (): CategoryNode[] => {
@@ -2446,30 +2452,42 @@ ${contextTickets.map((ticket: any) => {
                                             fontWeight: 700,
                                             margin: '0',
                                         }}>
-                                            {t('wiki.title') || 'Tech Hub'}
+                                            {t('wiki.title') || 'Tech Hub'} 知识中心
                                         </h1>
-                                        {/* 管理按钮 - 紧跟标题 */}
+                                    </div>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'baseline',
+                                        marginTop: 8
+                                    }}>
+                                        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                                            {t('wiki.subtitle')}
+                                        </p>
+
+                                        {/* 管理按钮 - 移动到副标题行尾部 */}
                                         {hasWikiAdminAccess && (
-                                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                            <div style={{ position: 'relative', flexShrink: 0, marginLeft: '12px' }}>
                                                 <button
                                                     onClick={() => setShowAdminMenu(!showAdminMenu)}
                                                     style={{
-                                                        padding: '6px 12px',
+                                                        padding: '4px 10px',
                                                         background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
                                                         border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                                                        borderRadius: '8px',
-                                                        color: showAdminMenu ? '#FFD700' : '#999',
-                                                        fontSize: '13px',
+                                                        borderRadius: '6px',
+                                                        color: showAdminMenu ? '#FFD700' : '#888',
+                                                        fontSize: '12px',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '5px',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.2s',
-                                                        height: '32px'
+                                                        height: '28px'
                                                     }}
                                                 >
-                                                    <Settings size={14} />
-                                                    <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('wiki.manage')}</span>
+                                                    <Settings size={13} />
+                                                    <span style={{ fontWeight: 600 }}>{t('wiki.manage')}</span>
+                                                    <ChevronDown size={11} style={{ opacity: 0.7, marginLeft: '2px' }} />
                                                 </button>
 
                                                 {/* 管理菜单下拉 */}
@@ -2486,7 +2504,7 @@ ${contextTickets.map((ticket: any) => {
                                                         <div style={{
                                                             position: 'absolute',
                                                             top: '100%',
-                                                            left: 0,
+                                                            right: 0,
                                                             marginTop: '8px',
                                                             background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
                                                             border: '1px solid rgba(255,255,255,0.1)',
@@ -2538,9 +2556,6 @@ ${contextTickets.map((ticket: any) => {
                                             </div>
                                         )}
                                     </div>
-                                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
-                                        {t('wiki.subtitle')}
-                                    </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                                     {/* 搜索输入框 */}
@@ -2551,10 +2566,12 @@ ${contextTickets.map((ticket: any) => {
                                         border: `1px solid ${searchQuery.trim() ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
                                         borderRadius: '10px',
                                         padding: '0 12px',
-                                        width: searchQuery.trim() ? '380px' : '110px',
-                                        height: '38px',
+                                        width: searchQuery.trim() ? '380px' : (searchHistory.length > 0 || activeSearchQuery ? `${searchTabWidth}px` : '110px'),
+                                        height: '32px',
                                         flexShrink: 0,
-                                        transition: 'width 0.3s ease, border-color 0.3s ease'
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        position: 'relative',
+                                        overflow: 'hidden'
                                     }}>
                                         <Search size={14} color="#888" style={{ flexShrink: 0 }} />
                                         <input

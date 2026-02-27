@@ -519,13 +519,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         </button>
 
                                         <div className="divider" />
-                                        <div className="hint" style={{ paddingLeft: 8 }}>{t('admin.global_policy')}</div>
-                                        <div className="setting-card-mini">
-                                            <span style={{ fontSize: '0.8rem' }}>{t('admin.work_mode')}</span>
-                                            <Switch checked={settings.ai_work_mode} onChange={v => setSettings({ ...settings, ai_work_mode: v })} />
-                                        </div>
-
-                                        <div className="divider" />
                                     </div>
 
                                     {/* RIGHT: Selected Provider Detail */}
@@ -1260,7 +1253,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     </div>
 
                                     {/* History Limit Wrapper */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
                                         <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div className="setting-label">知识中心搜索历史条数</div>
@@ -1277,6 +1270,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
                                             控制所有员工的全局搜索历史保留的数量 (最大 30 条)。保留过多的历史虽然方便但是可能降低终端设备加载性能。
+                                        </div>
+                                    </div>
+
+                                    {/* Global AI Work Mode Wrapper */}
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="setting-label">工作模式 (全局策略)</div>
+                                            </div>
+                                            <Switch checked={settings.ai_work_mode ?? true} onChange={v => setSettings({ ...settings, ai_work_mode: v })} activeColor="#10B981" />
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                            开启后，Bokeh 智能助手将进入专业协作状态。它将优先调取知识库和工单历史进行回答，且回复风格更加严谨、聚焦技术支持。
                                         </div>
                                     </div>
                                 </div>

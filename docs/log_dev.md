@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-02-27 16:21 - 视觉细节抛光与版本迭代 (v12.1.77 / s1.5.50)
+
+### Tasks Completed:
+1. **行间距优化**: 针对用户反馈的 Tech Hub 文字拥挤问题，增大了侧边栏入口及首页主标题下方的垂直间距，提升呼吸感。
+2. **全量上线**: 执行 `/upd` 流水线。
+
+### Technical Output:
+- **Modified**: `client/src/App.tsx`, `client/src/components/KinefinityWiki.tsx`
+
+## 2026-02-27 15:37 - Tech Hub 品牌化版本构建与正式发布 (v12.1.76 / s1.5.49)
+
+### Tasks Completed:
+1. **版本更迭**: 执行 `/upd` 强制集成流水线，将 Client 版本升至 `12.1.76`，Server 版本同步修正为 `1.5.49`。
+2. **线上投递**: 本地 `npm run build` 打包了前阶段的所有多语言化及前端路由优化成果，借助 `deploy.sh` (Fast Deploy) 将产物平滑推流至 `mini` 生产节点，并重载 `pm2` 使其立刻生效。
+
+### Technical Output:
+- **Modified**: `client/package.json`, `server/package.json`, `docs/log_prompt.md`, `docs/log_dev.md`
+
 ## 2026-02-27 15:32 - Tech Hub 品牌化对齐与 Admin Settings UI 重构 (v12.1.75 / s1.5.48)
 
 ### Tasks Completed:
