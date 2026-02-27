@@ -387,7 +387,7 @@ const CustomerManagement: React.FC = () => {
                         <Users size={28} color="var(--accent-blue)" />
                         {t('sidebar.archives_customers') || '客户档案'}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Manage End-Users (Organizations & Individuals)</p>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_customers_desc') || 'Manage End-Users (Organizations & Individuals)'}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}
@@ -603,7 +603,7 @@ const CustomerManagement: React.FC = () => {
                                 onClick={() => handleSort('name')}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    Name
+                                    {t('customer.name' as any) || 'Name'}
                                     {sortBy === 'name' && (
                                         sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                     )}
@@ -614,25 +614,25 @@ const CustomerManagement: React.FC = () => {
                                 onClick={() => handleSort('country')}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    Region
+                                    {t('customer.region' as any) || 'Region'}
                                     {sortBy === 'country' && (
                                         sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                     )}
                                 </div>
                             </th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>Contact</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{t('customer.contact' as any) || 'Contact'}</th>
                             <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('service_tier')}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    Tier
+                                    {t('customer.tier' as any) || 'Tier'}
                                     {sortBy === 'service_tier' && (
                                         sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                     )}
                                 </div>
                             </th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>Actions</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{t('common.actions' as any) || 'Actions'}</th>
                         </tr>
                     </thead>
                     <tbody>

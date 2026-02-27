@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Cpu, Activity, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, FileText, X, AlertTriangle, Sparkles } from 'lucide-react';
+import { Save, Server, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
-import KnowledgeAuditLog from '../KnowledgeAuditLog';
-
 interface AIProvider {
     name: string;
     api_key: string;
@@ -104,7 +102,7 @@ const FIELD_TO_MODEL_KEY: Record<string, string> = {
 
 let cachedSettings: SystemSettings | null = null;
 let cachedProviders: AIProvider[] = [];
-let cachedStats: any = null;
+
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 'files' }) => {
     const { token } = useAuthStore();
@@ -127,7 +125,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const [settings, setSettings] = useState<SystemSettings | null>(cachedSettings);
     const [providers, setProviders] = useState<AIProvider[]>(cachedProviders);
     const [activeProviderIndex, setActiveProviderIndex] = useState(0);
-    const [stats, setStats] = useState<any>(cachedStats);
+
     const [loading, setLoading] = useState(!cachedSettings);
     const [saving, setSaving] = useState(false);
     const { showToast } = useToast();
@@ -194,18 +192,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [settingsRes, statsRes] = await Promise.all([
-                axios.get('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/admin/stats/system', { headers: { Authorization: `Bearer ${token}` } })
+            const [settingsRes] = await Promise.all([
+                axios.get('/api/admin/settings', { headers: { Authorization: `Bearer ${token}` } })
             ]);
             setSettings(settingsRes.data.data.settings);
             setProviders(settingsRes.data.data.providers || []);
-            setStats(statsRes.data.data);
 
             // Update cache
             cachedSettings = settingsRes.data.data.settings;
             cachedProviders = settingsRes.data.data.providers || [];
-            cachedStats = statsRes.data.data;
 
             // Auto-select active provider
             const activeIdx = Math.max(0, (settingsRes.data.data.providers || []).findIndex((p: AIProvider) => p.is_active));
@@ -222,19 +217,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         if (activeTab === 'backup') {
             fetchBackupStatus();
         }
-        let interval: any;
-        if (activeTab === 'health') {
-            interval = setInterval(fetchStats, 5000);
-        }
-        return () => clearInterval(interval);
     }, [activeTab]);
-
-    const fetchStats = async () => {
-        try {
-            const res = await axios.get('/api/admin/stats/system', { headers: { Authorization: `Bearer ${token}` } });
-            setStats(res.data.data);
-        } catch (err) { console.error(err); }
-    };
 
     const fetchBackupStatus = async () => {
         try {
@@ -441,12 +424,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 12 }}>
                     {[
-                        { id: 'general', label: t('admin.settings_general'), icon: Server },
-                        { id: 'intelligence', label: t('admin.intelligence_center'), icon: Bot },
-                        { id: 'prompts', label: 'AI 场景提示词', icon: Sparkles },
-                        { id: 'health', label: t('admin.system_health'), icon: Activity },
-                        { id: 'backup', label: '备份管理', icon: Database },
-                        { id: 'audit', label: '审计日志', icon: FileText }
+                        { id: 'general', label: '通用', icon: Server },
+                        { id: 'intelligence', label: 'Bokeh 智能设置', icon: Bot },
+                        { id: 'backup', label: '备份管理', icon: Database }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -511,420 +491,335 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     <>
                         {/* === AI INTELLIGENCE TAB === */}
                         {activeTab === 'intelligence' && settings && (
-                            <div style={{ display: 'flex', minHeight: 500 }}>
-                                {/* LEFT: Provider Sidebar */}
-                                <div style={{ width: 240, borderRight: '1px solid rgba(255,255,255,0.1)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <div className="hint" style={{ marginBottom: 8, paddingLeft: 8 }}>{t('admin.ai_providers')}</div>
-                                    {providers.map((p, i) => (
-                                        <div
-                                            key={i}
-                                            onClick={() => setActiveProviderIndex(i)}
-                                            className={`provider-item ${activeProviderIndex === i ? 'active' : ''}`}
-                                        >
-                                            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{p.name}</span>
-                                                    {p.is_active && <CheckCircle size={14} color="#10b981" />}
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', minHeight: 500 }}>
+                                    {/* LEFT: Provider Sidebar */}
+                                    <div style={{ width: 240, borderRight: '1px solid rgba(255,255,255,0.1)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <div className="hint" style={{ marginBottom: 8, paddingLeft: 8 }}>{t('admin.ai_providers')}</div>
+                                        {providers.map((p, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => setActiveProviderIndex(i)}
+                                                className={`provider-item ${activeProviderIndex === i ? 'active' : ''}`}
+                                            >
+                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{p.name}</span>
+                                                        {p.is_active && <CheckCircle size={14} color="#10b981" />}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{p.chat_model}</div>
                                                 </div>
-                                                <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{p.chat_model}</div>
+                                                {activeProviderIndex === i && i > 2 && ( // Only allow delete custom ones (0-2 are DeepSeek, Gemini, OpenAI)
+                                                    <Trash2 size={14} color="#ef4444" onClick={(e) => { e.stopPropagation(); deleteProvider(i); }} style={{ cursor: 'pointer' }} />
+                                                )}
                                             </div>
-                                            {activeProviderIndex === i && i > 2 && ( // Only allow delete custom ones (0-2 are DeepSeek, Gemini, OpenAI)
-                                                <Trash2 size={14} color="#ef4444" onClick={(e) => { e.stopPropagation(); deleteProvider(i); }} style={{ cursor: 'pointer' }} />
-                                            )}
-                                        </div>
-                                    ))}
-                                    <button className="add-provider-btn" onClick={addProvider}>
-                                        <Plus size={16} /> {t('admin.add_custom_provider')}
-                                    </button>
+                                        ))}
+                                        <button className="add-provider-btn" onClick={addProvider}>
+                                            <Plus size={16} /> {t('admin.add_custom_provider')}
+                                        </button>
 
-                                    <div className="divider" />
-                                    <div className="hint" style={{ paddingLeft: 8 }}>{t('admin.global_policy')}</div>
-                                    <div className="setting-card-mini">
-                                        <span style={{ fontSize: '0.8rem' }}>{t('admin.ai_enabled')}</span>
-                                        <Switch checked={settings.ai_enabled} onChange={v => setSettings({ ...settings, ai_enabled: v })} />
-                                    </div>
-                                    <div className="setting-card-mini">
-                                        <span style={{ fontSize: '0.8rem' }}>{t('admin.work_mode')}</span>
-                                        <Switch checked={settings.ai_work_mode} onChange={v => setSettings({ ...settings, ai_work_mode: v })} />
+                                        <div className="divider" />
+                                        <div className="hint" style={{ paddingLeft: 8 }}>{t('admin.global_policy')}</div>
+                                        <div className="setting-card-mini">
+                                            <span style={{ fontSize: '0.8rem' }}>{t('admin.work_mode')}</span>
+                                            <Switch checked={settings.ai_work_mode} onChange={v => setSettings({ ...settings, ai_work_mode: v })} />
+                                        </div>
+
+                                        <div className="divider" />
                                     </div>
 
-                                    {/* Data Sources Selection */}
-                                    <div style={{ marginTop: 12, paddingLeft: 8 }}>
-                                        <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>Bokeh 数据源</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={settings.ai_data_sources?.includes('tickets') ?? true}
-                                                    onChange={(e) => {
-                                                        const sources = settings.ai_data_sources || [];
-                                                        if (e.target.checked) {
-                                                            setSettings({ ...settings, ai_data_sources: [...sources, 'tickets'] });
-                                                        } else {
-                                                            setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'tickets') });
-                                                        }
-                                                    }}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                                工单历史
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={settings.ai_data_sources?.includes('knowledge') ?? true}
-                                                    onChange={(e) => {
-                                                        const sources = settings.ai_data_sources || [];
-                                                        if (e.target.checked) {
-                                                            setSettings({ ...settings, ai_data_sources: [...sources, 'knowledge'] });
-                                                        } else {
-                                                            setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'knowledge') });
-                                                        }
-                                                    }}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                                Kinefinity 知识库
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', opacity: 0.5 }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={settings.ai_data_sources?.includes('web_search') ?? false}
-                                                    disabled
-                                                    style={{ cursor: 'not-allowed' }}
-                                                />
-                                                实时网络搜索 (待开放)
-                                            </label>
-                                        </div>
+                                    {/* RIGHT: Selected Provider Detail */}
+                                    <div style={{ flex: 1, padding: 32 }}>
+                                        {currentP ? (
+                                            <div className="fade-in">
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <Bot size={24} color="#FFD700" />
+                                                        <input
+                                                            className="edit-name-input"
+                                                            value={currentP.name}
+                                                            onChange={(e) => updateProviderField(activeProviderIndex, 'name', e.target.value)}
+                                                        />
+                                                    </h3>
+                                                    <button
+                                                        className={`active-toggle-btn ${currentP.is_active ? 'active' : ''}`}
+                                                        onClick={() => setProviderActive(activeProviderIndex)}
+                                                    >
+                                                        {currentP.is_active ? t('admin.currently_active') : t('admin.set_as_active')}
+                                                    </button>
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                                        <div className="setting-field">
+                                                            <label>{t('admin.api_key')}</label>
+                                                            <div style={{ position: 'relative' }}>
+                                                                <input
+                                                                    type={showApiKey ? "text" : "password"}
+                                                                    className="text-input"
+                                                                    value={currentP.api_key || ''}
+                                                                    placeholder={t('admin.enter_api_key')}
+                                                                    onChange={e => updateProviderField(activeProviderIndex, 'api_key', e.target.value)}
+                                                                />
+                                                                <div
+                                                                    onClick={() => setShowApiKey(!showApiKey)}
+                                                                    style={{ position: 'absolute', right: 12, top: 10, cursor: 'pointer', opacity: 0.5 }}
+                                                                >
+                                                                    {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="setting-field">
+                                                            <label>{t('admin.api_base_url')}</label>
+                                                            <input
+                                                                type="text"
+                                                                className="text-input"
+                                                                value={currentP.base_url}
+                                                                onChange={e => updateProviderField(activeProviderIndex, 'base_url', e.target.value)}
+                                                            />
+                                                        </div>
+
+                                                        <div className="setting-card" style={{ padding: '12px 16px' }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div className="setting-label">{t('admin.allow_web_search')}</div>
+                                                                <div className="setting-desc">{t('admin.allow_web_search_desc')}</div>
+                                                            </div>
+                                                            <Switch checked={currentP.allow_search} onChange={v => updateProviderField(activeProviderIndex, 'allow_search', v)} />
+                                                        </div>
+
+                                                        <div style={{ border: '1px solid rgba(255,215,0,0.1)', background: 'rgba(255,215,0,0.02)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                                            <div className="setting-field">
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                                    <label style={{ margin: 0 }}>{t('admin.temperature')}</label>
+                                                                    <span style={{ fontSize: '0.8rem', color: '#FFD700', fontWeight: 600 }}>{currentP.temperature?.toFixed(1) || '0.7'}</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0"
+                                                                    max="1.5"
+                                                                    step="0.1"
+                                                                    value={currentP.temperature ?? 0.7}
+                                                                    onChange={e => updateProviderField(activeProviderIndex, 'temperature', parseFloat(e.target.value))}
+                                                                    style={{ width: '100%', accentColor: '#FFD700' }}
+                                                                />
+                                                            </div>
+
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                                                <div className="setting-field">
+                                                                    <label>{t('admin.max_tokens')}</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="text-input"
+                                                                        value={currentP.max_tokens ?? 4096}
+                                                                        onChange={e => updateProviderField(activeProviderIndex, 'max_tokens', parseInt(e.target.value))}
+                                                                    />
+                                                                </div>
+                                                                <div className="setting-field">
+                                                                    <label>{t('admin.top_p')}</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.1"
+                                                                        min="0"
+                                                                        max="1"
+                                                                        className="text-input"
+                                                                        value={currentP.top_p ?? 1.0}
+                                                                        onChange={e => updateProviderField(activeProviderIndex, 'top_p', parseFloat(e.target.value))}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                                                        <h4 style={{ color: '#FFD700', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('admin.model_routing')}</h4>
+
+                                                        <ModelSelect label={t('admin.chat_model')} field="chat_model" current={currentP.chat_model} />
+                                                        <ModelSelect label={t('admin.reasoning_model')} field="reasoner_model" current={currentP.reasoner_model} />
+                                                        <ModelSelect label={t('admin.vision_model')} field="vision_model" current={currentP.vision_model} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+                                                {t('admin.select_provider')}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* === AI SCENARIOS PROMPTS TAB === */}
+                                <div style={{ padding: 32, maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div>
+                                        <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                                            <Sparkles size={24} color="#10B981" />
+                                            AI 场景提示词管理
+                                        </h2>
+                                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+                                            定制 Bokeh AI 在不同工作场景下的默认行为。您可以针对具体功能单独修改提示词，设置保存后立即生效。
+                                        </p>
                                     </div>
 
-                                    <div className="divider" />
+                                    {[
+                                        {
+                                            key: 'ticket_parse',
+                                            title: '工单智能解析 (Smart Assist)',
+                                            desc: '从用户原始描述（如邮件、聊天记录）中自动提取客户、产品型号、序列号及故障信息的规则。',
+                                            variables: '无内置变量，直接处理整段原始文本。',
+                                            defaultPrompt: '您是 Bokeh，Kinefinity 的专业 AI 服务助手。您的任务是从原始文本中提取工单信息并返回 JSON 格式...'
+                                        },
+                                        {
+                                            key: 'knowledge_translate',
+                                            title: '知识库外文翻译 (知识库导入/优化)',
+                                            isDefault: 'ai_system_prompt', // special legacy handling if needed, but not required
+                                            desc: '提取并自动格式化外部文章标题和内容的规则。',
+                                            variables: '{{targetLang}} 目标语言, {{articleTitle}} 文章原文标题',
+                                            defaultPrompt: '将以下内容翻译为 {{targetLang}}，保留所有的 HTML 结构和 Markdown 语法。文章的原标题是: {{articleTitle}}。保持专业、准确的技术术语翻译。'
+                                        },
+                                        {
+                                            key: 'knowledge_layout',
+                                            title: '知识库全文排版优化',
+                                            desc: '在知识库导入或编辑器内应用全文优化时的指令。',
+                                            variables: '{{articleTitle}} 标题, {{content}} 文章源码',
+                                            defaultPrompt: '请对以下知识库文章《{{articleTitle}}》进行全文排版优化。修复错别字、改善语句通顺度，并合理使用 Markdown 或 HTML 标签。不要删减核心技术内容，确保排版美观、层次清晰。'
+                                        },
+                                        {
+                                            key: 'knowledge_optimize',
+                                            title: '知识库微调优化 (对话框局部指令)',
+                                            desc: '当用户在编辑器输入像"将标题设为黄色"这样的局部调整命令时，AI 如何处理这些样式的规则。',
+                                            variables: '{{articleTitle}} 标题, {{instruction}} 用户指令, {{content}} 选段源码, {{styleGuide}} 内置颜色排版指南, {{sizeGuide}} 内置尺寸排版指南',
+                                            defaultPrompt: '您正在编辑文章《{{articleTitle}}》。用户的指令是：“{{instruction}}”。\n请根据以下选段源码：\n{{content}}\n\n并参考内建的排版指南：\n颜色体系：{{styleGuide}}\n尺寸规范：{{sizeGuide}}\n只返回修改后的代码，不包含任何多余解释。'
+                                        },
+                                        {
+                                            key: 'knowledge_summary',
+                                            title: '知识库全段自动摘要',
+                                            desc: '使用 AI 为知识文章生成280字简短概述的规则。',
+                                            variables: '{{articleTitle}} 文章标题, {{content}} 文章纯文本',
+                                            defaultPrompt: '请为文章《{{articleTitle}}》撰写一段不超过280字的中文摘要。要求：客观、准确总结核心论点，不使用冗余前缀，直接输出摘要内容。'
+                                        },
+                                        {
+                                            key: 'ticket_summary',
+                                            title: '历史工单搜索总结',
+                                            desc: '根据所有匹配的历史工单，对用户的搜索提问进行归纳回答的规则。',
+                                            variables: '{{query}} 用户搜索词, {{context}} 相关工单列表',
+                                            defaultPrompt: '用户问：“{{query}}”。\n根据以下历史工单内容进行分析并回答：\n{{context}}\n如果工单内容中未提及，请明确说明无法获取信息，切勿捏造。'
+                                        }
+                                    ].map(scenario => {
+                                        // Extract current value safely
+                                        let currentVal = '';
+                                        if (scenario.key === 'ai_system_prompt') {
+                                            currentVal = settings.ai_system_prompt || '';
+                                        } else {
+                                            currentVal = settings.ai_prompts?.[scenario.key] || '';
+                                        }
 
-                                    {/* 搜索历史上限设置 */}
-                                    <div style={{ paddingLeft: 8, marginBottom: 16 }}>
-                                        <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span>搜索历史缓存条数</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                max={30}
-                                                value={settings.ai_search_history_limit || 10}
-                                                onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
+                                        return (
+                                            <div key={scenario.key} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                                    <div>
+                                                        <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>{scenario.title}</h3>
+                                                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>{scenario.desc}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (scenario.key === 'ai_system_prompt') {
+                                                                setSettings({ ...settings, ai_system_prompt: '' });
+                                                            } else {
+                                                                const newPrompts = { ...settings.ai_prompts };
+                                                                delete newPrompts[scenario.key];
+                                                                setSettings({ ...settings, ai_prompts: newPrompts });
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            background: 'transparent',
+                                                            border: '1px solid rgba(255,255,255,0.2)',
+                                                            color: 'rgba(255,255,255,0.7)',
+                                                            padding: '6px 12px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.8rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
+                                                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                                        title="清空后将自动使用后台内置规则"
+                                                    >
+                                                        恢复系统默认
+                                                    </button>
+                                                </div>
+                                                <div style={{ marginBottom: 12 }}>
+                                                    <div style={{ fontSize: '0.8rem', color: '#10B981', marginBottom: 8, fontFamily: 'monospace' }}>可用变量: {scenario.variables}</div>
+                                                    <textarea
+                                                        value={currentVal}
+                                                        onChange={e => {
+                                                            if (scenario.key === 'ai_system_prompt') {
+                                                                setSettings({ ...settings, ai_system_prompt: e.target.value });
+                                                            } else {
+                                                                setSettings({
+                                                                    ...settings,
+                                                                    ai_prompts: {
+                                                                        ...(settings.ai_prompts || {}),
+                                                                        [scenario.key]: e.target.value
+                                                                    }
+                                                                });
+                                                            }
+                                                        }}
+                                                        placeholder={scenario.defaultPrompt || "保持为空将使用系统默认提示词..."}
+                                                        style={{
+                                                            width: '100%',
+                                                            minHeight: 120,
+                                                            background: 'rgba(0,0,0,0.3)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: 8,
+                                                            padding: 16,
+                                                            color: 'white',
+                                                            fontSize: '0.9rem',
+                                                            lineHeight: 1.6,
+                                                            resize: 'vertical',
+                                                            fontFamily: 'monospace'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* General Assistant Prompt (from existing string) */}
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>全局聊天助手规范 (General Chat Rules)</h3>
+                                                <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>此系统提示词将在全局提问、文章问答等无特定格式要求的场景下生效。</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setSettings({ ...settings, ai_system_prompt: '' })}
                                                 style={{
-                                                    width: '60px', padding: '6px 8px', borderRadius: '4px',
-                                                    border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '14px'
+                                                    background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)',
+                                                    padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                            >
+                                                恢复系统默认
+                                            </button>
+                                        </div>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <textarea
+                                                value={settings.ai_system_prompt || ''}
+                                                onChange={e => setSettings({ ...settings, ai_system_prompt: e.target.value })}
+                                                placeholder="保持为空将使用系统内置的客服/技术辅助对话身份..."
+                                                style={{
+                                                    width: '100%', minHeight: 120, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: 8, padding: 16, color: 'white', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', fontFamily: 'monospace'
                                                 }}
                                             />
-                                            <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '12px' }}>最大30条 (默认10)</span>
                                         </div>
-                                    </div>
-
-                                    <div className="divider" />
-                                </div>
-
-                                {/* RIGHT: Selected Provider Detail */}
-                                <div style={{ flex: 1, padding: 32 }}>
-                                    {currentP ? (
-                                        <div className="fade-in">
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                                                <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <Bot size={24} color="#FFD700" />
-                                                    <input
-                                                        className="edit-name-input"
-                                                        value={currentP.name}
-                                                        onChange={(e) => updateProviderField(activeProviderIndex, 'name', e.target.value)}
-                                                    />
-                                                </h3>
-                                                <button
-                                                    className={`active-toggle-btn ${currentP.is_active ? 'active' : ''}`}
-                                                    onClick={() => setProviderActive(activeProviderIndex)}
-                                                >
-                                                    {currentP.is_active ? t('admin.currently_active') : t('admin.set_as_active')}
-                                                </button>
-                                            </div>
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                                    <div className="setting-field">
-                                                        <label>{t('admin.api_key')}</label>
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input
-                                                                type={showApiKey ? "text" : "password"}
-                                                                className="text-input"
-                                                                value={currentP.api_key || ''}
-                                                                placeholder={t('admin.enter_api_key')}
-                                                                onChange={e => updateProviderField(activeProviderIndex, 'api_key', e.target.value)}
-                                                            />
-                                                            <div
-                                                                onClick={() => setShowApiKey(!showApiKey)}
-                                                                style={{ position: 'absolute', right: 12, top: 10, cursor: 'pointer', opacity: 0.5 }}
-                                                            >
-                                                                {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="setting-field">
-                                                        <label>{t('admin.api_base_url')}</label>
-                                                        <input
-                                                            type="text"
-                                                            className="text-input"
-                                                            value={currentP.base_url}
-                                                            onChange={e => updateProviderField(activeProviderIndex, 'base_url', e.target.value)}
-                                                        />
-                                                    </div>
-
-                                                    <div className="setting-card" style={{ padding: '12px 16px' }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div className="setting-label">{t('admin.allow_web_search')}</div>
-                                                            <div className="setting-desc">{t('admin.allow_web_search_desc')}</div>
-                                                        </div>
-                                                        <Switch checked={currentP.allow_search} onChange={v => updateProviderField(activeProviderIndex, 'allow_search', v)} />
-                                                    </div>
-
-                                                    <div style={{ border: '1px solid rgba(255,215,0,0.1)', background: 'rgba(255,215,0,0.02)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                                        <div className="setting-field">
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                                                <label style={{ margin: 0 }}>{t('admin.temperature')}</label>
-                                                                <span style={{ fontSize: '0.8rem', color: '#FFD700', fontWeight: 600 }}>{currentP.temperature?.toFixed(1) || '0.7'}</span>
-                                                            </div>
-                                                            <input
-                                                                type="range"
-                                                                min="0"
-                                                                max="1.5"
-                                                                step="0.1"
-                                                                value={currentP.temperature ?? 0.7}
-                                                                onChange={e => updateProviderField(activeProviderIndex, 'temperature', parseFloat(e.target.value))}
-                                                                style={{ width: '100%', accentColor: '#FFD700' }}
-                                                            />
-                                                        </div>
-
-                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                                            <div className="setting-field">
-                                                                <label>{t('admin.max_tokens')}</label>
-                                                                <input
-                                                                    type="number"
-                                                                    className="text-input"
-                                                                    value={currentP.max_tokens ?? 4096}
-                                                                    onChange={e => updateProviderField(activeProviderIndex, 'max_tokens', parseInt(e.target.value))}
-                                                                />
-                                                            </div>
-                                                            <div className="setting-field">
-                                                                <label>{t('admin.top_p')}</label>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.1"
-                                                                    min="0"
-                                                                    max="1"
-                                                                    className="text-input"
-                                                                    value={currentP.top_p ?? 1.0}
-                                                                    onChange={e => updateProviderField(activeProviderIndex, 'top_p', parseFloat(e.target.value))}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                                    <h4 style={{ color: '#FFD700', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('admin.model_routing')}</h4>
-
-                                                    <ModelSelect label={t('admin.chat_model')} field="chat_model" current={currentP.chat_model} />
-                                                    <ModelSelect label={t('admin.reasoning_model')} field="reasoner_model" current={currentP.reasoner_model} />
-                                                    <ModelSelect label={t('admin.vision_model')} field="vision_model" current={currentP.vision_model} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-                                            {t('admin.select_provider')}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* === AI SCENARIOS PROMPTS TAB === */}
-                        {activeTab === 'prompts' && settings && (
-                            <div style={{ padding: 32, maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32 }}>
-                                <div>
-                                    <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                                        <Sparkles size={24} color="#10B981" />
-                                        AI 场景提示词管理
-                                    </h2>
-                                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-                                        定制 Bokeh AI 在不同工作场景下的默认行为。您可以针对具体功能单独修改提示词，设置保存后立即生效。
-                                    </p>
-                                </div>
-
-                                {[
-                                    {
-                                        key: 'ticket_parse',
-                                        title: '工单智能解析 (Smart Assist)',
-                                        desc: '从用户原始描述（如邮件、聊天记录）中自动提取客户、产品型号、序列号及故障信息的规则。',
-                                        variables: '无内置变量，直接处理整段原始文本。',
-                                        defaultPrompt: '您是 Bokeh，Kinefinity 的专业 AI 服务助手。您的任务是从原始文本中提取工单信息并返回 JSON 格式...'
-                                    },
-                                    {
-                                        key: 'knowledge_translate',
-                                        title: '知识库外文翻译 (知识库导入/优化)',
-                                        isDefault: 'ai_system_prompt', // special legacy handling if needed, but not required
-                                        desc: '提取并自动格式化外部文章标题和内容的规则。',
-                                        variables: '{{targetLang}} 目标语言, {{articleTitle}} 文章原文标题',
-                                        defaultPrompt: '将以下内容翻译为 {{targetLang}}，保留所有的 HTML 结构和 Markdown 语法。文章的原标题是: {{articleTitle}}。保持专业、准确的技术术语翻译。'
-                                    },
-                                    {
-                                        key: 'knowledge_layout',
-                                        title: '知识库全文排版优化',
-                                        desc: '在知识库导入或编辑器内应用全文优化时的指令。',
-                                        variables: '{{articleTitle}} 标题, {{content}} 文章源码',
-                                        defaultPrompt: '请对以下知识库文章《{{articleTitle}}》进行全文排版优化。修复错别字、改善语句通顺度，并合理使用 Markdown 或 HTML 标签。不要删减核心技术内容，确保排版美观、层次清晰。'
-                                    },
-                                    {
-                                        key: 'knowledge_optimize',
-                                        title: '知识库微调优化 (对话框局部指令)',
-                                        desc: '当用户在编辑器输入像"将标题设为黄色"这样的局部调整命令时，AI 如何处理这些样式的规则。',
-                                        variables: '{{articleTitle}} 标题, {{instruction}} 用户指令, {{content}} 选段源码, {{styleGuide}} 内置颜色排版指南, {{sizeGuide}} 内置尺寸排版指南',
-                                        defaultPrompt: '您正在编辑文章《{{articleTitle}}》。用户的指令是：“{{instruction}}”。\n请根据以下选段源码：\n{{content}}\n\n并参考内建的排版指南：\n颜色体系：{{styleGuide}}\n尺寸规范：{{sizeGuide}}\n只返回修改后的代码，不包含任何多余解释。'
-                                    },
-                                    {
-                                        key: 'knowledge_summary',
-                                        title: '知识库全段自动摘要',
-                                        desc: '使用 AI 为知识文章生成280字简短概述的规则。',
-                                        variables: '{{articleTitle}} 文章标题, {{content}} 文章纯文本',
-                                        defaultPrompt: '请为文章《{{articleTitle}}》撰写一段不超过280字的中文摘要。要求：客观、准确总结核心论点，不使用冗余前缀，直接输出摘要内容。'
-                                    },
-                                    {
-                                        key: 'ticket_summary',
-                                        title: '历史工单搜索总结',
-                                        desc: '根据所有匹配的历史工单，对用户的搜索提问进行归纳回答的规则。',
-                                        variables: '{{query}} 用户搜索词, {{context}} 相关工单列表',
-                                        defaultPrompt: '用户问：“{{query}}”。\n根据以下历史工单内容进行分析并回答：\n{{context}}\n如果工单内容中未提及，请明确说明无法获取信息，切勿捏造。'
-                                    }
-                                ].map(scenario => {
-                                    // Extract current value safely
-                                    let currentVal = '';
-                                    if (scenario.key === 'ai_system_prompt') {
-                                        currentVal = settings.ai_system_prompt || '';
-                                    } else {
-                                        currentVal = settings.ai_prompts?.[scenario.key] || '';
-                                    }
-
-                                    return (
-                                        <div key={scenario.key} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                                <div>
-                                                    <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>{scenario.title}</h3>
-                                                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>{scenario.desc}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        if (scenario.key === 'ai_system_prompt') {
-                                                            setSettings({ ...settings, ai_system_prompt: '' });
-                                                        } else {
-                                                            const newPrompts = { ...settings.ai_prompts };
-                                                            delete newPrompts[scenario.key];
-                                                            setSettings({ ...settings, ai_prompts: newPrompts });
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: '1px solid rgba(255,255,255,0.2)',
-                                                        color: 'rgba(255,255,255,0.7)',
-                                                        padding: '6px 12px',
-                                                        borderRadius: '6px',
-                                                        fontSize: '0.8rem',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                    onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
-                                                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
-                                                    title="清空后将自动使用后台内置规则"
-                                                >
-                                                    恢复系统默认
-                                                </button>
-                                            </div>
-                                            <div style={{ marginBottom: 12 }}>
-                                                <div style={{ fontSize: '0.8rem', color: '#10B981', marginBottom: 8, fontFamily: 'monospace' }}>可用变量: {scenario.variables}</div>
-                                                <textarea
-                                                    value={currentVal}
-                                                    onChange={e => {
-                                                        if (scenario.key === 'ai_system_prompt') {
-                                                            setSettings({ ...settings, ai_system_prompt: e.target.value });
-                                                        } else {
-                                                            setSettings({
-                                                                ...settings,
-                                                                ai_prompts: {
-                                                                    ...(settings.ai_prompts || {}),
-                                                                    [scenario.key]: e.target.value
-                                                                }
-                                                            });
-                                                        }
-                                                    }}
-                                                    placeholder={scenario.defaultPrompt || "保持为空将使用系统默认提示词..."}
-                                                    style={{
-                                                        width: '100%',
-                                                        minHeight: 120,
-                                                        background: 'rgba(0,0,0,0.3)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        borderRadius: 8,
-                                                        padding: 16,
-                                                        color: 'white',
-                                                        fontSize: '0.9rem',
-                                                        lineHeight: 1.6,
-                                                        resize: 'vertical',
-                                                        fontFamily: 'monospace'
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {/* General Assistant Prompt (from existing string) */}
-                                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>全局聊天助手规范 (General Chat Rules)</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>此系统提示词将在全局提问、文章问答等无特定格式要求的场景下生效。</p>
-                                        </div>
-                                        <button
-                                            onClick={() => setSettings({ ...settings, ai_system_prompt: '' })}
-                                            style={{
-                                                background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)',
-                                                padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
-                                            }}
-                                            onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
-                                            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
-                                        >
-                                            恢复系统默认
-                                        </button>
-                                    </div>
-                                    <div style={{ marginBottom: 12 }}>
-                                        <textarea
-                                            value={settings.ai_system_prompt || ''}
-                                            onChange={e => setSettings({ ...settings, ai_system_prompt: e.target.value })}
-                                            placeholder="保持为空将使用系统内置的客服/技术辅助对话身份..."
-                                            style={{
-                                                width: '100%', minHeight: 120, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: 8, padding: 16, color: 'white', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', fontFamily: 'monospace'
-                                            }}
-                                        />
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* === HEALTH TAB === */}
-                        {activeTab === 'health' && stats && (
-                            <div style={{ padding: 32 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
-                                    <StatCard label="Uptime" value={`${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m`} icon={<Activity color="#10b981" />} />
-                                    <StatCard label="CPU Load (1m)" value={`${stats.cpu_load.toFixed(2)}`} subtext="Target: < 4.0" icon={<Cpu color="#3b82f6" />} />
-                                    <StatCard label="Memory Usage" value={`${(stats.mem_used / 1024 / 1024 / 1024).toFixed(2)} GB`} subtext={`Total: ${(stats.mem_total / 1024 / 1024 / 1024).toFixed(2)} GB`} icon={<Database color="#f59e0b" />} />
-                                    <StatCard label="Platform" value={stats.platform} icon={<Server color="#8b5cf6" />} />
-                                </div>
-                            </div>
-                        )}
+
 
                         {/* === BACKUP TAB === */}
                         {activeTab === 'backup' && settings && (
@@ -1288,13 +1183,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                         {/* === GENERAL TAB === */}
                         {activeTab === 'general' && settings && (
                             <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                <div className="setting-field">
-                                    <label>System Name</label>
-                                    <input type="text" className="text-input" value={settings.system_name} onChange={e => setSettings({ ...settings, system_name: e.target.value })} />
-                                </div>
-
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }} />
-
                                 {/* 界面设置 */}
                                 <div>
                                     <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>{t('admin.ui_settings')}</div>
@@ -1310,16 +1198,92 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             }}
                                         />
                                     </div>
+
+                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: 24, marginBottom: 24 }} />
+
+                                    {/* 智能助手核心控制 */}
+                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>智能助手核心控制</div>
+
+                                    {/* AI Enabled Wrapper */}
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="setting-label">Bokeh智能 启用</div>
+                                            </div>
+                                            <Switch checked={settings.ai_enabled} onChange={v => setSettings({ ...settings, ai_enabled: v })} activeColor="#10B981" />
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                            启用后，整个协作平台内的智能问答、工单总结、场景写作等 AI 相关功能将被激活。关闭则隐藏所有 AI 入口。
+                                        </div>
+                                    </div>
+
+                                    {/* Data Sources Wrapper */}
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                                        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div className="setting-label">Bokeh 感知范围</div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 20 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={settings.ai_data_sources?.includes('tickets') ?? true}
+                                                        onChange={(e) => {
+                                                            const sources = settings.ai_data_sources || [];
+                                                            if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'tickets'] });
+                                                            else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'tickets') });
+                                                        }}
+                                                    />
+                                                    工单历史
+                                                </label>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={settings.ai_data_sources?.includes('knowledge') ?? true}
+                                                        onChange={(e) => {
+                                                            const sources = settings.ai_data_sources || [];
+                                                            if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'knowledge'] });
+                                                            else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'knowledge') });
+                                                        }}
+                                                    />
+                                                    Kinefinity 知识库
+                                                </label>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)', opacity: 0.5 }}>
+                                                    <input type="checkbox" disabled />
+                                                    实时网络搜索 (待开放)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                            决定 Bokeh 智能助手可访问和检索的数据池。建议全选以保证 AI 能给出准确的公司上下文。
+                                        </div>
+                                    </div>
+
+                                    {/* History Limit Wrapper */}
+                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="setting-label">知识中心搜索历史条数</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <input
+                                                    type="number"
+                                                    min={1} max={30}
+                                                    value={settings.ai_search_history_limit || 10}
+                                                    onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
+                                                    style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                            控制所有员工的全局搜索历史保留的数量 (最大 30 条)。保留过多的历史虽然方便但是可能降低终端设备加载性能。
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* === AUDIT TAB === */}
-                        {activeTab === 'audit' && (
-                            <div style={{ padding: '24px', background: 'transparent' }}>
-                                <KnowledgeAuditLog />
-                            </div>
-                        )}
+
 
                         {/* === MODALS === */}
                         {backupResult && (
@@ -1745,13 +1709,7 @@ const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void, activ
     </div>
 );
 
-const StatCard: React.FC<{ label: string, value: string, subtext?: string, icon: React.ReactNode }> = ({ label, value, subtext, icon }) => (
-    <div style={{ background: 'rgba(255,255,255,0.02)', padding: 24, borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, opacity: 0.8 }}>{icon}<span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>{label}</span></div>
-        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>{value}</div>
-        {subtext && <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>{subtext}</div>}
-    </div>
-);
+
 
 // Prompt Editor Modal Component
 interface PromptEditorModalProps {

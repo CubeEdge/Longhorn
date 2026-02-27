@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-02-27 15:32 (耗时: 30m)
+
+**User Prompt**:
+1. Kinefinity wiki名称改为 Tech Hub (技术知识中心)，左侧路由入口名称和标题都修改。然后又去掉了括弧，改为 "Tech Hub"。
+2. Admin Settings 对设置面板继续调整：
+   - 将“知识中心搜索历史条数”移动到通用设置
+   - 将“Bokeh 数据源”更名为“Bokeh 感知范围”并移动到通用设置
+   - 将“AI 启用”更名为“Bokeh 智能启用”并移动到通用设置，增加 iOS 26 风格的注释和说明。
+3. tab Bokeh AI设置和AI场景提示词合并为一个tab 名称为 Bokeh 智能设置。分为两行显示Tech Hub和知识中心分开。
+4. Tech Hub首页搜索栏尺寸在没有输入时长度与搜索tab宽度一致（110px）。主标题距离topbar距离调整（24px）。
+5. 客户管理页面的英文添加多语言支持。
+6. 修改完成后，执行 @[/upd]（不校验浏览器），执行 @[/finalize_task]。
+
+**Agent Response**:
+1. **命名和导航调整**：在 `translations.ts` 中将 `wiki.title` 全面修改为 `Tech Hub`，移除了括号。
+2. **Admin 设置面板重构**：
+   - 彻底重构了 `AdminSettings.tsx`，移除了废弃的 Health 和 Audit tabs。
+   - 合并了 AI 提示词与服务商设置页面，将其命名为“Bokeh 智能设置”，采用左侧选服务商、右侧配置和提示词的左右布局。
+   - 将搜索历史条数、感知范围、智能启用开关重构到“通用设置” Tab 内，并应用了高级的 iOS 26 磨砂/区块分隔风格及说明文案。清理了相关因为重构产生的 TypeScript 冗余废弃变量。
+3. **Tech Hub UI 调优**：在 `KinefinityWiki.tsx` 中将页面主标题的 Margin 和 Padding 修改对齐到 Customer Management 相同的风格（距离顶部 24px）。同时将空闲状态下的搜索框宽度缩短至 110px 以看齐临近按钮。
+4. **多语言词条补全**：梳理并向 `translations.ts` 中补充了所有 Customer 相关（比如 `common.add_new`, `customer.name`, `customer.tier` 等）以及 `Tech Hub` 的缺失词条。
+5. **部署执行**：通过工作流先后运行了 `npm version patch`、完整的 `npm run build` 和 `deploy.sh` 远程发布，升级并部署了相关修正至生产服务器。
+
+**Result**:
+后台设置菜单更加扁平且逻辑聚焦，Tech Hub 视觉空间更加协调，全站的客户档案实现了全范围的本地化多语言覆盖，版本系统完整推进至 v12.1.75。
+
+---
+
 ## 2026-02-27 01:31 (耗时: 15m)
 
 **User Prompt**:

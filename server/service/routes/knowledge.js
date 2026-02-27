@@ -698,6 +698,9 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             let failed_count = 0;
             const article_ids = [];
 
+            let currentChapterNumber = 0;
+            let currentSectionNumber = 0;
+
             for (const chapter of chapters) {
                 try {
                     const slug = generateSlug(chapter.title);
@@ -717,15 +720,33 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                         .substring(0, 300);
 
                     // 解析章节号（支持两种格式）
-                    // 格式1：带前缀 "MAVO Edge 8K: 3. SDI监看" 或 "MAVO Edge 8K: 3.1 SDI监看"
-                    // 格式2：不带前缀 "3. SDI监看" 或 "3.1 SDI监看"
                     let chapterMatch = chapter.title.match(/:\s*(\d+)(?:\.(\d+))?/);
                     if (!chapterMatch) {
                         // 尝试匹配不带前缀的格式
-                        chapterMatch = chapter.title.match(/^(\d+)(?:\.(\d+))?[.\s]+/);
+                        const titleWithoutPrefix = chapter.title.includes(':') ? chapter.title.split(':').slice(1).join(':').trim() : chapter.title;
+                        chapterMatch = titleWithoutPrefix.match(/^(\d+)(?:\.(\d+))?(?:[.\s]+|$)/);
                     }
-                    const chapterNumber = chapterMatch ? parseInt(chapterMatch[1]) : null;
-                    const sectionNumber = chapterMatch && chapterMatch[2] ? parseInt(chapterMatch[2]) : null;
+
+                    if (chapterMatch) {
+                        currentChapterNumber = parseInt(chapterMatch[1]);
+                        currentSectionNumber = chapterMatch[2] ? parseInt(chapterMatch[2]) : 0;
+                    } else {
+                        // 动态推演 Fallback
+                        if (chapter.level === 1) {
+                            currentChapterNumber += 1;
+                            currentSectionNumber = 0;
+                        } else if (chapter.level === 2) {
+                            if (currentChapterNumber === 0) currentChapterNumber = 1;
+                            currentSectionNumber += 1;
+                        } else if (chapter.level === 3) {
+                            if (currentChapterNumber === 0) currentChapterNumber = 1;
+                            if (currentSectionNumber === 0) currentSectionNumber = 1;
+                            // Level 3 就当做补充说明，不增加 sectionNumber 以免跳号
+                        }
+                    }
+
+                    const chapterNumberToSave = currentChapterNumber > 0 ? currentChapterNumber : null;
+                    const sectionNumberToSave = currentSectionNumber > 0 ? currentSectionNumber : null;
 
                     const result = insertStmt.run({
                         title: chapter.title,
@@ -747,7 +768,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                             chapter_number = ?,
                             section_number = ?
                         WHERE id = ?
-                    `).run(chapterNumber, sectionNumber, result.lastInsertRowid);
+                    `).run(chapterNumberToSave, sectionNumberToSave, result.lastInsertRowid);
 
                     article_ids.push(result.lastInsertRowid);
                     imported_count++;
@@ -2157,15 +2178,16 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
         const chapters = [];
         const titlePrefix = customPrefix || userSelectedModel || null;
 
-        // 匹配 h1, h2 标签作为章节分隔
-        const headingPattern = /<h([1-2])[^>]*>([^<]+)<\/h[1-2]>/gi;
+        // 匹配 h1, h2, h3 标签作为章节分隔
+        const headingPattern = /<h([1-3])[^>]*>([^<]+)<\/h[1-3]>/gi;
         const matches = [...html.matchAll(headingPattern)];
 
         if (matches.length === 0) {
             // 没有找到章节，将整个文档作为一章
-            if (html.trim().length > 100) {
+            if (html.trim().length > 50) {
                 chapters.push({
-                    title: titlePrefix || 'Untitled Document',
+                    title: titlePrefix ? `${titlePrefix}: Untitled Document` : 'Untitled Document',
+                    level: 1,
                     content: html.trim()
                 });
             }
@@ -2173,31 +2195,33 @@ img.save('${filepath}', 'WEBP', quality=85, method=6)
         }
 
         // 分割内容
-        let lastIndex = 0;
         for (let i = 0; i < matches.length; i++) {
             const match = matches[i];
             const headingStart = match.index;
             const headingEnd = headingStart + match[0].length;
+            const level = parseInt(match[1]);
             let chapterTitle = match[2].trim();
 
             // 清理章节标题中可能存在的产品型号前缀
             const cleanedTitle = chapterTitle.replace(/^(MAVO\s+[^:]+|Eagle\s+[^:]+|Terra\s+[^:]+):\s*/i, '');
-            // 只在用户明确要求添加前缀时才添加（customPrefix 有值时）
-            const fullTitle = customPrefix ? `${customPrefix}: ${cleanedTitle}` : cleanedTitle;
+            // 始终强制加上前缀以防止不同型号之间冲突
+            const fullTitle = titlePrefix ? `${titlePrefix}: ${cleanedTitle}` : cleanedTitle;
 
             // 找到下一个章节的起始位置
             const nextIndex = (i < matches.length - 1) ? matches[i + 1].index : html.length;
             const content = html.substring(headingEnd, nextIndex).trim();
 
-            if (content.length > 100 || (match[1] === '1')) { // Always keep h1 (parent chapters) even if empty
+            if (content.length > 50 || content.includes('<img') || level === 1) { // 放宽，有图片或h1则保留
                 chapters.push({
                     title: fullTitle,
+                    level: level,
                     content: content
                 });
-            } else if (match[1] === '2' && /^[\d\.]+/.test(cleanedTitle)) {
-                // Keep h2 if it looks like a numbered section (e.g., 3.1) even if short, to be safe.
+            } else if (level <= 3 && /^[\d\.]+/.test(cleanedTitle)) {
+                // Keep if it looks like a numbered section even if short, to be safe.
                 chapters.push({
                     title: fullTitle,
+                    level: level,
                     content: content
                 });
             }

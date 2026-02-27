@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useLanguage } from '../i18n/useLanguage';
 import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle } from 'lucide-react';
 
 // Types
@@ -31,6 +32,7 @@ const PRODUCT_FAMILY_MAP = {
 type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
 
 const ProductManagement: React.FC = () => {
+    const { t } = useLanguage();
     const { token, user } = useAuthStore();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -238,13 +240,13 @@ const ProductManagement: React.FC = () => {
                         <Package size={28} color="#FFD700" />
                         产品管理
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Manage Products & Device Models</p>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_products_desc') || 'Manage Products & Device Models'}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}
-                    <div style={{ 
-                        position: 'relative', 
-                        display: 'flex', 
+                    <div style={{
+                        position: 'relative',
+                        display: 'flex',
                         alignItems: 'center',
                         justifyContent: isSearchExpanded ? 'flex-start' : 'center',
                         width: isSearchExpanded ? 280 : 40,
@@ -424,7 +426,7 @@ const ProductManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th 
+                            <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('model_name')}
                             >
@@ -437,7 +439,7 @@ const ProductManagement: React.FC = () => {
                             </th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>固件版本</th>
-                            <th 
+                            <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('ticket_count')}
                             >
@@ -463,10 +465,10 @@ const ProductManagement: React.FC = () => {
                             </td></tr>
                         ) : (
                             products.map((product) => (
-                                <tr 
-                                    key={product.id} 
-                                    className="row-hover" 
-                                    style={{ 
+                                <tr
+                                    key={product.id}
+                                    className="row-hover"
+                                    style={{
                                         borderBottom: '1px solid rgba(255,255,255,0.03)',
                                         cursor: 'pointer'
                                     }}
@@ -479,9 +481,8 @@ const ProductManagement: React.FC = () => {
                                         )}
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                                        }`}>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                                            }`}>
                                             {PRODUCT_FAMILY_MAP[product.product_family]?.label || product.product_family}
                                         </span>
                                     </td>
@@ -498,7 +499,7 @@ const ProductManagement: React.FC = () => {
                                                 handleOpenModal(product);
                                             }}
                                             title="编辑"
-                                            style={{ 
+                                            style={{
                                                 background: 'transparent',
                                                 border: 'none',
                                                 padding: '8px',

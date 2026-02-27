@@ -249,13 +249,13 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     return;
                 }
 
-                // 验证产品型号必填
-                if (!productModels || productModels.length === 0) {
-                    setError('请选择产品型号');
-                    setLoading(false);
-                    setProgress(null);
-                    return;
-                }
+                // 验证产品型号必填 (注释掉，允许作为GENERIC导入)
+                // if (!productModels || productModels.length === 0) {
+                //     setError('请选择产品型号');
+                //     setLoading(false);
+                //     setProgress(null);
+                //     return;
+                // }
 
                 // 步骤1: 上传文件（分块上传 + 断点续传）
                 setProgress(prev => prev ? {
@@ -831,8 +831,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 }}>
                                     {[
                                         { mode: 'docx' as const, label: t('wiki.import_mode_docx') },
-                                        { mode: 'url' as const, label: t('wiki.import_mode_url') },
-                                        { mode: 'text' as const, label: t('wiki.import_mode_text') }
+                                        { mode: 'url' as const, label: t('wiki.import_mode_url') }
                                     ].map(({ mode, label }) => (
                                         <button
                                             key={mode}
@@ -1015,7 +1014,9 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 12px',
-                                                background: bokehOptimize ? 'linear-gradient(135deg, #00BFA5, #8E24AA)' : 'rgba(255,255,255,0.02)',
+                                                background: bokehOptimize
+                                                    ? 'linear-gradient(#262626, #262626) padding-box, linear-gradient(90deg, #00BFA5 0%, #8E24AA 100%) border-box'
+                                                    : 'rgba(255,255,255,0.02)',
                                                 border: `1px solid ${bokehOptimize ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
@@ -1507,7 +1508,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     <div style={{
                                                                         width: `${step.progress || 0}%`,
                                                                         height: '100%',
-                                                                        background: '#00A88E', // Kine Green
+                                                                        background: '#10B981', // Kine Green
                                                                         transition: 'width 0.3s ease-out'
                                                                     }} />
                                                                 </div>

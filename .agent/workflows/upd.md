@@ -2,5 +2,9 @@
 description: 明确更新代码
 ---
 
-修改完代码之后，服务器端和客户端软件版本号都递增，并发布到远程服务器。读docs/ops.md了解如何访问远程服务器
-然后执行/pmlog
+1. **强制执行 `/upd` 流水线**:
+   - 递增 `client/package.json`（和必要的 `server/package.json`）中的最后一位 (Z位) 版本号。
+   - 运行 `npm run build` 确保前端代码编译成功。
+   - 运行 `./scripts/deploy.sh` 进行全量远程部署（至 `mini`）。
+   - 校验部署脚本退出状态，确认 `pm2 reload` 成功执行。
+   - 执行/pmlog

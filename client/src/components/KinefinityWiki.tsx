@@ -12,7 +12,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import WikiEditorModal from './Knowledge/WikiEditorModal';
+import KnowledgeAuditLog from './KnowledgeAuditLog';
 import { useWikiStore } from '../store/useWikiStore';
+import { useToast } from '../store/useToast';
 
 // Types
 // Legacy components missing after version upgrade, inline replacements
@@ -257,6 +259,7 @@ export const KinefinityWiki: React.FC = () => {
     const [showArticleManager, setShowArticleManager] = useState(false);
     const [showKnowledgeImport, setShowKnowledgeImport] = useState(false); // 新增：知识导入弹窗状态
     const [showSynonymManager, setShowSynonymManager] = useState(false);
+    const [showAuditModal, setShowAuditModal] = useState(false);
     const [manageArticles, setManageArticles] = useState<KnowledgeArticle[]>([]);
     const [selectedArticleIds, setSelectedArticleIds] = useState<Set<number>>(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
@@ -265,7 +268,7 @@ export const KinefinityWiki: React.FC = () => {
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
     const [articlesToDeleteList, setArticlesToDeleteList] = useState<KnowledgeArticle[]>([]);
     const [deleteCountdown, setDeleteCountdown] = useState(0);
-    const [globalToast, setGlobalToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { showToast } = useToast();
 
     // 删除倒计时逻辑
     useEffect(() => {
@@ -2067,63 +2070,65 @@ ${contextTickets.map((ticket: any) => {
                                     </div>
                                 )}
 
-                                <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
-                                        {t('wiki.feedback.title')}
+                                {selectedArticle.source_type?.toLowerCase() !== 'docx' && (
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
+                                            {t('wiki.feedback.title')}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                            <button style={{
+                                                padding: '10px 24px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                borderRadius: '10px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(16,185,129,0.1)';
+                                                    e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                }}
+                                            >
+                                                <ThumbsUp size={16} />
+                                                <span>{t('wiki.feedback.helpful', { count: selectedArticle.helpful_count })}</span>
+                                            </button>
+                                            <button style={{
+                                                padding: '10px 24px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                borderRadius: '10px',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
+                                                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                }}
+                                            >
+                                                <ThumbsDown size={16} />
+                                                <span>{t('wiki.feedback.not_helpful', { count: selectedArticle.not_helpful_count })}</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                                        <button style={{
-                                            padding: '10px 24px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.08)',
-                                            borderRadius: '10px',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '13px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                        }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(16,185,129,0.1)';
-                                                e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                            }}
-                                        >
-                                            <ThumbsUp size={16} />
-                                            <span>{t('wiki.feedback.helpful', { count: selectedArticle.helpful_count })}</span>
-                                        </button>
-                                        <button style={{
-                                            padding: '10px 24px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.08)',
-                                            borderRadius: '10px',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '13px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                        }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
-                                                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                            }}
-                                        >
-                                            <ThumbsDown size={16} />
-                                            <span>{t('wiki.feedback.not_helpful', { count: selectedArticle.not_helpful_count })}</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     ) : showChapterView && chapterView ? (
@@ -2425,7 +2430,7 @@ ${contextTickets.map((ticket: any) => {
                         <div style={{
                             maxWidth: '1200px',
                             margin: '0 auto',
-                            padding: '40px 32px'
+                            padding: '24px 32px'
                         }}>
                             {/* 顶部布局：标题 + 搜索框 + 管理按钮 */}
                             <div style={{
@@ -2438,12 +2443,10 @@ ${contextTickets.map((ticket: any) => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <h1 style={{
                                             fontSize: '1.8rem',
-                                            fontWeight: 800,
+                                            fontWeight: 700,
                                             margin: '0',
-                                            color: '#fff',
-                                            letterSpacing: '-0.5px'
                                         }}>
-                                            Kinefinity WIKI
+                                            {t('wiki.title') || 'Tech Hub'}
                                         </h1>
                                         {/* 管理按钮 - 紧跟标题 */}
                                         {hasWikiAdminAccess && (
@@ -2503,6 +2506,15 @@ ${contextTickets.map((ticket: any) => {
                                                                 <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
                                                             </div>
                                                             <div
+                                                                onClick={() => { setShowAdminMenu(false); setShowAuditModal(true); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <History size={16} color="#10B981" />
+                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>知识库修改记录</span>
+                                                            </div>
+                                                            <div
                                                                 onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
                                                                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
@@ -2526,11 +2538,7 @@ ${contextTickets.map((ticket: any) => {
                                             </div>
                                         )}
                                     </div>
-                                    <p style={{
-                                        fontSize: '14px',
-                                        color: '#666',
-                                        margin: '8px 0 0 0'
-                                    }}>
+                                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
                                         {t('wiki.subtitle')}
                                     </p>
                                 </div>
@@ -2543,7 +2551,7 @@ ${contextTickets.map((ticket: any) => {
                                         border: `1px solid ${searchQuery.trim() ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
                                         borderRadius: '10px',
                                         padding: '0 12px',
-                                        width: searchQuery.trim() ? '380px' : '280px',
+                                        width: searchQuery.trim() ? '380px' : '110px',
                                         height: '38px',
                                         flexShrink: 0,
                                         transition: 'width 0.3s ease, border-color 0.3s ease'
@@ -4104,8 +4112,7 @@ ${contextTickets.map((ticket: any) => {
                         else setViewMode('published');
                     }}
                     onToast={(message, type) => {
-                        setGlobalToast({ message, type });
-                        setTimeout(() => setGlobalToast(null), 3000);
+                        showToast(message, type);
                     }}
                 />
 
@@ -4218,6 +4225,37 @@ ${contextTickets.map((ticket: any) => {
                                                 outline: 'none'
                                             }}
                                         />
+                                        {managerSearchQuery.length > 0 && (
+                                            <button
+                                                onClick={() => setManagerSearchQuery('')}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '8px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    padding: '4px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    color: '#666',
+                                                    borderRadius: '50%',
+                                                    transition: 'all 0.2s',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.color = '#fff';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.color = '#666';
+                                                    e.currentTarget.style.background = 'transparent';
+                                                }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* 全选复选框 */}
@@ -5035,28 +5073,48 @@ ${contextTickets.map((ticket: any) => {
             </div >
             <SynonymManager isOpen={showSynonymManager} onClose={() => setShowSynonymManager(false)} />
 
-            {/* 全局 Toast 通知 */}
-            {globalToast && (
+            {/* 修改记录聚合页面弹窗 */}
+            {showAuditModal && (
                 <div style={{
                     position: 'fixed',
-                    bottom: '30px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: globalToast.type === 'success' ? '#10B981' : '#EF4444',
-                    color: '#fff',
-                    padding: '12px 24px',
-                    borderRadius: '12px',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 1000,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                    zIndex: 100000,
-                    animation: 'fadeIn 0.3s ease-out'
+                    justifyContent: 'center'
                 }}>
-                    <span style={{ fontSize: '18px' }}>{globalToast.type === 'success' ? '✅' : '❌'}</span>
-                    <span>{globalToast.message}</span>
+                    <div style={{
+                        width: '90%',
+                        maxWidth: '1000px',
+                        height: '85vh',
+                        background: '#1a1a1a',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <History size={20} color="#10B981" />
+                                知识库修改记录
+                            </h2>
+                            <button
+                                onClick={() => setShowAuditModal(false)}
+                                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+                            <KnowledgeAuditLog />
+                        </div>
+                    </div>
                 </div>
             )}
         </>

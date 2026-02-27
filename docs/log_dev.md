@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-02-27 15:32 - Tech Hub 品牌化对齐与 Admin Settings UI 重构 (v12.1.75 / s1.5.48)
+
+### Tasks Completed:
+1. **Wiki 品牌化对齐**:
+   - 将 Wiki 的所有内部外露名称从“Kinefinity Wiki”或“Tech Hub (技术知识中心)”全面且极简地统一为 **"Tech Hub"**，精简视觉噪音。
+   - 对齐首页的标题位置 Margin、缩小无检索字词时的占位搜索框大小（至 110px），并与同行的分类页签严密结合。
+2. **Admin 设置架构优化**: 
+   - 砍掉了废弃的 Health、Daily Word 等不再维护的 UI 模块。
+   - 合并 AI 设置入口：将原本的 Bokeh LLM 控制台与 AI System Prompts 合并为统一的“Bokeh 智能设置”，左侧切换供应商，右侧集中管理。
+   - 转移并注释通用配置：将原先位于此处的“全量使能”、“知识范围”等控制开关移入“General Settings”，并通过极其克制的 iOS 26 半透明面板配以次级浅灰文字做出使用批注。
+3. **客户服务本地化**: 针对新进的“客户档案”页面 (`CustomerManagement`)，全量排查并将其内联的固化英文字符重构为基于 `translations.ts` 驱动的 i18n 资源文件引用。
+4. **稳定上线**: 全量 `npm build` 运行并覆盖服务器热重载进程 (`deploy.sh`)。
+
+### Technical Output:
+- **Modified**: `client/src/components/Admin/AdminSettings.tsx`, `client/src/components/KinefinityWiki.tsx`, `client/src/components/CustomerManagement.tsx`, `client/src/i18n/translations.ts`, `client/package.json`, `server/package.json`
+
 ## 2026-02-27 02:05 - UI 品牌颜色标准化与全量发布 (v12.1.64 / s1.5.42)
 
 ### Tasks Completed:

@@ -345,7 +345,7 @@ const DealerManagement: React.FC = () => {
                         <Building size={28} color="var(--accent-blue)" />
                         {t('sidebar.archives_dealers') || '渠道和经销商'}
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Manage Dealers and Channel Partners</p>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_dealers_desc') || 'Manage Dealers and Channel Partners'}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}

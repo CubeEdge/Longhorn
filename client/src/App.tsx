@@ -403,7 +403,10 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               }}
             >
               <Book size={18} />
-              <span>Kinefinity WIKI</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ lineHeight: 1 }}>Tech Hub</span>
+                <span style={{ fontSize: '0.75rem', opacity: 0.7, lineHeight: 1 }}>知识中心</span>
+              </div>
             </Link>
 
             {role === 'Admin' && (

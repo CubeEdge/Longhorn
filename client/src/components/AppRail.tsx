@@ -1,5 +1,5 @@
 import React from 'react';
-import { Headphones, FolderOpen, LogOut } from 'lucide-react';
+import { Users, FolderOpen, LogOut } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { useAuthStore } from '../store/useAuthStore';
 import type { ModuleType } from '../hooks/useNavigationState';
@@ -44,7 +44,7 @@ const AppRail: React.FC<AppRailProps> = ({
           onClick={() => onModuleChange('service')}
           title={t('nav.service')}
         >
-          <Headphones size={24} />
+          <Users size={24} />
           <span className="rail-label">{t('nav.service')}</span>
         </button>
 
