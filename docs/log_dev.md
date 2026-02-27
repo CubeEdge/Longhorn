@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-02-27 16:44 - Tech Hub 布局对齐与全局样式同步 (v12.1.78 / s1.5.51)
+
+### Tasks Completed:
+1. **搜索栏动态对齐**: 实现了搜索框宽度与搜索 Tab 的动态同步（110px ~ 240px），通过 `useLayoutEffect` 确保渲染准确。
+2. **管理菜单位置修复**: 移动“管理”按钮至副标题行，并修复了下拉菜单弹出方向及增加了方向图标。
+3. **Inventory 样式对齐**: 修复了库存管理页面的副标题颜色，匹配产品管理页面的 UI。
+4. **全量同步**: 执行 `/upd`、`git commit` 与 `git push`。
+
+### Technical Output:
+- **Modified**: `client/src/components/KinefinityWiki.tsx`, `client/src/components/DealerInventory/DealerInventoryListPage.tsx`
+- **Infrastructure**: Version bumped to `12.1.78`.
+
 ## 2026-02-27 16:21 - 视觉细节抛光与版本迭代 (v12.1.77 / s1.5.50)
 
 ### Tasks Completed:

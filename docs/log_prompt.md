@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-02-27 16:44 (耗时: 23m)
+
+**User Prompt**:
+1. Tech Hub 首页管理菜单下移至副标题行尾，并增加向下箭头。
+2. Tech Hub 首页搜索栏宽度在空闲时与搜索 Tab (110px+) 对齐。
+3. 调整库存管理页面的副标题颜色与产品管理一致。
+4. 执行 `/upd` 部署。
+5. 执行 `git commit` & `git push`。
+
+**Agent Response**:
+- **Tech Hub UI 抛光**：
+    - 将“管理”按钮移至副标题行，并添加了 `ChevronDown` 箭头。
+    - 修正了下拉菜单的方向，从向上弹出改为向下弹出（`top: 100%`），更符合常规交互。
+    - 引入 `useLayoutEffect` 动态测量搜索 Tab 宽度，并将其应用于搜索输入框的 `minWidth` 和 `width`，实现了完美的视觉对齐。
+- **全局一致性**：同步了 `DealerInventoryListPage.tsx` 的副标题样式（颜色和边距），使其与 `ProductManagement.tsx` 视觉对齐。
+- **交付流水线**：
+    - 执行了版本迭代，Client 升至 **v12.1.78**，Server 升至 **v1.5.51**。
+    - 完成了全量构建与远程部署（`mini`）。
+    - 成功执行 `git add .`, `git commit` 以及 `git push` 同步至代码仓。
+
+**Result**:
+Tech Hub 首页视觉对齐更加精致，库存管理页样式统一，全量代码已同步至云端并上线。
+
+---
+
 ## 2026-02-27 16:21 (耗时: 15m)
 
 **User Prompt**:
@@ -368,7 +393,7 @@ Refining Bokeh Toggle Styles & Fixes
 2. **样式优化**: 修改 `KnowledgeGenerator.tsx`，将 “Bokeh 优化” 按钮选中态由蓝色渐变改为黄底半透明（`rgba(255,215,0,0.12)`）加黄色边框。
 3. **接口解耦**: 修改 `system.js` 路由，移除 `/public-settings` 的 `authenticate` 中间件，确保 TopBar 可以匿名读取展示配置。
 
-**Result**: 
+**Result**:
 UI 反映更贴合系统规范，每日一词显示逻辑恢复正常。
 
 ---
@@ -385,7 +410,7 @@ Refining Search Tab UI
 3. **彻底优化体验**: 移除了多余的面包屑导航，修复了 JSX 语法，全面检查 TS 编译依赖确保前端构建无告警 (`tsc -b && vite build` 成功)。
 4. **多语言与样式**: 补充了 `wiki.search.history` 翻译；增强了导入弹窗并强制统一为 Bokeh 渐变品牌色。
 
-**Result**: 
+**Result**:
 Wiki 搜索 Tab 重构完成，界面进一步一体化沉浸。
 
 ---
@@ -405,7 +430,7 @@ UI 调整与重构：
 3. **弹窗重构**: 将 `KnowledgeGenerator` 改造为 macOS26 风格的大弹窗模式，支持高斯模糊背景与平滑动画。
 4. **配色升级**: 将所有实验性绿色 (`#4CAF50`) 替换为标准的 Kine Yellow (`#FFD700`)，提升了 UI 的职业感与品牌统一性。
 
-**Result**: 
+**Result**:
 知识库 UI 体验完成 Phase 2 后的深度抛光，界面进入完全品牌化阶段。
 
 ---
@@ -432,7 +457,7 @@ UI 调整与重构：
 2. 在前端增加 filter 逻辑，排除了大纲骨架文章的滥竽充数渲染。修改了操作手册的卡片背景色。发布部署了 v12.0.9。
 3. 执行 `/finalize_task` 归档。思考并提炼了几种绕过官方反爬虫最简捷的方案（Headers 伪装 / 免部署 Jina Reader 聚合 / WP 直连 JSON）。
 
-**Result**: 
+**Result**:
 UI 层级体验瑕疵彻底解决；给出了 3 种极具性价比的网页采集解法供用户选择定夺。
 
 ---
@@ -449,14 +474,14 @@ Fixing Storage Path && Fixing Web Page Import (KineOS 8.0 Notes)
 3. 发现 `users` 表的 `user_type` 对于 admin 被设置为了 `Employee`，而路由拦截器要求 `Internal`。已通过修改 `knowledge.js` 的限制逻辑允许了 `Employee`，从而修复了 URL 导入功能的 403 阻断。
 4. 确认了 `https://kinefinity.com` 的 TLS 防火墙对 Node 原生 HTTP Client 的拦截（`SSL_ERROR_SYSCALL`），需后期通过其它方案（如白名单或 Headless Browser）解决，建议此文章可文本直粘。
 
-**Result**: 
+**Result**:
 本地及后端各种因知识库验证产生的报错与崩溃已根治。所有修补均已测试并同步进文档。
 
 ---
 
 ## 2026-02-17 11:45 (耗时: 5m)
 
-**User Prompt**: 
+**User Prompt**:
 本会话内的prompt交互和输出摘要，消耗时间更新到docs/log_prompt.md
 
 **Agent Response**:
@@ -466,7 +491,7 @@ Fixing Storage Path && Fixing Web Page Import (KineOS 8.0 Notes)
 
 ## 2026-02-17 11:30 (耗时: 45m)
 
-**User Prompt**: 
+**User Prompt**:
 根据上述计划，继续进行。
 
 **Agent Response**:
@@ -484,7 +509,7 @@ Fixing Storage Path && Fixing Web Page Import (KineOS 8.0 Notes)
 
 ## 2026-02-16 15:42 (耗时: 2m 30s)
 
-**User Prompt**: 
+**User Prompt**:
 如何查看和触发workflow，比如done
 
 **Agent Response**:
@@ -507,7 +532,7 @@ Fixing Storage Path && Fixing Web Page Import (KineOS 8.0 Notes)
 
 ### 2026-02-21 22:45
 - **User Prompt**: "实现同义词管理器。搜索诸如'录制常见的问题是什么？'查无结果，需宽泛化并使得 UI 逻辑保持一致。"
-- **Agent Response**: 
+- **Agent Response**:
   1. **同义词字典**: 创建 `018_search_synonyms.sql` 迁移，后端口开发 `/api/v1/synonyms` 并用进程内存作为高速缓存实时更新；前端实装 `SynonymManager.tsx` 面板并支持 i18n 多语言，默认初始化 50 组行业词汇。
   2. **搜索宽泛化**: 补充大量常用中文停用词（常见/一般/通常/问题等），并修改了后台工单 `bokeh.js` 的 FTS5 引擎行为（由严格 AND 匹配修改为 OR 匹配 + 同义词列举横向扩展）。
   3. **UI 一致性**: 调整工单区域的折叠按钮至标题行，看齐核心检索面板。
@@ -543,9 +568,25 @@ Fixing Storage Path && Fixing Web Page Import (KineOS 8.0 Notes)
 - **Agent Response**: 修改了前端搜索面板的折叠逻辑，修复了搜索时过度清洗关键字导致无法检索工单的问题，补全了遗漏的内联卡片组件，并补充了多语言字典以解决打包编译错误。
 - **Result**: 修复了知识库搜索的多个问题，前端构建通过。
 
-### 2026-02-21 10:35
-- **User Prompt**: "git pull"
-- **Agent Response**: 成功执行 `git pull`。处理了初次的 SSL 连接错误，并通过 `fetch` + `merge` 策略同步了远程代码。
+### 2026-02-27 16:44 - Tech Hub 布局对齐与全局样式同步 (v12.1.78 / s1.5.51)
+
+### Tasks Completed:
+1. **搜索栏动态对齐**: 实现了搜索框宽度与搜索 Tab 的动态同步（110px ~ 240px），通过 `useLayoutEffect` 确保渲染准确。
+2. **管理菜单位置修复**: 移动“管理”按钮至副标题行，并修复了下拉菜单弹出方向及增加了方向图标。
+3. **Inventory 样式对齐**: 修复了库存管理页面的副标题颜色，匹配产品管理页面的 UI。
+4. **全量同步**: 执行 `/upd`、`git commit` 与 `git push`。
+
+### Technical Output:
+- **Modified**: `client/src/components/KinefinityWiki.tsx`, `client/src/components/DealerInventory/DealerInventoryListPage.tsx`
+- **Infrastructure**: Version bumped to `12.1.78`.
+
+## 2026-02-27 16:21 - 视觉细节抛光与版本迭代 (v12.1.77 / s1.5.50)
+
+**User Prompt**:
+1. Tech Hub 两行显示间距增大。
+2. 执行 `/upd`。
+
+**Agent Response**: 成功执行 `git pull`。处理了初次的 SSL 连接错误，并通过 `fetch` + `merge` 策略同步了远程代码。
 - **Result**: 已拉取远程更改，合并了 `KinefinityWiki.tsx` 和 `package.json` 的更新，并同步了项目文档。
 
 ### 2026-02-21 10:30
