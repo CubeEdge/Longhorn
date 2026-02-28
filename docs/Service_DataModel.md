@@ -1,8 +1,15 @@
 # Service 数据模型设计
 
-**版本**: 0.9.0 (P2 Integration)
-**最后更新**: 2026-02-28
+**版本**: 0.9.1 (P2 Integration)
+**最后更新**: 2026-03-01
 
+> **v0.9.1 更新 (文件权限优化)**：
+> - 重命名表：`permissions` → `file_permissions`（避免语义混淆）
+> - 新增 `path_hash` 字段：MD5 哈希值，用于快速路径查询
+> - 新增唯一索引：防止重复授权 `(user_id, folder_path)`
+> - 新增过期时间索引：优化过期权限清理
+> - 新增级联删除触发器：用户删除时自动清理权限记录
+>
 > **v0.9.0 更新 (P2 升级)**：
 > - 工单模型重构：分表设计合并为统一 tickets 表 (ticket_type 区分)
 > - 新增 SLA 引擎字段：node_entered_at, sla_due_at, sla_status, breach_counter
@@ -1444,17 +1451,109 @@ ai_usage_logs (AI 使用审计)
 
 ---
 
+## 13. 文件权限管理
+
+### 13.1 文件权限表 (file_permissions)
+
+> **设计说明**：用于管理用户对特定文件夹的访问权限，支持细粒度授权和临时协作。
+> 
+> **v0.9.1 优化**：
+> - 表名重命名：`permissions` → `file_permissions`（避免与工单权限、知识库权限等混淆）
+> - 新增 `path_hash` 字段：MD5 哈希值，用于快速路径查询（O(1) 查找）
+> - 新增唯一索引：防止重复授权 `(user_id, folder_path)`
+> - 新增过期时间索引：优化过期权限清理性能
+> - 新增级联删除触发器：用户删除时自动清理权限记录
+
+```sql
+file_permissions (文件权限)
+├── id: INTEGER PRIMARY KEY AUTOINCREMENT
+├── user_id: INTEGER NOT NULL -- 关联用户 ID
+├── folder_path: TEXT NOT NULL -- 文件夹路径（如 "MS/Projects", "OP/Docs"）
+├── access_type: ENUM('Read', 'Contribute', 'Full') NOT NULL
+│   -- Read: 只读（浏览、预览、下载）
+│   -- Contribute: 贡献者（上传、编辑、删除自己上传的文件）
+│   -- Full: 完全控制（所有操作，包括删除他人文件、授权）
+├── expires_at: DATETIME -- 过期时间（可选，NULL 表示永久有效）
+├── path_hash: TEXT -- folder_path 的 MD5 哈希值，用于快速查询
+├── created_at: DATETIME DEFAULT CURRENT_TIMESTAMP
+│
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+**索引**：
+- PRIMARY KEY (id)
+- UNIQUE INDEX idx_user_path (user_id, folder_path) - 防止重复授权
+- INDEX idx_path_hash (path_hash) - 加速路径哈希查询
+- INDEX idx_expires (expires_at) WHERE expires_at IS NOT NULL - 优化过期清理
+
+**触发器**：
+```sql
+CREATE TRIGGER cascade_delete_file_permissions
+AFTER DELETE ON users
+BEGIN
+    DELETE FROM file_permissions WHERE user_id = OLD.id;
+END
+```
+
+### 13.2 权限判断逻辑
+
+**优先级顺序**（从高到低）：
+
+1. **Admin 角色** → 自动拥有所有文件权限 ✅
+2. **Lead 角色** → 自动拥有整个部门文件夹权限
+3. **显式授权**（file_permissions 表）→ 按 `access_type` 判断
+4. **个人空间** → `Members/{username}` 自动授权给本人
+5. **部门成员** → 默认读取所在部门文件夹
+6. **拒绝访问** ❌
+
+**查询优化**：
+```sql
+-- 优化前：LIKE 模糊查询，无法利用索引
+SELECT access_type FROM permissions 
+WHERE user_id = ? AND folder_path LIKE 'MS/%'
+
+-- 优化后：使用 path_hash 精确匹配，B-Tree 索引 O(1) 查找
+SELECT access_type FROM file_permissions 
+WHERE user_id = ? AND path_hash = ?
+```
+
+### 13.3 典型使用场景
+
+**场景 1：临时项目协作**
+```sql
+-- 给 Cathy 临时访问 RD 部门某项目的权限（7 天）
+INSERT INTO file_permissions (user_id, folder_path, access_type, expires_at)
+VALUES (3, 'RD/ProjectX', 'Contribute', datetime('now', '+7 days'));
+```
+
+**场景 2：跨部门审阅**
+```sql
+-- 让 Sherry 可以查看 OP 部门的所有文件（只读，永久）
+INSERT INTO file_permissions (user_id, folder_path, access_type)
+VALUES (2, 'OP', 'Read');
+```
+
+**场景 3：个人空间共享**
+```sql
+-- 允许团队成员访问个人工作区
+INSERT INTO file_permissions (user_id, folder_path, access_type)
+VALUES (11, 'Members/Cathy', 'Read');
+```
+
+---
+
 ## 14. 更新记录
 
 | 日期 | 版本 | 修改内容 | 修改人 | 备注 |
 |-----|------|---------|-------|------|
-| 2026-02-03 | v1.0 | 初始版本，从PRD中迁移 | - | 完整数据模型设计 |
+| 2026-02-03 | v1.0 | 初始版本，从 PRD 中迁移 | - | 完整数据模型设计 |
 | 2026-02-06 | v1.1 | 新增 AI 配置与系统管理相关表定义 | - | 对应 PRD v0.9.1 |
-| 2026-02-11 | v1.2 | 重构客户模型为"账户+联系人"双层架构 | - | 引入 Account/Contact 模型，支持B2B场景 |
+| 2026-02-11 | v1.2 | 重构客户模型为“账户 + 联系人”双层架构 | - | 引入 Account/Contact 模型，支持 B2B 场景 |
 | 2026-02-11 | v1.3 | 账户类型更新，新增经销商专属字段 | - | CORPORATE→ORGANIZATION，新增 dealer_level 等字段 |
 | 2026-02-22 | v1.4 | 新增 `search_synonyms` 同义词库支持 | - | 对应 Wiki 搜索召回优化需求 |
 | 2026-02-25 | v1.5 | 完善 `knowledge_articles` 章节字段与 `knowledge_audit_log` 审计日志 | Jihua | 对应 Phase 3/4 深度优化交付 |
 | 2026-02-28 | **v0.9.0** | **P2 架构升级**：统一 tickets 表、SLA 引擎、活动时间轴、通知系统 | - | **重大更新** |
+| 2026-03-01 | **v0.9.1** | **文件权限优化**：重命名 file_permissions、新增 path_hash、索引优化、级联删除 | - | **性能与安全性提升** |
 
 
 ---
@@ -1519,6 +1618,11 @@ Supporting:
 5. **活动时间轴**：`ticket_activities` 表记录工单全生命周期事件
 6. **通知系统**：`notifications` 表支持系统内推送
 7. **保修计算**：`account_devices` 表扩展 IoT 和保修计算字段
+8. **文件权限优化 (v0.9.1)**：
+   - 重命名 `permissions` → `file_permissions`
+   - 新增 `path_hash` 字段加速查询
+   - 唯一索引防止重复授权
+   - 级联删除触发器保证数据一致性
 
 ---
 

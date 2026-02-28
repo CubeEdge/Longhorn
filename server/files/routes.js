@@ -77,7 +77,7 @@ module.exports = function (db, authenticate, DISK_A, THUMB_DIR, RECYCLE_DIR, upl
             for (const part of parts) {
                 currentPath = currentPath ? `${currentPath}/${part}` : part;
                 const perm = db.prepare(`
-                    SELECT access_type FROM permissions 
+                    SELECT access_type FROM file_permissions 
                     WHERE user_id = ? AND folder_path = ?
                     AND (expires_at IS NULL OR expires_at > datetime('now'))
                 `).get(user.id, currentPath);

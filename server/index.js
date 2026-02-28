@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const archiver = require('archiver');
 const sharp = require('sharp');
+const crypto = require('crypto');
 const AIService = require('./service/ai_service');
 const BackupService = require('./service/backup_service');
 
@@ -113,15 +114,19 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(department_id) REFERENCES departments(id)
     );
-    CREATE TABLE IF NOT EXISTS permissions (
+    CREATE TABLE IF NOT EXISTS file_permissions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         folder_path TEXT,
         access_type TEXT,
         expires_at DATETIME,
+        path_hash TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_file_permissions_user_path ON file_permissions(user_id, folder_path);
+    CREATE INDEX IF NOT EXISTS idx_file_permissions_path_hash ON file_permissions(path_hash);
+    CREATE INDEX IF NOT EXISTS idx_file_permissions_expires ON file_permissions(expires_at) WHERE expires_at IS NOT NULL;
     CREATE TABLE IF NOT EXISTS stars (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -666,7 +671,7 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
 
     // 3. Check extended permissions
     const permissions = db.prepare(`
-        SELECT access_type, expires_at FROM permissions 
+        SELECT access_type, expires_at FROM file_permissions 
         WHERE user_id = ? AND (folder_path = ? OR ? LIKE folder_path || '/%')
     `).all(user.id, normalizedPath, normalizedPath);
 
@@ -1185,7 +1190,7 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
         // Add departments from explicit permissions
         const explicitPerms = db.prepare(`
             SELECT DISTINCT d.* 
-            FROM permissions p
+            FROM file_permissions p
             JOIN departments d ON p.folder_path = d.name OR p.folder_path LIKE d.name || '/%'
             WHERE p.user_id = ? AND (p.expires_at IS NULL OR p.expires_at > datetime('now'))
         `).all(req.user.id);
@@ -1537,7 +1542,7 @@ app.get('/api/admin/users/:id/permissions', authenticate, (req, res) => {
         return res.status(403).json({ error: 'Permission denied' });
     }
 
-    const perms = db.prepare('SELECT * FROM permissions WHERE user_id = ?').all(req.params.id);
+    const perms = db.prepare('SELECT * FROM file_permissions WHERE user_id = ?').all(req.params.id);
     res.json(perms);
 });
 
@@ -1556,9 +1561,9 @@ app.post('/api/admin/users/:id/permissions', authenticate, (req, res) => {
     }
 
     db.prepare(`
-        INSERT INTO permissions (user_id, folder_path, access_type, expires_at)
-        VALUES (?, ?, ?, ?)
-    `).run(req.params.id, folder_path, access_type, expires_at || null);
+        INSERT INTO file_permissions (user_id, folder_path, access_type, expires_at, path_hash)
+        VALUES (?, ?, ?, ?, ?)
+    `).run(req.params.id, folder_path, access_type, expires_at || null, crypto.createHash('md5').update(folder_path).digest('hex'));
 
     res.json({ success: true });
 });
@@ -1566,13 +1571,13 @@ app.post('/api/admin/users/:id/permissions', authenticate, (req, res) => {
 app.delete('/api/admin/permissions/:id', authenticate, (req, res) => {
     if (req.user.role !== 'Admin' && req.user.role !== 'Lead') return res.status(403).json({ error: 'Forbidden' });
 
-    const perm = db.prepare('SELECT p.*, u.department_id FROM permissions p JOIN users u ON p.user_id = u.id WHERE p.id = ?').get(req.params.id);
+    const perm = db.prepare('SELECT p.*, u.department_id FROM file_permissions p JOIN users u ON p.user_id = u.id WHERE p.id = ?').get(req.params.id);
     if (!perm) return res.status(404).json({ error: 'Permission not found' });
     if (req.user.role === 'Lead' && perm.department_id !== req.user.department_id) {
         return res.status(403).json({ error: 'Permission denied' });
     }
 
-    db.prepare('DELETE FROM permissions WHERE id = ?').run(req.params.id);
+    db.prepare('DELETE FROM file_permissions WHERE id = ?').run(req.params.id);
     res.json({ success: true });
 });
 
@@ -1661,7 +1666,7 @@ app.get('/api/user/permissions', authenticate, (req, res) => {
     try {
         const perms = db.prepare(`
             SELECT id, folder_path, access_type, expires_at 
-            FROM permissions 
+            FROM file_permissions 
             WHERE user_id = ?
         `).all(req.user.id);
 
@@ -1833,9 +1838,9 @@ app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
     if (expiry_option === '1month') expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
 
     db.prepare(`
-        INSERT INTO permissions (user_id, folder_path, access_type, expires_at)
-        VALUES (?, ?, ?, ?)
-    `).run(user_id, folder_path, access_type, expiresAt);
+        INSERT INTO file_permissions (user_id, folder_path, access_type, expires_at, path_hash)
+        VALUES (?, ?, ?, ?, ?)
+    `).run(user_id, folder_path, access_type, expiresAt, crypto.createHash('md5').update(folder_path).digest('hex'));
     res.json({ success: true });
 });
 
@@ -2211,7 +2216,6 @@ app.get('/api/user/stats', authenticate, (req, res) => {
 });
 
 // ==================== SHARE LINKS API ====================
-const crypto = require('crypto');
 
 function generateShareToken() {
     return crypto.randomBytes(16).toString('hex');
@@ -2399,7 +2403,7 @@ app.get('/api/department/permissions', authenticate, (req, res) => {
 
         const perms = db.prepare(`
             SELECT p.*, u.username, g.username as granted_by_name
-            FROM permissions p
+            FROM file_permissions p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN users g ON p.granted_by = g.id
             WHERE p.folder_path = ? OR p.folder_path LIKE ?
