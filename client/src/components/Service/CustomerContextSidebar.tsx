@@ -108,10 +108,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     };
 
     const cardStyle: React.CSSProperties = {
-        background: 'rgba(255, 255, 255, 0.04)',
+        background: 'var(--glass-border)',
         borderRadius: '12px',
         padding: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
+        border: '1px solid var(--glass-border)',
         marginBottom: '12px'
     };
 
@@ -119,7 +119,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         fontSize: '0.7rem',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: 'var(--text-tertiary)',
         marginBottom: '12px',
         fontWeight: 600,
         display: 'flex',
@@ -137,19 +137,19 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
     const iconColStyle: React.CSSProperties = {
         width: '20px',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: 'var(--text-tertiary)',
         paddingTop: '2px',
         flexShrink: 0
     };
 
     const textColStyle: React.CSSProperties = {
         flex: 1,
-        color: 'rgba(255, 255, 255, 0.9)'
+        color: 'var(--text-main)'
     };
 
     const labelStyle: React.CSSProperties = {
         fontSize: '0.7rem',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: 'var(--text-tertiary)',
         marginBottom: '2px'
     };
 
@@ -178,7 +178,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             {/* Header - 标题放在顶部 */}
             <div style={headerStyle}>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Info size={16} style={{ color: '#FFD200' }} />
+                    <Info size={16} style={{ color: 'var(--accent-blue)' }} />
                     本工单关联的信息
                 </div>
                 {onClose && (
@@ -198,7 +198,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     <div
                         style={{
                             ...cardStyle,
-                            background: 'rgba(255, 215, 0, 0.06)',
+                            background: 'var(--bg-sidebar)',
                             border: '1px solid rgba(255, 215, 0, 0.15)',
                             cursor: dealerId ? 'pointer' : 'default',
                             transition: 'all 0.2s ease'
@@ -226,7 +226,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             {dealerName || '未知经销商'}
                         </div>
 
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                             {dealerCode && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Hash size={11} />
@@ -256,12 +256,12 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         }}
                         onClick={() => data.account?.id && navigate(`/service/customers/${data.account.id}?type=${data.account.account_type}`)}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                            e.currentTarget.style.background = 'var(--glass-border)';
                             e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.2)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.background = 'var(--glass-border)';
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
                         }}
                     >
                         <div style={cardTitleStyle}>
@@ -280,7 +280,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             >
                                 {data.account.name}
                             </h3>
-                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                                 {getAccountTypeLabel(data.account.account_type)}
                                 {data.account.dealer_code && ` · ${data.account.dealer_code}`}
                             </div>
@@ -295,11 +295,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 marginBottom: '12px'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <Ticket size={12} style={{ color: '#FFD200' }} />
-                                    <span style={{ fontSize: '0.75rem', color: '#FFD200', fontWeight: 600 }}>工单统计</span>
+                                    <Ticket size={12} style={{ color: 'var(--accent-blue)' }} />
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>工单统计</span>
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>
-                                    总计 <span style={{ color: '#FFD200', fontWeight: 600 }}>{data.ai_profile.ticket_count}</span>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                    总计 <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{data.ai_profile.ticket_count}</span>
                                     {data.ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.ai_profile.inquiry_count}</span>}
                                     {data.ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.ai_profile.rma_count}</span>}
                                     {data.ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.ai_profile.repair_count}</span>}
@@ -330,7 +330,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             >
                                                 <span>联系人</span>
                                                 {otherContacts.length > 0 && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'rgba(255,255,255,0.4)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-tertiary)' }}>
                                                         <span style={{ fontSize: '0.65rem' }}>
                                                             {contactsExpanded ? '收起' : `展开其他${otherContacts.length}个`}
                                                         </span>
@@ -348,7 +348,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                         {(primaryContact.status === 'PRIMARY' || primaryContact.is_primary) && (
                                                             <span style={{
                                                                 fontSize: '0.65rem',
-                                                                color: '#FFD200',
+                                                                color: 'var(--accent-blue)',
                                                                 background: 'rgba(255, 210, 0, 0.15)',
                                                                 padding: '1px 6px',
                                                                 borderRadius: '4px',
@@ -365,7 +365,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                     ...rowStyle,
                                                     marginBottom: idx < otherContacts.length - 1 ? '8px' : 0,
                                                     paddingTop: '8px',
-                                                    borderTop: idx === 0 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                                                    borderTop: idx === 0 ? '1px solid var(--glass-border)' : 'none'
                                                 }}>
                                                     <div style={iconColStyle}><User size={12} /></div>
                                                     <div style={textColStyle}>
@@ -400,7 +400,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     <div style={labelStyle}>所属经销商</div>
                                     <div style={{ fontWeight: 500 }}>{data.account.parent_dealer_name}</div>
                                     {data.account.parent_dealer_code && (
-                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>{data.account.parent_dealer_code}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{data.account.parent_dealer_code}</div>
                                     )}
                                 </div>
                             </div>
@@ -418,12 +418,12 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         }}
                         onClick={() => data.device?.id && navigate(`/service/devices/${data.device.id}`)}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                            e.currentTarget.style.background = 'var(--glass-border)';
                             e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.2)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.background = 'var(--glass-border)';
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
                         }}
                     >
                         <div style={cardTitleStyle}>
@@ -439,7 +439,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 display: 'inline-block',
                                 fontFamily: 'Monaco, monospace',
                                 fontSize: '0.85rem',
-                                color: '#FFD200',
+                                color: 'var(--accent-blue)',
                                 background: 'rgba(255, 210, 0, 0.1)',
                                 padding: '2px 8px',
                                 borderRadius: '4px',
@@ -458,11 +458,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 marginBottom: '12px'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <Ticket size={12} style={{ color: '#60a5fa' }} />
-                                    <span style={{ fontSize: '0.75rem', color: '#60a5fa', fontWeight: 600 }}>关联工单</span>
+                                    <Ticket size={12} style={{ color: 'var(--text-main)' }} />
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 600 }}>关联工单</span>
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>
-                                    总计 <span style={{ color: '#60a5fa', fontWeight: 600 }}>{data.device_ai_profile.ticket_count}</span>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                    总计 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.device_ai_profile.ticket_count}</span>
                                     {data.device_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.device_ai_profile.inquiry_count}</span>}
                                     {data.device_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.device_ai_profile.rma_count}</span>}
                                     {data.device_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.device_ai_profile.repair_count}</span>}
@@ -494,7 +494,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                         {/* 注册附件 - 可折叠 */}
                         {data.parts_catalog && data.parts_catalog.length > 0 && (
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
                                 <div
                                     onClick={() => setPartsExpanded(!partsExpanded)}
                                     style={{
@@ -506,18 +506,18 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Package size={12} style={{ color: 'rgba(255,255,255,0.5)' }} />
-                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                                        <Package size={12} style={{ color: 'var(--text-tertiary)' }} />
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                             注册附件 ({data.parts_catalog.length})
                                         </span>
                                     </div>
-                                    {partsExpanded ? <ChevronUp size={14} style={{ color: 'rgba(255,255,255,0.4)' }} /> : <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.4)' }} />}
+                                    {partsExpanded ? <ChevronUp size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />}
                                 </div>
                                 {partsExpanded && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                         {data.parts_catalog.map((part: any) => (
                                             <div key={part.id} style={{
-                                                background: 'rgba(255,255,255,0.03)',
+                                                background: 'var(--glass-border)',
                                                 borderRadius: '6px',
                                                 padding: '8px 10px',
                                                 display: 'flex',
@@ -525,7 +525,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                 alignItems: 'center'
                                             }}>
                                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{part.part_name}</span>
-                                                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
                                                     {part.part_number}
                                                 </span>
                                             </div>
@@ -539,7 +539,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                 {/* No data state */}
                 {!data?.account && !data?.device && !loading && (
-                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', padding: '40px 20px' }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '40px 20px' }}>
                         <User size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
                         <div style={{ fontSize: '0.85rem' }}>暂无上下文信息</div>
                     </div>

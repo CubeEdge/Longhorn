@@ -206,7 +206,7 @@ const DealerInventoryListPage: React.FC = () => {
             {/* 统计卡片 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
                 <div style={{
-                    background: 'rgba(255,255,255,0.03)',
+                    background: 'var(--glass-border)',
                     borderRadius: 16,
                     padding: 20,
                     border: '1px solid var(--glass-border)'
@@ -215,7 +215,7 @@ const DealerInventoryListPage: React.FC = () => {
                     <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{totalItems}</div>
                 </div>
                 <div style={{
-                    background: lowStockCount > 0 ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255,255,255,0.03)',
+                    background: lowStockCount > 0 ? 'rgba(255, 193, 7, 0.1)' : 'var(--glass-border)',
                     borderRadius: 16,
                     padding: 20,
                     border: lowStockCount > 0 ? '1px solid rgba(255, 193, 7, 0.3)' : '1px solid var(--glass-border)'
@@ -227,7 +227,7 @@ const DealerInventoryListPage: React.FC = () => {
                 </div>
                 <div
                     style={{
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'var(--glass-border)',
                         borderRadius: 16,
                         padding: 20,
                         border: '1px solid var(--glass-border)',
@@ -254,7 +254,7 @@ const DealerInventoryListPage: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--glass-border)',
                     padding: '8px 16px',
                     borderRadius: 30,
                     flex: 1,
@@ -293,7 +293,7 @@ const DealerInventoryListPage: React.FC = () => {
                     alignItems: 'center',
                     gap: 8,
                     padding: '8px 16px',
-                    background: showLowStockOnly ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255,255,255,0.05)',
+                    background: showLowStockOnly ? 'rgba(255, 193, 7, 0.2)' : 'var(--glass-border)',
                     borderRadius: 30,
                     cursor: 'pointer',
                     border: showLowStockOnly ? '1px solid rgba(255, 193, 7, 0.5)' : '1px solid transparent'
@@ -302,7 +302,7 @@ const DealerInventoryListPage: React.FC = () => {
                         type="checkbox"
                         checked={showLowStockOnly}
                         onChange={e => setShowLowStockOnly(e.target.checked)}
-                        style={{ accentColor: '#FFD700' }}
+                        style={{ accentcolor: 'var(--accent-blue)' }}
                     />
                     <span style={{ fontSize: '0.9rem' }}>{t('inventory.show_low_stock_only') || '仅显示低库存'}</span>
                 </label>
@@ -317,7 +317,7 @@ const DealerInventoryListPage: React.FC = () => {
                 <div style={{
                     textAlign: 'center',
                     padding: 60,
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--glass-border)',
                     borderRadius: 16,
                     border: '1px solid var(--glass-border)'
                 }}>
@@ -326,14 +326,14 @@ const DealerInventoryListPage: React.FC = () => {
                 </div>
             ) : (
                 <div style={{
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'var(--glass-border)',
                     borderRadius: 16,
                     border: '1px solid var(--glass-border)',
                     overflow: 'hidden'
                 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                            <tr style={{ background: 'var(--glass-border)' }}>
                                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, opacity: 0.6 }}>
                                     {t('inventory.part') || '配件'}
                                 </th>
@@ -414,7 +414,7 @@ const DealerInventoryListPage: React.FC = () => {
                                             <span style={{
                                                 padding: '4px 12px',
                                                 background: 'rgba(16, 185, 129, 0.15)',
-                                                color: '#10B981',
+                                                color: 'var(--text-success)',
                                                 borderRadius: 20,
                                                 fontSize: '0.8rem',
                                                 fontWeight: 500

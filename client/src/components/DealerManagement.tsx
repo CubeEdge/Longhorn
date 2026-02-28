@@ -356,7 +356,7 @@ const DealerManagement: React.FC = () => {
                         justifyContent: isSearchExpanded ? 'flex-start' : 'center',
                         width: isSearchExpanded ? 280 : 40,
                         height: 40,
-                        background: isSearchExpanded ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        background: isSearchExpanded ? 'var(--glass-border)' : 'transparent',
                         border: isSearchExpanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
                         borderRadius: 8,
                         transition: 'all 0.3s ease',
@@ -413,7 +413,7 @@ const DealerManagement: React.FC = () => {
                         <button
                             onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
+                                background: 'var(--glass-border)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: 8,
                                 padding: '0 16px',
@@ -434,7 +434,7 @@ const DealerManagement: React.FC = () => {
                                 top: '100%',
                                 right: 0,
                                 marginTop: 4,
-                                background: 'rgba(30, 30, 35, 0.98)',
+                                background: 'var(--glass-bg)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: 8,
                                 padding: '4px 0',
@@ -442,7 +442,7 @@ const DealerManagement: React.FC = () => {
                                 zIndex: 100,
                                 boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
                             }}>
-                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
                                     查看列表
                                 </div>
                                 <button
@@ -506,7 +506,7 @@ const DealerManagement: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div style={{ flex: 1, overflow: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ flex: 1, overflow: 'auto', background: 'var(--glass-border)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
@@ -575,9 +575,9 @@ const DealerManagement: React.FC = () => {
                             dealers.map((dealer) => (
                                 <tr
                                     key={dealer.id}
-                                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                                    style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }}
                                     onClick={() => navigate(`/service/dealers/${dealer.id}?type=Dealer`)}
-                                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--glass-border)')}
                                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <td style={{ padding: 16 }}>
@@ -629,7 +629,7 @@ const DealerManagement: React.FC = () => {
                                                     background: 'transparent',
                                                     border: 'none',
                                                     padding: '8px',
-                                                    color: '#FFD700',
+                                                    color: 'var(--accent-blue)',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -651,7 +651,7 @@ const DealerManagement: React.FC = () => {
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',
-                                                        color: '#10B981',
+                                                        color: 'var(--text-success)',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -674,7 +674,7 @@ const DealerManagement: React.FC = () => {
                                                         background: 'transparent',
                                                         border: 'none',
                                                         padding: '8px',
-                                                        color: '#ef4444',
+                                                        color: 'var(--text-danger)',
                                                         cursor: 'pointer',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -703,7 +703,7 @@ const DealerManagement: React.FC = () => {
                     disabled={page === 1}
                     onClick={() => setPage(Math.max(1, page - 1))}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                    style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
                 >
                     {t('common.prev') || 'Prev'}
                 </button>
@@ -713,7 +713,7 @@ const DealerManagement: React.FC = () => {
                 <button
                     onClick={() => setPage(page + 1)}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
+                    style={{ background: 'var(--glass-border)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
                 >
                     {t('common.next') || 'Next'}
                 </button>

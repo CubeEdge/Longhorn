@@ -183,11 +183,11 @@ const RMATicketDetailPage: React.FC = () => {
                     {/* Header Strip */}
                     <div style={{
                         padding: '20px 40px',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '16px',
-                        background: 'rgba(255,255,255,0.02)',
+                        background: 'var(--bg-sidebar)',
                         backdropFilter: 'blur(20px)'
                     }}>
                         <button
@@ -440,7 +440,7 @@ const RMATicketDetailPage: React.FC = () => {
                 </div>
 
                 {/* RIGHT SIDEBAR: Customer Context */}
-                <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid var(--glass-border)', background: 'var(--bg-main)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
                         accountName={ticket.account?.name || ticket.customer?.name}

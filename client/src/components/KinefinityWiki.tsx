@@ -2246,7 +2246,7 @@ ${contextTickets.map((ticket: any) => {
                             }}>
                                 <BookOpen size={20} color="#10B981" />
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#10B981' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-success)' }}>
                                         {showFullChapter ? t('wiki.toc.reading_full') : t('wiki.toc.read_full_title')}
                                     </div>
                                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -2980,7 +2980,7 @@ ${contextTickets.map((ticket: any) => {
                                                             borderRadius: '16px',
                                                             marginBottom: '20px',
                                                             overflow: 'hidden',
-                                                            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.02)'
+                                                            boxShadow: 'inset 0 1px 1px var(--glass-border)'
                                                         }}>
                                                             {/* AI回答内容 - 深度优化排版 */}
                                                             <div style={{ padding: '28px 32px' }}>
@@ -4612,7 +4612,7 @@ ${contextTickets.map((ticket: any) => {
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     margin: '0 auto 20px',
-                                                    color: '#EF4444'
+                                                    color: 'var(--text-danger)'
                                                 }}>
                                                     <Trash2 size={28} />
                                                 </div>
