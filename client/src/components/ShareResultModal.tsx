@@ -45,7 +45,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                     </label>
                     <div style={{
                         padding: '12px',
-                        background: 'rgba(255, 255, 255, 0.05)',
+                        background: 'var(--glass-bg-light)',
                         border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
                         fontSize: '0.9rem',
@@ -83,7 +83,7 @@ const ShareResultModal: React.FC<ShareResultModalProps> = ({ result, onClose }) 
                     </label>
                     <div style={{
                         padding: '12px',
-                        background: 'rgba(255, 255, 255, 0.05)',
+                        background: 'var(--glass-bg-light)',
                         border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
                         fontSize: '0.9rem',

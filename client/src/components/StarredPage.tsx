@@ -236,12 +236,12 @@ export const StarredPage: React.FC = () => {
                         {t('browser.starred_files', { count: starredFiles.length })}
                     </p>
                 </div>
-                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', background: 'var(--glass-bg-light)', padding: '4px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                     <button
                         onClick={() => setViewMode('grid')}
                         style={{
                             padding: '8px',
-                            background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            background: viewMode === 'grid' ? 'var(--glass-bg-hover)' : 'transparent',
                             border: 'none',
                             borderRadius: '8px',
                             color: viewMode === 'grid' ? 'var(--accent-blue)' : 'var(--text-secondary)',
@@ -264,7 +264,7 @@ export const StarredPage: React.FC = () => {
                         onClick={() => setViewMode('list')}
                         style={{
                             padding: '8px',
-                            background: viewMode === 'list' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            background: viewMode === 'list' ? 'var(--glass-bg-hover)' : 'transparent',
                             border: 'none',
                             borderRadius: '8px',
                             color: viewMode === 'list' ? 'var(--accent-blue)' : 'var(--text-secondary)',
@@ -294,7 +294,7 @@ export const StarredPage: React.FC = () => {
                     zIndex: 100,
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--glass-border)',
                     color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
@@ -302,11 +302,11 @@ export const StarredPage: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    boxShadow: '0 8px 32px var(--glass-shadow)',
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
+                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'var(--glass-bg-hover)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span>{t('browser.items_count')}</span>
@@ -315,9 +315,9 @@ export const StarredPage: React.FC = () => {
                         <button
                             onClick={bulkUnstar}
                             style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
+                                background: 'var(--glass-bg-hover)',
                                 color: 'var(--text-main)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                border: '1px solid var(--glass-border)',
                                 padding: '8px 16px',
                                 borderRadius: '10px',
                                 fontWeight: 600,
@@ -330,12 +330,12 @@ export const StarredPage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.background = 'var(--glass-border)';
                                 e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px var(--glass-shadow)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.transform = 'translateY(0)';
                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                             }}
@@ -358,7 +358,7 @@ export const StarredPage: React.FC = () => {
                 <div className="file-list">
                     <div className="file-list-header">
                         <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                            {selectedIds.length > 0 && selectedIds.length === starredFiles.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                            {selectedIds.length > 0 && selectedIds.length === starredFiles.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 4 }} />}
                         </div>
                         <div className="col-name">{t('browser.col_name')}</div>
                         <div className="col-size">{t('browser.col_size')}</div>
@@ -374,7 +374,7 @@ export const StarredPage: React.FC = () => {
                                 onClick={() => handleItemClick(file)}
                             >
                                 <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.id)}>
-                                    {selectedIds.includes(file.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                                    {selectedIds.includes(file.id) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 4 }} />}
                                 </div>
                                 <div className="col-name">
                                     <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
@@ -413,8 +413,8 @@ export const StarredPage: React.FC = () => {
                             onClick={() => handleItemClick(file)}
                             style={{
                                 position: 'relative',
-                                background: selectedIds.includes(file.id) ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.03)',
-                                border: selectedIds.includes(file.id) ? '1px solid var(--accent-blue)' : '1px solid rgba(255,255,255,0.05)',
+                                background: selectedIds.includes(file.id) ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-light)',
+                                border: selectedIds.includes(file.id) ? '1px solid var(--accent-blue)' : '1px solid var(--glass-bg-light)',
                                 borderRadius: '12px',
                                 padding: '16px',
                                 display: 'flex',
@@ -427,13 +427,13 @@ export const StarredPage: React.FC = () => {
                             }}
                             onMouseEnter={(e) => {
                                 if (!selectedIds.includes(file.id)) {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     e.currentTarget.style.transform = 'translateY(-4px)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!selectedIds.includes(file.id)) {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }
                             }}

@@ -206,15 +206,15 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                 maxHeight: '800px',
                 background: 'var(--bg-sidebar)',
                 borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                border: '1px solid var(--glass-border)',
+                boxShadow: '0 24px 80px var(--glass-shadow-lg)',
                 display: 'flex', flexDirection: 'column',
                 overflow: 'hidden'
             }}>
                 {/* Header */}
                 <div style={{
                     padding: '24px 32px',
-                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -235,15 +235,15 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: 'rgba(255,255,255,0.08)',
+                            background: 'var(--glass-bg-hover)',
                             border: 'none',
                             borderRadius: '50%',
                             cursor: 'pointer',
                             color: 'var(--text-main)',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                     >
                         <X size={22} />
                     </button>
@@ -255,12 +255,12 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                 <div style={{
                     padding: '12px 24px',
                     display: 'flex', alignItems: 'center', gap: '12px',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)'
+                    borderBottom: '1px solid var(--glass-border)'
                 }}>
                     <div style={{
                         flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        background: 'var(--glass-bg-light)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '10px', padding: '8px 14px'
                     }}>
                         <Search size={16} color="#666" />
@@ -337,7 +337,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                             onKeyDown={e => { if (e.key === 'Enter') createGroup(); }}
                                             style={{
                                                 flex: 1, background: 'var(--glass-bg)',
-                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px', padding: '8px 12px',
                                                 color: 'var(--text-secondary)', fontSize: '14px', outline: 'none'
                                             }}
@@ -352,7 +352,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                         </button>
                                         <button onClick={() => { setShowNewGroup(false); setNewGroupCategory(''); setNewGroupWords(''); }} style={{
                                             padding: '8px', borderRadius: '8px',
-                                            background: 'rgba(255,255,255,0.05)', border: 'none',
+                                            background: 'var(--glass-bg-light)', border: 'none',
                                             color: 'var(--text-secondary)', cursor: 'pointer'
                                         }}>
                                             <X size={16} />
@@ -372,13 +372,13 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                     return (
                                         <div key={group.id} style={{
                                             background: 'rgba(255,255,255,0.02)',
-                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '10px', padding: '12px 16px',
                                             transition: 'all 0.15s',
                                             borderColor: isEditing ? `${catColor}40` : undefined
                                         }}
                                             onMouseEnter={e => { if (!isEditing) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
-                                            onMouseLeave={e => { if (!isEditing) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                            onMouseLeave={e => { if (!isEditing) e.currentTarget.style.borderColor = 'var(--glass-bg-light)'; }}
                                         >
                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                                                 {/* Category badge + words */}
@@ -398,14 +398,14 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                     {group.words.map(word => (
                                                         <span key={word} style={{
                                                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                            background: 'rgba(255,255,255,0.04)',
-                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                            background: 'var(--glass-bg-light)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '6px', padding: '3px 8px',
                                                             fontSize: '13px', color: 'var(--text-secondary)',
                                                             transition: 'all 0.15s'
                                                         }}
                                                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-bg-hover)'; }}
                                                         >
                                                             {word}
                                                             {isEditing && (
@@ -424,7 +424,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                             onKeyDown={e => { if (e.key === 'Enter') addWord(group.id); if (e.key === 'Escape') { setEditingGroupId(null); setNewWordInput(''); } }}
                                                             placeholder={t('synonym.add_word')}
                                                             style={{
-                                                                background: 'rgba(255,255,255,0.04)',
+                                                                background: 'var(--glass-bg-light)',
                                                                 border: '1px dashed rgba(255,215,0,0.3)',
                                                                 borderRadius: '6px', padding: '3px 8px',
                                                                 fontSize: '13px', color: '#FFD700',
@@ -445,7 +445,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                                 transition: 'all 0.15s'
                                                             }}
                                                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'; e.currentTarget.style.color = '#FFD700'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#666'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-bg-hover)'; e.currentTarget.style.color = '#666'; }}
                                                         >
                                                             <Plus size={12} />
                                                         </button>

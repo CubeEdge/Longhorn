@@ -524,7 +524,7 @@ const CustomerDetailPage: React.FC = () => {
                                         backdropFilter: 'blur(20px)',
                                         borderRadius: 12,
                                         border: '1px solid var(--glass-border)',
-                                        boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+                                        boxShadow: '0 10px 40px var(--glass-shadow)',
                                         zIndex: 20,
                                         minWidth: 160,
                                         padding: '8px 0'
@@ -792,7 +792,7 @@ const CustomerDetailPage: React.FC = () => {
                                                     borderRadius: 4,
                                                     fontSize: '0.7rem',
                                                     background: 'rgba(156, 163, 175, 0.15)',
-                                                    color: '#9ca3af',
+                                                    color: 'var(--text-secondary)',
                                                     fontWeight: 600
                                                 }}>
                                                     已离职
@@ -1148,7 +1148,7 @@ const CustomerDetailPage: React.FC = () => {
                                 onClick={() => setExpandedSection('family_all')}
                                 style={{
                                     background: 'none',
-                                    border: '1px dashed rgba(255,255,255,0.2)',
+                                    border: '1px dashed var(--glass-border)',
                                     borderRadius: '8px',
                                     color: 'var(--accent-blue)',
                                     cursor: 'pointer',

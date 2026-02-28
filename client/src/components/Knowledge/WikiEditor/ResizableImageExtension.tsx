@@ -103,10 +103,10 @@ const ImageView: React.FC<any> = ({ node, updateAttributes, selected, getPos, ed
     // 对齐按钮样式
     const alignButtonStyle = (active: boolean) => ({
         padding: '4px 6px',
-        background: active ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)',
-        border: active ? '1px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+        background: active ? 'rgba(255,255,255,0.25)' : 'var(--glass-bg-hover)',
+        border: active ? '1px solid #fff' : '1px solid var(--glass-border)',
         borderRadius: '4px',
-        color: active ? '#fff' : 'rgba(255,255,255,0.7)',
+        color: active  ? 'var(--text-main)' : 'rgba(255,255,255,0.7)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -171,7 +171,7 @@ const ImageView: React.FC<any> = ({ node, updateAttributes, selected, getPos, ed
                                 transform: 'translateX(-50%)',
                                 display: 'flex',
                                 gap: '4px',
-                                background: 'rgba(0,0,0,0.9)',
+                                background: 'var(--glass-shadow-lg)',
                                 padding: '4px 8px',
                                 borderRadius: '6px',
                                 zIndex: 10,
@@ -198,7 +198,7 @@ const ImageView: React.FC<any> = ({ node, updateAttributes, selected, getPos, ed
                                 }}
                                 style={{
                                     padding: '4px 8px',
-                                    background: 'rgba(255,255,255,0.15)',
+                                    background: 'var(--glass-bg-hover)',
                                     border: '1px solid rgba(255,255,255,0.3)',
                                     borderRadius: '4px',
                                     color: 'var(--text-main)',
@@ -216,7 +216,7 @@ const ImageView: React.FC<any> = ({ node, updateAttributes, selected, getPos, ed
                             </select>
                             
                             {/* 分隔线 */}
-                            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.2)', margin: '0 4px' }} />
+                            <div style={{ width: '1px', height: '20px', background: 'var(--glass-border)', margin: '0 4px' }} />
                             
                             {/* 对齐按钮组 */}
                             <button

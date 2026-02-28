@@ -27,7 +27,7 @@ interface RestockOrder {
 }
 
 const statusConfig: Record<string, { color: string; bg: string; icon: any }> = {
-    'Draft': { color: '#9ca3af', bg: 'rgba(156, 163, 175, 0.15)', icon: Clock },
+    'Draft': { color: 'var(--text-secondary)', bg: 'rgba(156, 163, 175, 0.15)', icon: Clock },
     'Submitted': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Clock },
     'Approved': { color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', icon: CheckCircle },
     'Shipped': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', icon: Truck },
@@ -132,7 +132,7 @@ const RestockOrderListPage: React.FC = () => {
                         padding: '8px 16px',
                         borderRadius: 20,
                         border: 'none',
-                        background: !statusFilter ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.05)',
+                        background: !statusFilter ? 'rgba(255, 215, 0, 0.2)' : 'var(--glass-bg-light)',
                         color: !statusFilter ? '#FFD700' : 'var(--text-secondary)',
                         cursor: 'pointer',
                         fontSize: '0.85rem'
@@ -149,8 +149,8 @@ const RestockOrderListPage: React.FC = () => {
                             borderRadius: 20,
                             border: 'none',
                             background: statusFilter === status 
-                                ? statusConfig[status]?.bg || 'rgba(255,255,255,0.1)'
-                                : 'rgba(255,255,255,0.05)',
+                                ? statusConfig[status]?.bg || 'var(--glass-bg-hover)'
+                                : 'var(--glass-bg-light)',
                             color: statusFilter === status 
                                 ? statusConfig[status]?.color || 'white'
                                 : 'var(--text-secondary)',
@@ -209,7 +209,7 @@ const RestockOrderListPage: React.FC = () => {
                                     cursor: 'pointer',
                                     transition: 'background 0.2s'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
                                 {/* 订单号 */}

@@ -87,7 +87,7 @@ export const MemberSpacePage: React.FC = () => {
                         border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
                         fontSize: '0.95rem',
-                        background: 'rgba(255, 255, 255, 0.05)',
+                        background: 'var(--glass-bg-light)',
                         color: 'var(--text-main)'
                     }}
                 />
@@ -136,12 +136,12 @@ export const MemberSpacePage: React.FC = () => {
                             display: 'grid',
                             gridTemplateColumns: 'minmax(200px, 2fr) minmax(150px, 1.5fr) minmax(120px, 1fr) minmax(100px, 1fr) 120px',
                             padding: '16px 24px',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                            borderBottom: '1px solid var(--glass-border)',
                             alignItems: 'center',
                             transition: 'background 0.2s',
                             fontSize: '0.95rem'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                         {/* User Info */}

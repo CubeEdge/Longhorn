@@ -156,8 +156,8 @@ export const SearchPage: React.FC = () => {
                                 style={{
                                     padding: '8px 16px',
                                     background: typeFilter === type ? 'rgba(255, 210, 0, 0.15)' : 'rgba(0,0,0,0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    borderLeft: typeFilter === type ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderLeft: typeFilter === type ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                     color: 'var(--text-main)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',

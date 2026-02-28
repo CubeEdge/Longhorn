@@ -476,13 +476,13 @@ const CustomerManagement: React.FC = () => {
                                 top: '100%',
                                 right: 0,
                                 marginTop: 4,
-                                background: 'rgba(30, 30, 35, 0.98)',
+                                background: 'var(--bg-sidebar)',
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 padding: '4px 0',
                                 minWidth: 140,
                                 zIndex: 100,
-                                boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                                boxShadow: '0 8px 32px var(--glass-shadow)'
                             }}>
                                 <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
                                     查看列表

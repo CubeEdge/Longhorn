@@ -164,7 +164,7 @@ const DealerInventoryListPage: React.FC = () => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                         {lowStockAlerts.slice(0, 5).map((alert, idx) => (
                             <div key={idx} style={{
-                                background: 'rgba(0, 0, 0, 0.3)',
+                                background: 'var(--glass-shadow)',
                                 borderRadius: 12,
                                 padding: '12px 16px',
                                 display: 'flex',

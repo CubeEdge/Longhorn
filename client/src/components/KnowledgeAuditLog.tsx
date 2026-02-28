@@ -228,7 +228,7 @@ export default function KnowledgeAuditLog() {
                 }}>
                     <div style={{
                         background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
@@ -239,7 +239,7 @@ export default function KnowledgeAuditLog() {
                     </div>
                     <div style={{
                         background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
@@ -250,7 +250,7 @@ export default function KnowledgeAuditLog() {
                     </div>
                     <div style={{
                         background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
@@ -266,7 +266,7 @@ export default function KnowledgeAuditLog() {
             <div style={{
                 background: 'rgba(255,255,255,0.02)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '12px',
                 padding: '24px',
                 marginBottom: '24px'
@@ -297,8 +297,8 @@ export default function KnowledgeAuditLog() {
                                 width: '100%',
                                 height: '36px',
                                 padding: '0 12px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 color: 'var(--text-main)',
                                 fontSize: '13px',
@@ -307,7 +307,7 @@ export default function KnowledgeAuditLog() {
                                 boxSizing: 'border-box'
                             }}
                             onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'}
-                            onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--glass-bg-hover)'}
                         />
                     </div>
 
@@ -329,8 +329,8 @@ export default function KnowledgeAuditLog() {
                                 width: '100%',
                                 height: '36px',
                                 padding: '0 12px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 color: 'var(--text-main)',
                                 fontSize: '13px',
@@ -367,8 +367,8 @@ export default function KnowledgeAuditLog() {
                                 width: '100%',
                                 height: '36px',
                                 padding: '0 12px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 color: 'var(--text-main)',
                                 fontSize: '13px',
@@ -400,8 +400,8 @@ export default function KnowledgeAuditLog() {
                                 width: '100%',
                                 height: '36px',
                                 padding: '0 16px',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
@@ -412,11 +412,11 @@ export default function KnowledgeAuditLog() {
                                 boxSizing: 'border-box'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.color = '#fff';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                 e.currentTarget.style.color = '#999';
                             }}
                         >
@@ -429,7 +429,7 @@ export default function KnowledgeAuditLog() {
             {/* Logs Table */}
             <div style={{
                 background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '12px',
                 overflow: 'hidden'
             }}>
@@ -452,7 +452,7 @@ export default function KnowledgeAuditLog() {
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>时间</th>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>操作</th>
                                         <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>文章</th>
@@ -465,7 +465,7 @@ export default function KnowledgeAuditLog() {
                                 <tbody>
                                     {logs.map(log => (
                                         <tr key={log.id} style={{
-                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                            borderBottom: '1px solid var(--glass-border)',
                                             transition: 'background 0.2s'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
@@ -532,7 +532,7 @@ export default function KnowledgeAuditLog() {
                         {/* Pagination */}
                         <div style={{
                             padding: '20px',
-                            borderTop: '1px solid rgba(255,255,255,0.06)',
+                            borderTop: '1px solid var(--glass-border)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
@@ -546,10 +546,10 @@ export default function KnowledgeAuditLog() {
                                     onClick={() => setPage(page - 1)}
                                     style={{
                                         padding: '8px 16px',
-                                        background: page === 1 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        background: page === 1 ? 'rgba(255,255,255,0.02)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
-                                        color: page === 1 ? '#666' : '#fff',
+                                        color: page === 1  ? 'var(--text-secondary)' : 'var(--text-main)',
                                         cursor: page === 1 ? 'not-allowed' : 'pointer',
                                         fontSize: '13px'
                                     }}
@@ -571,10 +571,10 @@ export default function KnowledgeAuditLog() {
                                     onClick={() => setPage(page + 1)}
                                     style={{
                                         padding: '8px 16px',
-                                        background: page >= Math.ceil(total / pageSize) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        background: page >= Math.ceil(total / pageSize) ? 'rgba(255,255,255,0.02)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
-                                        color: page >= Math.ceil(total / pageSize) ? '#666' : '#fff',
+                                        color: page >= Math.ceil(total / pageSize)  ? 'var(--text-secondary)' : 'var(--text-main)',
                                         cursor: page >= Math.ceil(total / pageSize) ? 'not-allowed' : 'pointer',
                                         fontSize: '13px'
                                     }}

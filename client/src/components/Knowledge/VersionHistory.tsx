@@ -171,7 +171,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'rgba(0,0,0,0.3)',
+                    background: 'var(--glass-shadow)',
                     zIndex: 10000
                 }}
             />
@@ -186,7 +186,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                     width: '500px',
                     height: '100vh',
                     background: 'rgba(28, 28, 30, 0.98)',
-                    borderLeft: '1px solid rgba(255,255,255,0.1)',
+                    borderLeft: '1px solid var(--glass-border)',
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: 10001
@@ -195,7 +195,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                 {/* Header */}
                 <div style={{
                     padding: '20px',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px'
@@ -205,7 +205,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                         style={{
                             background: 'transparent',
                             border: 'none',
-                            color: 'rgba(255,255,255,0.5)',
+                            color: 'var(--text-secondary)',
                             cursor: 'pointer',
                             padding: '4px'
                         }}
@@ -234,15 +234,15 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                     style={{
                                         background: selectedVersion?.id === v.id
                                             ? 'rgba(255,215,0,0.1)'
-                                            : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${selectedVersion?.id === v.id ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                            : 'var(--glass-bg-light)',
+                                        border: `1px solid ${selectedVersion?.id === v.id ? 'rgba(255,215,0,0.3)' : 'var(--glass-bg-hover)'}`,
                                         borderRadius: '12px',
                                         padding: '16px'
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                                         <span style={{
-                                            background: idx === 0 ? 'linear-gradient(135deg, #FFD700, #D4A017)' : 'rgba(255,255,255,0.1)',
+                                            background: idx === 0 ? 'linear-gradient(135deg, #FFD700, #D4A017)' : 'var(--glass-bg-hover)',
                                             color: idx === 0 ? '#000' : 'rgba(255,255,255,0.7)',
                                             padding: '4px 10px',
                                             borderRadius: '12px',
@@ -256,10 +256,10 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                             <button
                                                 onClick={() => fetchVersionContent(v)}
                                                 style={{
-                                                    background: 'rgba(255,255,255,0.05)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: 'var(--glass-bg-light)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '6px',
-                                                    color: 'rgba(255,255,255,0.7)',
+                                                    color: 'var(--text-secondary)',
                                                     padding: '6px 10px',
                                                     fontSize: '12px',
                                                     cursor: 'pointer',
@@ -301,10 +301,10 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                                         onClick={() => handleDelete(v)}
                                                         disabled={deleting === v.version}
                                                         style={{
-                                                            background: 'rgba(255,255,255,0.05)',
-                                                            border: '1px solid rgba(255,255,255,0.15)',
+                                                            background: 'var(--glass-bg-light)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '6px',
-                                                            color: 'rgba(255,255,255,0.5)',
+                                                            color: 'var(--text-secondary)',
                                                             padding: '6px 10px',
                                                             fontSize: '12px',
                                                             cursor: deleting === v.version ? 'not-allowed' : 'pointer',
@@ -326,13 +326,13 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                         </div>
                                     </div>
 
-                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', marginBottom: '6px' }}>
+                                    <div style={{ fontSize: '13px', color: 'var(--text-main)', marginBottom: '6px' }}>
                                         <FileText size={12} style={{ marginRight: '6px', display: 'inline', opacity: 0.5 }} />
                                         {v.title}
                                     </div>
 
                                     {v.change_summary && (
-                                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '6px' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                                             {v.change_summary}
                                         </div>
                                     )}
@@ -363,7 +363,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                             animate={{ height: '40vh', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             style={{
-                                borderTop: '1px solid rgba(255,255,255,0.1)',
+                                borderTop: '1px solid var(--glass-border)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 overflow: 'hidden'
@@ -371,7 +371,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                         >
                             <div style={{
                                 padding: '12px 16px',
-                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                borderBottom: '1px solid var(--glass-border)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between'
@@ -384,7 +384,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                     style={{
                                         background: 'transparent',
                                         border: 'none',
-                                        color: 'rgba(255,255,255,0.5)',
+                                        color: 'var(--text-secondary)',
                                         cursor: 'pointer',
                                         fontSize: '12px'
                                     }}
@@ -406,7 +406,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                     <pre style={{
                                         margin: 0,
                                         fontSize: '12px',
-                                        color: 'rgba(255,255,255,0.8)',
+                                        color: 'var(--text-main)',
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-word',
                                         fontFamily: 'monospace'
@@ -438,7 +438,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                                 padding: '14px 24px',
                                 borderRadius: '8px',
                                 background: toast.type === 'success' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
-                                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                                boxShadow: '0 4px 20px var(--glass-shadow)',
                                 zIndex: 10100
                             }}
                         >

@@ -72,7 +72,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                                 borderRadius: 20,
                                 padding: 20,
                                 zIndex: 3001,
-                                boxShadow: '0 -10px 40px rgba(0,0,0,0.8)'
+                                boxShadow: '0 -10px 40px var(--glass-shadow-lg)'
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -748,7 +748,7 @@ const UserManagement: React.FC = () => {
                                             border: '1px solid rgba(var(--accent-rgb), 0.2)',
                                             borderRadius: '8px',
                                             fontSize: '0.8rem',
-                                            color: 'rgba(255, 255, 255, 0.8)',
+                                            color: 'var(--text-main)',
                                             lineHeight: 1.5
                                         }}>
                                             <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--accent-blue)' }}>{t('user.permission_hint')}</div>

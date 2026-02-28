@@ -72,7 +72,7 @@ const Toolbar: React.FC<{
             disabled={disabled}
             onMouseEnter={(e) => {
                 if (!disabled) {
-                    e.currentTarget.style.background = active ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.background = active ? 'rgba(255, 215, 0, 0.3)' : 'var(--glass-bg-hover)';
                 }
             }}
             onMouseLeave={(e) => {
@@ -89,7 +89,7 @@ const Toolbar: React.FC<{
             alignItems: 'center',
             gap: '4px',
             padding: '12px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            borderBottom: '1px solid var(--glass-border)',
             background: 'rgba(0,0,0,0.2)',
             flexWrap: 'wrap'
         }}>
@@ -101,7 +101,7 @@ const Toolbar: React.FC<{
                 <Redo size={16} />
             </ToolButton>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <div style={{ width: '1px', height: '20px', background: 'var(--glass-bg-hover)', margin: '0 8px' }} />
 
             {/* 标题 */}
             <ToolButton
@@ -126,7 +126,7 @@ const Toolbar: React.FC<{
                 <Heading3 size={16} />
             </ToolButton>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <div style={{ width: '1px', height: '20px', background: 'var(--glass-bg-hover)', margin: '0 8px' }} />
 
             {/* 格式 */}
             <ToolButton
@@ -165,7 +165,7 @@ const Toolbar: React.FC<{
                 <Code size={16} />
             </ToolButton>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <div style={{ width: '1px', height: '20px', background: 'var(--glass-bg-hover)', margin: '0 8px' }} />
 
             {/* 列表 */}
             <ToolButton
@@ -190,7 +190,7 @@ const Toolbar: React.FC<{
                 <Quote size={16} />
             </ToolButton>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <div style={{ width: '1px', height: '20px', background: 'var(--glass-bg-hover)', margin: '0 8px' }} />
 
             {/* 对齐 */}
             <ToolButton
@@ -215,7 +215,7 @@ const Toolbar: React.FC<{
                 <AlignRight size={16} />
             </ToolButton>
 
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 8px' }} />
+            <div style={{ width: '1px', height: '20px', background: 'var(--glass-bg-hover)', margin: '0 8px' }} />
 
             {/* 插入 */}
             <ToolButton
@@ -606,7 +606,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     color: var(--text-main);
                     margin: 24px 0 16px;
                     padding-bottom: 12px;
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    border-bottom: 1px solid var(--glass-bg-hover);
                 }
                 .tiptap-editor-content h2 {
                     font-size: 22px;
@@ -663,7 +663,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     font-family: 'SF Mono', Monaco, monospace;
                 }
                 .tiptap-editor-content pre {
-                    background: rgba(0,0,0,0.4);
+                    background: var(--glass-shadow);
                     padding: 16px;
                     border-radius: 8px;
                     overflow-x: auto;
@@ -687,11 +687,11 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     height: auto;
                     border-radius: 12px;
                     margin: 16px 0;
-                    border: 1px solid rgba(255,255,255,0.1);
+                    border: 1px solid var(--glass-bg-hover);
                 }
                 .tiptap-editor-content hr {
                     border: none;
-                    border-top: 1px solid rgba(255,255,255,0.1);
+                    border-top: 1px solid var(--glass-bg-hover);
                     margin: 24px 0;
                 }
                 .tiptap-editor-content mark {
@@ -732,20 +732,20 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     border-collapse: collapse;
                     margin-bottom: 20px;
                     border-radius: 10px;
-                    border: 1px solid rgba(255,255,255,0.08);
+                    border: 1px solid var(--glass-bg-hover);
                     overflow: hidden;
                 }
                 .tiptap-editor-content th {
                     padding: 12px;
-                    background: rgba(255,255,255,0.03);
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    background: var(--glass-bg-light);
+                    border-bottom: 1px solid var(--glass-bg-hover);
                     text-align: left;
                     font-weight: 600;
                     font-size: 13px;
                 }
                 .tiptap-editor-content td {
                     padding: 12px;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    border-bottom: 1px solid var(--glass-bg-light);
                     font-size: 13px;
                 }
             `}</style>

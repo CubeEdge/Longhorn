@@ -137,7 +137,7 @@ export const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, sta
             </div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {productModel && (
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'var(--glass-bg-light)', padding: '2px 6px', borderRadius: '4px' }}>
                         {productModel}
                     </span>
                 )}

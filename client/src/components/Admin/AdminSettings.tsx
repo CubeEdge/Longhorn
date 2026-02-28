@@ -736,7 +736,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                             transition: 'all 0.2s'
                                                         }}
                                                         onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-secondary)' }}
-                                                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--glass-border)' }}
                                                         title="清空后将自动使用后台内置规则"
                                                     >
                                                         恢复系统默认
@@ -793,7 +793,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
                                                 }}
                                                 onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-secondary)' }}
-                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--glass-border)' }}
                                             >
                                                 恢复系统默认
                                             </button>
@@ -1249,7 +1249,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 <div className="setting-label">Bokeh 感知范围</div>
                                             </div>
                                             <div style={{ display: 'flex', gap: 20 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={settings.ai_data_sources?.includes('tickets') ?? true}
@@ -1261,7 +1261,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     />
                                                     工单历史
                                                 </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={settings.ai_data_sources?.includes('knowledge') ?? true}
@@ -1337,7 +1337,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 onClick={() => closeConfirm(false)}
                                 style={{
                                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                                    background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(12px)',
+                                    background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(12px)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001,
                                     animation: 'fadeIn 0.2s ease'
                                 }}
@@ -1345,14 +1345,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 <div
                                     onClick={e => e.stopPropagation()}
                                     style={{
-                                        background: 'rgba(30, 30, 30, 0.95)',
+                                        background: 'var(--bg-sidebar)',
                                         border: confirmDialog.isDanger ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(var(--accent-rgb), 0.2)',
                                         width: '90%', maxWidth: '420px',
                                         borderRadius: '20px',
                                         padding: '0',
                                         boxShadow: confirmDialog.isDanger
-                                            ? '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)'
-                                            : '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(var(--accent-rgb), 0.1)',
+                                            ? '0 25px 80px var(--glass-shadow), 0 0 0 1px rgba(239, 68, 68, 0.1)'
+                                            : '0 25px 80px var(--glass-shadow), 0 0 0 1px rgba(var(--accent-rgb), 0.1)',
                                         animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                                         overflow: 'hidden'
                                     }}
@@ -1468,7 +1468,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
                                 style={{
                                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                                    background: 'rgba(0, 0, 0, 0.8)', backdropFilter: 'blur(20px)',
+                                    background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(20px)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000,
                                     animation: 'fadeIn 0.2s ease'
                                 }}
@@ -1481,7 +1481,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         width: '90%', maxWidth: '600px', maxHeight: '80vh',
                                         borderRadius: '24px',
                                         padding: '0',
-                                        boxShadow: '0 32px 96px rgba(0, 0, 0, 0.6)',
+                                        boxShadow: '0 32px 96px var(--glass-shadow-lg)',
                                         animation: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                                         overflow: 'hidden',
                                         display: 'flex', flexDirection: 'column'
@@ -1497,7 +1497,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <div style={{
                                                 background: restoreModal.type === 'primary'
                                                     ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.1))'
-                                                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                                                    : 'linear-gradient(135deg, var(--glass-bg-hover), var(--glass-bg-light))',
                                                 padding: '12px', borderRadius: '14px',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
@@ -1663,7 +1663,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     border: 1px solid transparent;
                 }
                 .provider-item:hover {
-                    background: rgba(255,255,255,0.05);
+                    background: var(--glass-bg-light);
                 }
                 .provider-item.active {
                     background: rgba(var(--accent-rgb),0.1);
@@ -1672,8 +1672,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 .add-provider-btn {
                     margin-top: 12px;
                     padding: 10px;
-                    background: rgba(255,255,255,0.05);
-                    border: 1px dashed rgba(255,255,255,0.2);
+                    background: var(--glass-bg-light);
+                    border: 1px dashed var(--glass-border);
                     color: var(--text-main);
                     border-radius: 8px;
                     font-size: 0.85rem;
@@ -1683,7 +1683,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     gap: 8px;
                     cursor: pointer;
                 }
-                .add-provider-btn:hover { background: rgba(255,255,255,0.1); }
+                .add-provider-btn:hover { background: var(--glass-bg-hover); }
                 
                 .edit-name-input {
                     background: transparent;
@@ -1697,8 +1697,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     outline: none;
                 }
                 .edit-name-input:focus {
-                    background: rgba(255,255,255,0.05);
-                    border-color: rgba(255,255,255,0.2);
+                    background: var(--glass-bg-light);
+                    border-color: var(--glass-border);
                 }
 
                 .active-toggle-btn {
@@ -1708,7 +1708,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     font-weight: 500;
                     cursor: pointer;
                     transition: all 0.2s;
-                    background: rgba(255,255,255,0.05);
+                    background: var(--glass-bg-light);
                     border: 1px solid var(--glass-border);
                     color: rgba(255,255,255,0.6);
                 }
@@ -1735,7 +1735,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 .setting-field label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
                 .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
                 .text-input:focus { border-color: #FFD700; }
-                .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
+                .divider { height: 1px; background: var(--glass-bg-hover); margin: 16px 0; }
             `}</style>
         </div >
     );
@@ -1743,7 +1743,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
 const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void, activeColor?: string }> = ({ checked, onChange, activeColor = 'var(--accent-blue)' }) => (
     <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? activeColor : 'var(--glass-bg-hover)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-        <div style={{ width: 20, height: 20, background: checked ? 'black' : 'var(--text-main)', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
+        <div style={{ width: 20, height: 20, background: checked ? 'black' : 'var(--text-main)', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px var(--glass-shadow)' }} />
     </div>
 );
 
@@ -1805,7 +1805,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                     width: 720, maxHeight: '85vh',
                     background: 'rgba(28,28,30,0.98)', border: '1px solid var(--glass-border)',
                     borderRadius: 20, padding: 28,
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                    boxShadow: '0 24px 64px var(--glass-shadow)',
                     display: 'flex', flexDirection: 'column'
                 }}
             >
@@ -1904,7 +1904,7 @@ const BackupResultModal: React.FC<{ result: { success: boolean, message: string,
             onClick={onClose}
             style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(20px)',
+                background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(20px)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
                 animation: 'fadeIn 0.2s ease-out'
             }}
@@ -1913,7 +1913,7 @@ const BackupResultModal: React.FC<{ result: { success: boolean, message: string,
                 onClick={e => e.stopPropagation()}
                 style={{
                     width: 480, background: 'rgba(28,28,30,0.95)', border: '1px solid var(--glass-border)',
-                    borderRadius: 24, padding: 32, boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+                    borderRadius: 24, padding: 32, boxShadow: '0 24px 64px var(--glass-shadow)',
                     textAlign: 'center'
                 }}
             >

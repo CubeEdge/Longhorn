@@ -58,7 +58,7 @@ const TicketCreationModal: React.FC = () => {
     const getFileIcon = (file: File) => {
         if (file.type.startsWith('image/')) return <ImageIcon size={16} style={{ color: '#60a5fa' }} />;
         if (file.type.startsWith('video/')) return <Video size={16} style={{ color: '#a78bfa' }} />;
-        return <FileText size={16} style={{ color: '#9ca3af' }} />;
+        return <FileText size={16} style={{ color: 'var(--text-secondary)' }} />;
     };
 
     // AI Parsing Logic
@@ -175,7 +175,7 @@ const TicketCreationModal: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '24px 32px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)'
+            borderBottom: '1px solid var(--glass-border)'
         };
         switch (ticketType) {
             case 'Inquiry': return { ...base, background: 'rgba(59, 130, 246, 0.05)', borderLeft: '3px solid rgba(59, 130, 246, 0.5)' };
@@ -189,8 +189,8 @@ const TicketCreationModal: React.FC = () => {
     const inputStyle: React.CSSProperties = {
         width: '100%',
         height: '44px',
-        background: 'rgba(0,0,0,0.3)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'var(--glass-shadow)',
+        border: '1px solid var(--glass-border)',
         borderRadius: '10px',
         padding: '0 16px',
         color: 'var(--text-main)',
@@ -201,7 +201,7 @@ const TicketCreationModal: React.FC = () => {
     const labelStyle: React.CSSProperties = {
         fontSize: '13px',
         fontWeight: 500,
-        color: 'rgba(255,255,255,0.7)',
+        color: 'var(--text-secondary)',
         marginBottom: '6px',
         display: 'block'
     };
@@ -228,15 +228,15 @@ const TicketCreationModal: React.FC = () => {
             padding: '24px'
         }}>
             <div style={{
-                background: '#1c1c1e',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--bg-sidebar)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '16px',
                 width: '100%',
                 maxWidth: '800px',
                 maxHeight: '85vh',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                boxShadow: '0 25px 50px -12px var(--glass-shadow)',
                 overflow: 'hidden',
                 animation: 'modalIn 0.2s ease-out'
             }}>
@@ -246,8 +246,8 @@ const TicketCreationModal: React.FC = () => {
                         <div style={{
                             padding: '12px',
                             borderRadius: '12px',
-                            background: 'rgba(0,0,0,0.3)',
-                            border: '1px solid rgba(255,255,255,0.1)'
+                            background: 'var(--glass-shadow)',
+                            border: '1px solid var(--glass-border)'
                         }}>
                             {renderTypeIcon()}
                         </div>
@@ -257,7 +257,7 @@ const TicketCreationModal: React.FC = () => {
                                     ticketType === 'RMA' ? t('ticket.create.rma') :
                                         t('ticket.create.dealerrepair')}
                             </h2>
-                            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', margin: '4px 0 0 0' }}>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
                                 Kinefinity Service Operation
                             </p>
                         </div>
@@ -270,7 +270,7 @@ const TicketCreationModal: React.FC = () => {
                             border: 'none',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            color: 'rgba(255,255,255,0.6)'
+                            color: 'var(--text-secondary)'
                         }}
                     >
                         <X size={20} />
@@ -298,7 +298,7 @@ const TicketCreationModal: React.FC = () => {
                                     style={{
                                         ...inputStyle,
                                         height: '60px',
-                                        background: 'rgba(0,0,0,0.3)',
+                                        background: 'var(--glass-shadow)',
                                         border: '1px solid rgba(255, 215, 0, 0.1)',
                                         padding: '10px 14px',
                                         resize: 'none',
@@ -377,7 +377,7 @@ const TicketCreationModal: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '28px' }} />
+                                <div style={{ height: '1px', background: 'var(--glass-bg-light)', marginBottom: '28px' }} />
 
                                 {/* 产品信息 */}
                                 <div>
@@ -435,7 +435,7 @@ const TicketCreationModal: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', marginBottom: '28px' }} />
+                                <div style={{ height: '1px', background: 'var(--glass-bg-light)', marginBottom: '28px' }} />
 
                                 {/* 附件 */}
                                 <div>
@@ -447,14 +447,14 @@ const TicketCreationModal: React.FC = () => {
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         height: '100px',
-                                        border: '2px dashed rgba(255,255,255,0.1)',
+                                        border: '2px dashed var(--glass-bg-hover)',
                                         borderRadius: '12px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s'
                                     }}>
                                         <Upload size={22} style={{ color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }} />
                                         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>点击或拖拽文件到此处</span>
-                                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>图片、视频、PDF (最大 50MB)</span>
+                                        <span style={{ fontSize: '11px', color: 'var(--glass-border)', marginTop: '4px' }}>图片、视频、PDF (最大 50MB)</span>
                                         <input
                                             type="file"
                                             multiple
@@ -475,13 +475,13 @@ const TicketCreationModal: React.FC = () => {
                                                         justifyContent: 'space-between',
                                                         padding: '10px 12px',
                                                         background: 'rgba(0,0,0,0.2)',
-                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                        border: '1px solid var(--glass-border)',
                                                         borderRadius: '8px'
                                                     }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                                         {getFileIcon(file)}
-                                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                                                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                                                         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
                                                             {(file.size / 1024 / 1024).toFixed(1)}MB
                                                         </span>
@@ -513,7 +513,7 @@ const TicketCreationModal: React.FC = () => {
                 {/* Footer */}
                 <div style={{
                     padding: '20px 32px',
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                    borderTop: '1px solid var(--glass-border)',
                     background: 'rgba(0,0,0,0.2)',
                     display: 'flex',
                     alignItems: 'center',
@@ -531,9 +531,9 @@ const TicketCreationModal: React.FC = () => {
                                 padding: '0 24px',
                                 height: '42px',
                                 borderRadius: '10px',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid var(--glass-border)',
                                 background: 'transparent',
-                                color: 'rgba(255,255,255,0.7)',
+                                color: 'var(--text-secondary)',
                                 fontWeight: 500,
                                 cursor: 'pointer'
                             }}

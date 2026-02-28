@@ -254,10 +254,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                 onClick={() => setIsExpanded(!isExpanded)}
                 style={{
                     padding: '8px 16px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'var(--glass-bg-light)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '8px',
-                    color: 'rgba(255,255,255,0.7)',
+                    color: 'var(--text-secondary)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -293,9 +293,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             width: '400px',
                             maxHeight: '350px',
                             background: '#2a2a2a',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '12px',
-                            boxShadow: '0 -4px 24px rgba(0,0,0,0.5)',
+                            boxShadow: '0 -4px 24px var(--glass-shadow)',
                             overflow: 'hidden',
                             zIndex: 1000
                         }}
@@ -303,13 +303,13 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                         {/* 浮层标题 */}
                         <div style={{
                             padding: '12px 16px',
-                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                            borderBottom: '1px solid var(--glass-border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between'
                         }}>
                             <span style={{
-                                color: 'rgba(255,255,255,0.9)',
+                                color: 'var(--text-main)',
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 display: 'flex',
@@ -324,7 +324,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 style={{
                                     background: 'transparent',
                                     border: 'none',
-                                    color: 'rgba(255,255,255,0.5)',
+                                    color: 'var(--text-secondary)',
                                     cursor: 'pointer',
                                     padding: '4px',
                                     borderRadius: '4px'
@@ -349,10 +349,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                         disabled={loading}
                                         style={{
                                             padding: '4px 10px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            background: 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '14px',
-                                            color: 'rgba(255,255,255,0.7)',
+                                            color: 'var(--text-secondary)',
                                             fontSize: '11px',
                                             cursor: loading ? 'not-allowed' : 'pointer',
                                             opacity: loading ? 0.5 : 1,
@@ -393,10 +393,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                                 fontSize: '11px',
                                                 maxWidth: '90%',
                                                 background: msg.role === 'user'
-                                                    ? 'rgba(255,255,255,0.1)'
+                                                    ? 'var(--glass-bg-hover)'
                                                     : 'transparent',
-                                                border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.15)' : 'none',
-                                                color: 'rgba(255,255,255,0.85)',
+                                                border: msg.role === 'user' ? '1px solid var(--glass-bg-hover)' : 'none',
+                                                color: 'var(--text-main)',
                                                 lineHeight: '1.4'
                                             }}>
                                                 {msg.content}
@@ -417,7 +417,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                 }}>
                                     <div style={{
                                         fontSize: '11px',
-                                        color: 'rgba(255,255,255,0.9)',
+                                        color: 'var(--text-main)',
                                         marginBottom: '6px',
                                         fontWeight: 600
                                     }}>
@@ -425,7 +425,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                     </div>
                                     <div style={{
                                         fontSize: '10px',
-                                        color: 'rgba(255,255,255,0.5)',
+                                        color: 'var(--text-secondary)',
                                         marginBottom: '8px'
                                     }}>
                                         "{pendingChange.instruction}"
@@ -436,8 +436,8 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                             style={{
                                                 flex: 1,
                                                 padding: '6px',
-                                                background: 'rgba(255,255,255,0.1)',
-                                                border: '1px solid rgba(255,255,255,0.2)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '5px',
                                                 color: 'var(--text-main)',
                                                 fontSize: '11px',
@@ -456,10 +456,10 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                             onClick={handleRejectChange}
                                             style={{
                                                 padding: '6px 12px',
-                                                background: 'rgba(255,255,255,0.08)',
-                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '5px',
-                                                color: 'rgba(255,255,255,0.6)',
+                                                color: 'var(--text-secondary)',
                                                 fontSize: '11px',
                                                 cursor: 'pointer',
                                                 display: 'flex',
@@ -491,8 +491,8 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                     style={{
                                         flex: 1,
                                         padding: '8px 12px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontSize: '12px',
@@ -510,9 +510,9 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                                         width: '34px',
                                         height: '34px',
                                         background: loading || !input.trim()
-                                            ? 'rgba(255,255,255,0.05)'
+                                            ? 'var(--glass-bg-light)'
                                             : '#10B981',
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: loading || !input.trim() ? 'rgba(255,255,255,0.3)' : '#fff',
                                         cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',

@@ -116,7 +116,7 @@ const AppRail: React.FC<AppRailProps> = ({
         }
 
         .rail-item:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--glass-bg-hover);
           color: var(--text-main);
         }
 

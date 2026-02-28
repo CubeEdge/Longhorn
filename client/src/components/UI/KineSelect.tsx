@@ -72,7 +72,7 @@ export const KineSelect: React.FC<KineSelectProps> = ({ value, options, onChange
                             borderRadius: '12px',
                             padding: '4px',
                             zIndex: 101,
-                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                            boxShadow: '0 10px 40px var(--glass-shadow)'
                         }}
                     >
                         {options.map(opt => (

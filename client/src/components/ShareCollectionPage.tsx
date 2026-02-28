@@ -160,9 +160,9 @@ const ShareCollectionPage: React.FC = () => {
                     value={currentLanguage}
                     onChange={(e) => setLanguage(e.target.value as any)}
                     style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
+                        background: 'var(--glass-bg-hover)',
                         color: 'var(--text-main)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
                         padding: '6px 12px',
                         fontSize: '0.9rem',
@@ -300,7 +300,7 @@ const ShareCollectionPage: React.FC = () => {
                     transition: background 0.2s;
                 }
                 .file-item:last-child { border-bottom: none; }
-                .file-item:hover { background: rgba(255,255,255,0.03); }
+                .file-item:hover { background: var(--glass-bg-light); }
                 .col-name { flex: 1; display: flex; align-items: center; gap: 12px; }
                 .col-size { width: 120px; color: var(--text-secondary); text-align: right; }
                 .col-action { width: 80px; display: flex; justify-content: flex-end; }
@@ -313,7 +313,7 @@ const ShareCollectionPage: React.FC = () => {
                     border-radius: 4px;
                     transition: all 0.2s;
                 }
-                .icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+                .icon-btn:hover { background: var(--glass-bg-hover); color: var(--text-main); }
                 .error-msg { color: var(--accent-red); margin-top: 12px; }
             `}</style>
         </div>

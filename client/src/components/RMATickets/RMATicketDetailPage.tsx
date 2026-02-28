@@ -193,8 +193,8 @@ const RMATicketDetailPage: React.FC = () => {
                         <button
                             onClick={() => navigate(getRoute('/service/rma-tickets'))}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '10px',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
@@ -207,11 +207,11 @@ const RMATicketDetailPage: React.FC = () => {
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.color = '#fff';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                 e.currentTarget.style.color = 'var(--text-secondary)';
                             }}
                         >
@@ -225,7 +225,7 @@ const RMATicketDetailPage: React.FC = () => {
                         <div style={{
                             padding: '4px 12px',
                             borderRadius: '100px',
-                            background: statusConfig[ticket.status]?.color ? `${statusConfig[ticket.status].color}20` : 'rgba(255,255,255,0.1)',
+                            background: statusConfig[ticket.status]?.color ? `${statusConfig[ticket.status].color}20` : 'var(--glass-bg-hover)',
                             color: statusConfig[ticket.status]?.color || 'white',
                             fontWeight: 600,
                             fontSize: '0.8rem',
@@ -418,12 +418,12 @@ const RMATicketDetailPage: React.FC = () => {
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '8px',
                                                 padding: '8px 12px',
-                                                background: 'rgba(255,255,255,0.05)',
+                                                background: 'var(--glass-bg-light)',
                                                 borderRadius: '8px',
                                                 textDecoration: 'none',
                                                 color: 'var(--text-primary)',
                                                 fontSize: '0.85rem',
-                                                border: '1px solid rgba(255,255,255,0.1)'
+                                                border: '1px solid var(--glass-border)'
                                             }}
                                         >
                                             <FileText size={14} />

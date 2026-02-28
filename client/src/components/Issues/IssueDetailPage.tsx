@@ -290,7 +290,7 @@ const IssueDetailPage: React.FC = () => {
                   marginTop: '4px',
                   minWidth: '180px',
                   zIndex: 100,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                  boxShadow: '0 4px 12px var(--glass-shadow)'
                 }}>
                   {['Pending', 'Assigned', 'InProgress', 'AwaitingVerification', 'Closed', 'Rejected'].map(s => (
                     <button
@@ -554,7 +554,7 @@ const IssueDetailPage: React.FC = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'var(--glass-shadow)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

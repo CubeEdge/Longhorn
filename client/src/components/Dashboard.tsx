@@ -336,8 +336,8 @@ export const Dashboard: React.FC = () => {
                         onClick={() => navigate('/starred')}
                         style={{
                             padding: '12px 24px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '8px',
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -345,8 +345,8 @@ export const Dashboard: React.FC = () => {
                             color: 'var(--text-main)',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                     >
                         {t('dashboard.view_starred')}
                     </button>
@@ -354,8 +354,8 @@ export const Dashboard: React.FC = () => {
                         onClick={() => navigate('/search')}
                         style={{
                             padding: '12px 24px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '8px',
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -363,8 +363,8 @@ export const Dashboard: React.FC = () => {
                             color: 'var(--text-main)',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                     >
                         {t('dashboard.search_files')}
                     </button>

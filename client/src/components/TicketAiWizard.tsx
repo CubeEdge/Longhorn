@@ -62,7 +62,7 @@ const TicketAiWizard: React.FC = () => {
                 </div>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.5rem' }}>AI Smart Ticket Assistant</h2>
-                    <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)' }}>
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>
                         Paste email or chat logs below, and Bokeh will fill the form for you.
                     </p>
                 </div>
@@ -71,10 +71,10 @@ const TicketAiWizard: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 {/* LEFT COLUMN: Input */}
                 <div className="card" style={{
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--glass-bg-light)',
                     padding: '20px',
                     borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--glass-border)',
                     display: 'flex',
                     flexDirection: 'column'
                 }}>
@@ -82,7 +82,7 @@ const TicketAiWizard: React.FC = () => {
                         <span>Input Source</span>
                         <button
                             onClick={() => { setInputText(''); setTicketData(null); }}
-                            style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                             title="Clear"
                         >
                             <RotateCcw size={16} />
@@ -97,7 +97,7 @@ const TicketAiWizard: React.FC = () => {
                             flex: 1,
                             minHeight: '300px',
                             background: 'rgba(0,0,0,0.2)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '8px',
                             padding: '12px',
                             color: 'var(--text-main)',
@@ -144,10 +144,10 @@ const TicketAiWizard: React.FC = () => {
 
                 {/* RIGHT COLUMN: Output Form */}
                 <div className="card" style={{
-                    background: loading ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                    background: loading ? 'rgba(255,255,255,0.02)' : 'var(--glass-bg-light)',
                     padding: '20px',
                     borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--glass-border)',
                     opacity: ticketData ? 1 : 0.5,
                     pointerEvents: ticketData ? 'auto' : 'none',
                     transition: 'all 0.3s'
@@ -164,7 +164,7 @@ const TicketAiWizard: React.FC = () => {
                     {ticketData && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Customer Name</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Customer Name</label>
                                 <input
                                     type="text"
                                     value={ticketData.customer_name || ''}
@@ -174,7 +174,7 @@ const TicketAiWizard: React.FC = () => {
                             </div>
 
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Contact Info</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Contact Info</label>
                                 <input
                                     type="text"
                                     value={ticketData.contact_info || ''}
@@ -184,7 +184,7 @@ const TicketAiWizard: React.FC = () => {
                             </div>
 
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Product Model</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Product Model</label>
                                 <input
                                     type="text"
                                     value={ticketData.product_model || ''}
@@ -194,7 +194,7 @@ const TicketAiWizard: React.FC = () => {
                             </div>
 
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Urgency</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Urgency</label>
                                 <select
                                     value={ticketData.urgency || 'Normal'}
                                     onChange={(e) => setTicketData({ ...ticketData, urgency: e.target.value as any })}
@@ -207,7 +207,7 @@ const TicketAiWizard: React.FC = () => {
                             </div>
 
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Issue Summary</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Issue Summary</label>
                                 <input
                                     type="text"
                                     value={ticketData.issue_summary || ''}
@@ -217,7 +217,7 @@ const TicketAiWizard: React.FC = () => {
                             </div>
 
                             <div className="field-group">
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: '#9ca3af', marginBottom: '4px' }}>Detailed Description</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Detailed Description</label>
                                 <textarea
                                     value={ticketData.issue_description || ''}
                                     onChange={(e) => setTicketData({ ...ticketData, issue_description: e.target.value })}
@@ -259,8 +259,8 @@ const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px 12px',
     borderRadius: '6px',
-    border: '1px solid rgba(255,255,255,0.2)',
-    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid var(--glass-border)',
+    background: 'var(--glass-shadow)',
     color: 'var(--text-main)',
     fontSize: '0.9rem'
 };

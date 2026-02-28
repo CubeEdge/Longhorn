@@ -6,7 +6,7 @@ export const ProductCard: React.FC<any> = ({ productName, serialNumber, warranty
         <div onClick={onClick} style={{
             padding: '10px 14px',
             background: 'rgba(0,0,0,0.2)', // Darker, flat background
-            border: `1px solid rgba(255,255,255,0.04)`,
+            border: `1px solid var(--glass-bg-light)`,
             borderRadius: '10px',
             cursor: onClick ? 'pointer' : 'default',
             transition: 'all 0.2s',
@@ -16,20 +16,20 @@ export const ProductCard: React.FC<any> = ({ productName, serialNumber, warranty
         }}
             onMouseEnter={e => {
                 if (onClick) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.background = 'var(--glass-bg-light)';
+                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                 }
             }}
             onMouseLeave={e => {
                 if (onClick) {
                     e.currentTarget.style.background = 'rgba(0,0,0,0.2)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)';
+                    e.currentTarget.style.borderColor = 'var(--glass-bg-light)';
                 }
             }}
         >
             <div style={{
                 width: '36px', height: '36px', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--glass-bg-light)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0
             }}>

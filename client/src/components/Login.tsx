@@ -81,7 +81,7 @@ const Login: React.FC = () => {
                                 padding: '14px 16px 14px 48px',
                                 borderRadius: '12px',
                                 border: '1px solid var(--glass-border)',
-                                background: 'rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
                                 color: 'var(--text-main)',
                                 fontSize: '1rem',
                                 outline: 'none',
@@ -104,7 +104,7 @@ const Login: React.FC = () => {
                                 padding: '14px 16px 14px 48px',
                                 borderRadius: '12px',
                                 border: '1px solid var(--glass-border)',
-                                background: 'rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
                                 color: 'var(--text-main)',
                                 fontSize: '1rem',
                                 outline: 'none',
@@ -149,7 +149,7 @@ const Login: React.FC = () => {
                 }
                 .login-input:focus {
                     border-color: var(--accent-blue) !important;
-                    background: rgba(255, 255, 255, 0.08) !important;
+                    background: var(--glass-bg-hover) !important;
                     box-shadow: 0 0 0 4px rgba(255, 210, 0, 0.1);
                 }
             `}</style>

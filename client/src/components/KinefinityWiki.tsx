@@ -1785,7 +1785,7 @@ ${contextTickets.map((ticket: any) => {
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                        e.currentTarget.style.borderColor = 'var(--glass-border)';
                                         e.currentTarget.style.transform = 'scale(1)';
                                         e.currentTarget.style.boxShadow = 'none';
                                     }}
@@ -1812,7 +1812,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <span
                                                     onClick={() => isClickable && handleBreadcrumbClick(index)}
                                                     style={{
-                                                        color: isLast ? 'var(--text-main)' : '#888',
+                                                        color: isLast  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                         cursor: isClickable ? 'pointer' : 'default',
                                                         fontWeight: isLast ? 700 : 400,
                                                         fontSize: isLast ? '1.25rem' : '0.9rem',
@@ -1918,7 +1918,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: viewMode === 'published' ? 'var(--glass-bg-hover)' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'published' ? 'var(--text-main)' : '#888',
+                                                    color: viewMode === 'published'  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                     fontSize: '12px',
                                                     cursor: 'pointer',
                                                     display: 'flex',
@@ -1935,7 +1935,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: viewMode === 'draft' ? '#10B981' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'draft' ? 'var(--text-main)' : '#888',
+                                                    color: viewMode === 'draft'  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                     fontSize: '12px',
                                                     fontWeight: viewMode === 'draft' ? 600 : 400,
                                                     cursor: 'pointer',
@@ -2475,7 +2475,7 @@ ${contextTickets.map((ticket: any) => {
                                                         background: showAdminMenu ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-hover)',
                                                         border: `1px solid ${showAdminMenu ? 'rgba(var(--accent-rgb),0.3)' : 'var(--glass-bg-hover)'}`,
                                                         borderRadius: '6px',
-                                                        color: showAdminMenu ? 'var(--accent-blue)' : '#888',
+                                                        color: showAdminMenu  ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                         fontSize: '12px',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -2511,7 +2511,7 @@ ${contextTickets.map((ticket: any) => {
                                                             borderRadius: '12px',
                                                             padding: '8px',
                                                             minWidth: '180px',
-                                                            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                                            boxShadow: '0 8px 32px var(--glass-shadow)',
                                                             zIndex: 100
                                                         }}>
                                                             <div
@@ -2678,7 +2678,7 @@ ${contextTickets.map((ticket: any) => {
                                                 background: isSelected ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                                                 border: `1px solid ${isSelected ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
-                                                color: isSelected ? '#FFF' : '#888',
+                                                color: isSelected  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 fontSize: '14px',
                                                 fontWeight: isSelected ? 600 : 400,
                                                 cursor: 'pointer',
@@ -2692,7 +2692,7 @@ ${contextTickets.map((ticket: any) => {
                                                 if (!isSelected) {
                                                     e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.2)';
-                                                    e.currentTarget.style.color = '#ccc';
+                                                    e.currentTarget.style.color = 'var(--text-main)';
                                                 }
                                             }}
                                             onMouseLeave={(e) => {
@@ -2710,7 +2710,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: isSelected ? 'rgba(var(--accent-rgb),0.2)' : 'var(--glass-bg-hover)',
                                                     borderRadius: '10px',
                                                     fontSize: '12px',
-                                                    color: isSelected ? 'var(--accent-blue)' : '#666'
+                                                    color: isSelected  ? 'var(--accent-blue)' : 'var(--text-secondary)'
                                                 }}>
                                                     {count}
                                                 </span>
@@ -2741,7 +2741,7 @@ ${contextTickets.map((ticket: any) => {
                                                 background: selectedProductLine === null ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                                                 border: `1px solid ${selectedProductLine === null ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
-                                                color: selectedProductLine === null ? 'var(--text-main)' : '#888',
+                                                color: selectedProductLine === null  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 fontSize: '14px',
                                                 fontWeight: selectedProductLine === null ? 600 : 400,
                                                 cursor: 'pointer',
@@ -2755,7 +2755,7 @@ ${contextTickets.map((ticket: any) => {
                                                 if (selectedProductLine !== null) {
                                                     e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.2)';
-                                                    e.currentTarget.style.color = '#ccc';
+                                                    e.currentTarget.style.color = 'var(--text-main)';
                                                 }
                                             }}
                                             onMouseLeave={(e) => {
@@ -2799,7 +2799,7 @@ ${contextTickets.map((ticket: any) => {
                                                 background: 'var(--bg-sidebar)',
                                                 border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px',
-                                                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                                                boxShadow: '0 8px 24px var(--glass-shadow)',
                                                 overflow: 'hidden',
                                                 zIndex: 100
                                             }}>
@@ -2832,7 +2832,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 padding: '10px 12px',
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: hItem.query === activeSearchQuery ? 'var(--accent-blue)' : '#ccc',
+                                                                color: hItem.query === activeSearchQuery  ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                                 fontSize: '13px',
                                                                 cursor: 'pointer',
                                                                 textAlign: 'left',
@@ -3858,7 +3858,7 @@ ${contextTickets.map((ticket: any) => {
                                                     padding: '4px',
                                                     zIndex: 100,
                                                     minWidth: '120px',
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                                                    boxShadow: '0 4px 12px var(--glass-shadow)'
                                                 }} onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => {
@@ -3970,7 +3970,7 @@ ${contextTickets.map((ticket: any) => {
                                     left: 0,
                                     right: 0,
                                     bottom: 0,
-                                    background: 'rgba(0,0,0,0.5)',
+                                    background: 'var(--glass-shadow)',
                                     backdropFilter: 'blur(4px)',
                                     zIndex: 998,
                                     animation: 'fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -3990,7 +3990,7 @@ ${contextTickets.map((ticket: any) => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '-8px 0 24px rgba(0,0,0,0.4)'
+                                boxShadow: '-8px 0 24px var(--glass-shadow)'
                             }}>
                                 {/* Header - 左上角关闭按钮 */}
                                 <div style={{
@@ -4148,7 +4148,7 @@ ${contextTickets.map((ticket: any) => {
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0,0,0,0.5)',
+                            background: 'var(--glass-shadow)',
                             backdropFilter: 'blur(8px)',
                             WebkitBackdropFilter: 'blur(8px)',
                             display: 'flex',
@@ -4166,7 +4166,7 @@ ${contextTickets.map((ticket: any) => {
                                 height: '80vh',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                                boxShadow: '0 20px 60px var(--glass-shadow)'
                             }}>
                                 {/* 头部 */}
                                 <div style={{
@@ -4317,7 +4317,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <div style={{
                                                     width: '16px',
                                                     height: '16px',
-                                                    border: `2px solid ${isAllFilteredSelected ? 'var(--accent-blue)' : '#666'}`,
+                                                    border: `2px solid ${isAllFilteredSelected  ? 'var(--accent-blue)' : 'var(--text-secondary)'}`,
                                                     borderRadius: '4px',
                                                     background: isAllFilteredSelected ? 'rgba(var(--accent-rgb),0.2)' : 'transparent',
                                                     display: 'flex',
@@ -4582,7 +4582,7 @@ ${contextTickets.map((ticket: any) => {
                                     <div style={{
                                         position: 'absolute',
                                         top: 0, left: 0, right: 0, bottom: 0,
-                                        background: 'rgba(0,0,0,0.5)',
+                                        background: 'var(--glass-shadow)',
                                         backdropFilter: 'blur(10px)',
                                         WebkitBackdropFilter: 'blur(10px)',
                                         display: 'flex',
@@ -4598,7 +4598,7 @@ ${contextTickets.map((ticket: any) => {
                                             border: '1px solid var(--glass-border)',
                                             borderRadius: '16px',
                                             padding: '32px',
-                                            boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
+                                            boxShadow: '0 30px 100px var(--glass-shadow-lg)',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: '24px'
@@ -4763,7 +4763,7 @@ ${contextTickets.map((ticket: any) => {
                                 left: 0,
                                 right: 0,
                                 bottom: 0,
-                                background: 'rgba(0,0,0,0.5)',
+                                background: 'var(--glass-shadow)',
                                 backdropFilter: 'blur(8px)',
                                 WebkitBackdropFilter: 'blur(8px)',
                                 zIndex: 1000,
@@ -4785,7 +4785,7 @@ ${contextTickets.map((ticket: any) => {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     overflow: 'hidden',
-                                    boxShadow: '0 24px 80px rgba(0,0,0,0.6)'
+                                    boxShadow: '0 24px 80px var(--glass-shadow-lg)'
                                 }}>
                                     {/* 顶部标题栏 */}
                                     <div style={{
@@ -4926,7 +4926,7 @@ ${contextTickets.map((ticket: any) => {
                                                                             {displayNum}
                                                                         </span>
                                                                     )}
-                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : '#ccc', flex: 1 }}>{cleanTitle}</span>
+                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle  ? 'var(--accent-blue)' : 'var(--text-secondary)', flex: 1 }}>{cleanTitle}</span>
                                                                     {isCurrentArticle && <span style={{ fontSize: '12px', color: 'var(--accent-blue)', padding: '4px 10px', background: 'rgba(var(--accent-rgb),0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
                                                                 </div>
                                                             );
@@ -5028,7 +5028,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                     onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'var(--glass-bg-light)'; }}
                                                                                     onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
                                                                                 >
-                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? 'var(--accent-blue)' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.15)' : 'var(--glass-bg-hover)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle  ? 'var(--accent-blue)' : 'var(--text-secondary)', fontSize: '12px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.15)' : 'var(--glass-bg-hover)', padding: '3px 8px', borderRadius: '6px' }}>
                                                                                         {displayNum}
                                                                                     </span>
                                                                                     <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : '#bbb', flex: 1 }}>{secTitle}</span>
@@ -5098,7 +5098,7 @@ ${contextTickets.map((ticket: any) => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--glass-shadow)',
                     backdropFilter: 'blur(10px)',
                     zIndex: 1000,
                     display: 'flex',

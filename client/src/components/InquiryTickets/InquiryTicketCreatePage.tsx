@@ -263,8 +263,8 @@ const InquiryTicketCreatePage: React.FC = () => {
                             style={{
                                 width: '100%',
                                 minHeight: '100px',
-                                background: 'rgba(0,0,0,0.3)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-shadow)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 padding: '12px',
                                 color: 'var(--text-main)',
@@ -290,7 +290,7 @@ const InquiryTicketCreatePage: React.FC = () => {
                                         <div key={i} style={{
                                             fontSize: '0.8rem',
                                             padding: '6px 10px',
-                                            background: 'rgba(0,0,0,0.3)',
+                                            background: 'var(--glass-shadow)',
                                             borderRadius: '6px',
                                             borderLeft: '3px solid #FFD700'
                                         }}>

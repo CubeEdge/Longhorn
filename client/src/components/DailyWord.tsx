@@ -159,9 +159,9 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
     if (!word && !loading) {
         return (
             <div className="modal-overlay" onClick={onClose} style={{
-                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                position: 'fixed', inset: 0, background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-                <div onClick={e => e.stopPropagation()} style={{ background: '#1c1c1e', padding: '24px', borderRadius: '16px', textAlign: 'center' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-sidebar)', padding: '24px', borderRadius: '16px', textAlign: 'center' }}>
                     <p style={{ marginBottom: 16 }}>No words loaded. Try refreshing.</p>
                     <button onClick={() => fetchBatch()} style={{ padding: '8px 16px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Retry</button>
                     <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: 8 }}>Close</button>
@@ -195,7 +195,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
             className="modal-overlay"
             onClick={onClose}
             style={{
-                position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
+                position: 'fixed', inset: 0, background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(8px)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000
             }}
         >
@@ -205,7 +205,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                     background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px',
                     width: '90%', maxWidth: '420px', maxHeight: '85vh',
                     display: 'flex', flexDirection: 'column', // Flex layout for sticky footer
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+                    boxShadow: '0 20px 60px var(--glass-shadow)'
                 }}
             >
                 {/* Header */}
@@ -229,7 +229,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                             <button
                                 onClick={() => setShowMoreMenu(!showMoreMenu)}
                                 style={{
-                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    background: 'var(--glass-bg-light)',
                                     border: 'none',
                                     borderRadius: '50%',
                                     width: '32px',
@@ -241,8 +241,8 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                             >
                                 <MoreVertical size={18} />
                             </button>
@@ -254,10 +254,10 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                     top: '40px',
                                     right: 0,
                                     background: '#2c2c2e',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    border: '1px solid var(--glass-border)',
                                     borderRadius: '12px',
                                     minWidth: '180px',
-                                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                                    boxShadow: '0 8px 24px var(--glass-shadow)',
                                     zIndex: 1000,
                                     overflow: 'hidden'
                                 }}>
@@ -290,14 +290,14 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                                         justifyContent: 'space-between',
                                                         transition: 'all 0.2s'
                                                     }}
-                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                                     onMouseLeave={(e) => e.currentTarget.style.background = level === lvl ? 'rgba(255, 210, 0, 0.1)' : 'transparent'}
                                                 >
                                                     {lvl}
                                                     {level === lvl && <span style={{ fontSize: '0.8rem' }}>✓</span>}
                                                 </button>
                                             ))}
-                                            <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
+                                            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '4px 0' }} />
                                         </>
                                     )}
 
@@ -321,7 +321,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                             gap: '8px',
                                             transition: 'all 0.2s'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         <RefreshCw size={14} />
@@ -349,14 +349,14 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                                             gap: '8px',
                                             transition: 'background 0.2s'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
                                         <Trash2 size={14} />
                                         Reset Cache
                                     </button>
 
-                                    <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
+                                    <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '4px 0' }} />
 
                                     {/* Close */}
                                     <button
@@ -440,7 +440,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                             </div>
 
                             {/* Meaning */}
-                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
                                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '8px', fontWeight: 600 }}>📖 {t('daily_word.meaning')}</div>
                                 <div style={{ color: 'var(--text-main)', marginBottom: '8px' }}>{word.meaning}</div>
                                 <div style={{ color: 'var(--accent-blue)', fontSize: '0.9rem', borderTop: '1px solid var(--glass-border)', paddingTop: '8px', marginTop: '8px' }}>中文：{word.meaning_zh}</div>
@@ -448,7 +448,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
 
                             {/* Examples */}
                             {word.examples && word.examples.length > 0 && (
-                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', padding: '16px' }}>
+                                <div style={{ background: 'var(--glass-bg-light)', borderRadius: '12px', padding: '16px' }}>
                                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '12px', fontWeight: 600 }}>📚 {t('daily_word.examples')}</div>
                                     {word.examples.slice(0, 2).map((example: any, index: number) => (
                                         <div key={index} style={{ marginBottom: index < word.examples.length - 1 ? '16px' : 0 }}>
@@ -469,7 +469,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                         onClick={prevWord}
                         style={{
                             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            padding: '10px', background: 'rgba(255, 255, 255, 0.05)', border: 'none', borderRadius: '8px',
+                            padding: '10px', background: 'var(--glass-bg-light)', border: 'none', borderRadius: '8px',
                             color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer'
                         }}
                     >

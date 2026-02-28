@@ -255,7 +255,7 @@ const DealerDetailPage: React.FC = () => {
             {/* Header - macOS26 Style */}
             <div style={{
                 padding: '20px 0',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                borderBottom: '1px solid var(--glass-border)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '16px',
@@ -264,8 +264,8 @@ const DealerDetailPage: React.FC = () => {
                 <button
                     onClick={() => navigate('/service/dealers')}
                     style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--glass-bg-light)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '10px',
                         color: 'var(--text-secondary)',
                         cursor: 'pointer',
@@ -278,11 +278,11 @@ const DealerDetailPage: React.FC = () => {
                         transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                         e.currentTarget.style.color = '#fff';
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.background = 'var(--glass-bg-light)';
                         e.currentTarget.style.color = 'var(--text-secondary)';
                     }}
                 >
@@ -338,8 +338,8 @@ const DealerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setShowMoreMenu(!showMoreMenu)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 padding: '8px 12px',
                                 color: 'var(--text-secondary)',
@@ -350,10 +350,10 @@ const DealerDetailPage: React.FC = () => {
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                             }}
                         >
                             <MoreHorizontal size={18} />
@@ -376,8 +376,8 @@ const DealerDetailPage: React.FC = () => {
                                         background: 'rgba(40, 40, 42, 0.98)',
                                         backdropFilter: 'blur(20px)',
                                         borderRadius: 12,
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+                                        border: '1px solid var(--glass-border)',
+                                        boxShadow: '0 10px 40px var(--glass-shadow)',
                                         zIndex: 20,
                                         minWidth: 160,
                                         padding: '8px 0'
@@ -534,7 +534,7 @@ const DealerDetailPage: React.FC = () => {
                 </div>
 
                 {dealer.notes && (
-                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>备注</span>
                         <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.6 }}>
                             {dealer.notes}
@@ -605,7 +605,7 @@ const DealerDetailPage: React.FC = () => {
 
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                 <th style={{ textAlign: 'left', padding: '12px', fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>SKU</th>
                                 <th style={{ textAlign: 'left', padding: '12px', fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>配件名称</th>
                                 <th style={{ textAlign: 'center', padding: '12px', fontSize: '0.85rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>库存</th>
@@ -614,7 +614,7 @@ const DealerDetailPage: React.FC = () => {
                         </thead>
                         <tbody>
                             {inventory.map((item, idx) => (
-                                <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                <tr key={idx} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                     <td style={{ padding: 16, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{item.sku}</td>
                                     <td style={{ padding: 16, fontSize: '0.95rem', fontWeight: 500 }}>{item.part_name}</td>
                                     <td style={{ padding: 16, textAlign: 'center', fontSize: '1rem', fontWeight: 600 }}>{item.quantity}</td>

@@ -259,8 +259,8 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     background: 'rgba(28, 28, 30, 0.85)',
                     backdropFilter: 'blur(20px)',
                     borderRadius: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: '0 20px 50px var(--glass-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: 9999,
@@ -273,11 +273,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     onMouseDown={handleMouseDown}
                     style={{
                         padding: '16px 20px',
-                        borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'var(--glass-bg-light)',
                         cursor: 'grab',
                         userSelect: 'none'
                     }}>
@@ -403,7 +403,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                             <div style={{
                                 padding: '12px 16px',
                                 borderRadius: '12px',
-                                background: msg.role === 'user' ? '#10B981' : 'rgba(255, 255, 255, 0.08)',
+                                background: msg.role === 'user' ? '#10B981' : 'var(--glass-bg-hover)',
                                 color: 'var(--text-main)',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
@@ -511,7 +511,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     {loading && (
                         <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', opacity: 0.6 }}>
                             <Loader2 size={16} className="animate-spin" color="#10B981" />
-                            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{t('bokeh.focusing')}</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{t('bokeh.focusing')}</span>
                         </div>
                     )}
                 </div>
@@ -592,11 +592,11 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                 )}
 
                 {/* INPUT AREA */}
-                <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--glass-border)' }}>
                     <div style={{
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'var(--glass-bg-light)',
                         borderRadius: '12px',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid var(--glass-border)',
                         padding: '4px',
                         display: 'flex',
                         alignItems: 'flex-end'
@@ -626,7 +626,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                 onClick={handleSend}
                                 disabled={!input.trim()}
                                 style={{
-                                    background: input.trim() ? '#10B981' : 'rgba(255,255,255,0.1)',
+                                    background: input.trim() ? '#10B981' : 'var(--glass-bg-hover)',
                                     color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)',
                                 }}
                             >
@@ -647,7 +647,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                      transition: all 0.2s;
                  }
                  .panel-btn:hover {
-                     background: rgba(255,255,255,0.1);
+                     background: var(--glass-bg-hover);
                      color: var(--text-main);
                  }
                  .input-btn {
@@ -664,7 +664,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                      transition: all 0.2s;
                  }
                  .input-btn:hover {
-                     background: rgba(255,255,255,0.1);
+                     background: var(--glass-bg-hover);
                      color: var(--text-main);
                  }
              `}</style>
@@ -703,10 +703,10 @@ const QuickAction: React.FC<{ icon: React.ReactNode, label: string, onClick: () 
         style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             padding: '8px 12px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--glass-bg-light)',
+            border: '1px solid var(--glass-border)',
             borderRadius: '20px',
-            color: 'rgba(255,255,255,0.8)',
+            color: 'var(--text-main)',
             fontSize: '12px',
             cursor: 'pointer',
             whiteSpace: 'nowrap'

@@ -60,8 +60,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             <div
                 onClick={onClick}
                 style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--glass-bg-light)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '10px',
                     padding: '12px 14px',
                     cursor: 'pointer',
@@ -75,8 +75,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                     e.currentTarget.style.borderColor = `${config.color}40`;
                 }}
                 onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.background = 'var(--glass-bg-light)';
+                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                 }}
             >
                 <div style={{
@@ -124,8 +124,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         <div
             onClick={onClick}
             style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--glass-bg-light)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '12px',
                 padding: '16px',
                 cursor: 'pointer',
@@ -140,8 +140,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                 e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.background = 'var(--glass-bg-light)';
+                e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                 e.currentTarget.style.transform = 'translateY(0)';
             }}
         >
@@ -204,7 +204,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                 <span style={{ color: 'var(--text-secondary)' }}>·</span>
                 <span style={{
                     fontSize: '12px',
-                    color: status === 'Closed' || status === 'Resolved' ? '#10B981' : '#888'
+                    color: status === 'Closed' || status === 'Resolved'  ? '#10B981' : 'var(--text-secondary)'
                 }}>
                     {statusMap[status] || status}
                 </span>

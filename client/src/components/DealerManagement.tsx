@@ -357,7 +357,7 @@ const DealerManagement: React.FC = () => {
                         width: isSearchExpanded ? 280 : 40,
                         height: 40,
                         background: isSearchExpanded ? 'var(--glass-border)' : 'transparent',
-                        border: isSearchExpanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        border: isSearchExpanded ? '1px solid var(--glass-bg-hover)' : 'none',
                         borderRadius: 8,
                         transition: 'all 0.3s ease',
                         overflow: 'hidden'
@@ -414,7 +414,7 @@ const DealerManagement: React.FC = () => {
                             onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
                             style={{
                                 background: 'var(--glass-border)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 padding: '0 16px',
                                 height: '40px',
@@ -435,12 +435,12 @@ const DealerManagement: React.FC = () => {
                                 right: 0,
                                 marginTop: 4,
                                 background: 'var(--glass-bg)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 padding: '4px 0',
                                 minWidth: 140,
                                 zIndex: 100,
-                                boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                                boxShadow: '0 8px 32px var(--glass-shadow)'
                             }}>
                                 <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
                                     查看列表
@@ -509,7 +509,7 @@ const DealerManagement: React.FC = () => {
             <div style={{ flex: 1, overflow: 'auto', background: 'var(--glass-border)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                             <th
                                 style={{ padding: 16, textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('name')}
@@ -609,7 +609,7 @@ const DealerManagement: React.FC = () => {
                                             background: dealer.dealer_level?.toLowerCase().includes('tier1') || dealer.dealer_level?.toLowerCase().includes('first') ? 'rgba(255,215,0,0.15)' :
                                                 dealer.dealer_level?.toLowerCase().includes('tier2') || dealer.dealer_level?.toLowerCase().includes('second') ? 'rgba(59,130,246,0.15)' :
                                                     dealer.dealer_level?.toLowerCase().includes('tier3') || dealer.dealer_level?.toLowerCase().includes('third') ? 'rgba(107,114,128,0.15)' :
-                                                        'rgba(255,255,255,0.1)',
+                                                        'var(--glass-bg-hover)',
                                             color: dealer.dealer_level?.toLowerCase().includes('tier1') || dealer.dealer_level?.toLowerCase().includes('first') ? '#FFD700' :
                                                 dealer.dealer_level?.toLowerCase().includes('tier2') || dealer.dealer_level?.toLowerCase().includes('second') ? '#60A5FA' :
                                                     dealer.dealer_level?.toLowerCase().includes('tier3') || dealer.dealer_level?.toLowerCase().includes('third') ? '#9CA3AF' :

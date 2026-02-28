@@ -148,7 +148,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                     }}
                     onMouseEnter={(e) => {
                         if (!isSelected) {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.background = 'var(--glass-bg-light)';
                         }
                     }}
                     onMouseLeave={(e) => {
@@ -211,8 +211,8 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                     maxHeight: '70vh',
                     display: 'flex',
                     flexDirection: 'column',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                    boxShadow: '0 20px 60px var(--glass-shadow)',
+                    border: '1px solid var(--glass-border)'
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -229,7 +229,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                         </h2>
                         <p style={{
                             fontSize: '0.9rem',
-                            color: 'rgba(255, 255, 255, 0.6)',
+                            color: 'var(--text-secondary)',
                             margin: '8px 0 0 0'
                         }}>
                             {t('modal.select_location')}
@@ -239,7 +239,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                         onClick={onClose}
                         disabled={isProcessing}
                         style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
+                            background: 'var(--glass-bg-hover)',
                             border: 'none',
                             borderRadius: '50%',
                             width: '32px',
@@ -252,8 +252,8 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             transition: 'background 0.2s',
                             opacity: isProcessing ? 0.5 : 1
                         }}
-                        onMouseEnter={e => !isProcessing && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
-                        onMouseLeave={e => !isProcessing && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
+                        onMouseEnter={e => !isProcessing && (e.currentTarget.style.background = 'var(--glass-border)')}
+                        onMouseLeave={e => !isProcessing && (e.currentTarget.style.background = 'var(--glass-bg-hover)')}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -271,14 +271,14 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                         borderRadius: '12px',
                         padding: '12px',
                         marginBottom: '20px',
-                        border: '1px solid rgba(255, 255, 255, 0.05)'
+                        border: '1px solid var(--glass-border)'
                     }}
                 >
                     {loading ? (
                         <div style={{
                             textAlign: 'center',
                             padding: '30px',
-                            color: 'rgba(255, 255, 255, 0.5)'
+                            color: 'var(--text-secondary)'
                         }}>
                             {t('browser.loading')}
                         </div>
@@ -295,9 +295,9 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                         style={{
                             padding: '12px 24px',
                             borderRadius: '10px',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            border: '1px solid var(--glass-border)',
                             background: 'transparent',
-                            color: 'rgba(255, 255, 255, 0.8)',
+                            color: 'var(--text-main)',
                             cursor: isProcessing ? 'not-allowed' : 'pointer',
                             fontSize: '0.95rem',
                             fontWeight: 500,
@@ -305,7 +305,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             opacity: isProcessing ? 0.5 : 1
                         }}
                         onMouseEnter={(e) => {
-                            if (!isProcessing) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            if (!isProcessing) e.currentTarget.style.background = 'var(--glass-bg-light)';
                         }}
                         onMouseLeave={(e) => {
                             if (!isProcessing) e.currentTarget.style.background = 'transparent';
@@ -322,7 +322,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             border: 'none',
                             background: selectedPath && selectedPath !== currentPath
                                 ? 'var(--accent-blue)'
-                                : 'rgba(255, 255, 255, 0.1)',
+                                : 'var(--glass-bg-hover)',
                             color: selectedPath && selectedPath !== currentPath
                                 ? '#000'
                                 : 'rgba(255, 255, 255, 0.3)',

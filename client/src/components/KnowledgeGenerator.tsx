@@ -737,15 +737,15 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                     width: '90%', maxWidth: '1400px', maxHeight: '90vh',
                     background: 'var(--bg-main)',
                     borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                    border: '1px solid var(--glass-border)',
+                    boxShadow: '0 24px 80px var(--glass-shadow-lg)',
                     display: 'flex', flexDirection: 'column',
                     overflow: 'hidden'
                 }}>
                     {/* Header - matching Manual TOC modal */}
                     <div style={{
                         padding: '24px 32px',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between'
@@ -784,8 +784,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 transition: 'all 0.2s',
                                 flexShrink: 0
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                         >
                             <X size={22} color="#fff" />
                         </button>
@@ -801,10 +801,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                             {/* Left: Content Input */}
                             <div style={{
                                 background: 'var(--bg-sidebar)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '16px',
                                 padding: '20px',
-                                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                                boxShadow: 'var(--glass-shadow-lg)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 height: '100%'
@@ -844,7 +844,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     : 'transparent',
                                                 border: `1px solid ${importMode === mode ? 'rgba(255,215,0,0.4)' : 'transparent'}`,
                                                 borderRadius: '8px',
-                                                color: importMode === mode ? '#fff' : '#888',
+                                                color: importMode === mode  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 cursor: 'pointer',
                                                 fontSize: '13px',
                                                 fontWeight: 700,
@@ -1003,7 +1003,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     padding: '12px',
                                     background: 'var(--glass-bg)',
                                     borderRadius: '10px',
-                                    border: '1px solid rgba(255,255,255,0.06)'
+                                    border: '1px solid var(--glass-border)'
                                 }}>
                                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', fontWeight: 500 }}>
                                         导入方式配置
@@ -1017,7 +1017,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: bokehOptimize
                                                     ? 'linear-gradient(#262626, #262626) padding-box, linear-gradient(90deg, #00BFA5 0%, #8E24AA 100%) border-box'
                                                     : 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${bokehOptimize ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
+                                                border: `1px solid ${bokehOptimize ? 'transparent' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
@@ -1028,7 +1028,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 alignItems: 'center'
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: bokehOptimize ? '#fff' : '#888' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: bokehOptimize  ? 'var(--text-main)' : 'var(--text-secondary)' }}>
                                                 <Sparkles size={14} style={{ opacity: bokehOptimize ? 1 : 0.6 }} />
                                                 <div style={{ fontSize: '13px', fontWeight: 700 }}>
                                                     Bokeh 优化
@@ -1044,7 +1044,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 flex: 1,
                                                 padding: '10px 12px',
                                                 background: !bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
@@ -1053,10 +1053,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 alignItems: 'center'
                                             }}
                                         >
-                                            <div style={{ fontSize: '13px', fontWeight: 700, color: !bokehOptimize ? '#fff' : '#888', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '13px', fontWeight: 700, color: !bokehOptimize  ? 'var(--text-main)' : 'var(--text-secondary)', textAlign: 'center' }}>
                                                 直接导入
                                             </div>
-                                            <div style={{ fontSize: '10px', color: !bokehOptimize ? '#666' : '#666', marginTop: '2px', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '10px', color: !bokehOptimize   ? 'var(--text-secondary)' : 'var(--text-secondary)', marginTop: '2px', textAlign: 'center' }}>
                                                 保持原始格式
                                             </div>
                                         </button>
@@ -1067,10 +1067,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                             {/* Right: Metadata */}
                             <div style={{
                                 background: 'var(--bg-sidebar)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '16px',
                                 padding: '20px',
-                                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                                boxShadow: 'var(--glass-shadow-lg)',
                                 display: 'flex',
                                 flexDirection: 'column'
                             }}>
@@ -1091,11 +1091,11 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         style={{
                                             padding: '12px 28px',
                                             background: loading
-                                                ? 'rgba(255,255,255,0.05)'
+                                                ? 'var(--glass-bg-light)'
                                                 : '#FFD700',
                                             border: 'none',
                                             borderRadius: '10px',
-                                            color: loading ? '#666' : '#000',
+                                            color: loading  ? 'var(--text-secondary)' : '#000',
                                             fontSize: '15px',
                                             fontWeight: 700,
                                             cursor: loading ? 'not-allowed' : 'pointer',
@@ -1218,10 +1218,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         }}
                                                         style={{
                                                             padding: '6px 12px',
-                                                            background: isSelected ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)',
-                                                            border: `1px solid ${isSelected ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                                            background: isSelected ? 'rgba(255,215,0,0.15)' : 'var(--glass-bg-light)',
+                                                            border: `1px solid ${isSelected ? 'rgba(255,215,0,0.5)' : 'var(--glass-bg-hover)'}`,
                                                             borderRadius: '6px',
-                                                            color: isSelected ? '#FFFFFF' : '#ccc',
+                                                            color: isSelected  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                             fontSize: '12px',
                                                             fontWeight: 600,
                                                             cursor: 'pointer',
@@ -1324,7 +1324,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 left: 0,
                                 right: 0,
                                 bottom: 0,
-                                background: 'rgba(0,0,0,0.5)',
+                                background: 'var(--glass-shadow)',
                                 backdropFilter: 'blur(12px)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1337,7 +1337,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     maxWidth: '680px',
                                     background: 'var(--bg-sidebar)',
                                     borderRadius: '20px',
-                                    boxShadow: '0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+                                    boxShadow: '0 25px 50px var(--glass-shadow), 0 0 0 1px var(--glass-bg-light)',
                                     padding: '32px',
                                     border: '1px solid rgba(255,215,0,0.1)'
                                 }}>
@@ -1388,13 +1388,13 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 gap: '14px',
                                                 padding: '16px',
                                                 background: step.status === 'processing'
-                                                    ? 'rgba(255,255,255,0.03)'
+                                                    ? 'var(--glass-bg-light)'
                                                     : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
                                                         step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
                                                 border: `1px solid ${step.status === 'processing'
-                                                    ? 'rgba(255,255,255,0.08)' :
-                                                    step.status === 'completed' ? 'rgba(255,255,255,0.06)' :
-                                                        step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                    ? 'var(--glass-bg-hover)' :
+                                                    step.status === 'completed' ? 'var(--glass-bg-light)' :
+                                                        step.status === 'failed' ? 'rgba(255,68,68,0.3)' : 'var(--glass-bg-light)'}`,
                                                 borderRadius: '12px',
                                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                             }}>
@@ -1403,15 +1403,14 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     minWidth: '32px',
                                                     height: '32px',
                                                     borderRadius: '50%',
-                                                    background: step.status === 'processing' ? 'rgba(255,255,255,0.08)' :
-                                                        step.status === 'failed' ? '#ff4444' : 'rgba(255,255,255,0.05)',
+                                                    background: step.status === 'processing' ? 'var(--glass-bg-hover)' :
+                                                        step.status === 'failed' ? '#ff4444' : 'var(--glass-bg-light)',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     fontSize: '14px',
                                                     fontWeight: 700,
-                                                    color: step.status === 'processing' ? '#fff' :
-                                                        step.status === 'failed' ? '#fff' : '#666'
+                                                    color: step.status === 'processing'  ? 'var(--text-main)' : step.status === 'failed' ? '#fff' : '#666'
                                                 }}>
                                                     {index + 1}
                                                 </div>
@@ -1422,8 +1421,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         <div style={{
                                                             fontSize: '15px',
                                                             fontWeight: 600,
-                                                            color: step.status === 'processing' ? '#fff' :
-                                                                step.status === 'completed' ? '#fff' : '#999'
+                                                            color: step.status === 'processing'  ? 'var(--text-main)' : step.status === 'completed' ? '#fff' : '#999'
                                                         }}>
                                                             {step.label}
                                                         </div>
@@ -1470,7 +1468,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                 <div style={{
                                                                     width: '100%',
                                                                     height: '4px',
-                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    background: 'var(--glass-bg-hover)',
                                                                     borderRadius: '2px',
                                                                     overflow: 'hidden'
                                                                 }}>
@@ -1500,7 +1498,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                 <div style={{
                                                                     width: '100%',
                                                                     height: '4px',
-                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    background: 'var(--glass-bg-hover)',
                                                                     borderRadius: '2px',
                                                                     overflow: 'hidden',
                                                                     marginTop: '6px'
@@ -1520,7 +1518,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                 <div style={{
                                                                     width: '100%',
                                                                     height: '4px',
-                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                    background: 'var(--glass-bg-hover)',
                                                                     borderRadius: '2px',
                                                                     overflow: 'hidden'
                                                                 }}>
@@ -1630,7 +1628,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             padding: '20px',
                                             background: 'var(--glass-bg)',
                                             borderRadius: '12px',
-                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            border: '1px solid var(--glass-border)',
                                             marginBottom: '20px'
                                         }}>
                                             <div style={{ textAlign: 'center' }}>
@@ -1788,7 +1786,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     padding: '32px',
                                     maxWidth: '450px',
                                     width: '90%',
-                                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                                    boxShadow: '0 20px 60px var(--glass-shadow)',
                                     animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}>
                                     {/* 图标 */}
@@ -1895,7 +1893,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     padding: '32px',
                                     maxWidth: '500px',
                                     width: '90%',
-                                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                                    boxShadow: '0 20px 60px var(--glass-shadow)',
                                     animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 }}>
                                     {/* 图标 */}
@@ -1948,7 +1946,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 color: 'var(--text-secondary)',
                                                 marginTop: '12px',
                                                 paddingTop: '12px',
-                                                borderTop: '1px solid rgba(255,255,255,0.05)'
+                                                borderTop: '1px solid var(--glass-border)'
                                             }}>
                                                 <div style={{ marginBottom: '6px' }}>
                                                     <span style={{ color: 'var(--text-secondary)' }}>文档内容：</span>

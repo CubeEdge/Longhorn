@@ -106,7 +106,7 @@ const SystemDashboard: React.FC = () => {
                     </div>
                     <div style={{ fontSize: '2rem', fontWeight: 800 }}>{formatBytes(stats?.storage?.used || 0)}</div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('system.storage_used')}</div>
-                    <div style={{ marginTop: 16, height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ marginTop: 16, height: 6, background: 'var(--glass-bg-light)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: '65%', height: '100%', background: 'var(--accent-blue)' }} />
                     </div>
                 </div>
@@ -138,7 +138,7 @@ const SystemDashboard: React.FC = () => {
                                     <span style={{ fontWeight: 600 }}>{name}</span>
                                     <span style={{ color: 'var(--text-secondary)' }}>{formatBytes(size as number)}</span>
                                 </div>
-                                <div style={{ height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{ height: 8, background: 'var(--glass-bg-light)', borderRadius: 4, overflow: 'hidden' }}>
                                     <div
                                         style={{
                                             width: `${((size as number) / (stats?.storage?.used || 1)) * 100}%`,
@@ -155,7 +155,7 @@ const SystemDashboard: React.FC = () => {
                                 <span style={{ fontWeight: 600 }}>{t('system.personal_space')}</span>
                                 <span style={{ color: 'var(--text-secondary)' }}>{formatBytes(stats?.storage?.members || 0)}</span>
                             </div>
-                            <div style={{ height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ height: 8, background: 'var(--glass-bg-light)', borderRadius: 4, overflow: 'hidden' }}>
                                 <div
                                     style={{
                                         width: `${((stats?.storage?.members || 0) / (stats?.storage?.used || 1)) * 100}%`,

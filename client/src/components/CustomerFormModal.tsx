@@ -466,7 +466,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                                 style={{
                                                     background: 'none',
                                                     border: 'none',
-                                                    color: formData.contacts.length === 1 ? 'rgba(255,255,255,0.2)' : '#ef4444',
+                                                    color: formData.contacts.length === 1 ? 'var(--glass-border)' : '#ef4444',
                                                     cursor: formData.contacts.length === 1 ? 'not-allowed' : 'pointer',
                                                     padding: 4
                                                 }}

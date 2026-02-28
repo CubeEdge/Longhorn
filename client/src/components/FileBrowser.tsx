@@ -890,7 +890,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     transform: 'translateX(-50%)',
                     display: 'flex',
                     gap: 16,
-                    background: 'rgba(0,0,0,0.6)',
+                    background: 'var(--glass-shadow-lg)',
                     backdropFilter: 'blur(10px)',
                     padding: '8px 16px',
                     borderRadius: '20px',
@@ -928,7 +928,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     zIndex: 100,
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--glass-border)',
                     color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
@@ -936,13 +936,13 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    boxShadow: '0 8px 32px var(--glass-shadow)',
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                     flexWrap: 'wrap',
                     gap: 12
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
+                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'var(--glass-bg-hover)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedPaths.length}</span>{t('browser.items_count')}</span>
@@ -968,9 +968,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 onClick={action.onClick}
                                 disabled={isProcessing}
                                 style={{
-                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    background: 'var(--glass-bg-hover)',
                                     color: 'var(--text-main)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    border: '1px solid var(--glass-border)',
                                     padding: '8px 16px',
                                     borderRadius: '10px',
                                     fontWeight: 600,
@@ -985,14 +985,14 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isProcessing) {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                        e.currentTarget.style.background = 'var(--glass-border)';
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px var(--glass-shadow)';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (!isProcessing) {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         e.currentTarget.style.transform = 'translateY(0)';
                                         e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                                     }
@@ -1055,8 +1055,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             <button
                                                 onClick={handleBack}
                                                 style={{
-                                                    background: 'rgba(255, 255, 255, 0.1)',
-                                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                                    background: 'var(--glass-bg-hover)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '50%',
                                                     width: '40px',
                                                     height: '40px',
@@ -1074,8 +1074,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 210, 0, 0.5)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-border)';
                                                     e.currentTarget.style.transform = 'scale(1)';
                                                     e.currentTarget.style.boxShadow = 'none';
                                                 }}
@@ -1220,7 +1220,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             </div>
                             <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{uploadProgress}%</span>
                         </div>
-                        <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: 6, background: 'var(--glass-bg-light)', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 0.2s ease-out' }} />
                         </div>
                     </div>
@@ -1237,7 +1237,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         {Array.isArray(files) && formattedSortedFiles.map((file) => (
                             <div key={file.path} className={`file-item ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)} onContextMenu={(e) => handleContextMenu(e, file)} style={{ position: 'relative' }}>
                                 <div className="item-checkbox" onClick={(e) => toggleSelect(e, file.path)}>
-                                    {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                    {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 0 }} />}
                                 </div>
                                 <button className="more-btn" onClick={(e) => handleOpenMenu(e, file)}>
                                     <MoreHorizontal size={16} />
@@ -1258,7 +1258,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         {/* List Header - Always Visible */}
                         <div className="file-list-header">
                             <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                                {files.length > 0 && selectedPaths.length === files.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                {files.length > 0 && selectedPaths.length === files.length ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 0 }} />}
                             </div>
                             <div className="col-name" onClick={() => { setSortKey('name'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>{t('label.name')}</div>
                             <div className="col-uploader hidden-mobile" onClick={() => { setSortKey('uploader'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>{t('label.uploader')}</div>
@@ -1277,7 +1277,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             Array.isArray(files) && formattedSortedFiles.map((file) => (
                                 <div key={file.path} className={`file-list-row ${selectedPaths.includes(file.path) ? 'selected' : ''}`} onClick={() => handleItemClick(file)}>
                                     <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, file.path)}>
-                                        {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 0 }} />}
+                                        {selectedPaths.includes(file.path) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 0 }} />}
                                     </div>
                                     <div className="col-name">
                                         <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>{file.isDirectory ? <Folder size={20} fill="var(--accent-blue)" color="var(--accent-blue)" /> : getIcon(file, 20)}</div>
@@ -1398,7 +1398,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             background: '#fff',
                             border: '1px solid var(--glass-border)',
                             borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            boxShadow: 'var(--glass-shadow-lg)',
                             zIndex: 10000,
                             minWidth: '180px'
                         }}
@@ -1510,7 +1510,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text-main)' }}>{t('label.file_colon')}</div>
                                 <div style={{
                                     padding: '12px',
-                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    background: 'var(--glass-bg-light)',
                                     border: '1px solid var(--glass-border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem',
@@ -1535,7 +1535,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         fontSize: '0.95rem',
-                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        background: 'var(--glass-bg-light)',
                                         color: 'var(--text-main)',
                                         outline: 'none'
                                     }}
@@ -1550,9 +1550,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setShareExpires('7')}
                                         style={{
                                             padding: '12px',
-                                            background: shareExpires === '7' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: shareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: shareExpires === '7' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: shareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: shareExpires === '7' ? 700 : 600,
@@ -1561,10 +1561,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (shareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (shareExpires !== '7') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (shareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (shareExpires !== '7') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.days_7')}</button>
                                     <button
@@ -1572,9 +1572,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setShareExpires('30')}
                                         style={{
                                             padding: '12px',
-                                            background: shareExpires === '30' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: shareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: shareExpires === '30' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: shareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: shareExpires === '30' ? 700 : 600,
@@ -1583,10 +1583,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (shareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (shareExpires !== '30') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (shareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (shareExpires !== '30') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.month_1')}</button>
                                     <button
@@ -1594,9 +1594,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setShareExpires('never')}
                                         style={{
                                             padding: '12px',
-                                            background: shareExpires === 'never' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: shareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: shareExpires === 'never' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: shareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: shareExpires === 'never' ? 700 : 600,
@@ -1605,10 +1605,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (shareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (shareExpires !== 'never') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (shareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (shareExpires !== 'never') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.forever')}</button>
                                     <button
@@ -1621,9 +1621,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         }}
                                         style={{
                                             padding: '12px',
-                                            background: !['7', '30', 'never'].includes(shareExpires) ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: !['7', '30', 'never'].includes(shareExpires) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: !['7', '30', 'never'].includes(shareExpires) ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: !['7', '30', 'never'].includes(shareExpires) ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: !['7', '30', 'never'].includes(shareExpires) ? 700 : 600,
@@ -1632,10 +1632,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (['7', '30', 'never'].includes(shareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (['7', '30', 'never'].includes(shareExpires)) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (['7', '30', 'never'].includes(shareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (['7', '30', 'never'].includes(shareExpires)) e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >
                                         {t('time.custom')}
@@ -1656,9 +1656,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             onClick={() => setShareLanguage(lang)}
                                             style={{
                                                 padding: '12px',
-                                                background: shareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderLeft: shareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                background: shareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderLeft: shareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontWeight: shareLanguage === lang ? 700 : 600,
@@ -1667,10 +1667,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                 transition: 'all 0.2s'
                                             }}
                                             onMouseEnter={(e) => {
-                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                             onMouseLeave={(e) => {
-                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                                if (shareLanguage !== lang) e.currentTarget.style.background = 'var(--glass-bg-light)';
                                             }}
                                         >
                                             {t(`lang.${lang}`)}
@@ -1688,7 +1688,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     style={{
                                         flex: 1,
                                         padding: '12px',
-                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        background: 'var(--glass-bg-hover)',
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
@@ -1698,7 +1698,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                 >{t('common.cancel')}</button>
                                 <button
                                     onClick={handleCreateShareLink}
@@ -1759,7 +1759,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                         </div>
                         <div className="preview-content">{renderPreviewContent(previewFile)}</div>
                         <div className="preview-actions">
-                            <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '16px' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '16px' }}>
                                 {t('file.uploader')}: {previewFile.uploader || 'unknown'} • {t('file.total_access')}: {previewFile.accessCount || 0}
                             </div>
                         </div>
@@ -1834,7 +1834,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         fontSize: '0.95rem',
-                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        background: 'var(--glass-bg-light)',
                                         color: 'var(--text-main)',
                                         outline: 'none'
                                     }}
@@ -1856,7 +1856,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         fontSize: '0.95rem',
-                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        background: 'var(--glass-bg-light)',
                                         color: 'var(--text-main)',
                                         outline: 'none'
                                     }}
@@ -1871,9 +1871,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setBatchShareExpires('7')}
                                         style={{
                                             padding: '12px',
-                                            background: batchShareExpires === '7' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: batchShareExpires === '7' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: batchShareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === '7' ? 700 : 600,
@@ -1882,10 +1882,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (batchShareExpires !== '7') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.days_7')}</button>
                                     <button
@@ -1893,9 +1893,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setBatchShareExpires('30')}
                                         style={{
                                             padding: '12px',
-                                            background: batchShareExpires === '30' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: batchShareExpires === '30' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: batchShareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === '30' ? 700 : 600,
@@ -1904,10 +1904,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: ' 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (batchShareExpires !== '30') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.month_1')}</button>
                                     <button
@@ -1915,9 +1915,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         onClick={() => setBatchShareExpires('never')}
                                         style={{
                                             padding: '12px',
-                                            background: batchShareExpires === 'never' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: batchShareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: batchShareExpires === 'never' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: batchShareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === 'never' ? 700 : 600,
@@ -1926,10 +1926,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (batchShareExpires !== 'never') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >{t('time.forever')}</button>
                                     <button
@@ -1942,9 +1942,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         }}
                                         style={{
                                             padding: '12px',
-                                            background: !['7', '30', 'never'].includes(batchShareExpires) ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                            border: '1px solid rgba(255, 255, 255, 0.15)',
-                                            borderLeft: !['7', '30', 'never'].includes(batchShareExpires) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                            background: !['7', '30', 'never'].includes(batchShareExpires) ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: !['7', '30', 'never'].includes(batchShareExpires) ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                             borderRadius: '8px',
                                             color: 'var(--text-main)',
                                             fontWeight: !['7', '30', 'never'].includes(batchShareExpires) ? 700 : 600,
@@ -1953,10 +1953,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                            if (['7', '30', 'never'].includes(batchShareExpires)) e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         }}
                                     >
                                         {t('time.custom')}
@@ -1977,9 +1977,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             onClick={() => setBatchShareLanguage(lang)}
                                             style={{
                                                 padding: '12px',
-                                                background: batchShareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                borderLeft: batchShareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                background: batchShareLanguage === lang ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderLeft: batchShareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontWeight: batchShareLanguage === lang ? 700 : 600,
@@ -1988,10 +1988,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                 transition: 'all 0.2s'
                                             }}
                                             onMouseEnter={(e) => {
-                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                             onMouseLeave={(e) => {
-                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                                if (batchShareLanguage !== lang) e.currentTarget.style.background = 'var(--glass-bg-light)';
                                             }}
                                         >
                                             {t(`lang.${lang}`)}
@@ -2009,7 +2009,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                     style={{
                                         flex: 1,
                                         padding: '12px',
-                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        background: 'var(--glass-bg-hover)',
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
@@ -2019,7 +2019,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                 >{t('common.cancel')}</button>
                                 <button
                                     onClick={handleBatchShare}

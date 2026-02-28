@@ -49,7 +49,7 @@ export const ConfirmDialog: React.FC = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0, 0, 0, 0.7)',
+                background: 'var(--glass-shadow-lg)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 display: 'flex',
@@ -63,13 +63,13 @@ export const ConfirmDialog: React.FC = () => {
                 className="modal-content"
                 onClick={e => e.stopPropagation()}
                 style={{
-                    background: 'rgba(30, 30, 30, 0.95)',
+                    background: 'var(--bg-sidebar)',
                     border: `1px solid ${isDangerous ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 215, 0, 0.2)'}`,
                     width: '90%',
                     maxWidth: '420px',
                     borderRadius: '20px',
                     padding: '0',
-                    boxShadow: `0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px ${isDangerous ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 215, 0, 0.1)'}`,
+                    boxShadow: `0 25px 80px var(--glass-shadow), 0 0 0 1px ${isDangerous ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 215, 0, 0.1)'}`,
                     animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     overflow: 'hidden'
                 }}
@@ -77,7 +77,7 @@ export const ConfirmDialog: React.FC = () => {
                 {/* Header with icon */}
                 <div style={{
                     padding: '24px 28px 20px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px'
@@ -110,7 +110,7 @@ export const ConfirmDialog: React.FC = () => {
                 }}>
                     <p style={{
                         margin: 0,
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: 'var(--text-secondary)',
                         lineHeight: 1.6,
                         fontSize: '15px'
                     }}>
@@ -129,10 +129,10 @@ export const ConfirmDialog: React.FC = () => {
                         onClick={() => close(false)}
                         style={{
                             padding: '12px 24px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '12px',
-                            color: 'rgba(255, 255, 255, 0.7)',
+                            color: 'var(--text-secondary)',
                             cursor: 'pointer',
                             fontSize: '15px',
                             fontWeight: 500,
@@ -140,12 +140,12 @@ export const ConfirmDialog: React.FC = () => {
                             minWidth: '90px'
                         }}
                         onMouseEnter={e => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                            e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                         }}
                         onMouseLeave={e => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.background = 'var(--glass-bg-light)';
+                            e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                         }}
                     >
                         {cancelLabel || t('common.cancel') || 'Cancel'}
@@ -160,7 +160,7 @@ export const ConfirmDialog: React.FC = () => {
                                 : primaryColor,
                             border: 'none',
                             borderRadius: '12px',
-                            color: isDangerous ? '#fff' : '#000',
+                            color: isDangerous  ? 'var(--text-main)' : '#000',
                             cursor: countdown > 0 ? 'not-allowed' : 'pointer',
                             fontSize: '15px',
                             fontWeight: 600,

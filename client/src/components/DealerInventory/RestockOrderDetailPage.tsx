@@ -51,7 +51,7 @@ interface RestockOrderDetail {
 const statusFlow = ['Draft', 'Submitted', 'Approved', 'Shipped', 'Delivered'];
 
 const statusConfig: Record<string, { color: string; bg: string; icon: any }> = {
-    'Draft': { color: '#9ca3af', bg: 'rgba(156, 163, 175, 0.15)', icon: Clock },
+    'Draft': { color: 'var(--text-secondary)', bg: 'rgba(156, 163, 175, 0.15)', icon: Clock },
     'Submitted': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Clock },
     'Approved': { color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', icon: CheckCircle },
     'Shipped': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)', icon: Truck },
@@ -230,7 +230,7 @@ const RestockOrderDetailPage: React.FC = () => {
                                         width: 32,
                                         height: 32,
                                         borderRadius: '50%',
-                                        background: isCurrent ? sConfig.bg : isPast ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
+                                        background: isCurrent ? sConfig.bg : isPast ? 'rgba(16, 185, 129, 0.2)' : 'var(--glass-bg-light)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -254,7 +254,7 @@ const RestockOrderDetailPage: React.FC = () => {
                                     <div style={{
                                         flex: 1,
                                         height: 2,
-                                        background: isPast ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.1)',
+                                        background: isPast ? 'rgba(16, 185, 129, 0.4)' : 'var(--glass-bg-hover)',
                                         margin: '0 8px'
                                     }} />
                                 )}

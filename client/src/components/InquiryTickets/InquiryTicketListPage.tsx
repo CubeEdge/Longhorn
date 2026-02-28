@@ -558,7 +558,7 @@ const InquiryTicketListPage: React.FC = () => {
                                             color: 'var(--text-primary)',
                                             fontSize: '0.85rem',
                                             outline: 'none',
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                            boxShadow: '0 4px 20px var(--glass-shadow)'
                                         }}
                                         value={localSearch}
                                         onChange={(e) => setLocalSearch(e.target.value)}
@@ -807,10 +807,10 @@ const InquiryTicketListPage: React.FC = () => {
                                 background: 'rgba(30, 30, 30, 0.75)',
                                 backdropFilter: 'blur(20px)',
                                 border: '1px solid var(--glass-border)',
-                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                                boxShadow: '0 25px 50px -12px var(--glass-shadow)'
                             }}
                         >
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.95)', marginBottom: '24px', letterSpacing: '-0.01em' }}>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', letterSpacing: '-0.01em' }}>
                                 {t('filter.custom_range')}
                             </h3>
 

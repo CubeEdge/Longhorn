@@ -32,8 +32,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             <div
                 onClick={onClick}
                 style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--glass-bg-light)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '12px',
                     padding: '14px 16px',
                     cursor: 'pointer',
@@ -48,8 +48,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.background = 'var(--glass-bg-light)';
+                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                     e.currentTarget.style.transform = 'translateY(0)';
                 }}
             >
@@ -97,7 +97,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 onClick={onClick}
                 style={{
                     background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '12px',
                     padding: '16px',
                     cursor: 'pointer',
@@ -115,7 +115,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                    e.currentTarget.style.borderColor = 'var(--glass-bg-light)';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                 }}
@@ -193,8 +193,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
         <div
             onClick={onClick}
             style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--glass-bg-light)',
+                border: '1px solid var(--glass-border)',
                 borderRadius: '14px',
                 padding: '18px',
                 cursor: 'pointer',
@@ -209,8 +209,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.background = 'var(--glass-bg-light)';
+                e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                 e.currentTarget.style.transform = 'translateY(0)';
             }}
         >

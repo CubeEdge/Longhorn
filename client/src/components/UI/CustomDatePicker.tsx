@@ -63,7 +63,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                             borderRadius: '16px',
                             padding: '20px',
                             zIndex: 3001,
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+                            boxShadow: '0 20px 40px var(--glass-shadow-lg)'
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

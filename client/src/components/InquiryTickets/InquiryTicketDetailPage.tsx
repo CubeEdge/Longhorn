@@ -193,7 +193,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                     {/* Header Strip */}
                     <div style={{
                         padding: '20px 40px',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '16px',
@@ -203,8 +203,8 @@ const InquiryTicketDetailPage: React.FC = () => {
                         <button
                             onClick={() => navigate(getRoute('/service/inquiry-tickets'))}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '10px',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
@@ -217,11 +217,11 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.color = '#fff';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                 e.currentTarget.style.color = 'var(--text-secondary)';
                             }}
                         >
@@ -235,7 +235,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                         <div style={{
                             padding: '4px 12px',
                             borderRadius: '100px',
-                            background: statusColors[ticket.status]?.bg || 'rgba(255,255,255,0.1)',
+                            background: statusColors[ticket.status]?.bg || 'var(--glass-bg-hover)',
                             color: statusColors[ticket.status]?.text || 'white',
                             fontWeight: 600,
                             fontSize: '0.8rem',
@@ -255,7 +255,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 onClick={handleReopen}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
-                                    background: 'rgba(255,255,255,0.1)',
+                                    background: 'var(--glass-bg-hover)',
                                     border: 'none',
                                     color: 'var(--text-main)',
                                     padding: '8px 16px',
@@ -413,7 +413,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                                     {ticket.attachments.map(att => (
                                         <div key={att.id} style={{
-                                            background: 'rgba(255,255,255,0.05)',
+                                            background: 'var(--glass-bg-light)',
                                             borderRadius: '8px',
                                             padding: '12px',
                                             display: 'flex',

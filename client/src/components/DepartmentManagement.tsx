@@ -148,9 +148,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantType('Read')}
                                     style={{
                                         padding: '10px',
-                                        background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantType === 'Read' ? 700 : 600,
@@ -159,10 +159,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantType !== 'Read') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantType !== 'Read') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantType !== 'Read') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantType !== 'Read') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('permission.read_only')}</button>
                                 <button
@@ -170,9 +170,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantType('Contribute')}
                                     style={{
                                         padding: '10px',
-                                        background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantType === 'Contribute' ? 700 : 600,
@@ -181,10 +181,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantType !== 'Contribute') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('permission.contribute')}</button>
                                 <button
@@ -192,9 +192,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantType('Full')}
                                     style={{
                                         padding: '10px',
-                                        background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantType === 'Full' ? 700 : 600,
@@ -203,10 +203,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantType !== 'Full') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantType !== 'Full') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantType !== 'Full') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantType !== 'Full') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('permission.full')}</button>
                             </div>
@@ -217,7 +217,7 @@ const DepartmentManagement: React.FC = () => {
                                 border: '1px solid rgba(255, 210, 0, 0.2)',
                                 borderRadius: '8px',
                                 fontSize: '0.75rem',
-                                color: 'rgba(255, 255, 255, 0.8)',
+                                color: 'var(--text-main)',
                                 lineHeight: 1.5
                             }}>
                                 <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-blue)', fontSize: '0.8rem' }}>{t('permission.info_title')}</div>
@@ -234,9 +234,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantExpiry('7days')}
                                     style={{
                                         padding: '10px',
-                                        background: grantExpiry === '7days' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantExpiry === '7days' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantExpiry === '7days' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantExpiry === '7days' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantExpiry === '7days' ? 700 : 600,
@@ -245,10 +245,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantExpiry !== '7days') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('time.days_7')}</button>
                                 <button
@@ -256,9 +256,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantExpiry('1month')}
                                     style={{
                                         padding: '10px',
-                                        background: grantExpiry === '1month' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantExpiry === '1month' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantExpiry === '1month' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantExpiry === '1month' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantExpiry === '1month' ? 700 : 600,
@@ -267,10 +267,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantExpiry !== '1month') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('time.month_1')}</button>
                                 <button
@@ -278,9 +278,9 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setGrantExpiry('permanent')}
                                     style={{
                                         padding: '10px',
-                                        background: grantExpiry === 'permanent' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: grantExpiry === 'permanent' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: grantExpiry === 'permanent' ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: grantExpiry === 'permanent' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: grantExpiry === 'permanent' ? 700 : 600,
@@ -289,10 +289,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('time.forever')}</button>
                                 <button
@@ -305,9 +305,9 @@ const DepartmentManagement: React.FC = () => {
                                     }}
                                     style={{
                                         padding: '10px',
-                                        background: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                        background: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
                                         borderRadius: '8px',
                                         color: 'var(--text-main)',
                                         fontWeight: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 700 : 600,
@@ -316,10 +316,10 @@ const DepartmentManagement: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >
                                     {t('time.custom')}
@@ -401,7 +401,7 @@ const DepartmentManagement: React.FC = () => {
 
             {/* Hint Section - Moved to Bottom & Compact */}
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
-                <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 20, border: '1px solid var(--glass-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                         <FolderPlus size={18} color="var(--text-secondary)" />
                         <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('dept_mgmt.core_rules')}</h4>
@@ -412,7 +412,7 @@ const DepartmentManagement: React.FC = () => {
                         <li>{t('dept.permission_conflict_rule')}</li>
                     </ul>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: 20, border: '1px solid var(--glass-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                         <Clock size={18} color="var(--text-secondary)" />
                         <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('dept_mgmt.audit_note')}</h4>

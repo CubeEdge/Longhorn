@@ -534,7 +534,7 @@ const RMATicketListPage: React.FC = () => {
                                             width: '100%', height: '100%', padding: '0 12px 0 32px',
                                             borderRadius: '8px', border: '1px solid #FFD700', background: 'var(--bg-sidebar)',
                                             color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                                            boxShadow: '0 4px 20px var(--glass-shadow)'
                                         }}
                                         value={localSearch}
                                         onChange={(e) => setLocalSearch(e.target.value)}
@@ -785,12 +785,12 @@ const RMATicketListPage: React.FC = () => {
             {showDatePicker && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 2000,
-                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+                    background: 'var(--glass-shadow-lg)', backdropFilter: 'blur(5px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }} onClick={() => setShowDatePicker(false)}>
                     <div style={{
                         width: '400px', background: 'var(--bg-sidebar)', borderRadius: '16px', padding: '24px',
-                        border: '1px solid var(--glass-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                        border: '1px solid var(--glass-border)', boxShadow: '0 20px 50px var(--glass-shadow)'
                     }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '20px' }}>
                             {t('filter.custom_range')}

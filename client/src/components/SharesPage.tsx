@@ -322,7 +322,7 @@ export const SharesPage: React.FC = () => {
                     zIndex: 100,
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--glass-border)',
                     color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
@@ -330,11 +330,11 @@ export const SharesPage: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    boxShadow: '0 8px 32px var(--glass-shadow)',
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
+                        <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'var(--glass-bg-hover)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('my_shares.selected_items', { count: selectedIds.length + selectedCollectionIds.length })}</span>
@@ -343,9 +343,9 @@ export const SharesPage: React.FC = () => {
                         <button
                             onClick={(e) => { e.stopPropagation(); e.preventDefault(); bulkDelete(); }}
                             style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
+                                background: 'var(--glass-bg-hover)',
                                 color: 'var(--text-main)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                border: '1px solid var(--glass-border)',
                                 padding: '8px 16px',
                                 borderRadius: '10px',
                                 fontWeight: 600,
@@ -358,12 +358,12 @@ export const SharesPage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.background = 'var(--glass-border)';
                                 e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px var(--glass-shadow)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.transform = 'translateY(0)';
                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                             }}
@@ -387,7 +387,7 @@ export const SharesPage: React.FC = () => {
                     <div className="file-list" style={{ minWidth: 600 }}>
                         <div className="file-list-header">
                             <div style={{ width: 40, paddingLeft: 12 }} onClick={selectAll}>
-                                {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                                {((selectedIds.length > 0 && selectedIds.length === shares.length) && (selectedCollectionIds.length > 0 && selectedCollectionIds.length === collections.length)) || ((selectedIds.length === shares.length && shares.length > 0) && collections.length === 0) || ((selectedCollectionIds.length === collections.length && collections.length > 0) && shares.length === 0) ? <Check size={16} color="var(--accent-blue)" strokeWidth={4} /> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 4 }} />}
                             </div>
                             <div className="col-name">{t('label.name')}</div>
                             <div className="col-stats">{t('label.access_count')}</div>
@@ -407,7 +407,7 @@ export const SharesPage: React.FC = () => {
                                     onClick={() => handleRowClick(item)}
                                 >
                                     <div style={{ width: 40, paddingLeft: 12 }} onClick={(e) => toggleSelect(e, item.id, item.type)}>
-                                        {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.2)', borderRadius: 4 }} />}
+                                        {((isFile && selectedIds.includes(item.id)) || (isCollection && selectedCollectionIds.includes(item.id))) ? <div style={{ width: 16, height: 16, background: 'var(--accent-blue)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={12} color="#000" strokeWidth={4} /></div> : <div style={{ width: 16, height: 16, border: '2px solid var(--glass-border)', borderRadius: 4 }} />}
                                     </div>
                                     <div className="col-name">
                                         <div style={{ width: 32, display: 'flex', justifyContent: 'center' }}>
@@ -498,7 +498,7 @@ export const SharesPage: React.FC = () => {
                             {(() => {
                                 if ('type' in detailShare && detailShare.type === 'collection') {
                                     return (
-                                        <div style={{ marginBottom: '20px', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '32px' }}>
+                                        <div style={{ marginBottom: '20px', textAlign: 'center', background: 'var(--glass-shadow)', borderRadius: '12px', padding: '32px' }}>
                                             <Package size={64} style={{ opacity: 0.5, marginBottom: 16 }} />
                                             <div style={{ color: 'var(--text-secondary)' }}>包含多个文件的集合</div>
                                         </div>
@@ -512,7 +512,7 @@ export const SharesPage: React.FC = () => {
 
                                 if (isImage) {
                                     return (
-                                        <div style={{ marginBottom: '20px', textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '16px' }}>
+                                        <div style={{ marginBottom: '20px', textAlign: 'center', background: 'var(--glass-shadow)', borderRadius: '12px', padding: '16px' }}>
                                             <img
                                                 src={`/preview/${detailShare.file_path}`}
                                                 alt={getFileName(detailShare.file_path!)}
@@ -529,7 +529,7 @@ export const SharesPage: React.FC = () => {
 
                                 if (isVideo) {
                                     return (
-                                        <div style={{ marginBottom: '20px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '16px' }}>
+                                        <div style={{ marginBottom: '20px', background: 'var(--glass-shadow)', borderRadius: '12px', padding: '16px' }}>
                                             <video
                                                 controls
                                                 style={{
@@ -549,7 +549,7 @@ export const SharesPage: React.FC = () => {
                             })()}
 
                             <div style={{ display: 'grid', gap: '16px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--glass-bg-light)', borderRadius: '8px' }}>
                                     <Eye size={18} color="var(--accent-blue)" />
                                     <div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('label.access_count')}</div>
@@ -557,7 +557,7 @@ export const SharesPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--glass-bg-light)', borderRadius: '8px' }}>
                                     <Clock size={18} color="var(--accent-blue)" />
                                     <div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>过期时间</div>
@@ -569,7 +569,7 @@ export const SharesPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--glass-bg-light)', borderRadius: '8px' }}>
                                     <Calendar size={18} color="var(--accent-blue)" />
                                     <div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>创建时间</div>
@@ -578,7 +578,7 @@ export const SharesPage: React.FC = () => {
                                 </div>
 
                                 {('last_accessed' in detailShare && detailShare.last_accessed) && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--glass-bg-light)', borderRadius: '8px' }}>
                                         <User size={18} color="var(--accent-blue)" />
                                         <div>
                                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>最后访问</div>

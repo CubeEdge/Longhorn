@@ -137,7 +137,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                     maxHeight: '85vh',
                     background: 'rgba(28, 28, 30, 0.98)',
                     borderRadius: '20px',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--glass-border)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
@@ -147,7 +147,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                 {/* Header */}
                 <div style={{
                     padding: '20px 24px',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between'
@@ -157,18 +157,18 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                             <Send size={18} color="#FFD700" />
                             发布预览确认
                         </h3>
-                        <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+                        <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                             {articleTitle}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
                         style={{
-                            background: 'rgba(255,255,255,0.05)',
+                            background: 'var(--glass-bg-light)',
                             border: 'none',
                             borderRadius: '8px',
                             padding: '8px',
-                            color: 'rgba(255,255,255,0.5)',
+                            color: 'var(--text-secondary)',
                             cursor: 'pointer'
                         }}
                     >
@@ -191,25 +191,25 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                         flexDirection: 'column',
                         background: 'rgba(255,255,255,0.02)',
                         borderRadius: '12px',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid var(--glass-border)',
                         overflow: 'hidden'
                     }}>
                         <div style={{
                             padding: '12px 16px',
-                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            borderBottom: '1px solid var(--glass-border)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px'
                         }}>
                             <FileText size={14} color="rgba(255,255,255,0.5)" />
-                            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', fontWeight: 500 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>
                                 当前版本
                             </span>
                             <span style={{
                                 marginLeft: 'auto',
                                 fontSize: '11px',
                                 color: 'rgba(255,255,255,0.3)',
-                                background: 'rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
                                 padding: '2px 8px',
                                 borderRadius: '4px'
                             }}>
@@ -221,7 +221,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                             padding: '16px',
                             overflow: 'auto',
                             fontSize: '12px',
-                            color: 'rgba(255,255,255,0.6)',
+                            color: 'var(--text-secondary)',
                             lineHeight: 1.6,
                             fontFamily: 'monospace',
                             whiteSpace: 'pre-wrap',
@@ -275,7 +275,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                             padding: '16px',
                             overflow: 'auto',
                             fontSize: '12px',
-                            color: 'rgba(255,255,255,0.8)',
+                            color: 'var(--text-main)',
                             lineHeight: 1.6,
                             fontFamily: 'monospace',
                             whiteSpace: 'pre-wrap',
@@ -290,7 +290,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                 {/* Change Summary */}
                 <div style={{
                     padding: '16px 24px',
-                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    borderTop: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px'
@@ -315,7 +315,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                 {/* Actions */}
                 <div style={{
                     padding: '20px 24px',
-                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    borderTop: '1px solid var(--glass-border)',
                     display: 'flex',
                     justifyContent: 'flex-end',
                     gap: '12px'
@@ -326,9 +326,9 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                         style={{
                             padding: '12px 24px',
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.2)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '10px',
-                            color: 'rgba(255,255,255,0.7)',
+                            color: 'var(--text-secondary)',
                             fontSize: '14px',
                             cursor: publishing ? 'not-allowed' : 'pointer',
                             opacity: publishing ? 0.5 : 1

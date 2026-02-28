@@ -113,7 +113,7 @@ const DealerInfoCard: React.FC<DealerInfoCardProps> = ({
                 flexWrap: 'wrap',
                 gap: '12px',
                 fontSize: '0.85rem',
-                color: 'rgba(255, 255, 255, 0.6)'
+                color: 'var(--text-secondary)'
             }}>
                 {dealerCode && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

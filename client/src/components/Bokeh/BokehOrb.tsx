@@ -74,7 +74,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                 position: 'absolute',
                 right: '60px',
                 top: '12px',
-                background: 'rgba(0,0,0,0.8)',
+                background: 'var(--glass-shadow-lg)',
                 padding: '4px 8px',
                 borderRadius: '6px',
                 color: 'var(--text-main)',

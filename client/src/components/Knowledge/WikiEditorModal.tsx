@@ -417,7 +417,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                     style={{
                         position: 'fixed',
                         inset: 0,
-                        background: 'rgba(0,0,0,0.8)',
+                        background: 'var(--glass-shadow-lg)',
                         backdropFilter: 'blur(8px)',
                         display: 'flex',
                         alignItems: 'center',
@@ -437,8 +437,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             height: '90vh',
                             background: 'rgba(28, 28, 30, 0.95)',
                             borderRadius: '20px',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            boxShadow: '0 25px 80px rgba(0,0,0,0.6)',
+                            border: '1px solid var(--glass-border)',
+                            boxShadow: '0 25px 80px var(--glass-shadow-lg)',
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden'
@@ -448,7 +448,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         {/* Header */}
                         <div style={{
                             padding: '20px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                            borderBottom: '1px solid var(--glass-border)',
                             display: 'flex',
                             alignItems: 'center',
                             background: 'rgba(255,255,255,0.02)',
@@ -469,7 +469,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     style={{
                                         background: 'transparent',
                                         border: 'none',
-                                        color: 'rgba(255,255,255,0.5)',
+                                        color: 'var(--text-secondary)',
                                         cursor: 'pointer',
                                         padding: '8px',
                                         flexShrink: 0
@@ -511,8 +511,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     onClick={() => setShowSummaryDropdown(!showSummaryDropdown)}
                                     style={{
                                         padding: '8px 16px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.15)',
+                                        background: 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: summary ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
                                         fontSize: '13px',
@@ -525,17 +525,17 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         transition: 'all 0.2s'
                                     }}
                                     onMouseEnter={e => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
                                     }}
                                     onMouseLeave={e => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-light)';
+                                        e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                     }}
                                 >
                                     <FileText size={14} />
                                     摘要
-                                    {summary && <span style={{ fontSize: '11px', opacity: 0.7, background: 'rgba(255,255,255,0.1)', padding: '1px 5px', borderRadius: '4px' }}>{summary.length}</span>}
+                                    {summary && <span style={{ fontSize: '11px', opacity: 0.7, background: 'var(--glass-bg-hover)', padding: '1px 5px', borderRadius: '4px' }}>{summary.length}</span>}
                                     <ChevronDown size={14} style={{ transform: showSummaryDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                 </button>
 
@@ -548,10 +548,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         transform: 'translateX(-50%)',
                                         marginTop: '10px',
                                         width: '640px',
-                                        background: 'rgba(30, 30, 35, 0.98)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'var(--bg-sidebar)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '12px',
-                                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                                        boxShadow: '0 20px 50px var(--glass-shadow)',
                                         padding: '16px',
                                         zIndex: 100,
                                         animation: 'fadeInUp 0.2s ease-out'
@@ -568,8 +568,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             style={{
                                                 width: '100%',
                                                 height: '100px',
-                                                background: 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                background: 'var(--glass-shadow)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 padding: '14px',
                                                 color: 'var(--text-main)',
@@ -671,10 +671,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             right: 0,
                                             marginTop: '8px',
                                             width: '160px',
-                                            background: 'rgba(30, 30, 35, 0.98)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            background: 'var(--bg-sidebar)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '10px',
-                                            boxShadow: '0 15px 40px rgba(0,0,0,0.5)',
+                                            boxShadow: '0 15px 40px var(--glass-shadow)',
                                             overflow: 'hidden',
                                             zIndex: 100
                                         }}>
@@ -700,7 +700,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                         alignItems: 'center',
                                                         gap: '8px'
                                                     }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                                 >
                                                     {option.label}
@@ -715,10 +715,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     onClick={() => setShowVersionHistory(true)}
                                     style={{
                                         padding: '8px 16px',
-                                        background: 'rgba(255,255,255,0.05)',
+                                        background: 'var(--glass-bg-light)',
                                         border: '1px solid rgba(255,255,255,0.12)',
                                         borderRadius: '8px',
-                                        color: 'rgba(255,255,255,0.7)',
+                                        color: 'var(--text-secondary)',
                                         fontSize: '13px',
                                         fontWeight: 500,
                                         cursor: 'pointer',
@@ -729,11 +729,11 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         flexShrink: 0
                                     }}
                                     onMouseEnter={e => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         e.currentTarget.style.color = '#fff';
                                     }}
                                     onMouseLeave={e => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-light)';
                                         e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
                                     }}
                                 >
@@ -764,7 +764,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         {/* Footer Actions - 包含 Bokeh 助手和操作按钮 */}
                         <div style={{
                             padding: '12px 24px',
-                            borderTop: '1px solid rgba(255,255,255,0.08)',
+                            borderTop: '1px solid var(--glass-border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -824,8 +824,8 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         onClick={() => setShowMoreActions(!showMoreActions)}
                                         style={{
                                             padding: '8px 12px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            background: 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '6px',
                                             color: 'var(--text-main)',
                                             fontSize: '12px',
@@ -853,9 +853,9 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                     marginBottom: '8px',
                                                     width: '160px',
                                                     background: '#2a2a2a',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
-                                                    boxShadow: '0 -4px 20px rgba(0,0,0,0.5)',
+                                                    boxShadow: '0 -4px 20px var(--glass-shadow)',
                                                     overflow: 'hidden',
                                                     zIndex: 100
                                                 }}
@@ -880,7 +880,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                         padding: '10px 14px',
                                                         background: 'transparent',
                                                         border: 'none',
-                                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                        borderBottom: '1px solid var(--glass-border)',
                                                         color: '#FFD700',
                                                         fontSize: '12px',
                                                         textAlign: 'left',
@@ -915,7 +915,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                         padding: '10px 14px',
                                                         background: 'transparent',
                                                         border: 'none',
-                                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                        borderBottom: '1px solid var(--glass-border)',
                                                         color: '#ef4444',
                                                         fontSize: '12px',
                                                         textAlign: 'left',
@@ -990,11 +990,11 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                     <div style={{
                         width: '80%',
                         maxWidth: '400px',
-                        background: '#1a1a1a',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--bg-sidebar)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '16px',
                         padding: '32px',
-                        boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
+                        boxShadow: '0 30px 100px var(--glass-shadow-lg)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '24px'
@@ -1038,7 +1038,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     background: confirmAction === 'delete' ? '#EF4444' : '#FFD700',
                                     border: 'none',
                                     borderRadius: '12px',
-                                    color: confirmAction === 'delete' ? '#fff' : '#000',
+                                    color: confirmAction === 'delete'  ? 'var(--text-main)' : '#000',
                                     fontSize: '15px',
                                     fontWeight: 600,
                                     cursor: (isDeleting || isPublishing) ? 'not-allowed' : 'pointer',
@@ -1060,9 +1060,9 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     width: '100%',
                                     padding: '12px',
                                     background: 'transparent',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    border: '1px solid var(--glass-border)',
                                     borderRadius: '12px',
-                                    color: 'rgba(255,255,255,0.7)',
+                                    color: 'var(--text-secondary)',
                                     fontSize: '14px',
                                     cursor: (isDeleting || isPublishing) ? 'not-allowed' : 'pointer'
                                 }}
@@ -1079,7 +1079,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                 <div style={{
                     position: 'fixed',
                     inset: 0,
-                    background: 'rgba(0,0,0,0.7)',
+                    background: 'var(--glass-shadow-lg)',
                     backdropFilter: 'blur(4px)',
                     zIndex: 11000,
                     display: 'flex',
@@ -1088,22 +1088,22 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                 }}>
                     <div style={{
                         width: '400px',
-                        background: '#1a1a1a',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--bg-sidebar)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '16px',
                         padding: '30px',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '20px',
-                        boxShadow: '0 20px 60px rgba(0,0,0,0.6)'
+                        boxShadow: '0 20px 60px var(--glass-shadow-lg)'
                     }}>
                         <div style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
                             <Sparkles className="animate-pulse" style={{ color: '#10B981' }} />
                             Bokeh 正在优化中...
                         </div>
 
-                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '8px', background: 'var(--glass-bg-hover)', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{
                                 width: `${optimizationProgress}%`,
                                 height: '100%',
@@ -1166,17 +1166,17 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                     <div style={{
                         width: '90%',
                         height: '90%',
-                        background: '#1a1a1a',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--bg-sidebar)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '16px',
-                        boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
+                        boxShadow: '0 30px 100px var(--glass-shadow-lg)',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden'
                     }}>
                         <div style={{
                             padding: '20px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                            borderBottom: '1px solid var(--glass-border)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
@@ -1204,13 +1204,13 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
 
                         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                             {/* Left Side - Original */}
-                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textAlign: 'center' }}>
+                            <div style={{ flex: 1, borderRight: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textAlign: 'center' }}>
                                     原版内容
                                 </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: 'rgba(255,255,255,0.6)' }} className="markdown-content">
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: 'var(--text-secondary)' }} className="markdown-content">
                                     {(bokehReviewMode === 'summary' || bokehReviewMode === 'full') && (
-                                        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
+                                        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--glass-bg-hover)' }}>
                                             <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>当前摘要:</h4>
                                             <p>{summary || '（暂无摘要）'}</p>
                                         </div>
@@ -1228,7 +1228,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: 'var(--text-main)' }} className="markdown-content">
                                     {(bokehReviewMode === 'summary' || bokehReviewMode === 'full') && bokehReviewSummary && (
-                                        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
+                                        <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--glass-bg-hover)' }}>
                                             <h4 style={{ color: '#10B981', marginBottom: '8px' }}>优化后摘要:</h4>
                                             <p>{bokehReviewSummary}</p>
                                         </div>
@@ -1242,7 +1242,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
 
                         <div style={{
                             padding: '20px 24px',
-                            borderTop: '1px solid rgba(255,255,255,0.1)',
+                            borderTop: '1px solid var(--glass-border)',
                             display: 'flex',
                             justifyContent: 'flex-end',
                             gap: '12px',
@@ -1253,7 +1253,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 style={{
                                     padding: '10px 24px',
                                     background: 'transparent',
-                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    border: '1px solid var(--glass-border)',
                                     borderRadius: '8px',
                                     color: 'var(--text-main)',
                                     fontSize: '14px',

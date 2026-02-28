@@ -64,7 +64,7 @@ const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0, 0, 0, 0.7)',
+                background: 'var(--glass-shadow-lg)',
                 backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
@@ -169,8 +169,8 @@ const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
                         onClick={onClose}
                         disabled={loading}
                         style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             color: 'var(--text-main)',
                             padding: '10px 20px',
                             borderRadius: 8,

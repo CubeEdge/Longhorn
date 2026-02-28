@@ -86,7 +86,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0, 0, 0, 0.7)',
+                background: 'var(--glass-shadow-lg)',
                 backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
@@ -99,11 +99,11 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                 style={{
                     background: 'linear-gradient(145deg, rgba(35, 35, 40, 0.95), rgba(25, 25, 30, 0.95))',
                     borderRadius: 16,
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--glass-border)',
                     padding: 0,
                     width: '100%',
                     maxWidth: 480,
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+                    boxShadow: '0 20px 60px var(--glass-shadow)'
                 }}
             >
                 {/* Header */}
@@ -113,7 +113,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '20px 24px',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                        borderBottom: '1px solid var(--glass-border)'
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -231,15 +231,15 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         justifyContent: 'flex-end',
                         gap: 12,
                         padding: '16px 24px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                        borderTop: '1px solid var(--glass-border)'
                     }}
                 >
                     <button
                         onClick={onClose}
                         disabled={loading}
                         style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             color: 'var(--text-main)',
                             padding: '10px 20px',
                             borderRadius: 8,

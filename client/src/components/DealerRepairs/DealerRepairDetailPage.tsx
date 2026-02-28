@@ -216,7 +216,7 @@ const DealerRepairDetailPage: React.FC = () => {
                     {/* Header Strip */}
                     <div style={{
                         padding: '20px 40px',
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '16px',
@@ -226,8 +226,8 @@ const DealerRepairDetailPage: React.FC = () => {
                         <button
                             onClick={() => navigate(getRoute('/service/dealer-repairs'))}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '10px',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
@@ -240,11 +240,11 @@ const DealerRepairDetailPage: React.FC = () => {
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.color = '#fff';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                 e.currentTarget.style.color = 'var(--text-secondary)';
                             }}
                         >
@@ -423,7 +423,7 @@ const DealerRepairDetailPage: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="ticket-info-grid" style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div className="ticket-info-grid" style={{ paddingTop: '16px', borderTop: '1px solid var(--glass-border)' }}>
                                         <div className="ticket-info-item">
                                             <div className="ticket-info-label">{t('dealer_repair.labor_hours')}</div>
                                             <div className="ticket-info-value">{repair.labor_hours}h</div>
@@ -453,7 +453,7 @@ const DealerRepairDetailPage: React.FC = () => {
                             {repair.parts_used && repair.parts_used.length > 0 ? (
                                 <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: 'var(--text-secondary)' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>
+                                        <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'rgba(255,255,255,0.4)' }}>
                                             <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_name')}</th>
                                             <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_number')}</th>
                                             <th style={{ textAlign: 'right', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.quantity')}</th>
@@ -462,7 +462,7 @@ const DealerRepairDetailPage: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {repair.parts_used.map((part) => (
-                                            <tr key={part.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <tr key={part.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                                 <td style={{ padding: '8px' }}>{part.part_name}</td>
                                                 <td style={{ padding: '8px', fontFamily: 'monospace' }}>{part.part_number}</td>
                                                 <td style={{ textAlign: 'right', padding: '8px' }}>{part.quantity}</td>

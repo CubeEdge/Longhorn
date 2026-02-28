@@ -227,7 +227,7 @@ const DepartmentDashboard: React.FC = () => {
                                 translatedFile = activity.file.replace(deptPart, translatedDept);
                             }
                             return (
-                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: idx < 9 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: idx < 9 ? '1px solid var(--glass-bg-light)' : 'none' }}>
                                     <div style={{ flex: 1 }}>
                                         <span style={{ fontWeight: 600 }}>{activity.user}</span>
                                         <span style={{ margin: '0 8px', color: 'var(--text-secondary)' }}>{t('dept.visited')}</span>
@@ -258,7 +258,7 @@ const DepartmentDashboard: React.FC = () => {
                             </thead>
                             <tbody>
                                 {members.map(member => (
-                                    <tr key={member.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <tr key={member.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                         <td style={{ padding: '16px 12px', fontWeight: 600 }}>{member.username}</td>
                                         <td style={{ padding: '16px 12px' }}>{member.fileCount}</td>
                                         <td style={{ padding: '16px 12px', color: 'var(--accent-blue)' }}>{formatSize(member.storageUsed)}</td>
@@ -289,7 +289,7 @@ const DepartmentDashboard: React.FC = () => {
                             </thead>
                             <tbody>
                                 {permissions.map(perm => (
-                                    <tr key={perm.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <tr key={perm.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                         <td style={{ padding: '16px 12px', fontWeight: 600 }}>{perm.username}</td>
                                         <td style={{ padding: '16px 12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{perm.folder_path}</td>
                                         <td style={{ padding: '16px 12px' }}>
