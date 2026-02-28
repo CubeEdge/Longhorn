@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
+import { Save, Server, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, X, AlertTriangle, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
+import { useThemeStore } from '../../store/useThemeStore';
 interface AIProvider {
     name: string;
     api_key: string;
@@ -108,6 +109,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const { token } = useAuthStore();
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const { theme, setTheme } = useThemeStore();
 
     // 路由前缀根据模块类型
     const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
@@ -422,7 +424,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         <div className="fade-in" style={{ padding: '0 20px 40px' }}>
             {/* Header / Tabs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 12 }}>
+                <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 12 }}>
                     {[
                         { id: 'general', label: '通用', icon: Server },
                         { id: 'intelligence', label: 'Bokeh 智能设置', icon: Bot },
@@ -434,8 +436,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 padding: '8px 16px', borderRadius: 8, border: 'none',
-                                background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                color: activeTab === tab.id ? 'white' : 'rgba(255,255,255,0.5)',
+                                background: activeTab === tab.id ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: activeTab === tab.id ? 'var(--text-main)' : 'var(--text-secondary)',
                                 cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500, transition: 'all 0.2s'
                             }}
                         >
@@ -452,8 +454,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             disabled={saving}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
-                                background: 'transparent', color: '#FFD700',
-                                border: '1px solid rgba(255, 210, 0, 0.4)',
+                                background: 'transparent', color: 'var(--accent-blue)',
+                                border: '1px solid rgba(var(--accent-rgb), 0.4)',
                                 padding: '8px 20px', borderRadius: 10,
                                 fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
                                 opacity: saving ? 0.7 : 1,
@@ -462,14 +464,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             }}
                             onMouseEnter={(e) => {
                                 if (!saving) {
-                                    e.currentTarget.style.background = 'rgba(255, 210, 0, 0.1)';
-                                    e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
+                                    e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)';
+                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.8)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!saving) {
                                     e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
+                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.4)';
                                 }
                             }}
                         >
@@ -481,9 +483,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             </div>
 
             {/* CONTENT AREA */}
-            <div style={{ background: 'rgba(30,30,32,0.6)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', minHeight: 400 }}>
+            <div style={{ background: 'var(--glass-bg)', borderRadius: 16, border: '1px solid var(--glass-border)', minHeight: 400 }}>
                 {loading && !settings ? (
-                    <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+                    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
                         <RefreshCcw className="animate-spin" size={24} style={{ marginBottom: 16 }} />
                         Loading Configuration...
                     </div>
@@ -494,7 +496,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <div style={{ display: 'flex', minHeight: 500 }}>
                                     {/* LEFT: Provider Sidebar */}
-                                    <div style={{ width: 240, borderRight: '1px solid rgba(255,255,255,0.1)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ width: 240, borderRight: '1px solid var(--glass-border)', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         <div className="hint" style={{ marginBottom: 8, paddingLeft: 8 }}>{t('admin.ai_providers')}</div>
                                         {providers.map((p, i) => (
                                             <div
@@ -526,7 +528,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         {currentP ? (
                                             <div className="fade-in">
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 12 }}>
                                                         <Bot size={24} color="#FFD700" />
                                                         <input
                                                             className="edit-name-input"
@@ -581,11 +583,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                             <Switch checked={currentP.allow_search} onChange={v => updateProviderField(activeProviderIndex, 'allow_search', v)} />
                                                         </div>
 
-                                                        <div style={{ border: '1px solid rgba(255,215,0,0.1)', background: 'rgba(255,215,0,0.02)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                                        <div style={{ border: '1px solid rgba(var(--accent-rgb),0.1)', background: 'rgba(var(--accent-rgb),0.02)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
                                                             <div className="setting-field">
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                                                                     <label style={{ margin: 0 }}>{t('admin.temperature')}</label>
-                                                                    <span style={{ fontSize: '0.8rem', color: '#FFD700', fontWeight: 600 }}>{currentP.temperature?.toFixed(1) || '0.7'}</span>
+                                                                    <span style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: 600 }}>{currentP.temperature?.toFixed(1) || '0.7'}</span>
                                                                 </div>
                                                                 <input
                                                                     type="range"
@@ -594,7 +596,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                                     step="0.1"
                                                                     value={currentP.temperature ?? 0.7}
                                                                     onChange={e => updateProviderField(activeProviderIndex, 'temperature', parseFloat(e.target.value))}
-                                                                    style={{ width: '100%', accentColor: '#FFD700' }}
+                                                                    style={{ width: '100%', accentColor: 'var(--accent-blue)' }}
                                                                 />
                                                             </div>
 
@@ -625,7 +627,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     </div>
 
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                                                        <h4 style={{ color: '#FFD700', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('admin.model_routing')}</h4>
+                                                        <h4 style={{ color: 'var(--accent-blue)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('admin.model_routing')}</h4>
 
                                                         <ModelSelect label={t('admin.chat_model')} field="chat_model" current={currentP.chat_model} />
                                                         <ModelSelect label={t('admin.reasoning_model')} field="reasoner_model" current={currentP.reasoner_model} />
@@ -642,13 +644,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                 </div>
 
                                 {/* === AI SCENARIOS PROMPTS TAB === */}
-                                <div style={{ padding: 32, maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ padding: 32, maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 32, borderTop: '1px solid var(--glass-border)' }}>
                                     <div>
-                                        <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'white', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                                        <h2 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                                             <Sparkles size={24} color="#10B981" />
                                             AI 场景提示词管理
                                         </h2>
-                                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                             定制 Bokeh AI 在不同工作场景下的默认行为。您可以针对具体功能单独修改提示词，设置保存后立即生效。
                                         </p>
                                     </div>
@@ -707,11 +709,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         }
 
                                         return (
-                                            <div key={scenario.key} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
+                                            <div key={scenario.key} style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 24 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                                                     <div>
-                                                        <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>{scenario.title}</h3>
-                                                        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>{scenario.desc}</p>
+                                                        <h3 style={{ fontSize: '1.1rem', color: 'var(--accent-blue)', marginBottom: 4 }}>{scenario.title}</h3>
+                                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{scenario.desc}</p>
                                                     </div>
                                                     <button
                                                         onClick={() => {
@@ -725,16 +727,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                         }}
                                                         style={{
                                                             background: 'transparent',
-                                                            border: '1px solid rgba(255,255,255,0.2)',
-                                                            color: 'rgba(255,255,255,0.7)',
+                                                            border: '1px solid var(--glass-border)',
+                                                            color: 'var(--text-secondary)',
                                                             padding: '6px 12px',
                                                             borderRadius: '6px',
                                                             fontSize: '0.8rem',
                                                             cursor: 'pointer',
                                                             transition: 'all 0.2s'
                                                         }}
-                                                        onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
-                                                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-secondary)' }}
+                                                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
                                                         title="清空后将自动使用后台内置规则"
                                                     >
                                                         恢复系统默认
@@ -761,11 +763,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                         style={{
                                                             width: '100%',
                                                             minHeight: 120,
-                                                            background: 'rgba(0,0,0,0.3)',
-                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            background: 'var(--glass-bg-light)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: 8,
                                                             padding: 16,
-                                                            color: 'white',
+                                                            color: 'var(--text-main)',
                                                             fontSize: '0.9rem',
                                                             lineHeight: 1.6,
                                                             resize: 'vertical',
@@ -778,20 +780,20 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     })}
 
                                     {/* General Assistant Prompt (from existing string) */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 24 }}>
+                                    <div style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 12, padding: 24 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                                             <div>
-                                                <h3 style={{ fontSize: '1.1rem', color: '#FFD700', marginBottom: 4 }}>全局聊天助手规范 (General Chat Rules)</h3>
-                                                <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>此系统提示词将在全局提问、文章问答等无特定格式要求的场景下生效。</p>
+                                                <h3 style={{ fontSize: '1.1rem', color: 'var(--accent-blue)', marginBottom: 4 }}>全局聊天助手规范 (General Chat Rules)</h3>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>此系统提示词将在全局提问、文章问答等无特定格式要求的场景下生效。</p>
                                             </div>
                                             <button
                                                 onClick={() => setSettings({ ...settings, ai_system_prompt: '' })}
                                                 style={{
-                                                    background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)',
+                                                    background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)',
                                                     padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
                                                 }}
-                                                onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)' }}
-                                                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-secondary)' }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)' }}
                                             >
                                                 恢复系统默认
                                             </button>
@@ -802,8 +804,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 onChange={e => setSettings({ ...settings, ai_system_prompt: e.target.value })}
                                                 placeholder="保持为空将使用系统内置的客服/技术辅助对话身份..."
                                                 style={{
-                                                    width: '100%', minHeight: 120, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                    borderRadius: 8, padding: 16, color: 'white', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', fontFamily: 'monospace'
+                                                    width: '100%', minHeight: 120, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                                    borderRadius: 8, padding: 16, color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', fontFamily: 'monospace'
                                                 }}
                                             />
                                         </div>
@@ -832,7 +834,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 <Database size={18} />
                                                 主备份 (Primary)
                                             </h3>
-                                            <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
                                                 存储于 fileserver SSD，用于日常快速恢复
                                             </div>
                                         </div>
@@ -864,9 +866,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                         style={{
                                                             padding: '6px 12px',
                                                             borderRadius: 8,
-                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            border: '1px solid var(--glass-border)',
                                                             background: settings.backup_frequency === hours * 60 ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                                            color: settings.backup_frequency === hours * 60 ? '#10B981' : 'rgba(255,255,255,0.5)',
+                                                            color: settings.backup_frequency === hours * 60 ? '#10B981' : 'var(--text-secondary)',
                                                             cursor: 'pointer',
                                                             fontSize: '0.8rem',
                                                             transition: 'all 0.2s'
@@ -886,7 +888,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 value={settings.backup_retention_days}
                                                 onChange={e => setSettings({ ...settings, backup_retention_days: parseInt(e.target.value) || 7 })}
                                             />
-                                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 8 }}>
                                                 超过此时间的旧备份文件将被自动清理。
                                             </div>
                                         </div>
@@ -924,25 +926,25 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 {/* Stats Grid */}
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>备份总数</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>备份总数</div>
                                                         <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#10B981' }}>{backupStatus.primary.backups.length}</div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>总空间</div>
-                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>总空间</div>
+                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
                                                             {(backupStatus.primary.backups.reduce((acc, b) => acc + b.size, 0) / 1024 / 1024).toFixed(1)} MB
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
-                                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>最近备份</div>
+                                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-main)' }}>
                                                             {backupStatus.primary.backups[0]
                                                                 ? new Date(backupStatus.primary.backups[0].created_at).toLocaleDateString('zh-CN')
                                                                 : '无'}
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>自动备份</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>自动备份</div>
                                                         <div style={{ fontSize: '0.85rem', fontWeight: 500, color: backupStatus.primary.enabled ? '#10B981' : '#EF4444' }}>
                                                             {backupStatus.primary.enabled ? '已启用' : '已禁用'}
                                                         </div>
@@ -992,17 +994,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                         {/* Secondary Backup Settings */}
                                         <div style={{
-                                            background: 'rgba(255,255,255,0.03)',
+                                            background: 'var(--glass-bg-light)',
                                             padding: '16px 20px',
                                             borderRadius: 12,
-                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            border: '1px solid var(--glass-border)',
                                             marginBottom: 8
                                         }}>
-                                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#FFFFFF', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 <Database size={18} />
                                                 次级备份 (Secondary)
                                             </h3>
-                                            <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
                                                 存储于系统盘，用于 fileserver 故障时恢复
                                             </div>
                                         </div>
@@ -1034,9 +1036,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                         style={{
                                                             padding: '6px 12px',
                                                             borderRadius: 8,
-                                                            border: '1px solid rgba(255,255,255,0.1)',
-                                                            background: settings.secondary_backup_frequency === hours * 60 ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                                            color: settings.secondary_backup_frequency === hours * 60 ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                                                            border: '1px solid var(--glass-border)',
+                                                            background: settings.secondary_backup_frequency === hours * 60 ? 'var(--glass-bg-hover)' : 'transparent',
+                                                            color: settings.secondary_backup_frequency === hours * 60 ? 'var(--text-main)' : 'var(--text-secondary)',
                                                             cursor: 'pointer',
                                                             fontSize: '0.8rem',
                                                             transition: 'all 0.2s'
@@ -1056,7 +1058,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 value={settings.secondary_backup_retention_days}
                                                 onChange={e => setSettings({ ...settings, secondary_backup_retention_days: parseInt(e.target.value) || 30 })}
                                             />
-                                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 8 }}>
                                                 建议设置比主备份更长的保留期。
                                             </div>
                                         </div>
@@ -1066,27 +1068,27 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             <div
                                                 onClick={() => setRestoreModal({ isOpen: true, type: 'secondary', selectedBackup: null })}
                                                 style={{
-                                                    background: 'rgba(255,255,255,0.02)',
+                                                    background: 'var(--glass-bg-light)',
                                                     padding: 28,
                                                     borderRadius: 20,
-                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                    border: '1px solid var(--glass-border)',
                                                     backdropFilter: 'blur(10px)',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                     marginTop: 'auto'
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.transform = 'translateY(-2px)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-light)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.transform = 'translateY(0)';
                                                 }}
                                             >
-                                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, color: '#FFFFFF' }}>
+                                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-main)' }}>
                                                     <Database size={22} />
                                                     次级备份状态
                                                 </h3>
@@ -1094,25 +1096,25 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 {/* Stats Grid */}
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>备份总数</div>
-                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>{backupStatus.secondary.backups.length}</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>备份总数</div>
+                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>{backupStatus.secondary.backups.length}</div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>总空间</div>
-                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'white' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>总空间</div>
+                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)' }}>
                                                             {(backupStatus.secondary.backups.reduce((acc, b) => acc + b.size, 0) / 1024 / 1024).toFixed(1)} MB
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>最近备份</div>
-                                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'white' }}>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>最近备份</div>
+                                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-main)' }}>
                                                             {backupStatus.secondary.backups[0]
                                                                 ? new Date(backupStatus.secondary.backups[0].created_at).toLocaleDateString('zh-CN')
                                                                 : '无'}
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>自动备份</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>自动备份</div>
                                                         <div style={{ fontSize: '0.85rem', fontWeight: 500, color: backupStatus.secondary.enabled ? '#10B981' : '#EF4444' }}>
                                                             {backupStatus.secondary.enabled ? '已启用' : '已禁用'}
                                                         </div>
@@ -1130,7 +1132,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                         padding: '12px',
                                                         borderRadius: 12,
                                                         background: 'transparent',
-                                                        color: '#FFFFFF',
+                                                        color: 'var(--text-main)',
                                                         border: '1px solid rgba(255, 255, 255, 0.4)',
                                                         fontWeight: 600,
                                                         fontSize: '0.9rem',
@@ -1140,14 +1142,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         if (!backingUpSecondary) {
-                                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                                                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.7)';
+                                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                            e.currentTarget.style.borderColor = 'var(--text-secondary)';
                                                         }
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         if (!backingUpSecondary) {
                                                             e.currentTarget.style.background = 'transparent';
-                                                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                                                            e.currentTarget.style.borderColor = 'var(--text-tertiary)';
                                                         }
                                                     }}
                                                 >
@@ -1159,11 +1161,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     </div>
 
                                     {/* Backup Info - Simplified */}
-                                    <div style={{ padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)', gridColumn: '1 / -1' }}>
-                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12, color: 'rgba(255,255,255,0.6)' }}>
+                                    <div style={{ padding: '20px 0', borderTop: '1px solid var(--glass-border)', gridColumn: '1 / -1' }}>
+                                        <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12, color: 'var(--text-secondary)' }}>
                                             备份机制说明
                                         </h4>
-                                        <ul style={{ paddingLeft: 0, listStyle: 'none', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <ul style={{ paddingLeft: 0, listStyle: 'none', fontSize: '0.85rem', color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                             <li>• 使用 SQLite Online Backup API，支持运行中热备份，无须停机</li>
                                             <li>• 主备份存储于 fileserver SSD，次级备份存储于系统盘</li>
                                             <li>• 建议开启自动备份，主备份保留 7 天，次级备份保留 30 天</li>
@@ -1178,7 +1180,37 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
                                 {/* 界面设置 */}
                                 <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>{t('admin.ui_settings')}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>{t('admin.ui_settings')}</div>
+
+                                    <div className="setting-card" style={{ minHeight: '72px', marginBottom: 16 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="setting-label">颜色主题 (外观)</div>
+                                            <div className="setting-desc">切换系统的深浅色模式或跟随系统。该设置仅在当前浏览器生效。</div>
+                                        </div>
+                                        <div style={{ display: 'flex', background: 'var(--glass-bg-light)', padding: 4, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                                            {[
+                                                { id: 'light', icon: Sun, label: '浅色' },
+                                                { id: 'dark', icon: Moon, label: '深色' },
+                                                { id: 'system', icon: Monitor, label: '跟随系统' }
+                                            ].map(mode => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => setTheme(mode.id as 'light' | 'dark' | 'system')}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                        padding: '6px 16px', borderRadius: 8, border: 'none',
+                                                        background: theme === mode.id ? 'var(--accent-blue)' : 'transparent',
+                                                        color: theme === mode.id ? 'var(--bg-main)' : 'var(--text-secondary)',
+                                                        cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <mode.icon size={16} />
+                                                    {mode.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <div className="setting-card" style={{ minHeight: '72px' }}>
                                         <div style={{ flex: 1 }}>
                                             <div className="setting-label">{t('admin.show_daily_word')}</div>
@@ -1192,26 +1224,26 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         />
                                     </div>
 
-                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: 24, marginBottom: 24 }} />
+                                    <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
 
                                     {/* 智能助手核心控制 */}
-                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>智能助手核心控制</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>智能助手核心控制</div>
 
                                     {/* AI Enabled Wrapper */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
                                         <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div className="setting-label">Bokeh智能 启用</div>
                                             </div>
                                             <Switch checked={settings.ai_enabled} onChange={v => setSettings({ ...settings, ai_enabled: v })} activeColor="#10B981" />
                                         </div>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
                                             启用后，整个协作平台内的智能问答、工单总结、场景写作等 AI 相关功能将被激活。关闭则隐藏所有 AI 入口。
                                         </div>
                                     </div>
 
                                     {/* Data Sources Wrapper */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
                                         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                                             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div className="setting-label">Bokeh 感知范围</div>
@@ -1241,19 +1273,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     />
                                                     Kinefinity 知识库
                                                 </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', fontSize: '0.9rem', color: 'rgba(255,255,255,0.4)', opacity: 0.5 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', fontSize: '0.9rem', color: 'var(--text-tertiary)', opacity: 0.5 }}>
                                                     <input type="checkbox" disabled />
                                                     实时网络搜索 (待开放)
                                                 </label>
                                             </div>
                                         </div>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
                                             决定 Bokeh 智能助手可访问和检索的数据池。建议全选以保证 AI 能给出准确的公司上下文。
                                         </div>
                                     </div>
 
                                     {/* History Limit Wrapper */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
                                         <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div className="setting-label">知识中心搜索历史条数</div>
@@ -1264,24 +1296,24 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     min={1} max={30}
                                                     value={settings.ai_search_history_limit || 10}
                                                     onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
-                                                    style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff', fontSize: '14px', outline: 'none' }}
+                                                    style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
                                                 />
                                             </div>
                                         </div>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
                                             控制所有员工的全局搜索历史保留的数量 (最大 30 条)。保留过多的历史虽然方便但是可能降低终端设备加载性能。
                                         </div>
                                     </div>
 
                                     {/* Global AI Work Mode Wrapper */}
-                                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
                                         <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div className="setting-label">工作模式 (全局策略)</div>
                                             </div>
                                             <Switch checked={settings.ai_work_mode ?? true} onChange={v => setSettings({ ...settings, ai_work_mode: v })} activeColor="#10B981" />
                                         </div>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 20px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', borderTop: '1px solid rgba(255,255,255,0.03)', lineHeight: 1.5 }}>
+                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
                                             开启后，Bokeh 智能助手将进入专业协作状态。它将优先调取知识库和工单历史进行回答，且回复风格更加严谨、聚焦技术支持。
                                         </div>
                                     </div>
@@ -1314,13 +1346,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     onClick={e => e.stopPropagation()}
                                     style={{
                                         background: 'rgba(30, 30, 30, 0.95)',
-                                        border: confirmDialog.isDanger ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 215, 0, 0.2)',
+                                        border: confirmDialog.isDanger ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(var(--accent-rgb), 0.2)',
                                         width: '90%', maxWidth: '420px',
                                         borderRadius: '20px',
                                         padding: '0',
                                         boxShadow: confirmDialog.isDanger
                                             ? '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)'
-                                            : '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 215, 0, 0.1)',
+                                            : '0 25px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(var(--accent-rgb), 0.1)',
                                         animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                                         overflow: 'hidden'
                                     }}
@@ -1328,18 +1360,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     {/* Header */}
                                     <div style={{
                                         padding: '24px 28px 20px',
-                                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                                        borderBottom: '1px solid var(--glass-border)',
                                         display: 'flex', alignItems: 'center', gap: '16px'
                                     }}>
                                         <div style={{
                                             background: confirmDialog.isDanger
                                                 ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1))'
-                                                : 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 180, 0, 0.1))',
+                                                : 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.15), rgba(255, 180, 0, 0.1))',
                                             padding: '12px', borderRadius: '14px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             boxShadow: confirmDialog.isDanger
                                                 ? '0 4px 12px rgba(239, 68, 68, 0.1)'
-                                                : '0 4px 12px rgba(255, 215, 0, 0.1)'
+                                                : '0 4px 12px rgba(var(--accent-rgb), 0.1)'
                                         }}>
                                             {confirmDialog.isDanger
                                                 ? <AlertTriangle size={24} color="#EF4444" strokeWidth={2} />
@@ -1348,7 +1380,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         </div>
                                         <h3 style={{
                                             margin: 0, fontSize: '18px', fontWeight: 600,
-                                            color: '#fff', letterSpacing: '-0.3px'
+                                            color: 'var(--text-main)', letterSpacing: '-0.3px'
                                         }}>
                                             {confirmDialog.title.replace(/^⚠️\s*/, '')}
                                         </h3>
@@ -1357,7 +1389,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     {/* Message */}
                                     <div style={{ padding: '20px 28px 24px' }}>
                                         <p style={{
-                                            margin: 0, color: 'rgba(255, 255, 255, 0.7)',
+                                            margin: 0, color: 'var(--text-secondary)',
                                             lineHeight: 1.6, fontSize: '15px', whiteSpace: 'pre-line'
                                         }}>
                                             {confirmDialog.message.replace(/⚠️\s*/g, '')}
@@ -1373,21 +1405,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                             onClick={() => closeConfirm(false)}
                                             style={{
                                                 padding: '12px 24px',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '12px',
-                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                color: 'var(--text-secondary)',
                                                 cursor: 'pointer', fontSize: '15px', fontWeight: 500,
                                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 minWidth: '90px'
                                             }}
                                             onMouseEnter={e => {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                             }}
                                             onMouseLeave={e => {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                             }}
                                         >
                                             {confirmDialog.cancelLabel || '取消'}
@@ -1400,26 +1432,26 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     ? 'linear-gradient(135deg, #EF4444, #DC2626)'
                                                     : 'linear-gradient(135deg, #FFD700, #FFC000)',
                                                 border: 'none', borderRadius: '12px',
-                                                color: confirmDialog.isDanger ? '#fff' : '#000',
+                                                color: confirmDialog.isDanger ? 'var(--text-main)' : 'var(--bg-main)',
                                                 cursor: 'pointer', fontSize: '15px', fontWeight: 600,
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 minWidth: '90px',
                                                 boxShadow: confirmDialog.isDanger
                                                     ? '0 4px 15px rgba(239, 68, 68, 0.3)'
-                                                    : '0 4px 15px rgba(255, 215, 0, 0.3)'
+                                                    : '0 4px 15px rgba(var(--accent-rgb), 0.3)'
                                             }}
                                             onMouseEnter={e => {
                                                 e.currentTarget.style.transform = 'translateY(-1px)';
                                                 e.currentTarget.style.boxShadow = confirmDialog.isDanger
                                                     ? '0 6px 20px rgba(239, 68, 68, 0.4)'
-                                                    : '0 6px 20px rgba(255, 215, 0, 0.4)';
+                                                    : '0 6px 20px rgba(var(--accent-rgb), 0.4)';
                                             }}
                                             onMouseLeave={e => {
                                                 e.currentTarget.style.transform = 'translateY(0)';
                                                 e.currentTarget.style.boxShadow = confirmDialog.isDanger
                                                     ? '0 4px 15px rgba(239, 68, 68, 0.3)'
-                                                    : '0 4px 15px rgba(255, 215, 0, 0.3)';
+                                                    : '0 4px 15px rgba(var(--accent-rgb), 0.3)';
                                             }}
                                         >
                                             <CheckCircle size={16} strokeWidth={2.5} />
@@ -1445,7 +1477,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     onClick={e => e.stopPropagation()}
                                     style={{
                                         background: 'rgba(28, 28, 30, 0.98)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        border: '1px solid var(--glass-border)',
                                         width: '90%', maxWidth: '600px', maxHeight: '80vh',
                                         borderRadius: '24px',
                                         padding: '0',
@@ -1458,7 +1490,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     {/* Header */}
                                     <div style={{
                                         padding: '28px 32px 24px',
-                                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                                        borderBottom: '1px solid var(--glass-border)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1469,13 +1501,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 padding: '12px', borderRadius: '14px',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
-                                                <Database size={24} color={restoreModal.type === 'primary' ? '#10B981' : '#FFFFFF'} strokeWidth={2} />
+                                                <Database size={24} color={restoreModal.type === 'primary' ? '#10B981' : 'var(--text-main)'} strokeWidth={2} />
                                             </div>
                                             <div>
-                                                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff' }}>
+                                                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-main)' }}>
                                                     {restoreModal.type === 'primary' ? '主备份恢复' : '次级备份恢复'}
                                                 </h3>
-                                                <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
+                                                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
                                                     选择一个备份文件进行恢复
                                                 </p>
                                             </div>
@@ -1483,12 +1515,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         <button
                                             onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
                                             style={{
-                                                background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)',
+                                                background: 'transparent', border: 'none', color: 'var(--text-secondary)',
                                                 cursor: 'pointer', padding: '8px', borderRadius: '8px',
                                                 transition: 'all 0.2s'
                                             }}
-                                            onMouseEnter={e => e.currentTarget.style.color = 'white'}
-                                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                                            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
+                                            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
                                         >
                                             <X size={24} />
                                         </button>
@@ -1497,7 +1529,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     {/* Backup List */}
                                     <div style={{ padding: '24px 32px', overflowY: 'auto', maxHeight: '400px' }}>
                                         {(restoreModal.type === 'primary' ? backupStatus.primary.backups : backupStatus.secondary.backups).length === 0 ? (
-                                            <div style={{ textAlign: 'center', padding: '48px 0', color: 'rgba(255,255,255,0.4)' }}>
+                                            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-tertiary)' }}>
                                                 <Database size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
                                                 <p>暂无备份文件</p>
                                             </div>
@@ -1522,8 +1554,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                             );
                                                         }}
                                                         style={{
-                                                            background: 'rgba(255,255,255,0.03)',
-                                                            border: '1px solid rgba(255,255,255,0.06)',
+                                                            background: 'var(--glass-bg-light)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '16px',
                                                             padding: '20px',
                                                             cursor: 'pointer',
@@ -1531,36 +1563,36 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                                                         }}
                                                         onMouseEnter={e => {
-                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                                                            e.currentTarget.style.borderColor = restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.15)';
+                                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                            e.currentTarget.style.borderColor = restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.3)' : 'var(--glass-bg-hover)';
                                                         }}
                                                         onMouseLeave={e => {
-                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                                            e.currentTarget.style.background = 'var(--glass-bg-light)';
+                                                            e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                         }}
                                                     >
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                                             <div style={{
                                                                 width: 40, height: 40, borderRadius: 10,
-                                                                background: restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.05)',
+                                                                background: restoreModal.type === 'primary' ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass-bg-hover)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                                                             }}>
-                                                                <Database size={20} color={restoreModal.type === 'primary' ? '#10B981' : '#FFFFFF'} />
+                                                                <Database size={20} color={restoreModal.type === 'primary' ? '#10B981' : 'var(--text-main)'} />
                                                             </div>
                                                             <div>
-                                                                <div style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>
+                                                                <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 4 }}>
                                                                     {index === 0 ? '最新备份' : `备份 #${index + 1}`}
                                                                 </div>
-                                                                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                                     {new Date(backup.created_at).toLocaleString('zh-CN')}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div style={{ textAlign: 'right' }}>
-                                                            <div style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>
+                                                            <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 4 }}>
                                                                 {(backup.size / 1024 / 1024).toFixed(1)} MB
                                                             </div>
-                                                            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                                                                 点击恢复
                                                             </div>
                                                         </div>
@@ -1573,30 +1605,30 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     {/* Footer */}
                                     <div style={{
                                         padding: '20px 32px 28px',
-                                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                                        borderTop: '1px solid var(--glass-border)',
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                     }}>
-                                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+                                        <div style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
                                             共 {(restoreModal.type === 'primary' ? backupStatus.primary.backups : backupStatus.secondary.backups).length} 个备份文件
                                         </div>
                                         <button
                                             onClick={() => setRestoreModal({ isOpen: false, type: 'primary', selectedBackup: null })}
                                             style={{
                                                 padding: '12px 24px',
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '12px',
-                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                color: 'var(--text-secondary)',
                                                 cursor: 'pointer', fontSize: '14px', fontWeight: 500,
                                                 transition: 'all 0.2s'
                                             }}
                                             onMouseEnter={e => {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                                e.currentTarget.style.color = 'white';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.color = 'var(--text-main)';
                                             }}
                                             onMouseLeave={e => {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.color = 'var(--text-secondary)';
                                             }}
                                         >
                                             关闭
@@ -1634,8 +1666,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     background: rgba(255,255,255,0.05);
                 }
                 .provider-item.active {
-                    background: rgba(255,215,0,0.1);
-                    border-color: rgba(255,215,0,0.3);
+                    background: rgba(var(--accent-rgb),0.1);
+                    border-color: rgba(var(--accent-rgb),0.3);
                 }
                 .add-provider-btn {
                     margin-top: 12px;
@@ -1677,7 +1709,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     cursor: pointer;
                     transition: all 0.2s;
                     background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(255,255,255,0.1);
+                    border: 1px solid var(--glass-border);
                     color: rgba(255,255,255,0.6);
                 }
                 .active-toggle-btn.active {
@@ -1691,7 +1723,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     display: flex; 
                     align-items: center; 
                     background: rgba(255,255,255,0.02); 
-                    border: 1px solid rgba(255,255,255,0.06); 
+                    border: 1px solid var(--glass-border); 
                     padding: 20px; 
                     border-radius: 16px; 
                     backdrop-filter: blur(10px);
@@ -1701,7 +1733,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 .setting-desc { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
                 .setting-field { margin-bottom: 12px; }
                 .setting-field label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
-                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: white; padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
                 .text-input:focus { border-color: #FFD700; }
                 .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
             `}</style>
@@ -1709,9 +1741,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     );
 };
 
-const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void, activeColor?: string }> = ({ checked, onChange, activeColor = '#FFD700' }) => (
-    <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? activeColor : 'rgba(255,255,255,0.15)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-        <div style={{ width: 20, height: 20, background: checked ? 'black' : 'white', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
+const Switch: React.FC<{ checked: boolean, onChange: (v: boolean) => void, activeColor?: string }> = ({ checked, onChange, activeColor = 'var(--accent-blue)' }) => (
+    <div onClick={() => onChange(!checked)} style={{ width: 44, height: 24, background: checked ? activeColor : 'var(--glass-bg-hover)', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+        <div style={{ width: 20, height: 20, background: checked ? 'black' : 'var(--text-main)', borderRadius: '50%', position: 'absolute', top: 2, left: checked ? 22 : 2, transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
     </div>
 );
 
@@ -1771,7 +1803,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                 onClick={e => e.stopPropagation()}
                 style={{
                     width: 720, maxHeight: '85vh',
-                    background: 'rgba(28,28,30,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(28,28,30,0.98)', border: '1px solid var(--glass-border)',
                     borderRadius: 20, padding: 28,
                     boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
                     display: 'flex', flexDirection: 'column'
@@ -1780,17 +1812,17 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Bot size={22} color="#FFD700" />
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'white', margin: 0 }}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>
                             Bokeh 回答策略设置
                         </h3>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: 4 }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
                         <X size={20} />
                     </button>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.5 }}>
                         自定义系统提示词，控制 Bokeh 的回答风格和数据引用规则。
                         <br />支持变量：{'{{context}}'} - 检索到的知识库/工单内容, {'{{dataSources}}'} - 数据源列表, {'{{path}}'} - 当前页面路径, {'{{title}}'} - 页面标题
                     </div>
@@ -1802,16 +1834,16 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                     placeholder={defaultPrompt}
                     style={{
                         flex: 1, minHeight: 320,
-                        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
                         borderRadius: 12, padding: 16,
-                        color: 'white', fontSize: '0.85rem', lineHeight: 1.6,
+                        color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: 1.6,
                         fontFamily: 'monospace',
                         resize: 'none', outline: 'none'
                     }}
                 />
 
                 {!prompt && (
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,215,0,0.7)', marginTop: 8 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(var(--accent-rgb),0.7)', marginTop: 8 }}>
                         留空将使用默认提示词
                     </div>
                 )}
@@ -1823,8 +1855,8 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                             padding: '10px 20px',
                             borderRadius: 10,
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            color: 'rgba(255,255,255,0.7)',
+                            border: '1px solid var(--glass-border)',
+                            color: 'var(--text-secondary)',
                             fontSize: '0.85rem',
                             cursor: 'pointer'
                         }}
@@ -1837,8 +1869,8 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                             padding: '10px 20px',
                             borderRadius: 10,
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            color: 'white',
+                            border: '1px solid var(--glass-border)',
+                            color: 'var(--text-main)',
                             fontSize: '0.85rem',
                             cursor: 'pointer'
                         }}
@@ -1850,7 +1882,7 @@ const PromptEditorModal: React.FC<PromptEditorModalProps> = ({ isOpen, currentPr
                         style={{
                             padding: '10px 24px',
                             borderRadius: 10,
-                            background: '#FFD700',
+                            background: 'var(--accent-blue)',
                             border: 'none',
                             color: 'black',
                             fontSize: '0.85rem',
@@ -1880,7 +1912,7 @@ const BackupResultModal: React.FC<{ result: { success: boolean, message: string,
             <div
                 onClick={e => e.stopPropagation()}
                 style={{
-                    width: 480, background: 'rgba(28,28,30,0.95)', border: '1px solid rgba(255,255,255,0.1)',
+                    width: 480, background: 'rgba(28,28,30,0.95)', border: '1px solid var(--glass-border)',
                     borderRadius: 24, padding: 32, boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
                     textAlign: 'center'
                 }}
@@ -1894,17 +1926,17 @@ const BackupResultModal: React.FC<{ result: { success: boolean, message: string,
                         {result.success ? <CheckCircle size={32} color="#10b981" /> : <X size={32} color="#ef4444" />}
                     </div>
                 </div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16, color: 'white' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-main)' }}>
                     {result.success ? '备份成功' : '操作失败'}
                 </h3>
-                <p style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: 24 }}>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
                     {result.message}
                 </p>
                 {result.path && (
                     <div style={{
-                        background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 12,
-                        fontSize: '0.85rem', color: '#FFD700', fontFamily: 'monospace',
-                        wordBreak: 'break-all', marginBottom: 32, border: '1px solid rgba(255,215,0,0.1)'
+                        background: 'var(--glass-bg-hover)', padding: 16, borderRadius: 12,
+                        fontSize: '0.85rem', color: 'var(--accent-blue)', fontFamily: 'monospace',
+                        wordBreak: 'break-all', marginBottom: 32, border: '1px solid rgba(var(--accent-rgb),0.1)'
                     }}>
                         {result.path}
                     </div>
@@ -1917,19 +1949,19 @@ const BackupResultModal: React.FC<{ result: { success: boolean, message: string,
                         height: 'auto',
                         borderRadius: 12,
                         background: 'transparent',
-                        border: '1px solid rgba(255, 210, 0, 0.4)',
-                        color: '#FFD700',
+                        border: '1px solid rgba(var(--accent-rgb), 0.4)',
+                        color: 'var(--accent-blue)',
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 210, 0, 0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.8)';
+                        e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.8)';
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.4)';
+                        e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.4)';
                     }}
                 >
                     关闭窗口

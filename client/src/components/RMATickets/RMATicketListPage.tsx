@@ -51,7 +51,7 @@ interface RMATicket {
 // Status colors using Kine brand colors from context.md
 // Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
 const statusColors: Record<string, string> = {
-    Pending: '#FFD700',        // Kine Yellow - received/waiting
+    Pending: 'var(--accent-blue)',        // Kine Yellow - received/waiting
     Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
     Diagnosing: '#8b5cf6',     // Purple - in diagnosis
     InRepair: '#3b82f6',       // Blue - in repair
@@ -382,7 +382,7 @@ const RMATicketListPage: React.FC = () => {
                             return (
                                 <>
                                     {dealerName && (
-                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{dealerName}</span>
+                                        <span style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>{dealerName}</span>
                                     )}
                                     {accountName && (
                                         <>
@@ -407,9 +407,9 @@ const RMATicketListPage: React.FC = () => {
                                         borderRadius: '10px',
                                         fontSize: '0.7rem',
                                         fontWeight: 600,
-                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
-                                        color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
-                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
+                                        color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
                                     }}>
                                         {(isVIP || isVVIP) && '👑'}{serviceTier}
                                     </span>
@@ -445,9 +445,9 @@ const RMATicketListPage: React.FC = () => {
                                         borderRadius: '10px',
                                         fontSize: '0.7rem',
                                         fontWeight: 600,
-                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
-                                        color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
-                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
+                                        color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
                                     }}>
                                         {(isVIP || isVVIP) && '👑'}{serviceTier}
                                     </span>
@@ -514,8 +514,8 @@ const RMATicketListPage: React.FC = () => {
                             <button
                                 onClick={() => setSearchOpen(true)}
                                 style={{
-                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
+                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                                    background: 'var(--glass-bg-hover)', color: 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
@@ -532,7 +532,7 @@ const RMATicketListPage: React.FC = () => {
                                         placeholder={t('rma_ticket.search_placeholder')}
                                         style={{
                                             width: '100%', height: '100%', padding: '0 12px 0 32px',
-                                            borderRadius: '8px', border: '1px solid #FFD700', background: '#1C1C1E',
+                                            borderRadius: '8px', border: '1px solid #FFD700', background: 'var(--bg-sidebar)',
                                             color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
                                             boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
                                         }}
@@ -551,21 +551,21 @@ const RMATicketListPage: React.FC = () => {
                         style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
                             padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                            background: 'rgba(255, 215, 0, 0.1)',
-                            border: '1px solid rgba(255, 215, 0, 0.5)',
-                            color: '#FFD700',
+                            background: 'rgba(var(--accent-rgb), 0.1)',
+                            border: '1px solid rgba(var(--accent-rgb), 0.5)',
+                            color: 'var(--accent-blue)',
                             borderRadius: '8px',
                             fontWeight: 600,
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)';
-                            e.currentTarget.style.borderColor = '#FFD700';
+                            e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.2)';
+                            e.currentTarget.style.borderColor = 'var(--accent-blue)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.5)';
+                            e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.5)';
                         }}
                     >
                         <Plus size={16} />
@@ -614,9 +614,9 @@ const RMATicketListPage: React.FC = () => {
                     <button
                         onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
                         style={{
-                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                            background: showAdvancedFilter ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
-                            color: showAdvancedFilter ? '#FFD700' : 'var(--text-secondary)',
+                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                            background: showAdvancedFilter ? 'rgba(var(--accent-rgb),0.2)' : 'var(--glass-bg-hover)',
+                            color: showAdvancedFilter ? 'var(--accent-blue)' : 'var(--text-secondary)',
                             display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
                             transition: 'all 0.2s', fontSize: '0.85rem'
                         }}
@@ -648,7 +648,7 @@ const RMATicketListPage: React.FC = () => {
                     />
 
                     {/* Group Mode Toggle */}
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--glass-bg-hover)', borderRadius: '8px', padding: '2px', height: '40px' }}>
                         <button
                             onClick={() => toggleGroupMode('grouped')}
                             title="分组模式"
@@ -656,7 +656,7 @@ const RMATicketListPage: React.FC = () => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: '32px', height: '32px', borderRadius: '6px', border: 'none',
                                 background: groupMode === 'grouped' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: groupMode === 'grouped' ? '#fff' : 'var(--text-tertiary)',
+                                color: groupMode === 'grouped' ? 'var(--text-main)' : 'var(--text-tertiary)',
                                 cursor: 'pointer', transition: 'all 0.2s'
                             }}
                         >
@@ -669,7 +669,7 @@ const RMATicketListPage: React.FC = () => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: '32px', height: '32px', borderRadius: '6px', border: 'none',
                                 background: groupMode === 'flat' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: groupMode === 'flat' ? '#fff' : 'var(--text-tertiary)',
+                                color: groupMode === 'flat' ? 'var(--text-main)' : 'var(--text-tertiary)',
                                 cursor: 'pointer', transition: 'all 0.2s'
                             }}
                         >
@@ -682,12 +682,12 @@ const RMATicketListPage: React.FC = () => {
             {/* Advanced Filters Panel */}
             {showAdvancedFilter && (
                 <div style={{
-                    marginBottom: '16px', padding: '16px', background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
+                    marginBottom: '16px', padding: '16px', background: 'var(--glass-bg-light)',
+                    border: '1px solid var(--glass-border)', borderRadius: '12px',
                     display: 'flex', alignItems: 'center', gap: '24px', animation: 'slideDown 0.2s ease-out'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>STATUS</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>STATUS</span>
                         <KineSelect
                             value={statusFilter}
                             onChange={(val) => updateFilter({ status: val })}
@@ -705,7 +705,7 @@ const RMATicketListPage: React.FC = () => {
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>CHANNEL</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>CHANNEL</span>
                         <KineSelect
                             value={channelFilter}
                             onChange={(val) => updateFilter({ channel_code: val })}
@@ -718,7 +718,7 @@ const RMATicketListPage: React.FC = () => {
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
                         <KineSelect
                             value={serviceTierFilter}
                             onChange={(val) => updateFilter({ service_tier: val })}
@@ -789,10 +789,10 @@ const RMATicketListPage: React.FC = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }} onClick={() => setShowDatePicker(false)}>
                     <div style={{
-                        width: '400px', background: '#1C1C1E', borderRadius: '16px', padding: '24px',
-                        border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                        width: '400px', background: 'var(--bg-sidebar)', borderRadius: '16px', padding: '24px',
+                        border: '1px solid var(--glass-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
                     }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '20px' }}>
                             {t('filter.custom_range')}
                         </h3>
 
@@ -810,10 +810,10 @@ const RMATicketListPage: React.FC = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setShowDatePicker(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>
+                            <button onClick={() => setShowDatePicker(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-main)', cursor: 'pointer' }}>
                                 {t('action.cancel')}
                             </button>
-                            <button onClick={applyCustomDate} style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', background: '#FFD700', color: '#000', fontWeight: 600, cursor: 'pointer' }}>
+                            <button onClick={applyCustomDate} style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', background: 'var(--accent-blue)', color: 'var(--bg-main)', fontWeight: 600, cursor: 'pointer' }}>
                                 {t('action.confirm')}
                             </button>
                         </div>

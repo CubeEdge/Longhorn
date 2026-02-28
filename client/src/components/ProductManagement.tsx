@@ -251,8 +251,8 @@ const ProductManagement: React.FC = () => {
                         justifyContent: isSearchExpanded ? 'flex-start' : 'center',
                         width: isSearchExpanded ? 280 : 40,
                         height: 40,
-                        background: isSearchExpanded ? 'rgba(255,255,255,0.05)' : 'transparent',
-                        border: isSearchExpanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        background: isSearchExpanded ? 'var(--glass-bg-hover)' : 'transparent',
+                        border: isSearchExpanded ? '1px solid var(--glass-border)' : 'none',
                         borderRadius: 8,
                         transition: 'all 0.3s ease',
                         overflow: 'hidden'
@@ -292,7 +292,7 @@ const ProductManagement: React.FC = () => {
                                     flex: 1,
                                     background: 'transparent',
                                     border: 'none',
-                                    color: 'white',
+                                    color: 'var(--text-main)',
                                     fontSize: '0.95rem',
                                     outline: 'none',
                                     padding: '0 8px'
@@ -310,8 +310,8 @@ const ProductManagement: React.FC = () => {
                         <button
                             onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 padding: '0 16px',
                                 height: '40px',
@@ -332,14 +332,14 @@ const ProductManagement: React.FC = () => {
                                 right: 0,
                                 marginTop: 4,
                                 background: 'rgba(30, 30, 35, 0.98)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 padding: '4px 0',
                                 minWidth: 140,
                                 zIndex: 100,
                                 boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
                             }}>
-                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
                                     查看列表
                                 </div>
                                 <button
@@ -352,7 +352,7 @@ const ProductManagement: React.FC = () => {
                                         padding: '10px 12px',
                                         background: statusFilter === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
                                         border: 'none',
-                                        color: statusFilter === 'active' ? '#10B981' : 'white',
+                                        color: statusFilter === 'active' ? '#10B981' : 'var(--text-main)',
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
                                         textAlign: 'left'
@@ -370,7 +370,7 @@ const ProductManagement: React.FC = () => {
                                         padding: '10px 12px',
                                         background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
                                         border: 'none',
-                                        color: statusFilter === 'inactive' ? '#9ca3af' : 'white',
+                                        color: statusFilter === 'inactive' ? '#9ca3af' : 'var(--text-main)',
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
                                         textAlign: 'left'
@@ -386,7 +386,7 @@ const ProductManagement: React.FC = () => {
 
             {/* Family Filter Tabs */}
             <div style={{ marginBottom: 20 }}>
-                <div className="tabs" style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 10, height: '48px', alignItems: 'center', width: 'fit-content' }}>
+                <div className="tabs" style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 10, height: '48px', alignItems: 'center', width: 'fit-content' }}>
                     {familyTabs.map((tab) => (
                         <button
                             key={tab.key}
@@ -395,8 +395,8 @@ const ProductManagement: React.FC = () => {
                             style={{
                                 padding: '0 24px',
                                 height: '40px',
-                                background: productFamily === tab.key ? 'rgba(255, 215, 0, 0.2)' : 'transparent',
-                                color: productFamily === tab.key ? '#FFD700' : 'var(--text-secondary)',
+                                background: productFamily === tab.key ? 'rgba(var(--accent-rgb), 0.2)' : 'transparent',
+                                color: productFamily === tab.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                 borderRadius: 8,
                                 fontWeight: productFamily === tab.key ? 600 : 400,
                                 fontSize: '1rem',
@@ -422,7 +422,7 @@ const ProductManagement: React.FC = () => {
             )}
 
             {/* Product List - macOS26 Card Style */}
-            <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid var(--glass-border)' }}>
+            <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: 'var(--glass-bg-light)', borderRadius: 16, border: '1px solid var(--glass-border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
@@ -469,7 +469,7 @@ const ProductManagement: React.FC = () => {
                                     key={product.id}
                                     className="row-hover"
                                     style={{
-                                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                        borderBottom: '1px solid var(--glass-border)',
                                         cursor: 'pointer'
                                     }}
                                     onClick={() => navigate(`/service/products/${product.id}`)}
@@ -503,7 +503,7 @@ const ProductManagement: React.FC = () => {
                                                 background: 'transparent',
                                                 border: 'none',
                                                 padding: '8px',
-                                                color: '#FFD700',
+                                                color: 'var(--accent-blue)',
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -512,7 +512,7 @@ const ProductManagement: React.FC = () => {
                                                 borderRadius: '6px',
                                                 margin: '0 auto'
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.1)'}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.1)'}
                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
                                             <Edit2 size={18} />
@@ -531,7 +531,7 @@ const ProductManagement: React.FC = () => {
                     disabled={page === 1}
                     onClick={() => setPage(Math.max(1, page - 1))}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                    style={{ background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
                 >
                     上一页
                 </button>
@@ -541,7 +541,7 @@ const ProductManagement: React.FC = () => {
                 <button
                     onClick={() => setPage(page + 1)}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
+                    style={{ background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
                 >
                     下一页
                 </button>

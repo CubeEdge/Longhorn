@@ -6,6 +6,29 @@
   <link rel="icon" type="image/png" href="/logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Longhorn</title>
+  <!-- FOUC Prevention Script -->
+  <script>
+    (function() {
+      try {
+        var storedTheme = localStorage.getItem('kinefinity-theme-storage');
+        var theme = 'system';
+        if (storedTheme) {
+          var parsed = JSON.parse(storedTheme);
+          if (parsed && parsed.state && parsed.state.theme) {
+            theme = parsed.state.theme;
+          }
+        }
+        var actualTheme = theme;
+        if (theme === 'system') {
+          actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', actualTheme);
+      } catch (e) {
+        // Fallback if localStorage access fails or parsing errors
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 </head>
 
 <body>

@@ -123,7 +123,7 @@ const AppRail: React.FC<AppRailProps> = ({
         .rail-item.active {
           background: var(--accent-blue);
           color: #000;
-          box-shadow: 0 4px 12px rgba(255, 210, 0, 0.3);
+          box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
         }
 
         .rail-label {

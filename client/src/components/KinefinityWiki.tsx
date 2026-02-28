@@ -33,7 +33,7 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
     const displayProductLine = productLine === 'GENERIC' ? 'E' : productLine;
 
     return (
-        <div onClick={onClick} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'rgba(255,255,255,0.05)' } } as any}>
+        <div onClick={onClick} style={{ padding: '12px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'var(--glass-bg-hover)' } } as any}>
             <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
             {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
@@ -1558,12 +1558,12 @@ ${contextTickets.map((ticket: any) => {
                         padding: level === 0 ? '14px 16px' : '10px 16px',
                         marginLeft: level * 16,
                         cursor: isClickable ? 'pointer' : 'default',
-                        borderBottom: level === 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                        borderBottom: level === 0 ? '1px solid var(--glass-border)' : 'none',
                         transition: 'background 0.15s',
                     }}
                     onMouseEnter={(e) => {
                         if (isClickable) {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                            e.currentTarget.style.background = 'var(--glass-bg-light)';
                         }
                     }}
                     onMouseLeave={(e) => {
@@ -1587,7 +1587,7 @@ ${contextTickets.map((ticket: any) => {
                     <span style={{
                         fontSize: level === 0 ? '15px' : '14px',
                         fontWeight: level === 0 ? 600 : 400,
-                        color: level === 0 ? '#FFD700' : '#ddd',
+                        color: level === 0 ? 'var(--accent-blue)' : '#ddd',
                         flex: 1
                     }}>
                         {node.label}
@@ -1663,8 +1663,8 @@ ${contextTickets.map((ticket: any) => {
                                         style={{
                                             padding: '10px 16px',
                                             cursor: 'pointer',
-                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                            background: selectedArticle?.id === article.id ? 'rgba(255,215,0,0.08)' : 'transparent',
+                                            borderBottom: '1px solid var(--glass-border)',
+                                            background: selectedArticle?.id === article.id ? 'rgba(var(--accent-rgb),0.08)' : 'transparent',
                                             transition: 'background 0.15s',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1672,7 +1672,7 @@ ${contextTickets.map((ticket: any) => {
                                         }}
                                         onMouseEnter={(e) => {
                                             if (selectedArticle?.id !== article.id) {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                             }
                                         }}
                                         onMouseLeave={(e) => {
@@ -1686,11 +1686,11 @@ ${contextTickets.map((ticket: any) => {
                                             <span style={{
                                                 minWidth: '32px',
                                                 padding: '2px 6px',
-                                                background: selectedArticle?.id === article.id ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)',
+                                                background: selectedArticle?.id === article.id ? 'rgba(var(--accent-rgb),0.2)' : 'rgba(var(--accent-rgb),0.1)',
                                                 borderRadius: '4px',
                                                 fontSize: '10px',
                                                 fontWeight: 600,
-                                                color: '#FFD700',
+                                                color: 'var(--accent-blue)',
                                                 textAlign: 'center'
                                             }}>
                                                 {displayNum}
@@ -1698,7 +1698,7 @@ ${contextTickets.map((ticket: any) => {
                                         )}
                                         <div style={{
                                             fontSize: '14px',
-                                            color: selectedArticle?.id === article.id ? '#FFD700' : '#bbb',
+                                            color: selectedArticle?.id === article.id ? 'var(--accent-blue)' : '#bbb',
                                             lineHeight: '1.5',
                                             flex: 1
                                         }}>
@@ -1723,10 +1723,10 @@ ${contextTickets.map((ticket: any) => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: 'calc(100vh - 60px)',
-                background: '#000'
+                background: 'var(--bg-main)'
             }}>
                 <div style={{ textAlign: 'center' }}>
-                    <BookOpen size={48} style={{ marginBottom: '16px', color: '#FFD700' }} />
+                    <BookOpen size={48} style={{ marginBottom: '16px', color: 'var(--accent-blue)' }} />
                     <div style={{ fontSize: '16px', color: '#999' }}>{t('wiki.loading')}</div>
                 </div>
             </div>
@@ -1738,7 +1738,7 @@ ${contextTickets.map((ticket: any) => {
             <div style={{
                 display: 'flex',
                 height: 'calc(100vh - 60px)',
-                background: '#000',
+                background: 'var(--bg-main)',
                 overflow: 'hidden',
                 position: 'relative'
             }}>
@@ -1746,7 +1746,7 @@ ${contextTickets.map((ticket: any) => {
                 <div style={{
                     flex: 1,
                     overflow: 'auto',
-                    background: '#000',
+                    background: 'var(--bg-main)',
                     position: 'relative'
                 }}>
                     {selectedArticle ? (
@@ -1759,14 +1759,14 @@ ${contextTickets.map((ticket: any) => {
                                 gap: '12px',
                                 marginBottom: '32px',
                                 paddingBottom: '20px',
-                                borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                borderBottom: '1px solid var(--glass-border)'
                             }}>
                                 {/* Back Button - 圆形设计 */}
                                 <button
                                     onClick={handleBackClick}
                                     style={{
-                                        background: 'rgba(255, 255, 255, 0.1)',
-                                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                                        background: 'var(--glass-bg-hover)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '50%',
                                         width: '40px',
                                         height: '40px',
@@ -1778,13 +1778,13 @@ ${contextTickets.map((ticket: any) => {
                                         flexShrink: 0
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#FFD700';
-                                        e.currentTarget.style.borderColor = '#FFD700';
+                                        e.currentTarget.style.background = 'var(--accent-blue)';
+                                        e.currentTarget.style.borderColor = 'var(--accent-blue)';
                                         e.currentTarget.style.transform = 'scale(1.1)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(var(--accent-rgb), 0.5)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                                         e.currentTarget.style.transform = 'scale(1)';
                                         e.currentTarget.style.boxShadow = 'none';
@@ -1812,7 +1812,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <span
                                                     onClick={() => isClickable && handleBreadcrumbClick(index)}
                                                     style={{
-                                                        color: isLast ? '#fff' : '#888',
+                                                        color: isLast ? 'var(--text-main)' : '#888',
                                                         cursor: isClickable ? 'pointer' : 'default',
                                                         fontWeight: isLast ? 700 : 400,
                                                         fontSize: isLast ? '1.25rem' : '0.9rem',
@@ -1822,7 +1822,7 @@ ${contextTickets.map((ticket: any) => {
                                                         textOverflow: 'ellipsis'
                                                     }}
                                                     onMouseEnter={(e) => {
-                                                        if (isClickable) e.currentTarget.style.color = '#FFD700';
+                                                        if (isClickable) e.currentTarget.style.color = 'var(--accent-blue)';
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         if (isClickable) e.currentTarget.style.color = '#888';
@@ -1839,8 +1839,8 @@ ${contextTickets.map((ticket: any) => {
                                 <button
                                     onClick={openTocAtCurrentArticle}
                                     style={{
-                                        background: tocVisible ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                        border: tocVisible ? '1px solid rgba(255,215,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                                        background: tocVisible ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-hover)',
+                                        border: tocVisible ? '1px solid rgba(var(--accent-rgb),0.3)' : '1px solid var(--glass-border)',
                                         borderRadius: '50%',
                                         width: '40px',
                                         height: '40px',
@@ -1852,15 +1852,15 @@ ${contextTickets.map((ticket: any) => {
                                         flexShrink: 0
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,215,0,0.15)';
+                                        e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.15)';
                                         e.currentTarget.style.transform = 'scale(1.05)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = tocVisible ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)';
+                                        e.currentTarget.style.background = tocVisible ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-hover)';
                                         e.currentTarget.style.transform = 'scale(1)';
                                     }}
                                 >
-                                    <List size={20} color={tocVisible ? '#FFD700' : '#999'} />
+                                    <List size={20} color={tocVisible ? 'var(--accent-blue)' : '#999'} />
                                 </button>
                             </div>
 
@@ -1874,7 +1874,7 @@ ${contextTickets.map((ticket: any) => {
                                 <h1 style={{
                                     fontSize: selectedArticle.title.length > 40 ? '1.4rem' : '1.8rem',
                                     fontWeight: 800,
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     lineHeight: '1.3',
                                     letterSpacing: '-0.5px',
                                     flex: 1,
@@ -1896,10 +1896,10 @@ ${contextTickets.map((ticket: any) => {
                                     padding: '12px 16px',
                                     background: selectedArticle.format_status === 'draft'
                                         ? 'rgba(16, 185, 129, 0.05)'
-                                        : 'rgba(255,255,255,0.03)',
+                                        : 'var(--glass-bg-light)',
                                     border: selectedArticle.format_status === 'draft'
                                         ? '1px solid rgba(16, 185, 129, 0.15)'
-                                        : '1px solid rgba(255,255,255,0.08)',
+                                        : '1px solid var(--glass-border)',
                                     borderRadius: '12px'
                                 }}>
                                     {/* View Mode Toggle - Only when draft exists */}
@@ -1908,17 +1908,17 @@ ${contextTickets.map((ticket: any) => {
                                             display: 'flex',
                                             gap: '4px',
                                             padding: '4px',
-                                            background: 'rgba(255,255,255,0.05)',
+                                            background: 'var(--glass-bg-hover)',
                                             borderRadius: '8px'
                                         }}>
                                             <button
                                                 onClick={() => setViewMode('published')}
                                                 style={{
                                                     padding: '6px 12px',
-                                                    background: viewMode === 'published' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                    background: viewMode === 'published' ? 'var(--glass-bg-hover)' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'published' ? '#fff' : '#888',
+                                                    color: viewMode === 'published' ? 'var(--text-main)' : '#888',
                                                     fontSize: '12px',
                                                     cursor: 'pointer',
                                                     display: 'flex',
@@ -1935,7 +1935,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: viewMode === 'draft' ? '#10B981' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'draft' ? '#fff' : '#888',
+                                                    color: viewMode === 'draft' ? 'var(--text-main)' : '#888',
                                                     fontSize: '12px',
                                                     fontWeight: viewMode === 'draft' ? 600 : 400,
                                                     cursor: 'pointer',
@@ -1970,10 +1970,10 @@ ${contextTickets.map((ticket: any) => {
                                         onClick={() => setShowEditorModal(true)}
                                         style={{
                                             padding: '8px 16px',
-                                            background: 'rgba(255,215,0,0.15)',
-                                            border: '1px solid rgba(255,215,0,0.3)',
+                                            background: 'rgba(var(--accent-rgb),0.15)',
+                                            border: '1px solid rgba(var(--accent-rgb),0.3)',
                                             borderRadius: '8px',
-                                            color: '#FFD700',
+                                            color: 'var(--accent-blue)',
                                             fontSize: '13px',
                                             fontWeight: 600,
                                             cursor: 'pointer',
@@ -1993,10 +1993,10 @@ ${contextTickets.map((ticket: any) => {
                                             onClick={handlePublishFormat}
                                             style={{
                                                 padding: '8px 16px',
-                                                background: '#FFD700',
+                                                background: 'var(--accent-blue)',
                                                 border: 'none',
                                                 borderRadius: '8px',
-                                                color: '#000',
+                                                color: 'var(--bg-main)',
                                                 fontSize: '13px',
                                                 fontWeight: 600,
                                                 cursor: 'pointer',
@@ -2014,8 +2014,8 @@ ${contextTickets.map((ticket: any) => {
                             {/* Article Summary */}
                             {getDisplaySummary() && (
                                 <div style={{
-                                    background: 'rgba(255,215,0,0.06)',
-                                    border: '1px solid rgba(255,215,0,0.15)',
+                                    background: 'rgba(var(--accent-rgb),0.06)',
+                                    border: '1px solid rgba(var(--accent-rgb),0.15)',
                                     borderRadius: '12px',
                                     padding: '16px 20px',
                                     marginBottom: '32px',
@@ -2038,20 +2038,20 @@ ${contextTickets.map((ticket: any) => {
                             <div style={{
                                 marginTop: '48px',
                                 paddingTop: '32px',
-                                borderTop: '1px solid rgba(255,255,255,0.06)'
+                                borderTop: '1px solid var(--glass-border)'
                             }}>
                                 {/* 知识来源 */}
                                 {(selectedArticle.source_type || selectedArticle.source_reference) && (
                                     <div style={{
-                                        background: 'rgba(255,255,255,0.02)',
-                                        border: '1px solid rgba(255,255,255,0.06)',
+                                        background: 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '12px',
                                         padding: '16px 20px',
                                         marginBottom: '32px',
                                         fontSize: '13px',
                                         color: '#999'
                                     }}>
-                                        <div style={{ fontWeight: 600, color: '#FFD700', marginBottom: '8px' }}>
+                                        <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '8px' }}>
                                             {t('wiki.source.title')}
                                         </div>
                                         {selectedArticle.source_type && (
@@ -2068,7 +2068,7 @@ ${contextTickets.map((ticket: any) => {
                                         )}
                                         {selectedArticle.source_url && (
                                             <div style={{ marginTop: '4px' }}>
-                                                <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#FFD700', textDecoration: 'none', fontSize: '12px' }}>
+                                                <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontSize: '12px' }}>
                                                     {t('wiki.source.view_original')}
                                                 </a>
                                             </div>
@@ -2084,10 +2084,10 @@ ${contextTickets.map((ticket: any) => {
                                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                                             <button style={{
                                                 padding: '10px 24px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 cursor: 'pointer',
                                                 fontSize: '13px',
                                                 display: 'flex',
@@ -2100,8 +2100,8 @@ ${contextTickets.map((ticket: any) => {
                                                     e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                 }}
                                             >
                                                 <ThumbsUp size={16} />
@@ -2109,10 +2109,10 @@ ${contextTickets.map((ticket: any) => {
                                             </button>
                                             <button style={{
                                                 padding: '10px 24px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 cursor: 'pointer',
                                                 fontSize: '13px',
                                                 display: 'flex',
@@ -2125,8 +2125,8 @@ ${contextTickets.map((ticket: any) => {
                                                     e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                 }}
                                             >
                                                 <ThumbsDown size={16} />
@@ -2147,8 +2147,8 @@ ${contextTickets.map((ticket: any) => {
                                     setChapterView(null);
                                 }}
                                 style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    background: 'var(--glass-bg-hover)',
+                                    border: '1px solid var(--glass-border)',
                                     borderRadius: '10px',
                                     padding: '8px 16px',
                                     cursor: 'pointer',
@@ -2159,10 +2159,10 @@ ${contextTickets.map((ticket: any) => {
                                     transition: 'all 0.2s'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 }}
                             >
                                 <ChevronLeft size={18} color="#999" />
@@ -2181,7 +2181,7 @@ ${contextTickets.map((ticket: any) => {
                                     <h1 style={{
                                         fontSize: '28px',
                                         fontWeight: 700,
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         marginBottom: '8px'
                                     }}>
                                         {t('wiki.toc.chapter_prefix', { count: chapterView.chapter_number })}
@@ -2198,8 +2198,8 @@ ${contextTickets.map((ticket: any) => {
                             {/* Main Chapter Summary */}
                             {chapterView.main_chapter && chapterView.main_chapter.summary && (
                                 <div style={{
-                                    background: 'rgba(255,215,0,0.06)',
-                                    border: '1px solid rgba(255,215,0,0.15)',
+                                    background: 'rgba(var(--accent-rgb),0.06)',
+                                    border: '1px solid rgba(var(--accent-rgb),0.15)',
                                     borderRadius: '12px',
                                     padding: '20px',
                                     marginBottom: '32px'
@@ -2219,10 +2219,10 @@ ${contextTickets.map((ticket: any) => {
                                             style={{
                                                 marginTop: '16px',
                                                 padding: '8px 16px',
-                                                background: 'rgba(255,215,0,0.1)',
-                                                border: '1px solid rgba(255,215,0,0.3)',
+                                                background: 'rgba(var(--accent-rgb),0.1)',
+                                                border: '1px solid rgba(var(--accent-rgb),0.3)',
                                                 borderRadius: '8px',
-                                                color: '#FFD700',
+                                                color: 'var(--accent-blue)',
                                                 fontSize: '13px',
                                                 cursor: 'pointer'
                                             }}
@@ -2265,11 +2265,11 @@ ${contextTickets.map((ticket: any) => {
                                     style={{
                                         padding: '10px 20px',
                                         background: showFullChapter
-                                            ? 'rgba(255,255,255,0.1)'
+                                            ? 'var(--glass-bg-hover)'
                                             : 'linear-gradient(135deg, #10B981, #8E24AA)',
                                         border: 'none',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontSize: '13px',
                                         fontWeight: 600,
                                         cursor: loadingFullChapter ? 'not-allowed' : 'pointer',
@@ -2292,7 +2292,7 @@ ${contextTickets.map((ticket: any) => {
                             {/* Full Chapter Content */}
                             {showFullChapter && fullChapterContent && (
                                 <div style={{
-                                    background: 'rgba(255,255,255,0.02)',
+                                    background: 'var(--glass-bg-light)',
                                     border: '1px solid rgba(16, 185, 129, 0.2)',
                                     borderRadius: '16px',
                                     padding: '32px',
@@ -2312,7 +2312,7 @@ ${contextTickets.map((ticket: any) => {
                                     <h2 style={{
                                         fontSize: '18px',
                                         fontWeight: 600,
-                                        color: '#FFD700',
+                                        color: 'var(--accent-blue)',
                                         marginBottom: '20px',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -2338,21 +2338,21 @@ ${contextTickets.map((ticket: any) => {
                                                     }
                                                 }}
                                                 style={{
-                                                    background: 'rgba(255,255,255,0.02)',
-                                                    border: '1px solid rgba(255,255,255,0.08)',
+                                                    background: 'var(--glass-bg-light)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '12px',
                                                     padding: '20px',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,215,0,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.05)';
+                                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.2)';
                                                     e.currentTarget.style.transform = 'translateY(-2px)';
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-light)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.transform = 'translateY(0)';
                                                 }}
                                             >
@@ -2364,8 +2364,8 @@ ${contextTickets.map((ticket: any) => {
                                                     marginBottom: '12px'
                                                 }}>
                                                     <span style={{
-                                                        background: 'rgba(255,215,0,0.15)',
-                                                        color: '#FFD700',
+                                                        background: 'rgba(var(--accent-rgb),0.15)',
+                                                        color: 'var(--accent-blue)',
                                                         padding: '4px 10px',
                                                         borderRadius: '6px',
                                                         fontSize: '12px',
@@ -2379,7 +2379,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <h3 style={{
                                                     fontSize: '15px',
                                                     fontWeight: 600,
-                                                    color: '#fff',
+                                                    color: 'var(--text-main)',
                                                     marginBottom: '8px',
                                                     lineHeight: '1.4'
                                                 }}>
@@ -2427,7 +2427,7 @@ ${contextTickets.map((ticket: any) => {
                             height: '60vh',
                             color: '#666'
                         }}>
-                            <BookOpen size={48} style={{ marginBottom: '16px', color: '#FFD700', opacity: 0.5 }} />
+                            <BookOpen size={48} style={{ marginBottom: '16px', color: 'var(--accent-blue)', opacity: 0.5 }} />
                             <div style={{ fontSize: '14px' }}>{t('dashboard.loading')}</div>
                         </div>
                     ) : (isNavigationRestored && (
@@ -2472,10 +2472,10 @@ ${contextTickets.map((ticket: any) => {
                                                     onClick={() => setShowAdminMenu(!showAdminMenu)}
                                                     style={{
                                                         padding: '4px 10px',
-                                                        background: showAdminMenu ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                                        border: `1px solid ${showAdminMenu ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                                                        background: showAdminMenu ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-hover)',
+                                                        border: `1px solid ${showAdminMenu ? 'rgba(var(--accent-rgb),0.3)' : 'var(--glass-bg-hover)'}`,
                                                         borderRadius: '6px',
-                                                        color: showAdminMenu ? '#FFD700' : '#888',
+                                                        color: showAdminMenu ? 'var(--accent-blue)' : '#888',
                                                         fontSize: '12px',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -2507,7 +2507,7 @@ ${contextTickets.map((ticket: any) => {
                                                             right: 0,
                                                             marginTop: '8px',
                                                             background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '12px',
                                                             padding: '8px',
                                                             minWidth: '180px',
@@ -2517,7 +2517,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setShowKnowledgeImport(true); }}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <Upload size={16} color="#FFD700" />
@@ -2526,7 +2526,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setShowAuditModal(true); }}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <History size={16} color="#10B981" />
@@ -2535,7 +2535,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <FileText size={16} color="#FFD700" />
@@ -2544,7 +2544,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <BookOpen size={16} color="#60A5FA" />
@@ -2562,8 +2562,8 @@ ${contextTickets.map((ticket: any) => {
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: `1px solid ${searchQuery.trim() ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                        background: 'var(--glass-bg-hover)',
+                                        border: `1px solid ${searchQuery.trim() ? 'rgba(var(--accent-rgb),0.3)' : 'var(--glass-bg-hover)'}`,
                                         borderRadius: '10px',
                                         padding: '0 12px',
                                         width: searchQuery.trim() ? '380px' : (searchHistory.length > 0 || activeSearchQuery ? `${searchTabWidth}px` : '110px'),
@@ -2589,7 +2589,7 @@ ${contextTickets.map((ticket: any) => {
                                                 padding: '8px 10px',
                                                 background: 'transparent',
                                                 border: 'none',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '13px',
                                                 outline: 'none',
                                                 minWidth: 0
@@ -2602,8 +2602,8 @@ ${contextTickets.map((ticket: any) => {
                                                         setPendingSearchQuery(searchQuery.trim());
                                                     }}
                                                     style={{
-                                                        background: 'rgba(255,215,0,0.15)',
-                                                        border: '1px solid rgba(255,215,0,0.3)',
+                                                        background: 'rgba(var(--accent-rgb),0.15)',
+                                                        border: '1px solid rgba(var(--accent-rgb),0.3)',
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         padding: '4px 8px',
@@ -2614,10 +2614,10 @@ ${contextTickets.map((ticket: any) => {
                                                         marginRight: '4px',
                                                         transition: 'all 0.2s'
                                                     }}
-                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,215,0,0.25)'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,215,0,0.15)'; }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.25)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.15)'; }}
                                                 >
-                                                    <span style={{ fontSize: '11px', color: '#FFD700', fontWeight: 500 }}>{t('wiki.search.button')}</span>
+                                                    <span style={{ fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 500 }}>{t('wiki.search.button')}</span>
                                                 </button>
                                                 <button
                                                     onClick={() => {
@@ -2646,7 +2646,7 @@ ${contextTickets.map((ticket: any) => {
                                 alignItems: 'center',
                                 gap: '8px',
                                 padding: '12px 0',
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                borderBottom: '1px solid var(--glass-border)',
                                 marginBottom: '32px'
                             }}>
                                 {/* A/B/C/D/通用 产品族类 Tab */}
@@ -2675,8 +2675,8 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                             style={{
                                                 padding: '10px 18px',
-                                                background: isSelected ? 'rgba(255,215,0,0.12)' : 'transparent',
-                                                border: `1px solid ${isSelected ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                background: isSelected ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
+                                                border: `1px solid ${isSelected ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
                                                 color: isSelected ? '#FFF' : '#888',
                                                 fontSize: '14px',
@@ -2690,15 +2690,15 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                             onMouseEnter={(e) => {
                                                 if (!isSelected) {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.2)';
                                                     e.currentTarget.style.color = '#ccc';
                                                 }
                                             }}
                                             onMouseLeave={(e) => {
                                                 if (!isSelected) {
                                                     e.currentTarget.style.background = 'transparent';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.color = '#888';
                                                 }
                                             }}
@@ -2707,10 +2707,10 @@ ${contextTickets.map((ticket: any) => {
                                             {count > 0 && (
                                                 <span style={{
                                                     padding: '2px 8px',
-                                                    background: isSelected ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
+                                                    background: isSelected ? 'rgba(var(--accent-rgb),0.2)' : 'var(--glass-bg-hover)',
                                                     borderRadius: '10px',
                                                     fontSize: '12px',
-                                                    color: isSelected ? '#FFD700' : '#666'
+                                                    color: isSelected ? 'var(--accent-blue)' : '#666'
                                                 }}>
                                                     {count}
                                                 </span>
@@ -2738,10 +2738,10 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                             style={{
                                                 padding: '10px 14px',
-                                                background: selectedProductLine === null ? 'rgba(255,215,0,0.12)' : 'transparent',
-                                                border: `1px solid ${selectedProductLine === null ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                                background: selectedProductLine === null ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
+                                                border: `1px solid ${selectedProductLine === null ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
-                                                color: selectedProductLine === null ? '#fff' : '#888',
+                                                color: selectedProductLine === null ? 'var(--text-main)' : '#888',
                                                 fontSize: '14px',
                                                 fontWeight: selectedProductLine === null ? 600 : 400,
                                                 cursor: 'pointer',
@@ -2753,15 +2753,15 @@ ${contextTickets.map((ticket: any) => {
                                             }}
                                             onMouseEnter={(e) => {
                                                 if (selectedProductLine !== null) {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,215,0,0.2)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.2)';
                                                     e.currentTarget.style.color = '#ccc';
                                                 }
                                             }}
                                             onMouseLeave={(e) => {
                                                 if (selectedProductLine !== null) {
                                                     e.currentTarget.style.background = 'transparent';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
                                                     e.currentTarget.style.color = '#888';
                                                 }
                                             }}
@@ -2797,7 +2797,7 @@ ${contextTickets.map((ticket: any) => {
                                                 marginTop: '6px',
                                                 width: '240px',
                                                 background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px',
                                                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                                                 overflow: 'hidden',
@@ -2810,7 +2810,7 @@ ${contextTickets.map((ticket: any) => {
                                                     fontWeight: 600,
                                                     textTransform: 'uppercase',
                                                     letterSpacing: '0.5px',
-                                                    borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                                    borderBottom: '1px solid var(--glass-border)'
                                                 }}>
                                                     {t('wiki.search.history')}
                                                 </div>
@@ -2819,11 +2819,11 @@ ${contextTickets.map((ticket: any) => {
                                                         position: 'relative',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        borderBottom: i < searchHistory.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                                                        background: hItem.query === activeSearchQuery ? 'rgba(255,215,0,0.1)' : 'transparent'
+                                                        borderBottom: i < searchHistory.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                                                        background: hItem.query === activeSearchQuery ? 'rgba(var(--accent-rgb),0.1)' : 'transparent'
                                                     }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = hItem.query === activeSearchQuery ? 'rgba(255,215,0,0.1)' : 'transparent'}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = hItem.query === activeSearchQuery ? 'rgba(var(--accent-rgb),0.1)' : 'transparent'}
                                                     >
                                                         <button
                                                             onClick={() => handleSearchHistorySelect(hItem)}
@@ -2832,7 +2832,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 padding: '10px 12px',
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: hItem.query === activeSearchQuery ? '#FFD700' : '#ccc',
+                                                                color: hItem.query === activeSearchQuery ? 'var(--accent-blue)' : '#ccc',
                                                                 fontSize: '13px',
                                                                 cursor: 'pointer',
                                                                 textAlign: 'left',
@@ -2874,8 +2874,8 @@ ${contextTickets.map((ticket: any) => {
                                     {/* AI 搜索 Panel - 只在搜索时显示 */}
                                     {isSearchMode && (
                                         <div style={{
-                                            background: 'rgba(255,255,255,0.03)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            background: 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '16px',
                                             padding: '20px',
                                             marginBottom: '20px',
@@ -2900,7 +2900,7 @@ ${contextTickets.map((ticket: any) => {
                                                             background: 'linear-gradient(135deg, #10B981, #8E24AA)',
                                                             borderRadius: '8px',
                                                             fontSize: '12px',
-                                                            color: '#fff',
+                                                            color: 'var(--text-main)',
                                                             fontWeight: 600,
                                                             letterSpacing: '0.3px'
                                                         }}>
@@ -2920,17 +2920,17 @@ ${contextTickets.map((ticket: any) => {
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         visibility: (aiAnswer || !isAiSearching) ? 'visible' : 'hidden',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        background: 'var(--glass-bg-hover)',
+                                                        border: '1px solid var(--glass-border)',
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s'
                                                     }}
                                                     onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     }}
                                                     onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     }}
                                                 >
                                                     <ChevronDown
@@ -2976,7 +2976,7 @@ ${contextTickets.map((ticket: any) => {
                                                     {aiAnswer && (
                                                         <div style={{
                                                             background: 'rgba(255,255,255,0.015)',
-                                                            border: '1px solid rgba(255,255,255,0.04)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '16px',
                                                             marginBottom: '20px',
                                                             overflow: 'hidden',
@@ -2994,11 +2994,11 @@ ${contextTickets.map((ticket: any) => {
                                                                         remarkPlugins={[remarkGfm]}
                                                                         rehypePlugins={[rehypeRaw]}
                                                                         components={{
-                                                                            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.4em', margin: '20px 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px', color: '#fff' }} {...props} />,
-                                                                            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.2em', margin: '18px 0 8px 0', color: '#fff' }} {...props} />,
-                                                                            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', margin: '16px 0 6px 0', color: '#fff' }} {...props} />,
-                                                                            strong: ({ node, ...props }) => <strong style={{ color: '#fff', fontWeight: 600 }} {...props} />,
-                                                                            b: ({ node, ...props }) => <b style={{ color: '#fff', fontWeight: 600 }} {...props} />,
+                                                                            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.4em', margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', color: 'var(--text-main)' }} {...props} />,
+                                                                            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.2em', margin: '18px 0 8px 0', color: 'var(--text-main)' }} {...props} />,
+                                                                            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', margin: '16px 0 6px 0', color: 'var(--text-main)' }} {...props} />,
+                                                                            strong: ({ node, ...props }) => <strong style={{ color: 'var(--text-main)', fontWeight: 600 }} {...props} />,
+                                                                            b: ({ node, ...props }) => <b style={{ color: 'var(--text-main)', fontWeight: 600 }} {...props} />,
                                                                             ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '12px 0' }} {...props} />,
                                                                             li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
                                                                             p: ({ node, ...props }) => <p style={{ marginBottom: '14px' }} {...props} />,
@@ -3137,12 +3137,12 @@ ${contextTickets.map((ticket: any) => {
                                     {/* 关键词搜索 Panel - 始终显示（搜索结果为空时显示"未找到"） */}
                                     {isSearchMode && (
                                         <div style={{
-                                            background: 'rgba(255,255,255,0.03)',
-                                            border: '2px solid rgba(255,215,0,0.25)',
+                                            background: 'var(--glass-bg-light)',
+                                            border: '2px solid rgba(var(--accent-rgb),0.25)',
                                             borderRadius: '16px',
                                             padding: '20px',
                                             marginBottom: '20px',
-                                            boxShadow: '0 4px 24px rgba(255,215,0,0.08)'
+                                            boxShadow: '0 4px 24px rgba(var(--accent-rgb),0.08)'
                                         }}>
                                             {/* Panel 头部：标签 + 关闭按钮 */}
                                             <div style={{
@@ -3158,10 +3158,10 @@ ${contextTickets.map((ticket: any) => {
                                                 }}>
                                                     <span style={{
                                                         padding: '4px 12px',
-                                                        background: 'rgba(255,215,0,0.15)',
+                                                        background: 'rgba(var(--accent-rgb),0.15)',
                                                         borderRadius: '6px',
                                                         fontSize: '12px',
-                                                        color: '#FFD700',
+                                                        color: 'var(--accent-blue)',
                                                         fontWeight: 600
                                                     }}>
                                                         {t('wiki.search.keyword')}
@@ -3181,17 +3181,17 @@ ${contextTickets.map((ticket: any) => {
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        background: 'var(--glass-bg-hover)',
+                                                        border: '1px solid var(--glass-border)',
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s'
                                                     }}
                                                     onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     }}
                                                     onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                        e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                     }}
                                                 >
                                                     <ChevronDown
@@ -3214,7 +3214,7 @@ ${contextTickets.map((ticket: any) => {
                                                         justifyContent: 'space-between',
                                                         marginBottom: '16px',
                                                         paddingBottom: '12px',
-                                                        borderBottom: '1px solid rgba(255,255,255,0.06)'
+                                                        borderBottom: '1px solid var(--glass-border)'
                                                     }}>
                                                         <div style={{ fontSize: '14px', color: '#999' }}>
                                                             {searchResults.length === 0 && keywordTickets.length === 0 ? (
@@ -3231,8 +3231,8 @@ ${contextTickets.map((ticket: any) => {
                                                                 onClick={() => setShowMoreArticles(!showMoreArticles)}
                                                                 style={{
                                                                     padding: '6px 12px',
-                                                                    background: 'rgba(255,255,255,0.05)',
-                                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                                    background: 'var(--glass-bg-hover)',
+                                                                    border: '1px solid var(--glass-border)',
                                                                     borderRadius: '6px',
                                                                     color: '#888',
                                                                     fontSize: '12px',
@@ -3243,10 +3243,10 @@ ${contextTickets.map((ticket: any) => {
                                                                     transition: 'all 0.15s'
                                                                 }}
                                                                 onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                                 }}
                                                                 onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                                 }}
                                                             >
                                                                 {showMoreArticles ? (
@@ -3310,8 +3310,8 @@ ${contextTickets.map((ticket: any) => {
                                                                             alignItems: 'center',
                                                                             gap: '4px',
                                                                             padding: '2px 10px',
-                                                                            background: 'rgba(255,255,255,0.05)',
-                                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                                            background: 'var(--glass-bg-hover)',
+                                                                            border: '1px solid var(--glass-border)',
                                                                             borderRadius: '6px',
                                                                             cursor: 'pointer',
                                                                             color: '#888',
@@ -3319,10 +3319,10 @@ ${contextTickets.map((ticket: any) => {
                                                                             transition: 'all 0.15s'
                                                                         }}
                                                                         onMouseEnter={(e) => {
-                                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                                         }}
                                                                         onMouseLeave={(e) => {
-                                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                                         }}
                                                                     >
                                                                         {showMoreTickets ? (
@@ -3336,8 +3336,8 @@ ${contextTickets.map((ticket: any) => {
                                                             {isTicketSearching ? (
                                                                 <div style={{
                                                                     padding: '16px',
-                                                                    background: 'rgba(255,255,255,0.02)',
-                                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                                    background: 'var(--glass-bg-light)',
+                                                                    border: '1px solid var(--glass-border)',
                                                                     borderRadius: '8px',
                                                                     display: 'flex',
                                                                     alignItems: 'center',
@@ -3351,8 +3351,8 @@ ${contextTickets.map((ticket: any) => {
                                                             ) : keywordTickets.length === 0 ? (
                                                                 <div style={{
                                                                     padding: '12px 16px',
-                                                                    background: 'rgba(255,255,255,0.02)',
-                                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                                    background: 'var(--glass-bg-light)',
+                                                                    border: '1px solid var(--glass-border)',
                                                                     borderRadius: '8px',
                                                                     color: '#666',
                                                                     fontSize: '13px'
@@ -3428,8 +3428,8 @@ ${contextTickets.map((ticket: any) => {
 
                                 return (
                                     <div style={{
-                                        background: 'rgba(255,255,255,0.02)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        background: 'var(--glass-bg-light)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '16px',
                                         padding: '20px',
                                         marginBottom: '32px'
@@ -3480,8 +3480,8 @@ ${contextTickets.map((ticket: any) => {
                                                                 alignItems: 'center',
                                                                 gap: '12px',
                                                                 padding: '12px 16px',
-                                                                background: isExpanded ? 'rgba(255,215,0,0.05)' : 'rgba(255,255,255,0.02)',
-                                                                border: `1px solid ${isExpanded ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                                                                background: isExpanded ? 'rgba(var(--accent-rgb),0.05)' : 'var(--glass-bg-light)',
+                                                                border: `1px solid ${isExpanded ? 'rgba(var(--accent-rgb),0.2)' : 'var(--glass-bg-hover)'}`,
                                                                 borderRadius: '10px',
                                                                 cursor: 'pointer',
                                                                 transition: 'all 0.2s'
@@ -3491,8 +3491,8 @@ ${contextTickets.map((ticket: any) => {
                                                             <span style={{
                                                                 width: '28px',
                                                                 height: '28px',
-                                                                background: 'rgba(255,215,0,0.15)',
-                                                                color: '#FFD700',
+                                                                background: 'rgba(var(--accent-rgb),0.15)',
+                                                                color: 'var(--accent-blue)',
                                                                 borderRadius: '6px',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
@@ -3503,13 +3503,13 @@ ${contextTickets.map((ticket: any) => {
                                                                 {productLine === 'GENERIC' ? 'E' : productLine}
                                                             </span>
 
-                                                            <span style={{ flex: 1, fontWeight: 600, color: '#fff', fontSize: '15px' }}>
+                                                            <span style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)', fontSize: '15px' }}>
                                                                 {selectedProductLine === 'GENERIC' ? t('wiki.line.generic_desc') : model}
                                                             </span>
 
                                                             <span style={{
                                                                 padding: '4px 10px',
-                                                                background: 'rgba(255,255,255,0.05)',
+                                                                background: 'var(--glass-bg-hover)',
                                                                 borderRadius: '12px',
                                                                 fontSize: '12px',
                                                                 color: '#999'
@@ -3566,8 +3566,8 @@ ${contextTickets.map((ticket: any) => {
                                                                                     alignItems: 'center',
                                                                                     gap: '10px',
                                                                                     padding: '10px 14px',
-                                                                                    background: isCatExpanded ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                                                                                    border: `1px solid ${isCatExpanded ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'}`,
+                                                                                    background: isCatExpanded ? 'var(--glass-bg-hover)' : 'var(--glass-bg-light)',
+                                                                                    border: `1px solid ${isCatExpanded ? 'var(--glass-bg-hover)' : 'var(--glass-bg-hover)'}`,
                                                                                     borderRadius: '8px',
                                                                                     cursor: 'pointer',
                                                                                     transition: 'all 0.2s'
@@ -3576,7 +3576,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                 <span style={{
                                                                                     width: '24px',
                                                                                     height: '24px',
-                                                                                    background: 'rgba(255,255,255,0.1)',
+                                                                                    background: 'var(--glass-bg-hover)',
                                                                                     color: '#ddd',
                                                                                     borderRadius: '5px',
                                                                                     display: 'flex',
@@ -3620,7 +3620,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                                     onClick={() => handleArticleClick(article)}
                                                                                                     style={{
                                                                                                         padding: '10px 12px',
-                                                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                                                        background: 'var(--glass-bg-light)',
                                                                                                         borderRadius: '8px',
                                                                                                         cursor: 'pointer',
                                                                                                         transition: 'all 0.15s',
@@ -3629,10 +3629,10 @@ ${contextTickets.map((ticket: any) => {
                                                                                                         gap: '12px'
                                                                                                     }}
                                                                                                     onMouseEnter={(e) => {
-                                                                                                        e.currentTarget.style.background = 'rgba(255,215,0,0.08)';
+                                                                                                        e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.08)';
                                                                                                     }}
                                                                                                     onMouseLeave={(e) => {
-                                                                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                                                                        e.currentTarget.style.background = 'var(--glass-bg-light)';
                                                                                                     }}
                                                                                                 >
                                                                                                     <FileText size={14} color="#666" />
@@ -3690,7 +3690,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                                         onClick={() => handleArticleClick(article)}
                                                                                                         style={{
                                                                                                             padding: '10px 12px',
-                                                                                                            background: 'rgba(255,255,255,0.02)',
+                                                                                                            background: 'var(--glass-bg-light)',
                                                                                                             borderRadius: '8px',
                                                                                                             cursor: 'pointer',
                                                                                                             transition: 'all 0.15s',
@@ -3698,8 +3698,8 @@ ${contextTickets.map((ticket: any) => {
                                                                                                             alignItems: 'center',
                                                                                                             gap: '12px'
                                                                                                         }}
-                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
-                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.08)'}
+                                                                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                                                                                     >
                                                                                                         <FileText size={14} color="#666" />
                                                                                                         <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
@@ -3726,10 +3726,10 @@ ${contextTickets.map((ticket: any) => {
                                                                                                             gap: '8px',
                                                                                                             padding: '10px 12px',
                                                                                                             cursor: 'pointer',
-                                                                                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                                                                            borderBottom: '1px solid var(--glass-border)',
                                                                                                             transition: 'background 0.15s'
                                                                                                         }}
-                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                                                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                                                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                                                                     >
                                                                                                         <ChevronRight
@@ -3741,7 +3741,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                                                 flexShrink: 0
                                                                                                             }}
                                                                                                         />
-                                                                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
+                                                                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-blue)', flex: 1 }}>
                                                                                                             {t('wiki.toc.chapter_prefix', { count: chapterNum })}{cleanTitle ? `：${cleanTitle}` : ''}
                                                                                                         </span>
                                                                                                     </div>
@@ -3769,10 +3769,10 @@ ${contextTickets.map((ticket: any) => {
                                                                                                                                 alignItems: 'center',
                                                                                                                                 gap: '12px'
                                                                                                                             }}
-                                                                                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
+                                                                                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.08)'}
                                                                                                                             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
                                                                                                                         >
-                                                                                                                            <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                                                                            <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'var(--glass-bg-hover)', padding: '2px 6px', borderRadius: '4px' }}>
                                                                                                                                 {displayNum}
                                                                                                                             </span>
                                                                                                                             <span style={{ fontSize: '13px', color: '#ccc', flex: 1 }}>{secTitle}</span>
@@ -3828,8 +3828,8 @@ ${contextTickets.map((ticket: any) => {
                                                     setShowRecentMenu(!showRecentMenu);
                                                 }}
                                                 style={{
-                                                    background: 'rgba(255,255,255,0.05)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: 'var(--glass-bg-hover)',
+                                                    border: '1px solid var(--glass-border)',
                                                     color: '#999',
                                                     fontSize: '12px',
                                                     padding: '4px 8px',
@@ -3840,8 +3840,8 @@ ${contextTickets.map((ticket: any) => {
                                                     gap: '4px',
                                                     transition: 'all 0.2s'
                                                 }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                             >
                                                 {t('wiki.settings.preference')} <ChevronDown size={12} />
                                             </button>
@@ -3853,7 +3853,7 @@ ${contextTickets.map((ticket: any) => {
                                                     right: 0,
                                                     marginTop: '4px',
                                                     background: '#1a1a1a',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
                                                     padding: '4px',
                                                     zIndex: 100,
@@ -3879,7 +3879,7 @@ ${contextTickets.map((ticket: any) => {
                                                             justifyContent: 'space-between',
                                                             alignItems: 'center'
                                                         }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                     >
                                                         {recentExpanded ? t('wiki.panel.collapse') : t('wiki.panel.expand')}
@@ -3904,7 +3904,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 justifyContent: 'space-between',
                                                                 alignItems: 'center'
                                                             }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                         >
                                                             {showMoreRecent ? t('common.show_less') : t('common.show_more', { count: recentArticles.length - RECENT_SHOW_COUNT })}
@@ -3985,7 +3985,7 @@ ${contextTickets.map((ticket: any) => {
                                 bottom: 0,
                                 width: '360px',
                                 background: '#0a0a0a',
-                                borderLeft: '1px solid rgba(255,255,255,0.08)',
+                                borderLeft: '1px solid var(--glass-border)',
                                 zIndex: 999,
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -3995,7 +3995,7 @@ ${contextTickets.map((ticket: any) => {
                                 {/* Header - 左上角关闭按钮 */}
                                 <div style={{
                                     padding: '16px 20px',
-                                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                    borderBottom: '1px solid var(--glass-border)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between'
@@ -4003,7 +4003,7 @@ ${contextTickets.map((ticket: any) => {
                                     <button
                                         onClick={() => setTocVisible(false)}
                                         style={{
-                                            background: 'rgba(255,255,255,0.08)',
+                                            background: 'var(--glass-bg-hover)',
                                             border: 'none',
                                             borderRadius: '50%',
                                             width: '32px',
@@ -4015,10 +4015,10 @@ ${contextTickets.map((ticket: any) => {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                     >
                                         <X size={18} color="#fff" />
@@ -4032,7 +4032,7 @@ ${contextTickets.map((ticket: any) => {
                                     <h2 style={{
                                         fontSize: '24px',
                                         fontWeight: 700,
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         margin: 0,
                                         marginBottom: '8px'
                                     }}>
@@ -4065,21 +4065,21 @@ ${contextTickets.map((ticket: any) => {
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px 10px 38px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '14px',
                                                 outline: 'none',
                                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                                             }}
                                             onFocus={(e) => {
-                                                e.currentTarget.style.borderColor = 'rgba(255,215,0,0.4)';
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.4)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                             onBlur={(e) => {
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                         />
                                     </div>
@@ -4159,7 +4159,7 @@ ${contextTickets.map((ticket: any) => {
                         }}>
                             <div style={{
                                 background: 'linear-gradient(145deg, #2a2a2a 0%, #1e1e1e 100%)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '20px',
                                 width: '90%',
                                 maxWidth: '900px',
@@ -4171,13 +4171,13 @@ ${contextTickets.map((ticket: any) => {
                                 {/* 头部 */}
                                 <div style={{
                                     padding: '24px 32px',
-                                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                    borderBottom: '1px solid var(--glass-border)',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center'
                                 }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: 0 }}>
+                                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                                             {t('wiki.manage_articles')}
                                         </h2>
                                         <p style={{ fontSize: '14px', color: '#888', margin: 0, fontWeight: 400 }}>
@@ -4192,15 +4192,15 @@ ${contextTickets.map((ticket: any) => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            background: 'rgba(255,255,255,0.08)',
+                                            background: 'var(--glass-bg-hover)',
                                             border: 'none',
                                             borderRadius: '50%',
                                             cursor: 'pointer',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             transition: 'all 0.2s'
                                         }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                                     >
                                         <X size={22} />
                                     </button>
@@ -4210,7 +4210,7 @@ ${contextTickets.map((ticket: any) => {
                                 {/* 操作栏 */}
                                 <div style={{
                                     padding: '12px 24px',
-                                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    borderBottom: '1px solid var(--glass-border)',
                                     display: 'flex',
                                     gap: '12px',
                                     alignItems: 'center'
@@ -4234,10 +4234,10 @@ ${contextTickets.map((ticket: any) => {
                                             style={{
                                                 width: '100%',
                                                 padding: '8px 12px 8px 36px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                background: 'var(--glass-bg-hover)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '13px',
                                                 outline: 'none'
                                             }}
@@ -4262,8 +4262,8 @@ ${contextTickets.map((ticket: any) => {
                                                     transition: 'all 0.2s',
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.color = '#fff';
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                                    e.currentTarget.style.color = 'var(--text-main)';
+                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     e.currentTarget.style.color = '#666';
@@ -4306,8 +4306,8 @@ ${contextTickets.map((ticket: any) => {
                                                     alignItems: 'center',
                                                     gap: '8px',
                                                     padding: '8px 14px',
-                                                    background: 'rgba(255,255,255,0.05)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    background: 'var(--glass-bg-hover)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
                                                     color: '#ccc',
                                                     fontSize: '13px',
@@ -4317,9 +4317,9 @@ ${contextTickets.map((ticket: any) => {
                                                 <div style={{
                                                     width: '16px',
                                                     height: '16px',
-                                                    border: `2px solid ${isAllFilteredSelected ? '#FFD700' : '#666'}`,
+                                                    border: `2px solid ${isAllFilteredSelected ? 'var(--accent-blue)' : '#666'}`,
                                                     borderRadius: '4px',
-                                                    background: isAllFilteredSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                    background: isAllFilteredSelected ? 'rgba(var(--accent-rgb),0.2)' : 'transparent',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center'
@@ -4369,7 +4369,7 @@ ${contextTickets.map((ticket: any) => {
                                 }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
-                                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                                 <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
                                                 <th
                                                     style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
@@ -4465,8 +4465,8 @@ ${contextTickets.map((ticket: any) => {
                                                         <tr
                                                             key={article.id}
                                                             style={{
-                                                                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                                                background: isSelected ? 'rgba(255,215,0,0.05)' : 'transparent'
+                                                                borderBottom: '1px solid var(--glass-border)',
+                                                                background: isSelected ? 'rgba(var(--accent-rgb),0.05)' : 'transparent'
                                                             }}
                                                         >
                                                             <td style={{ padding: '12px 8px' }}>
@@ -4483,9 +4483,9 @@ ${contextTickets.map((ticket: any) => {
                                                                     style={{
                                                                         width: '18px',
                                                                         height: '18px',
-                                                                        border: `2px solid ${isSelected ? '#FFD700' : '#555'}`,
+                                                                        border: `2px solid ${isSelected ? 'var(--accent-blue)' : '#555'}`,
                                                                         borderRadius: '4px',
-                                                                        background: isSelected ? 'rgba(255,215,0,0.2)' : 'transparent',
+                                                                        background: isSelected ? 'rgba(var(--accent-rgb),0.2)' : 'transparent',
                                                                         cursor: 'pointer',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
@@ -4496,16 +4496,16 @@ ${contextTickets.map((ticket: any) => {
                                                                 </button>
                                                             </td>
                                                             <td style={{ padding: '12px 8px' }}>
-                                                                <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.4 }}>
+                                                                <div style={{ color: 'var(--text-main)', fontSize: '14px', lineHeight: 1.4 }}>
                                                                     {article.title}
                                                                 </div>
                                                             </td>
                                                             <td style={{ padding: '12px 8px' }}>
                                                                 <span style={{
                                                                     padding: '4px 8px',
-                                                                    background: 'rgba(255,215,0,0.1)',
+                                                                    background: 'rgba(var(--accent-rgb),0.1)',
                                                                     borderRadius: '6px',
-                                                                    color: '#FFD700',
+                                                                    color: 'var(--accent-blue)',
                                                                     fontSize: '12px'
                                                                 }}>
                                                                     {lineLabels[article.product_line] || article.product_line}
@@ -4556,11 +4556,11 @@ ${contextTickets.map((ticket: any) => {
                                 {/* 底部提示区域 - 固定在底部 */}
                                 <div style={{
                                     padding: '12px 24px',
-                                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                                    borderTop: '1px solid var(--glass-border)',
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    background: 'rgba(255,255,255,0.02)'
+                                    background: 'var(--glass-bg-light)'
                                 }}>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                         {t('wiki.total_articles', {
@@ -4595,7 +4595,7 @@ ${contextTickets.map((ticket: any) => {
                                             width: '80%',
                                             maxWidth: '450px',
                                             background: '#1a1a1a',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '16px',
                                             padding: '32px',
                                             boxShadow: '0 30px 100px rgba(0,0,0,0.8)',
@@ -4616,7 +4616,7 @@ ${contextTickets.map((ticket: any) => {
                                                 }}>
                                                     <Trash2 size={28} />
                                                 </div>
-                                                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: '0 0 12px' }}>
+                                                <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 12px' }}>
                                                     {t('wiki.manage.delete_batch')}
                                                 </h3>
                                                 <p style={{ fontSize: '14px', color: '#888', margin: 0, lineHeight: 1.6 }}>
@@ -4628,9 +4628,9 @@ ${contextTickets.map((ticket: any) => {
                                             <div style={{
                                                 maxHeight: '160px',
                                                 overflowY: 'auto',
-                                                background: 'rgba(0,0,0,0.2)',
+                                                background: 'var(--glass-bg-light)',
                                                 borderRadius: '8px',
-                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                border: '1px solid var(--glass-border)',
                                                 padding: '12px'
                                             }}>
                                                 {articlesToDeleteList.map(a => (
@@ -4638,7 +4638,7 @@ ${contextTickets.map((ticket: any) => {
                                                         fontSize: '13px',
                                                         color: '#ccc',
                                                         padding: '6px 0',
-                                                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                                        borderBottom: '1px solid var(--glass-border)',
                                                         whiteSpace: 'nowrap',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis'
@@ -4678,7 +4678,7 @@ ${contextTickets.map((ticket: any) => {
                                                         background: deleteCountdown > 0 ? 'rgba(239,68,68,0.1)' : '#EF4444',
                                                         border: 'none',
                                                         borderRadius: '12px',
-                                                        color: deleteCountdown > 0 ? 'rgba(239,68,68,0.5)' : '#fff',
+                                                        color: deleteCountdown > 0 ? 'rgba(239,68,68,0.5)' : 'var(--text-main)',
                                                         fontSize: '15px',
                                                         fontWeight: 600,
                                                         cursor: (deleteCountdown > 0 || isDeleting) ? 'not-allowed' : 'pointer',
@@ -4711,7 +4711,7 @@ ${contextTickets.map((ticket: any) => {
                                                         width: '100%',
                                                         padding: '14px',
                                                         background: 'transparent',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        border: '1px solid var(--glass-border)',
                                                         borderRadius: '12px',
                                                         color: '#888',
                                                         fontSize: '15px',
@@ -4780,7 +4780,7 @@ ${contextTickets.map((ticket: any) => {
                                     height: '80vh',
                                     maxHeight: '800px',
                                     background: 'linear-gradient(145deg, #1e1e1e 0%, #181818 100%)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    border: '1px solid var(--glass-border)',
                                     borderRadius: '16px',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -4790,7 +4790,7 @@ ${contextTickets.map((ticket: any) => {
                                     {/* 顶部标题栏 */}
                                     <div style={{
                                         padding: '24px 32px',
-                                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                        borderBottom: '1px solid var(--glass-border)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between'
@@ -4800,7 +4800,7 @@ ${contextTickets.map((ticket: any) => {
                                             <h2 style={{
                                                 fontSize: '24px',
                                                 fontWeight: 700,
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 margin: 0
                                             }}>
                                                 {model} · {categoryLabel}
@@ -4818,7 +4818,7 @@ ${contextTickets.map((ticket: any) => {
                                         <button
                                             onClick={() => setShowManualTocModal(false)}
                                             style={{
-                                                background: 'rgba(255,255,255,0.08)',
+                                                background: 'var(--glass-bg-hover)',
                                                 border: 'none',
                                                 borderRadius: '50%',
                                                 width: '40px',
@@ -4830,10 +4830,10 @@ ${contextTickets.map((ticket: any) => {
                                                 transition: 'all 0.2s'
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                         >
                                             <X size={22} color="#fff" />
@@ -4905,8 +4905,8 @@ ${contextTickets.map((ticket: any) => {
                                                                     }}
                                                                     style={{
                                                                         padding: '14px 18px',
-                                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.02)',
-                                                                        border: `1px solid ${isCurrentArticle ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                                                        background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-light)',
+                                                                        border: `1px solid ${isCurrentArticle ? 'rgba(var(--accent-rgb),0.3)' : 'var(--glass-bg-hover)'}`,
                                                                         borderRadius: '12px',
                                                                         cursor: isCurrentArticle ? 'default' : 'pointer',
                                                                         display: 'flex',
@@ -4915,19 +4915,19 @@ ${contextTickets.map((ticket: any) => {
                                                                         transition: 'all 0.15s'
                                                                     }}
                                                                     onMouseEnter={(e) => {
-                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.15)'; }
+                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'var(--glass-bg-hover)'; e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.15)'; }
                                                                     }}
                                                                     onMouseLeave={(e) => {
-                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }
+                                                                        if (!isCurrentArticle) { e.currentTarget.style.background = 'var(--glass-bg-light)'; e.currentTarget.style.borderColor = 'var(--glass-bg-hover)'; }
                                                                     }}
                                                                 >
                                                                     {displayNum && (
-                                                                        <span style={{ minWidth: '44px', padding: '6px 10px', background: isCurrentArticle ? 'rgba(255,215,0,0.2)' : 'rgba(255,215,0,0.1)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: '#FFD700', textAlign: 'center' }}>
+                                                                        <span style={{ minWidth: '44px', padding: '6px 10px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.2)' : 'rgba(var(--accent-rgb),0.1)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--accent-blue)', textAlign: 'center' }}>
                                                                             {displayNum}
                                                                         </span>
                                                                     )}
-                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#ccc', flex: 1 }}>{cleanTitle}</span>
-                                                                    {isCurrentArticle && <span style={{ fontSize: '12px', color: '#FFD700', padding: '4px 10px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
+                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : '#ccc', flex: 1 }}>{cleanTitle}</span>
+                                                                    {isCurrentArticle && <span style={{ fontSize: '12px', color: 'var(--accent-blue)', padding: '4px 10px', background: 'rgba(var(--accent-rgb),0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
                                                                 </div>
                                                             );
                                                         });
@@ -4943,8 +4943,8 @@ ${contextTickets.map((ticket: any) => {
 
                                                     return (
                                                         <div key={chapterKey} style={{
-                                                            background: 'rgba(255,255,255,0.02)',
-                                                            border: '1px solid rgba(255,255,255,0.05)',
+                                                            background: 'var(--glass-bg-light)',
+                                                            border: '1px solid var(--glass-border)',
                                                             borderRadius: '12px',
                                                             overflow: 'hidden'
                                                         }}>
@@ -4976,11 +4976,11 @@ ${contextTickets.map((ticket: any) => {
                                                                     alignItems: 'center',
                                                                     gap: '12px',
                                                                     cursor: 'pointer',
-                                                                    background: isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',
+                                                                    background: isChapExpanded ? 'var(--glass-bg-light)' : 'transparent',
                                                                     transition: 'background 0.15s'
                                                                 }}
-                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                                                                onMouseLeave={(e) => e.currentTarget.style.background = isChapExpanded ? 'rgba(255,255,255,0.04)' : 'transparent'}
+                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.background = isChapExpanded ? 'var(--glass-bg-light)' : 'transparent'}
                                                             >
                                                                 <ChevronRight
                                                                     size={18}
@@ -4991,7 +4991,7 @@ ${contextTickets.map((ticket: any) => {
                                                                         flexShrink: 0
                                                                     }}
                                                                 />
-                                                                <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFD700', flex: 1 }}>
+                                                                <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--accent-blue)', flex: 1 }}>
                                                                     {t('wiki.toc.chapter_prefix', { count: chapterNum })}{chapCleanTitle ? `：${chapCleanTitle}` : ''}
                                                                 </span>
                                                             </div>
@@ -5017,7 +5017,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                     }}
                                                                                     style={{
                                                                                         padding: '10px 14px',
-                                                                                        background: isCurrentArticle ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                                                                        background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.1)' : 'transparent',
                                                                                         borderRadius: '8px',
                                                                                         cursor: isCurrentArticle ? 'default' : 'pointer',
                                                                                         display: 'flex',
@@ -5025,14 +5025,14 @@ ${contextTickets.map((ticket: any) => {
                                                                                         gap: '12px',
                                                                                         transition: 'all 0.15s'
                                                                                     }}
-                                                                                    onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                                                                                    onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'var(--glass-bg-light)'; }}
                                                                                     onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
                                                                                 >
-                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? '#FFD700' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? 'var(--accent-blue)' : '#888', fontSize: '12px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.15)' : 'var(--glass-bg-hover)', padding: '3px 8px', borderRadius: '6px' }}>
                                                                                         {displayNum}
                                                                                     </span>
-                                                                                    <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? '#FFD700' : '#bbb', flex: 1 }}>{secTitle}</span>
-                                                                                    {isCurrentArticle && <span style={{ fontSize: '11px', color: '#FFD700', padding: '2px 8px', background: 'rgba(255,215,0,0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
+                                                                                    <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : '#bbb', flex: 1 }}>{secTitle}</span>
+                                                                                    {isCurrentArticle && <span style={{ fontSize: '11px', color: 'var(--accent-blue)', padding: '2px 8px', background: 'rgba(var(--accent-rgb),0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
                                                                                 </div>
                                                                             );
                                                                         })}
@@ -5048,7 +5048,7 @@ ${contextTickets.map((ticket: any) => {
                                         <div style={{
                                             marginTop: 'auto',
                                             padding: '24px 0 8px',
-                                            borderTop: '1px solid rgba(255,255,255,0.04)',
+                                            borderTop: '1px solid var(--glass-border)',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: '12px'
@@ -5068,9 +5068,9 @@ ${contextTickets.map((ticket: any) => {
                                                         alignItems: 'center',
                                                         gap: '8px',
                                                         padding: '10px 14px',
-                                                        background: 'rgba(255,255,255,0.02)',
+                                                        background: 'var(--glass-bg-light)',
                                                         borderRadius: '10px',
-                                                        border: '1px solid rgba(255,255,255,0.04)',
+                                                        border: '1px solid var(--glass-border)',
                                                         fontSize: '12px',
                                                         color: '#666',
                                                         lineHeight: '1.4'
@@ -5111,13 +5111,13 @@ ${contextTickets.map((ticket: any) => {
                         height: '85vh',
                         background: '#1a1a1a',
                         borderRadius: '16px',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid var(--glass-border)',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden'
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--glass-border)' }}>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <History size={20} color="#10B981" />
                                 知识库修改记录
                             </h2>

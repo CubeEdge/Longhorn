@@ -38,14 +38,14 @@ export const KineSelect: React.FC<KineSelectProps> = ({ value, options, onChange
                     height: '40px',
                     padding: '0 12px',
                     borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'var(--glass-bg-hover)',
+                    border: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     cursor: 'pointer',
                     fontSize: '0.85rem',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     transition: 'all 0.2s',
                     userSelect: 'none'
                 }}
@@ -67,8 +67,8 @@ export const KineSelect: React.FC<KineSelectProps> = ({ value, options, onChange
                             width: '100%',
                             maxHeight: '300px',
                             overflowY: 'auto',
-                            background: '#1C1C1E',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--bg-sidebar)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '12px',
                             padding: '4px',
                             zIndex: 101,
@@ -83,12 +83,12 @@ export const KineSelect: React.FC<KineSelectProps> = ({ value, options, onChange
                                     padding: '8px 12px',
                                     borderRadius: '6px',
                                     fontSize: '0.85rem',
-                                    color: opt.value === value ? '#FFD700' : '#fff',
-                                    background: opt.value === value ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
+                                    color: opt.value === value ? 'var(--accent-blue)' : 'var(--text-main)',
+                                    background: opt.value === value ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
                                     cursor: 'pointer',
                                     transition: 'all 0.1s'
                                 }}
-                                onMouseEnter={e => { if (opt.value !== value) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                onMouseEnter={e => { if (opt.value !== value) e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                                 onMouseLeave={e => { if (opt.value !== value) e.currentTarget.style.background = 'transparent'; }}
                             >
                                 {opt.label}

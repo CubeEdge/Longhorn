@@ -403,7 +403,7 @@ const InquiryTicketListPage: React.FC = () => {
                                 // 有经销商：经销商名称 👤 客户名称 + 客户联系人
                                 return (
                                     <>
-                                        <span style={{ color: '#FFD700', fontWeight: 500 }}>{dealerName}</span>
+                                        <span style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>{dealerName}</span>
                                         <span style={{ marginLeft: '8px', marginRight: '4px' }}></span>
                                         <Users size={14} style={{ color: 'var(--text-secondary)' }} />
                                         <span style={{ fontWeight: 500 }}>{accountName}</span>
@@ -423,9 +423,9 @@ const InquiryTicketListPage: React.FC = () => {
                                             borderRadius: '10px',
                                             fontSize: '0.7rem',
                                             fontWeight: 600,
-                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
-                                            color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
-                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
+                                            color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
                                         }}>
                                             {(isVIP || isVVIP) && '👑'}{serviceTier}
                                         </span>
@@ -452,9 +452,9 @@ const InquiryTicketListPage: React.FC = () => {
                                             borderRadius: '10px',
                                             fontSize: '0.7rem',
                                             fontWeight: 600,
-                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255,255,255,0.1)',
-                                            color: isVVIP ? '#EF4444' : isVIP ? '#FFD700' : 'var(--text-tertiary)',
-                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid rgba(255,255,255,0.1)'
+                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
+                                            color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
                                         }}>
                                             {(isVIP || isVVIP) && '👑'}{serviceTier}
                                         </span>
@@ -531,8 +531,8 @@ const InquiryTicketListPage: React.FC = () => {
                             <button
                                 onClick={() => { setSearchOpen(true); }}
                                 style={{
-                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
+                                    width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                                    background: 'var(--glass-bg-hover)', color: 'var(--text-secondary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                     transition: 'all 0.2s'
                                 }}
@@ -554,7 +554,7 @@ const InquiryTicketListPage: React.FC = () => {
                                             padding: '0 12px 0 32px',
                                             borderRadius: '8px',
                                             border: '1px solid #3B82F6',
-                                            background: '#1C1C1E',
+                                            background: 'var(--bg-sidebar)',
                                             color: 'var(--text-primary)',
                                             fontSize: '0.85rem',
                                             outline: 'none',
@@ -641,8 +641,8 @@ const InquiryTicketListPage: React.FC = () => {
                     <button
                         onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
                         style={{
-                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                            background: showAdvancedFilter ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+                            height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid var(--glass-border)',
+                            background: showAdvancedFilter ? 'rgba(59,130,246,0.2)' : 'var(--glass-bg-hover)',
                             color: showAdvancedFilter ? '#3B82F6' : 'var(--text-secondary)',
                             display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
                             transition: 'all 0.2s', fontSize: '0.85rem'
@@ -674,7 +674,7 @@ const InquiryTicketListPage: React.FC = () => {
                     />
 
                     {/* View Mode */}
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '2px', height: '40px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--glass-bg-hover)', borderRadius: '8px', padding: '2px', height: '40px' }}>
                         <button
                             onClick={() => toggleViewMode('list')}
                             title="Group View"
@@ -682,7 +682,7 @@ const InquiryTicketListPage: React.FC = () => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: '32px', height: '32px', borderRadius: '6px', border: 'none',
                                 background: viewMode === 'list' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: viewMode === 'list' ? '#fff' : 'var(--text-tertiary)',
+                                color: viewMode === 'list' ? 'var(--text-main)' : 'var(--text-tertiary)',
                                 cursor: 'pointer'
                             }}
                         >
@@ -695,7 +695,7 @@ const InquiryTicketListPage: React.FC = () => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 width: '32px', height: '32px', borderRadius: '6px', border: 'none',
                                 background: viewMode === 'card' ? 'var(--glass-bg-hover)' : 'transparent',
-                                color: viewMode === 'card' ? '#fff' : 'var(--text-tertiary)',
+                                color: viewMode === 'card' ? 'var(--text-main)' : 'var(--text-tertiary)',
                                 cursor: 'pointer'
                             }}
                         >
@@ -710,8 +710,8 @@ const InquiryTicketListPage: React.FC = () => {
                 <div style={{
                     marginBottom: '16px',
                     padding: '16px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'var(--glass-bg-light)',
+                    border: '1px solid var(--glass-border)',
                     borderRadius: '12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -719,7 +719,7 @@ const InquiryTicketListPage: React.FC = () => {
                     animation: 'slideDown 0.2s ease-out'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>STATUS</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>STATUS</span>
                         <KineSelect
                             value={statusFilter}
                             onChange={(val) => updateFilter({ status: val })}
@@ -735,7 +735,7 @@ const InquiryTicketListPage: React.FC = () => {
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
                         <KineSelect
                             value={serviceTierFilter}
                             onChange={(val) => updateFilter({ service_tier: val })}
@@ -757,7 +757,7 @@ const InquiryTicketListPage: React.FC = () => {
                 customFamilyOpen && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+                        background: 'var(--glass-bg-light)', zIndex: 9999,
                         display: 'flex', justifyContent: 'center', alignItems: 'center'
                     }}>
                         <div style={{
@@ -767,7 +767,7 @@ const InquiryTicketListPage: React.FC = () => {
                             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Product Families</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '16px 0', maxHeight: '300px', overflowY: 'auto' }}>
                                 {productFamilies.filter(f => f.id !== 'all').map(fam => (
-                                    <label key={fam.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '8px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)' }}>
+                                    <label key={fam.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '8px', borderRadius: '6px', background: 'var(--glass-bg-light)' }}>
                                         <input
                                             type="checkbox"
                                             checked={selectedFamilies.includes(fam.id)}
@@ -794,7 +794,7 @@ const InquiryTicketListPage: React.FC = () => {
             {
                 showDatePicker && (
                     <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+                        style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--glass-bg-light)', backdropFilter: 'blur(4px)' }}
                         onClick={() => setShowDatePicker(false)}
                     >
                         <div
@@ -806,7 +806,7 @@ const InquiryTicketListPage: React.FC = () => {
                                 width: '360px',
                                 background: 'rgba(30, 30, 30, 0.75)',
                                 backdropFilter: 'blur(20px)',
-                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                border: '1px solid var(--glass-border)',
                                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                             }}
                         >
@@ -833,7 +833,7 @@ const InquiryTicketListPage: React.FC = () => {
                                     className="btn"
                                     style={{
                                         background: 'transparent',
-                                        color: 'rgba(255, 255, 255, 0.6)',
+                                        color: 'var(--text-secondary)',
                                         border: 'none',
                                         padding: '0 16px',
                                         height: '36px',
@@ -841,8 +841,8 @@ const InquiryTicketListPage: React.FC = () => {
                                         cursor: 'pointer',
                                         fontWeight: 500
                                     }}
-                                    onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-                                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
+                                    onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
+                                    onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
                                 >
                                     {t('action.cancel')}
                                 </button>
@@ -851,8 +851,8 @@ const InquiryTicketListPage: React.FC = () => {
                                     disabled={!customRange.start || !customRange.end}
                                     className="btn btn-primary"
                                     style={{
-                                        background: '#FFD700', // Kine Yellow
-                                        color: '#000',
+                                        background: 'var(--accent-blue)', // Kine Yellow
+                                        color: 'var(--bg-main)',
                                         border: 'none',
                                         padding: '0 20px',
                                         height: '36px',
@@ -860,7 +860,7 @@ const InquiryTicketListPage: React.FC = () => {
                                         fontSize: '0.9rem',
                                         fontWeight: 700,
                                         cursor: 'pointer',
-                                        boxShadow: '0 2px 10px rgba(255, 215, 0, 0.3)',
+                                        boxShadow: '0 2px 10px rgba(var(--accent-rgb), 0.3)',
                                         opacity: (!customRange.start || !customRange.end) ? 0.5 : 1
                                     }}
                                 >

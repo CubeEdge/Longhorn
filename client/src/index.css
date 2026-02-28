@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
+/* Default fallback is dark, but logic will override with data-theme */
+:root,
+[data-theme="dark"] {
   /* Base Colors */
   --bg-main: #000000;
   --bg-sidebar: #1C1C1E;
@@ -8,13 +10,18 @@
 
   /* Kine Yellow Theme */
   --accent-blue: #FFD200;
+  --accent-rgb: 255, 210, 0;
   --accent-hover: #E6BD00;
-  --accent-subtle: rgba(255, 210, 0, 0.15);
+  --accent-subtle: rgba(var(--accent-rgb), 0.15);
 
   /* Text Colors */
   --text-main: #FFFFFF;
   --text-secondary: #9CA3AF;
   --text-tertiary: #6B7280;
+
+  /* Text Highlights for status labels etc. */
+  --text-success: #10B981;
+  --text-danger: #EF4444;
 
   /* macOS 26 Glassmorphism */
   --glass-bg: rgba(28, 28, 30, 0.75);
@@ -48,11 +55,57 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.7);
 }
 
+[data-theme="light"] {
+  /* Base Colors - macOS Light Mode Inspiration */
+  --bg-main: #E5E7EB;
+  /* Subtle darker gray for window background like macOS */
+  --bg-sidebar: #E5E7EB;
+  /* Changed to match macOS light sidebar */
+  --bg-content: #FFFFFF;
+  /* Pure white for content area */
+
+  /* Kine Yellow Theme (Adjusted for contrast in light mode) */
+  --accent-blue: #E6BD00;
+  --accent-rgb: 230, 189, 0;
+  /* Slightly darker gold for readability on light auth */
+  --accent-hover: #CCA800;
+  --accent-subtle: rgba(var(--accent-rgb), 0.15);
+
+  /* Text Colors */
+  --text-main: #1C1C1E;
+  /* Dark gray, almost black for best readability */
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+
+  /* Text Highlights */
+  --text-success: #059669;
+  /* Darker green */
+  --text-danger: #DC2626;
+  /* Darker red */
+
+  /* Glassmorphism - Light Version */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-light: rgba(0, 0, 0, 0.04);
+  --glass-bg-hover: rgba(0, 0, 0, 0.08);
+  --glass-blur: blur(24px);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-border-accent: rgba(230, 189, 0, 0.3);
+  --glass-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* Softer shadows in light mode */
+  --glass-shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.1);
+  --glass-shadow-accent: 0 8px 16px rgba(230, 189, 0, 0.15);
+
+  /* Layout and shapes stay the same */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 body {
@@ -79,6 +132,7 @@ body {
   display: flex;
   width: 100%;
   height: 100%;
+  background: var(--bg-main);
 }
 
 /* Sidebar */

@@ -472,8 +472,8 @@ const CustomerDetailPage: React.FC = () => {
                                 borderRadius: 6,
                                 fontSize: '0.85rem',
                                 fontWeight: 600,
-                                background: isDealer ? 'rgba(255, 215, 0, 0.15)' : (customer.service_tier === 'VIP' ? 'rgba(255, 165, 0, 0.2)' : 'rgba(255,255,255,0.1)'),
-                                color: isDealer ? '#FFD700' : (customer.service_tier === 'VIP' ? 'orange' : 'white')
+                                background: isDealer ? 'rgba(var(--accent-rgb), 0.15)' : (customer.service_tier === 'VIP' ? 'rgba(255, 165, 0, 0.2)' : 'var(--glass-bg-hover)'),
+                                color: isDealer ? 'var(--accent-blue)' : (customer.service_tier === 'VIP' ? 'orange' : 'var(--text-main)')
                             }}
                         >
                             {isDealer ? getDealerLevelLabel(customer.dealer_level) : getTierLabel(customer.service_tier)}
@@ -485,8 +485,8 @@ const CustomerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setShowMoreMenu(!showMoreMenu)}
                             style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '8px',
                                 padding: '8px 12px',
                                 color: 'var(--text-secondary)',
@@ -497,10 +497,10 @@ const CustomerDetailPage: React.FC = () => {
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                             }}
                         >
                             <MoreHorizontal size={18} />
@@ -523,7 +523,7 @@ const CustomerDetailPage: React.FC = () => {
                                         background: 'rgba(40, 40, 42, 0.98)',
                                         backdropFilter: 'blur(20px)',
                                         borderRadius: 12,
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        border: '1px solid var(--glass-border)',
                                         boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
                                         zIndex: 20,
                                         minWidth: 160,
@@ -540,7 +540,7 @@ const CustomerDetailPage: React.FC = () => {
                                             padding: '10px 16px',
                                             background: 'none',
                                             border: 'none',
-                                            color: 'white',
+                                            color: 'var(--text-main)',
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
                                             textAlign: 'left'
@@ -688,8 +688,8 @@ const CustomerDetailPage: React.FC = () => {
                                                     padding: '2px 6px',
                                                     borderRadius: 4,
                                                     fontSize: '0.7rem',
-                                                    background: 'rgba(255, 215, 0, 0.15)',
-                                                    color: '#FFD700',
+                                                    background: 'rgba(var(--accent-rgb), 0.15)',
+                                                    color: 'var(--accent-blue)',
                                                     fontWeight: 600
                                                 }}>
                                                     主要对接人
@@ -744,7 +744,7 @@ const CustomerDetailPage: React.FC = () => {
 
                 {/* Expandable Contacts Section */}
                 {contacts.length > 1 && showAllContacts && (
-                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {contacts.map(contact => (
                                 <div
@@ -754,22 +754,22 @@ const CustomerDetailPage: React.FC = () => {
                                         alignItems: 'flex-start',
                                         gap: 12,
                                         padding: '12px',
-                                        background: contact.status === 'PRIMARY' ? 'rgba(255, 215, 0, 0.05)' : 'rgba(255,255,255,0.03)',
+                                        background: contact.status === 'PRIMARY' ? 'rgba(var(--accent-rgb), 0.05)' : 'var(--glass-bg-light)',
                                         borderRadius: '10px',
-                                        border: contact.status === 'PRIMARY' ? '1px solid rgba(255, 215, 0, 0.2)' : '1px solid rgba(255,255,255,0.05)'
+                                        border: contact.status === 'PRIMARY' ? '1px solid rgba(var(--accent-rgb), 0.2)' : '1px solid var(--glass-border)'
                                     }}
                                 >
                                     <div style={{
                                         width: 32,
                                         height: 32,
                                         borderRadius: '50%',
-                                        background: contact.status === 'PRIMARY' ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.1)',
+                                        background: contact.status === 'PRIMARY' ? 'rgba(var(--accent-rgb), 0.15)' : 'var(--glass-bg-hover)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         flexShrink: 0
                                     }}>
-                                        <User size={14} color={contact.status === 'PRIMARY' ? '#FFD700' : 'rgba(255,255,255,0.6)'} />
+                                        <User size={14} color={contact.status === 'PRIMARY' ? 'var(--accent-blue)' : 'var(--text-secondary)'} />
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
@@ -779,8 +779,8 @@ const CustomerDetailPage: React.FC = () => {
                                                     padding: '1px 6px',
                                                     borderRadius: 4,
                                                     fontSize: '0.7rem',
-                                                    background: 'rgba(255, 215, 0, 0.15)',
-                                                    color: '#FFD700',
+                                                    background: 'rgba(var(--accent-rgb), 0.15)',
+                                                    color: 'var(--accent-blue)',
                                                     fontWeight: 600
                                                 }}>
                                                     主要对接人
@@ -824,7 +824,7 @@ const CustomerDetailPage: React.FC = () => {
                 )}
 
                 {customer.notes && (
-                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>备注</span>
                         <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.6 }}>
                             {customer.notes}
@@ -872,8 +872,8 @@ const CustomerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'tickets' ? null : 'tickets')}
                             style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '12px',
                                 padding: '16px',
                                 cursor: 'pointer',
@@ -889,8 +889,8 @@ const CustomerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'inquiry' ? null : 'inquiry')}
                             style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '12px',
                                 padding: '16px',
                                 cursor: 'pointer',
@@ -906,8 +906,8 @@ const CustomerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'rma' ? null : 'rma')}
                             style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '12px',
                                 padding: '16px',
                                 cursor: 'pointer',
@@ -923,8 +923,8 @@ const CustomerDetailPage: React.FC = () => {
                         <button
                             onClick={() => setExpandedSection(expandedSection === 'repair' ? null : 'repair')}
                             style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: 'var(--glass-bg-light)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: '12px',
                                 padding: '16px',
                                 cursor: 'pointer',
@@ -941,7 +941,7 @@ const CustomerDetailPage: React.FC = () => {
 
                     {/* Expanded Ticket List */}
                     {expandedSection && ['tickets', 'inquiry', 'rma', 'repair'].includes(expandedSection) && (
-                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 {expandedSection === 'tickets' && <History size={16} color="var(--accent-blue)" />}
                                 {expandedSection === 'inquiry' && <MessageSquare size={16} color="#60a5fa" />}
@@ -1021,7 +1021,7 @@ const CustomerDetailPage: React.FC = () => {
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'none';
@@ -1035,7 +1035,7 @@ const CustomerDetailPage: React.FC = () => {
                 {/* Product Family Dashboard */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
                     {[
-                        { key: 'A', name: tc('device.family_a', '在售电影摄影机'), color: '#FFD700' },
+                        { key: 'A', name: tc('device.family_a', '在售电影摄影机'), color: 'var(--accent-blue)' },
                         { key: 'B', name: tc('device.family_b', '历史机型'), color: '#60a5fa' },
                         { key: 'C', name: tc('device.family_c', '电子寻像器'), color: '#f59e0b' },
                         { key: 'D', name: tc('device.family_d', '通用配件'), color: '#10b981' }
@@ -1047,8 +1047,8 @@ const CustomerDetailPage: React.FC = () => {
                                 key={family.key}
                                 onClick={() => setExpandedSection(isExpanded ? null : `family_${family.key}`)}
                                 style={{
-                                    background: isExpanded ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${isExpanded ? family.color : 'rgba(255,255,255,0.05)'}`,
+                                    background: isExpanded ? 'var(--glass-bg-hover)' : 'var(--glass-bg-light)',
+                                    border: `1px solid ${isExpanded ? family.color : 'var(--glass-bg-hover)'}`,
                                     borderRadius: '12px',
                                     padding: '16px 12px',
                                     cursor: 'pointer',
@@ -1069,12 +1069,12 @@ const CustomerDetailPage: React.FC = () => {
 
                 {/* Expanded Device List by Family */}
                 {expandedSection?.startsWith('family_') && (
-                    <div style={{ paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ paddingTop: 16, borderTop: '1px solid var(--glass-border)' }}>
                         {(() => {
                             const familyKey = expandedSection.replace('family_', '');
                             const familyDevices = devices.filter(d => d.product_family === familyKey);
                             const familyInfo = {
-                                'A': { label: tc('device.family_a', '在售电影摄影机'), color: '#FFD700' },
+                                'A': { label: tc('device.family_a', '在售电影摄影机'), color: 'var(--accent-blue)' },
                                 'B': { label: tc('device.family_b', '历史机型'), color: '#60a5fa' },
                                 'C': { label: tc('device.family_c', '电子寻像器'), color: '#f59e0b' },
                                 'D': { label: tc('device.family_d', '通用配件'), color: '#10b981' }
@@ -1127,7 +1127,7 @@ const CustomerDetailPage: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
                         {(expandedSection === 'family_all' ? devices : devices.slice(0, 3)).map(device => {
                             const familyInfo = {
-                                'A': { color: '#FFD700' },
+                                'A': { color: 'var(--accent-blue)' },
                                 'B': { color: '#60a5fa' },
                                 'C': { color: '#f59e0b' },
                                 'D': { color: '#10b981' }
@@ -1161,7 +1161,7 @@ const CustomerDetailPage: React.FC = () => {
                                     justifyContent: 'center',
                                     transition: 'all 0.2s'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                             >
                                 查看全部 {devices.length} 台设备
@@ -1174,15 +1174,15 @@ const CustomerDetailPage: React.FC = () => {
             {/* Quick Tips */}
             <div
                 style={{
-                    background: 'rgba(255, 215, 0, 0.05)',
+                    background: 'rgba(var(--accent-rgb), 0.05)',
                     borderRadius: '12px',
                     padding: '16px 20px',
-                    border: '1px solid rgba(255, 215, 0, 0.15)',
+                    border: '1px solid rgba(var(--accent-rgb), 0.15)',
                     marginTop: 8
                 }}
             >
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-                    <span style={{ color: '#FFD700', fontWeight: 600 }}>提示：</span>
+                    <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>提示：</span>
                     点击 Service Dashboard 中的统计卡片可展开查看详细服务记录；点击设备资产中的产品族可查看该分类下的设备详情。
                 </p>
             </div>

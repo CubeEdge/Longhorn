@@ -359,7 +359,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
 
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
 
             {/* 档案和基础信息 (Archives) - 三级入口结构 */}
             <div style={{ padding: '0 24px 8px', fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>
@@ -390,7 +390,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('sidebar.parts_inventory') || '配件库存'}</span>
             </Link>
 
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
 
             {/* Kinefinity WIKI - All Users */}
             <Link
@@ -412,7 +412,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             {role === 'Admin' && (
               <>
                 <div style={{ marginTop: 'auto' }} />
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+                <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
                 <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''} `} onClick={onClose}>
                   <Settings size={18} />
                   <span>{t('sidebar.service_admin')}</span>
@@ -433,14 +433,14 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('share.my_shares')}</span>
             </Link>
 
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
 
             <Link to="/files/personal" className={`sidebar-item ${location.pathname.startsWith('/files/personal') ? 'active' : ''} `} onClick={onClose}>
               <User size={18} />
               <span>{t('sidebar.personal')}</span>
             </Link>
 
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
 
             {Array.from(new Map(accessibleDepts.map(d => [getDeptCode(d.name), d])).values()).map((dept: any) => {
               const code = getDeptCode(dept.name);
@@ -460,7 +460,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             })}
 
             <div style={{ marginTop: 'auto' }} />
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
 
             <Link to="/files/recycle" className={`sidebar-item ${location.pathname === '/files/recycle' ? 'active' : ''} `} onClick={onClose}>
               <Trash2 size={20} />
@@ -469,7 +469,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
 
             {role === 'Admin' && (
               <>
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+                <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
                 <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
                   <LayoutDashboard size={20} />
                   <span>{t('sidebar.files_admin')}</span>
@@ -482,7 +482,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
         {role === 'Lead' && (
           <>
             <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 16px' }} />
+            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
             <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''} `} onClick={onClose}>
               <Network size={20} />
               <span>{t('admin.dept_manage')}</span>
@@ -538,20 +538,20 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
         alignItems: 'center',
         gap: '20px',
         padding: '10px 16px',
-        background: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'var(--glass-bg-hover)',
+        border: '1px solid var(--glass-border)',
         borderRadius: '12px',
         cursor: 'pointer',
         transition: 'all 0.2s',
         opacity: loading ? 0.5 : 1
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255, 210, 0, 0.1)';
+        e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)';
         e.currentTarget.style.borderColor = 'var(--accent-blue)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        e.currentTarget.style.background = 'var(--glass-bg-hover)';
+        e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -727,18 +727,18 @@ const ServiceTopBarStats: React.FC = () => {
           cursor: 'pointer',
           padding: '4px 8px',
           borderRadius: '6px',
-          background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+          background: isActive ? 'var(--glass-bg-hover)' : 'transparent',
           border: isActive ? `1px solid ${color}` : '1px solid transparent',
           transition: 'all 0.2s'
         }}
       >
-        <div style={{ fontSize: '0.8rem', color: isActive ? '#fff' : 'var(--text-secondary)' }}>{label}</div>
+        <div style={{ fontSize: '0.8rem', color: isActive ? 'var(--text-main)' : 'var(--text-secondary)' }}>{label}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: color }}>{count}</div>
       </div>
     );
   };
 
-  const divider = <div style={{ width: '1px', height: '16px', background: 'rgba(255, 255, 255, 0.15)' }} />;
+  const divider = <div style={{ width: '1px', height: '16px', background: 'var(--glass-bg-hover)' }} />;
 
   return (
     <div
@@ -747,8 +747,8 @@ const ServiceTopBarStats: React.FC = () => {
         alignItems: 'center',
         gap: '4px',
         padding: '6px 12px',
-        background: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'var(--glass-bg-hover)',
+        border: '1px solid var(--glass-border)',
         borderRadius: '12px',
         opacity: loading ? 0.7 : 1
       }}
@@ -777,7 +777,7 @@ const ServiceTopBarStats: React.FC = () => {
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
-          {renderStatItem('Pending', '已收货', '#FFD700')}      {/* Kine Yellow */}
+          {renderStatItem('Pending', '已收货', 'var(--accent-blue)')}      {/* Kine Yellow */}
           {divider}
           {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
           {divider}
@@ -793,7 +793,7 @@ const ServiceTopBarStats: React.FC = () => {
         <>
           {renderStatItem('all', '全部', '#6b7280')}
           {divider}
-          {renderStatItem('Received', '已收货', '#FFD700')}     {/* Kine Yellow */}
+          {renderStatItem('Received', '已收货', 'var(--accent-blue)')}     {/* Kine Yellow */}
           {divider}
           {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
           {divider}
@@ -887,7 +887,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+              e.currentTarget.style.background = 'var(--glass-bg-hover)';
               e.currentTarget.style.color = 'var(--accent-blue)';
             }}
             onMouseLeave={(e) => {
@@ -912,13 +912,13 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             borderRadius: '10px',
             transition: 'background 0.2s',
             position: 'relative',
-            background: showDropdown ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+            background: showDropdown ? 'var(--glass-bg-hover)' : 'transparent'
           }}
         >
           {/* Username/Role - hidden on mobile, flex-column on desktop */}
           <div className="hidden-mobile">
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>{user.username}</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{user.username}</span>
               <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
                 {user.role === 'Admin' ? t('role.admin') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
               </span>
@@ -929,7 +929,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             height: 36,
             borderRadius: '10px',
             background: 'var(--accent-blue)',
-            color: '#000',
+            color: 'var(--bg-main)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -969,7 +969,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
               right: 0,
               marginTop: 8,
               background: 'rgba(28, 28, 30, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '12px',
               padding: '6px',
               minWidth: '180px',
@@ -984,7 +984,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '8px 12px',
-                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                borderBottom: '1px solid var(--glass-border)',
                 marginBottom: '4px'
               }}>
                 {['zh', 'en', 'de', 'ja'].map((lang) => (
@@ -995,8 +995,8 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                       setShowDropdown(false);
                     }}
                     style={{
-                      background: currentLanguage === lang ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)',
-                      color: currentLanguage === lang ? '#000' : 'rgba(255,255,255,0.8)',
+                      background: currentLanguage === lang ? 'var(--accent-blue)' : 'var(--glass-bg-hover)',
+                      color: currentLanguage === lang ? 'var(--bg-main)' : 'rgba(255,255,255,0.8)',
                       border: 'none',
                       borderRadius: '4px',
                       cursor: 'pointer',
@@ -1032,7 +1032,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                   outline: 'none',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <User size={16} />
@@ -1061,7 +1061,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
                   outline: 'none',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <LayoutDashboard size={16} />
@@ -1097,10 +1097,10 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
               {/* Version Info */}
               <div style={{
                 padding: '8px 12px',
-                borderTop: '1px solid rgba(255,255,255,0.1)',
+                borderTop: '1px solid var(--glass-border)',
                 marginTop: '4px',
                 fontSize: '0.75rem',
-                color: 'rgba(255,255,255,0.3)',
+                color: 'var(--text-tertiary)',
                 textAlign: 'center',
                 fontFamily: 'monospace'
               }}>

@@ -45,8 +45,8 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({
                     width: '40px',
                     height: '40px',
                     borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'var(--glass-bg-hover)',
+                    border: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -56,9 +56,9 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <ArrowUpDown size={16} style={{ color: '#fff', opacity: 0.8 }} />
+                    <ArrowUpDown size={16} style={{ color: 'var(--text-main)', opacity: 0.8 }} />
                     {/* Dropdown indicator on the right side */}
-                    <ChevronDown size={10} style={{ color: '#fff', opacity: 0.5 }} />
+                    <ChevronDown size={10} style={{ color: 'var(--text-main)', opacity: 0.5 }} />
                 </div>
             </div>
 
@@ -73,8 +73,8 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({
                             minWidth: '160px',
                             maxHeight: '300px',
                             overflowY: 'auto',
-                            background: '#1C1C1E',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--bg-sidebar)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '12px',
                             padding: '4px',
                             zIndex: 101,
@@ -91,20 +91,20 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({
                                         padding: '8px 12px',
                                         borderRadius: '6px',
                                         fontSize: '0.85rem',
-                                        color: isSelected ? '#FFD700' : '#fff',
-                                        background: isSelected ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
+                                        color: isSelected ? 'var(--accent-blue)' : 'var(--text-main)',
+                                        background: isSelected ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
                                         cursor: 'pointer',
                                         transition: 'all 0.1s',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '10px'
                                     }}
-                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                                     onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                                 >
                                     {/* Check mark on the left */}
                                     {isSelected ? (
-                                        <Check size={14} style={{ color: '#FFD700', flexShrink: 0 }} />
+                                        <Check size={14} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
                                     ) : (
                                         <div style={{ width: 14, flexShrink: 0 }} />
                                     )}

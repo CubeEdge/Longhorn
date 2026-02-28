@@ -51,7 +51,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                 style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', border: isOpen ? '2px solid var(--accent-blue)' : '1px solid var(--glass-border)', padding: '0 20px', height: 48 }}
             >
                 <CalendarIcon size={20} color="var(--accent-blue)" />
-                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>{value || t('user.select_date')}</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: value ? 'var(--text-main)' : 'var(--text-tertiary)' }}>{value || t('user.select_date')}</span>
             </div>
 
             <AnimatePresence>
@@ -67,7 +67,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                                 bottom: '110%',
                                 left: 0,
                                 width: 340,
-                                background: '#1C1C1E',
+                                background: 'var(--bg-sidebar)',
                                 border: '2px solid var(--glass-border)',
                                 borderRadius: 20,
                                 padding: 20,
@@ -76,11 +76,11 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                                <button type="button" onClick={() => setViewDate(subMonths(viewDate, 1))} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.05)' }}><ChevronLeft size={20} /></button>
+                                <button type="button" onClick={() => setViewDate(subMonths(viewDate, 1))} className="btn-icon-only" style={{ background: 'var(--glass-bg-hover)' }}><ChevronLeft size={20} /></button>
                                 <div style={{ fontWeight: 900, fontSize: '1.3rem', color: 'var(--accent-blue)' }}>{format(viewDate, 'yyyy-MM')}</div>
-                                <button type="button" onClick={() => setViewDate(addMonths(viewDate, 1))} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.05)' }}><ChevronRight size={20} /></button>
+                                <button type="button" onClick={() => setViewDate(addMonths(viewDate, 1))} className="btn-icon-only" style={{ background: 'var(--glass-bg-hover)' }}><ChevronRight size={20} /></button>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>
                                 {[t('user.weekday_sun'), t('user.weekday_mon'), t('user.weekday_tue'), t('user.weekday_wed'), t('user.weekday_thu'), t('user.weekday_fri'), t('user.weekday_sat')].map(d => <div key={d}>{d}</div>)}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
@@ -97,7 +97,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                                                 borderRadius: 10,
                                                 border: 'none',
                                                 background: isSelected ? 'var(--accent-blue)' : 'transparent',
-                                                color: isSelected ? '#000' : isCurrentMonth ? 'white' : 'rgba(255,255,255,0.15)',
+                                                color: isSelected ? 'var(--bg-main)' : isCurrentMonth ? 'var(--text-main)' : 'var(--glass-bg-hover)',
                                                 cursor: 'pointer',
                                                 fontSize: '1rem',
                                                 fontWeight: isSelected ? 900 : 500,
@@ -106,7 +106,7 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}
-                                            onMouseEnter={e => !isSelected && (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                                            onMouseEnter={e => !isSelected && (e.currentTarget.style.background = 'var(--glass-bg-hover)')}
                                             onMouseLeave={e => !isSelected && (e.currentTarget.style.background = 'transparent')}
                                         >
                                             {format(day, 'd')}
@@ -115,8 +115,8 @@ const KineDatePicker: React.FC<{ value: string; onChange: (val: string) => void;
                                 })}
                             </div>
                             <div style={{ borderTop: '2px solid var(--glass-border)', marginTop: 16, paddingTop: 16, display: 'flex', gap: 10 }}>
-                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => handleSelect(new Date())}>{t('time.today')}</button>
-                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'rgba(255,255,255,0.05)' }} onClick={() => { onChange(''); setIsOpen(false); }}>{t('user.clear_button')}</button>
+                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'var(--glass-bg-hover)' }} onClick={() => handleSelect(new Date())}>{t('time.today')}</button>
+                                <button type="button" className="btn-glass" style={{ flex: 1, fontSize: '0.9rem', height: 40, background: 'var(--glass-bg-hover)' }} onClick={() => { onChange(''); setIsOpen(false); }}>{t('user.clear_button')}</button>
                             </div>
                         </motion.div>
                     </>
@@ -169,8 +169,8 @@ const UserManagement: React.FC = () => {
         axios.get('/api/v1/accounts?account_type=DEALER&page_size=100', { headers: { Authorization: `Bearer ${token}` } })
             .then(res => {
                 if (res.data.success) {
-                    const accountsData = Array.isArray(res.data.data) 
-                        ? res.data.data 
+                    const accountsData = Array.isArray(res.data.data)
+                        ? res.data.data
                         : (res.data.data.list || []);
                     // 映射 accounts 数据到 dealers 格式
                     setDealers(accountsData.map((acc: any) => ({
@@ -373,26 +373,26 @@ const UserManagement: React.FC = () => {
 
             {/* List Table */}
             <div style={{
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--glass-bg-light)',
                 borderRadius: 16,
                 border: '1px solid var(--glass-border)',
                 overflow: 'hidden'
             }}>
                 <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: 30, width: 300 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--glass-bg-hover)', padding: '6px 16px', borderRadius: 30, width: 300 }}>
                         <Search size={16} opacity={0.5} />
                         <input
                             placeholder={t('user.search_placeholder')}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '100%' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none', width: '100%' }}
                         />
                     </div>
                     <div className="hint" style={{ fontSize: '0.85rem' }}>{t('user.member_count', { count: filteredUsers.length })}</div>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'left' }}>
+                        <tr style={{ background: 'var(--glass-bg-light)', textAlign: 'left' }}>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.username')}</th>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.department')}</th>
                             <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, opacity: 0.6 }}>{t('user.role')}</th>
@@ -431,9 +431,9 @@ const UserManagement: React.FC = () => {
                                         fontSize: '0.8rem',
                                         padding: '4px 10px',
                                         borderRadius: 6,
-                                        background: u.user_type === 'Internal' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 210, 0, 0.1)',
+                                        background: u.user_type === 'Internal' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(var(--accent-rgb), 0.1)',
                                         color: u.user_type === 'Internal' ? '#00ff88' : '#ffd200',
-                                        border: u.user_type === 'Internal' ? '1px solid rgba(0, 255, 136, 0.2)' : '1px solid rgba(255, 210, 0, 0.2)'
+                                        border: u.user_type === 'Internal' ? '1px solid rgba(0, 255, 136, 0.2)' : '1px solid rgba(var(--accent-rgb), 0.2)'
                                     }}>
                                         {u.user_type || 'Internal'}
                                     </span>
@@ -529,7 +529,7 @@ const UserManagement: React.FC = () => {
                                     <div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                             <h3 style={{ fontSize: '1.6rem' }}>{selectedUser.username}</h3>
-                                            <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}>ID: {selectedUser.id}</span>
+                                            <span style={{ fontSize: '0.75rem', background: 'var(--glass-bg-hover)', padding: '2px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}>ID: {selectedUser.id}</span>
                                         </div>
                                         <div className="hint" style={{ display: 'flex', gap: 12, marginTop: 4 }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Briefcase size={14} /> {selectedUser.department_name ? getDeptDisplayName(selectedUser.department_name) : t('user.no_department')}</span>
@@ -556,7 +556,7 @@ const UserManagement: React.FC = () => {
                                 {/* Left Col: Info & Edit */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                     {isEditingInfo ? (
-                                        <div className="fade-in" style={{ background: 'rgba(255,255,255,0.05)', padding: 20, borderRadius: 16, border: '1px solid var(--accent-blue)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        <div className="fade-in" style={{ background: 'var(--glass-bg-hover)', padding: 20, borderRadius: 16, border: '1px solid var(--accent-blue)', display: 'flex', flexDirection: 'column', gap: 16 }}>
                                             <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}><UserCircle size={18} /> {t('user.account_ops')}</h4>
                                             <div>
                                                 <label className="hint" style={{ fontSize: '0.75rem' }}>{t('user.edit')} {t('user.username')}</label>
@@ -613,13 +613,13 @@ const UserManagement: React.FC = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
+                                            <div style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
                                                 <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>{t('user.personal_space')} (Members/{selectedUser.username})</div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent-blue)', fontWeight: 600 }}>
                                                     <Unlock size={14} /> {t('user.auto_sync_permissions')} (Full)
                                                 </div>
                                             </div>
-                                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
+                                            <div style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 14 }}>
                                                 <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>{t('user.join_date')}</div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
                                                     <Clock size={14} opacity={0.5} /> {selectedUser.created_at && !isNaN(new Date(selectedUser.created_at).getTime()) ? format(new Date(selectedUser.created_at), 'yyyy-MM-dd') : t('user.historical_data')}
@@ -630,7 +630,7 @@ const UserManagement: React.FC = () => {
                                 </div>
 
                                 {/* Right Col: Permissions */}
-                                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: 20, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ background: 'var(--glass-bg-light)', padding: '24px', borderRadius: 20, border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                                         <h4 style={{ fontWeight: 800, fontSize: '1.1rem' }}>{t('user.dynamic_auth')}</h4>
                                         <button className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 14px' }} onClick={() => setIsGranting(true)}>
@@ -640,7 +640,7 @@ const UserManagement: React.FC = () => {
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                                         {userPermissions.length > 0 ? userPermissions.map(p => (
-                                            <div key={p.id} className="row-hover" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', padding: '14px 18px', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div key={p.id} className="row-hover" style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', padding: '14px 18px', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ overflow: 'hidden' }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         <Folder size={14} color="var(--accent-blue)" /> {p.folder_path}
@@ -685,7 +685,7 @@ const UserManagement: React.FC = () => {
                                             readOnly
                                             value={grantPath}
                                             placeholder={t('user.browse_placeholder')}
-                                            style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', padding: '12px 14px', borderRadius: 10, color: 'white' }}
+                                            style={{ flex: 1, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', padding: '12px 14px', borderRadius: 10, color: 'var(--text-main)' }}
                                         />
                                         <button className="btn-glass" style={{ background: 'var(--accent-blue)', color: 'black', fontWeight: 700 }} onClick={() => { setIsBrowserOpen(true); fetchBrowserFiles(isLead ? currentUser?.department_name || '' : ''); }}>{t('user.browse_button')}</button>
                                     </div>
@@ -704,9 +704,9 @@ const UserManagement: React.FC = () => {
                                                     padding: '10px 4px',
                                                     fontSize: '0.9rem',
                                                     height: 'auto',
-                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                    borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                    background: grantType === 'Read' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+                                                    background: grantType === 'Read' ? 'rgba(var(--accent-rgb), 0.15)' : 'var(--glass-bg-hover)',
                                                     fontWeight: grantType === 'Read' ? 700 : 600
                                                 }}
                                             >{t('permission.read_only')}</button>
@@ -719,9 +719,9 @@ const UserManagement: React.FC = () => {
                                                     padding: '10px 4px',
                                                     fontSize: '0.9rem',
                                                     height: 'auto',
-                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                    borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                    background: grantType === 'Contribute' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+                                                    background: grantType === 'Contribute' ? 'rgba(var(--accent-rgb), 0.15)' : 'var(--glass-bg-hover)',
                                                     fontWeight: grantType === 'Contribute' ? 700 : 600
                                                 }}
                                             >{t('permission.contribute')}</button>
@@ -734,9 +734,9 @@ const UserManagement: React.FC = () => {
                                                     padding: '10px 4px',
                                                     fontSize: '0.9rem',
                                                     height: 'auto',
-                                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                    borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                    background: grantType === 'Full' ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid var(--glass-border)',
+                                                    background: grantType === 'Full' ? 'rgba(var(--accent-rgb), 0.15)' : 'var(--glass-bg-hover)',
                                                     fontWeight: grantType === 'Full' ? 700 : 600
                                                 }}
                                             >{t('permission.full')}</button>
@@ -744,8 +744,8 @@ const UserManagement: React.FC = () => {
                                         <div style={{
                                             marginTop: '12px',
                                             padding: '10px 12px',
-                                            background: 'rgba(255, 210, 0, 0.08)',
-                                            border: '1px solid rgba(255, 210, 0, 0.2)',
+                                            background: 'rgba(var(--accent-rgb), 0.08)',
+                                            border: '1px solid rgba(var(--accent-rgb), 0.2)',
                                             borderRadius: '8px',
                                             fontSize: '0.8rem',
                                             color: 'rgba(255, 255, 255, 0.8)',
@@ -778,7 +778,7 @@ const UserManagement: React.FC = () => {
                                                         height: 'auto',
                                                         border: '1px solid var(--glass-border)',
                                                         borderLeft: expiryPreset === label ? '4px solid var(--accent-blue)' : '1px solid var(--glass-border)',
-                                                        background: expiryPreset === label ? 'rgba(255, 210, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                        background: expiryPreset === label ? 'rgba(var(--accent-rgb), 0.15)' : 'var(--glass-bg-hover)',
                                                         fontWeight: expiryPreset === label ? 700 : 600
                                                     }}
                                                 >
@@ -815,7 +815,7 @@ const UserManagement: React.FC = () => {
                                 <button onClick={() => setIsBrowserOpen(false)} style={{ background: 'none', border: 'none', color: 'gray', cursor: 'pointer' }}><X size={24} /></button>
                             </div>
 
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px 16px', borderRadius: 10, marginBottom: 20, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ background: 'var(--glass-bg-hover)', padding: '10px 16px', borderRadius: 10, marginBottom: 20, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Clock size={14} opacity={0.5} /> <span className="hint">{t('common.current_path')}</span> <code style={{ color: 'var(--accent-blue)', fontWeight: 700 }}>{browserPath || '/'}</code>
                             </div>
 
@@ -842,7 +842,7 @@ const UserManagement: React.FC = () => {
                                         onClick={() => fetchBrowserFiles(f.path)}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <Folder size={20} color="var(--accent-blue)" fill="rgba(255,210,0,0.2)" />
+                                            <Folder size={20} color="var(--accent-blue)" fill="rgba(var(--accent-rgb),0.2)" />
                                             <span style={{ fontWeight: 500 }}>{f.name}</span>
                                         </div>
                                         <button
@@ -869,7 +869,7 @@ const UserManagement: React.FC = () => {
 
             {/* Hint Section */}
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', padding: 20, borderRadius: 16 }}>
+                <div style={{ background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', padding: 20, borderRadius: 16 }}>
                     <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Shield size={18} color="var(--accent-blue)" /> {t('user.permission_help_title')}</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', gap: 12 }}>

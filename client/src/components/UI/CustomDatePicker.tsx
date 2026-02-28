@@ -24,7 +24,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
 
     return (
         <div style={{ position: 'relative', width: '100%' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: 500 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                 {label}
             </label>
             <div
@@ -35,16 +35,16 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                     gap: '12px',
                     width: '100%',
                     height: '44px',
-                    background: 'rgba(0, 0, 0, 0.2)',
-                    border: isOpen ? '1px solid #FFD700' : '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'var(--glass-bg-light)',
+                    border: isOpen ? '1px solid #FFD700' : '1px solid var(--glass-border)',
                     borderRadius: '10px',
                     padding: '0 16px',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                 }}
             >
-                <Calendar size={18} color={isOpen ? '#FFD700' : 'rgba(255,255,255,0.4)'} />
-                <span style={{ fontSize: '0.95rem', color: value ? '#fff' : 'rgba(255,255,255,0.3)', fontWeight: 500, lineHeight: 1 }}>
+                <Calendar size={18} color={isOpen ? 'var(--accent-blue)' : 'var(--text-tertiary)'} />
+                <span style={{ fontSize: '0.95rem', color: value ? 'var(--text-main)' : 'var(--text-tertiary)', fontWeight: 500, lineHeight: 1 }}>
                     {value || 'Select Date'}
                 </span>
             </div>
@@ -58,8 +58,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                             top: '110%',
                             left: 0,
                             width: '320px',
-                            background: '#1C1C1E',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--bg-sidebar)',
+                            border: '1px solid var(--glass-border)',
                             borderRadius: '16px',
                             padding: '20px',
                             zIndex: 3001,
@@ -67,11 +67,11 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <button onClick={() => setViewDate(subMonths(viewDate, 1))} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '6px', color: '#fff', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
-                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#fff' }}>{format(viewDate, 'MMMM yyyy')}</div>
-                            <button onClick={() => setViewDate(addMonths(viewDate, 1))} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '6px', color: '#fff', cursor: 'pointer' }}><ChevronRight size={16} /></button>
+                            <button onClick={() => setViewDate(subMonths(viewDate, 1))} style={{ background: 'var(--glass-bg-hover)', border: 'none', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>{format(viewDate, 'MMMM yyyy')}</div>
+                            <button onClick={() => setViewDate(addMonths(viewDate, 1))} style={{ background: 'var(--glass-bg-hover)', border: 'none', borderRadius: '8px', padding: '6px', color: 'var(--text-main)', cursor: 'pointer' }}><ChevronRight size={16} /></button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginBottom: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '12px' }}>
                             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d}>{d}</div>)}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
@@ -86,13 +86,13 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                             height: '36px',
                                             borderRadius: '8px',
                                             border: 'none',
-                                            background: isSelected ? '#FFD700' : 'transparent',
-                                            color: isSelected ? '#000' : isCurrentMonth ? '#fff' : 'rgba(255,255,255,0.1)',
+                                            background: isSelected ? 'var(--accent-blue)' : 'transparent',
+                                            color: isSelected ? 'var(--bg-main)' : isCurrentMonth ? 'var(--text-main)' : 'var(--glass-bg-hover)',
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
                                             fontWeight: isSelected ? 600 : 400
                                         }}
-                                        onMouseEnter={e => !isSelected && (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                                        onMouseEnter={e => !isSelected && (e.currentTarget.style.background = 'var(--glass-bg-hover)')}
                                         onMouseLeave={e => !isSelected && (e.currentTarget.style.background = 'transparent')}
                                     >
                                         {format(day, 'd')}

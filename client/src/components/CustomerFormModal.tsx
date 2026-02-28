@@ -188,7 +188,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                     {/* Tab Navigation for dealer/organization */}
                     {shouldShowTabs && (
-                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 4, borderRadius: 10, marginBottom: 20, height: '44px', alignItems: 'center', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 10, marginBottom: 20, height: '44px', alignItems: 'center', flexShrink: 0 }}>
                             <button
                                 type="button"
                                 onClick={() => setActiveFormTab('basic')}
@@ -196,8 +196,8 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                     flex: 1,
                                     padding: '0 20px',
                                     height: '36px',
-                                    background: activeFormTab === 'basic' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                                    color: activeFormTab === 'basic' ? 'white' : 'var(--text-secondary)',
+                                    background: activeFormTab === 'basic' ? 'var(--glass-bg-hover)' : 'transparent',
+                                    color: activeFormTab === 'basic' ? 'var(--text-main)' : 'var(--text-secondary)',
                                     borderRadius: 8,
                                     fontWeight: activeFormTab === 'basic' ? 600 : 400,
                                     fontSize: '0.95rem',
@@ -215,8 +215,8 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                     flex: 1,
                                     padding: '0 20px',
                                     height: '36px',
-                                    background: activeFormTab === 'contacts' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                                    color: activeFormTab === 'contacts' ? 'white' : 'var(--text-secondary)',
+                                    background: activeFormTab === 'contacts' ? 'var(--glass-bg-hover)' : 'transparent',
+                                    color: activeFormTab === 'contacts' ? 'var(--text-main)' : 'var(--text-secondary)',
                                     borderRadius: 8,
                                     fontWeight: activeFormTab === 'contacts' ? 600 : 400,
                                     fontSize: '0.95rem',
@@ -404,7 +404,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                     </button>
                                 </div>
 
-                                <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 12 }}>
+                                <div style={{ border: '1px solid var(--glass-border)', borderRadius: 8, padding: 12 }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 2fr 1.5fr 60px 30px', gap: 8, marginBottom: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                         <span>姓名 *</span>
                                         <span>职位</span>
@@ -502,7 +502,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                         width: 14,
                                         height: 14,
                                         border: '2px solid rgba(255,255,255,0.3)',
-                                        borderTopColor: '#FFD700',
+                                        borderTopColor: 'var(--accent-blue)',
                                         borderRadius: '50%',
                                         animation: 'spin 1s linear infinite'
                                     }} />
