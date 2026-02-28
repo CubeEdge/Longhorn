@@ -34,9 +34,9 @@ const ArticleCard: React.FC<any> = ({ title, summary, productLine, category, onC
 
     return (
         <div onClick={onClick} style={{ padding: '12px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { background: 'var(--glass-bg-hover)' } } as any}>
-            <div style={{ fontSize: '14px', fontWeight: 500, color: '#e0e0e0', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
-            {summary && <div style={{ fontSize: '12px', color: '#888', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
-            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: '#666' }}>
+            <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-main)', marginBottom: '6px', lineHeight: 1.4 }}>{title}</div>
+            {summary && <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</div>}
+            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                 {displayCategory && <span>{displayCategory}</span>}
                 {displayProductLine && <span>{displayProductLine}</span>}
             </div>
@@ -1727,7 +1727,7 @@ ${contextTickets.map((ticket: any) => {
             }}>
                 <div style={{ textAlign: 'center' }}>
                     <BookOpen size={48} style={{ marginBottom: '16px', color: 'var(--accent-blue)' }} />
-                    <div style={{ fontSize: '16px', color: '#999' }}>{t('wiki.loading')}</div>
+                    <div style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>{t('wiki.loading')}</div>
                 </div>
             </div>
         );
@@ -1953,7 +1953,7 @@ ${contextTickets.map((ticket: any) => {
                                     {selectedArticle.format_status !== 'draft' && (
                                         <span style={{
                                             fontSize: '12px',
-                                            color: '#888',
+                                            color: 'var(--text-secondary)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '6px'
@@ -2021,7 +2021,7 @@ ${contextTickets.map((ticket: any) => {
                                     marginBottom: '32px',
                                     fontSize: '14px',
                                     lineHeight: '1.6',
-                                    color: '#ccc'
+                                    color: 'var(--text-secondary)'
                                 }}>
                                     {getDisplaySummary()}
                                 </div>
@@ -2031,7 +2031,7 @@ ${contextTickets.map((ticket: any) => {
                             <div className="markdown-content" style={{
                                 fontSize: '15px',
                                 lineHeight: '1.8',
-                                color: '#ccc'
+                                color: 'var(--text-secondary)'
                             }} dangerouslySetInnerHTML={{ __html: getDisplayContent() || '' }} />
 
                             {/* Feedback Section */}
@@ -2049,21 +2049,21 @@ ${contextTickets.map((ticket: any) => {
                                         padding: '16px 20px',
                                         marginBottom: '32px',
                                         fontSize: '13px',
-                                        color: '#999'
+                                        color: 'var(--text-secondary)'
                                     }}>
                                         <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '8px' }}>
                                             {t('wiki.source.title')}
                                         </div>
                                         {selectedArticle.source_type && (
                                             <div style={{ marginBottom: '4px' }}>
-                                                <span style={{ color: '#666' }}>{t('wiki.source.type_prefix')}</span>
-                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.source.type_prefix')}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
                                             </div>
                                         )}
                                         {selectedArticle.source_reference && (
                                             <div>
-                                                <span style={{ color: '#666' }}>{t('wiki.source.doc_prefix')}</span>
-                                                <span style={{ color: '#aaa' }}>{selectedArticle.source_reference}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.source.doc_prefix')}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{selectedArticle.source_reference}</span>
                                             </div>
                                         )}
                                         {selectedArticle.source_url && (
@@ -2078,7 +2078,7 @@ ${contextTickets.map((ticket: any) => {
 
                                 {selectedArticle.source_type?.toLowerCase() !== 'docx' && (
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '14px', color: '#999', marginBottom: '16px' }}>
+                                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                                             {t('wiki.feedback.title')}
                                         </div>
                                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -2166,7 +2166,7 @@ ${contextTickets.map((ticket: any) => {
                                 }}
                             >
                                 <ChevronLeft size={18} color="#999" />
-                                <span style={{ color: '#999', fontSize: '14px' }}>{t('action.back')}</span>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('action.back')}</span>
                             </button>
 
                             {/* Chapter Header */}
@@ -2186,10 +2186,10 @@ ${contextTickets.map((ticket: any) => {
                                     }}>
                                         {t('wiki.toc.chapter_prefix', { count: chapterView.chapter_number })}
                                         {chapterView.main_chapter && (
-                                            <span style={{ color: '#ccc', fontWeight: 500 }}>：{chapterView.main_chapter.title.split(':').pop()?.split('.').slice(1).join('.')}</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>：{chapterView.main_chapter.title.split(':').pop()?.split('.').slice(1).join('.')}</span>
                                         )}
                                     </h1>
-                                    <p style={{ color: '#999', fontSize: '14px' }}>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                                         {t('wiki.search.results', { count: chapterView.total_articles })}
                                     </p>
                                 </div>
@@ -2204,7 +2204,7 @@ ${contextTickets.map((ticket: any) => {
                                     padding: '20px',
                                     marginBottom: '32px'
                                 }}>
-                                    <div style={{ fontSize: '15px', color: '#ccc', lineHeight: '1.6' }}>
+                                    <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
                                         {chapterView.main_chapter.summary}
                                     </div>
                                     {chapterView.main_chapter.slug && (
@@ -2249,7 +2249,7 @@ ${contextTickets.map((ticket: any) => {
                                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#10B981' }}>
                                         {showFullChapter ? t('wiki.toc.reading_full') : t('wiki.toc.read_full_title')}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                                         {showFullChapter ? t('common.collapse') : t('wiki.toc.read_full_desc')}
                                     </div>
                                 </div>
@@ -2301,7 +2301,7 @@ ${contextTickets.map((ticket: any) => {
                                     <div className="markdown-content" style={{
                                         fontSize: '15px',
                                         lineHeight: '1.8',
-                                        color: '#ccc'
+                                        color: 'var(--text-secondary)'
                                     }} dangerouslySetInnerHTML={{ __html: fullChapterContent || '' }} />
                                 </div>
                             )}
@@ -2390,7 +2390,7 @@ ${contextTickets.map((ticket: any) => {
                                                 {section.summary && (
                                                     <p style={{
                                                         fontSize: '13px',
-                                                        color: '#888',
+                                                        color: 'var(--text-secondary)',
                                                         lineHeight: '1.5',
                                                         marginBottom: '12px',
                                                         display: '-webkit-box',
@@ -2407,7 +2407,7 @@ ${contextTickets.map((ticket: any) => {
                                                     display: 'flex',
                                                     gap: '16px',
                                                     fontSize: '12px',
-                                                    color: '#666'
+                                                    color: 'var(--text-secondary)'
                                                 }}>
                                                     <span>👁 {section.view_count}</span>
                                                     <span>👍 {section.helpful_count}</span>
@@ -2425,7 +2425,7 @@ ${contextTickets.map((ticket: any) => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             height: '60vh',
-                            color: '#666'
+                            color: 'var(--text-secondary)'
                         }}>
                             <BookOpen size={48} style={{ marginBottom: '16px', color: 'var(--accent-blue)', opacity: 0.5 }} />
                             <div style={{ fontSize: '14px' }}>{t('dashboard.loading')}</div>
@@ -2521,7 +2521,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <Upload size={16} color="#FFD700" />
-                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('wiki.import_knowledge')}</span>
                                                             </div>
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setShowAuditModal(true); }}
@@ -2530,7 +2530,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <History size={16} color="#10B981" />
-                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>知识库修改记录</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>知识库修改记录</span>
                                                             </div>
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setManageArticles(articles); setSelectedArticleIds(new Set()); setShowArticleManager(true); }}
@@ -2539,7 +2539,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <FileText size={16} color="#FFD700" />
-                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('wiki.manage_articles')}</span>
                                                             </div>
                                                             <div
                                                                 onClick={() => { setShowAdminMenu(false); setShowSynonymManager(true); }}
@@ -2548,7 +2548,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                             >
                                                                 <BookOpen size={16} color="#60A5FA" />
-                                                                <span style={{ color: '#ccc', fontSize: '14px' }}>{t('synonym.manage')}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('synonym.manage')}</span>
                                                             </div>
                                                         </div>
                                                     </>
@@ -2806,7 +2806,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <div style={{
                                                     padding: '8px 12px',
                                                     fontSize: '11px',
-                                                    color: '#666',
+                                                    color: 'var(--text-secondary)',
                                                     fontWeight: 600,
                                                     textTransform: 'uppercase',
                                                     letterSpacing: '0.5px',
@@ -2850,7 +2850,7 @@ ${contextTickets.map((ticket: any) => {
                                                             style={{
                                                                 padding: '0 12px',
                                                                 cursor: 'pointer',
-                                                                color: '#888',
+                                                                color: 'var(--text-secondary)',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 height: '100%'
@@ -2967,7 +2967,7 @@ ${contextTickets.map((ticket: any) => {
                                                             }}>
                                                                 Bokeh {t('wiki.search.analyzing')}
                                                             </span>
-                                                            <span style={{ fontSize: '12px', color: '#666' }}>
+                                                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                                 {t('wiki.search.retrieving')}
                                                             </span>
                                                         </div>
@@ -2986,7 +2986,7 @@ ${contextTickets.map((ticket: any) => {
                                                             <div style={{ padding: '28px 32px' }}>
                                                                 <div style={{
                                                                     fontSize: '15px',
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     lineHeight: '1.9',
                                                                     letterSpacing: '0.015em'
                                                                 }}>
@@ -3073,7 +3073,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 <div style={{
                                                                     fontSize: '13px',
                                                                     fontWeight: 700,
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     textTransform: 'uppercase',
                                                                     letterSpacing: '1px'
                                                                 }}>
@@ -3085,7 +3085,7 @@ ${contextTickets.map((ticket: any) => {
                                                                         style={{
                                                                             background: 'transparent',
                                                                             border: 'none',
-                                                                            color: '#888',
+                                                                            color: 'var(--text-secondary)',
                                                                             fontSize: '12px',
                                                                             cursor: 'pointer',
                                                                             display: 'flex',
@@ -3166,7 +3166,7 @@ ${contextTickets.map((ticket: any) => {
                                                     }}>
                                                         {t('wiki.search.keyword')}
                                                     </span>
-                                                    <span style={{ fontSize: '13px', color: '#666' }}>
+                                                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                         {extractedKeywords ? `「${extractedKeywords}」` : ''}
                                                     </span>
                                                 </div>
@@ -3216,9 +3216,9 @@ ${contextTickets.map((ticket: any) => {
                                                         paddingBottom: '12px',
                                                         borderBottom: '1px solid var(--glass-border)'
                                                     }}>
-                                                        <div style={{ fontSize: '14px', color: '#999' }}>
+                                                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
                                                             {searchResults.length === 0 && keywordTickets.length === 0 ? (
-                                                                <span style={{ color: '#666' }}>{t('wiki.search.no_results')}</span>
+                                                                <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.search.no_results')}</span>
                                                             ) : (
                                                                 <>
                                                                     {t('wiki.search.results', { count: searchResults.length })}
@@ -3234,7 +3234,7 @@ ${contextTickets.map((ticket: any) => {
                                                                     background: 'var(--glass-bg-hover)',
                                                                     border: '1px solid var(--glass-border)',
                                                                     borderRadius: '6px',
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     fontSize: '12px',
                                                                     cursor: 'pointer',
                                                                     display: 'flex',
@@ -3296,7 +3296,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 <div style={{
                                                                     fontSize: '12px',
                                                                     fontWeight: 600,
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     textTransform: 'uppercase',
                                                                     letterSpacing: '0.5px'
                                                                 }}>
@@ -3314,7 +3314,7 @@ ${contextTickets.map((ticket: any) => {
                                                                             border: '1px solid var(--glass-border)',
                                                                             borderRadius: '6px',
                                                                             cursor: 'pointer',
-                                                                            color: '#888',
+                                                                            color: 'var(--text-secondary)',
                                                                             fontSize: '12px',
                                                                             transition: 'all 0.15s'
                                                                         }}
@@ -3342,7 +3342,7 @@ ${contextTickets.map((ticket: any) => {
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: '10px',
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     fontSize: '13px'
                                                                 }}>
                                                                     <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
@@ -3354,7 +3354,7 @@ ${contextTickets.map((ticket: any) => {
                                                                     background: 'var(--glass-bg-light)',
                                                                     border: '1px solid var(--glass-border)',
                                                                     borderRadius: '8px',
-                                                                    color: '#666',
+                                                                    color: 'var(--text-secondary)',
                                                                     fontSize: '13px'
                                                                 }}>
                                                                     {t('wiki.search.no_tickets')}
@@ -3409,7 +3409,7 @@ ${contextTickets.map((ticket: any) => {
 
                                 if (articleCount === 0) {
                                     return (
-                                        <div style={{ padding: '40px 0', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+                                        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>
                                             {t('wiki.category.no_articles')}
                                         </div>
                                     );
@@ -3441,7 +3441,7 @@ ${contextTickets.map((ticket: any) => {
                                             alignItems: 'center',
                                             marginBottom: '16px'
                                         }}>
-                                            <span style={{ fontSize: '14px', color: '#999' }}>
+                                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
                                                 {t('wiki.manage.stats_summary', { models: modelCount, articles: articleCount })}
                                             </span>
                                         </div>
@@ -3512,7 +3512,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 background: 'var(--glass-bg-hover)',
                                                                 borderRadius: '12px',
                                                                 fontSize: '12px',
-                                                                color: '#999'
+                                                                color: 'var(--text-secondary)'
                                                             }}>
                                                                 {t('wiki.count.articles', { count: modelArticles.length })}
                                                             </span>
@@ -3577,7 +3577,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                     width: '24px',
                                                                                     height: '24px',
                                                                                     background: 'var(--glass-bg-hover)',
-                                                                                    color: '#ddd',
+                                                                                    color: 'var(--text-secondary)',
                                                                                     borderRadius: '5px',
                                                                                     display: 'flex',
                                                                                     alignItems: 'center',
@@ -3588,7 +3588,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                     {catArticles.length}
                                                                                 </span>
 
-                                                                                <span style={{ flex: 1, color: '#ccc', fontSize: '14px' }}>
+                                                                                <span style={{ flex: 1, color: 'var(--text-secondary)', fontSize: '14px' }}>
                                                                                     {categoryLabels[category] || category} {t('wiki.count.articles', { count: catArticles.length })}
                                                                                 </span>
 
@@ -3636,7 +3636,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                                     }}
                                                                                                 >
                                                                                                     <FileText size={14} color="#666" />
-                                                                                                    <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
+                                                                                                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', flex: 1 }}>
                                                                                                         {article.title}
                                                                                                     </span>
                                                                                                     <ChevronRight size={14} color="#444" />
@@ -3702,7 +3702,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'var(--glass-bg-light)'}
                                                                                                     >
                                                                                                         <FileText size={14} color="#666" />
-                                                                                                        <span style={{ fontSize: '13px', color: '#bbb', flex: 1 }}>
+                                                                                                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', flex: 1 }}>
                                                                                                             {article.title}
                                                                                                         </span>
                                                                                                         <ChevronRight size={14} color="#444" />
@@ -3772,10 +3772,10 @@ ${contextTickets.map((ticket: any) => {
                                                                                                                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.08)'}
                                                                                                                             onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.015)'}
                                                                                                                         >
-                                                                                                                            <span style={{ minWidth: '32px', textAlign: 'center', color: '#999', fontSize: '11px', background: 'var(--glass-bg-hover)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                                                                            <span style={{ minWidth: '32px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '11px', background: 'var(--glass-bg-hover)', padding: '2px 6px', borderRadius: '4px' }}>
                                                                                                                                 {displayNum}
                                                                                                                             </span>
-                                                                                                                            <span style={{ fontSize: '13px', color: '#ccc', flex: 1 }}>{secTitle}</span>
+                                                                                                                            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', flex: 1 }}>{secTitle}</span>
                                                                                                                         </div>
                                                                                                                     );
                                                                                                                 })}
@@ -3815,7 +3815,7 @@ ${contextTickets.map((ticket: any) => {
                                         <div style={{
                                             fontSize: '13px',
                                             fontWeight: 700,
-                                            color: '#888',
+                                            color: 'var(--text-secondary)',
                                             textTransform: 'uppercase',
                                             letterSpacing: '1px'
                                         }}>
@@ -3830,7 +3830,7 @@ ${contextTickets.map((ticket: any) => {
                                                 style={{
                                                     background: 'var(--glass-bg-hover)',
                                                     border: '1px solid var(--glass-border)',
-                                                    color: '#999',
+                                                    color: 'var(--text-secondary)',
                                                     fontSize: '12px',
                                                     padding: '4px 8px',
                                                     borderRadius: '6px',
@@ -3870,7 +3870,7 @@ ${contextTickets.map((ticket: any) => {
                                                             padding: '8px 12px',
                                                             background: 'transparent',
                                                             border: 'none',
-                                                            color: '#ddd',
+                                                            color: 'var(--text-secondary)',
                                                             fontSize: '13px',
                                                             textAlign: 'left',
                                                             cursor: 'pointer',
@@ -3895,7 +3895,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 padding: '8px 12px',
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: '#ddd',
+                                                                color: 'var(--text-secondary)',
                                                                 fontSize: '13px',
                                                                 textAlign: 'left',
                                                                 cursor: 'pointer',
@@ -4040,7 +4040,7 @@ ${contextTickets.map((ticket: any) => {
                                     </h2>
                                     <p style={{
                                         fontSize: '13px',
-                                        color: '#888',
+                                        color: 'var(--text-secondary)',
                                         margin: 0
                                     }}>
                                         {t('wiki.toc_title')}
@@ -4055,7 +4055,7 @@ ${contextTickets.map((ticket: any) => {
                                             left: '12px',
                                             top: '50%',
                                             transform: 'translateY(-50%)',
-                                            color: '#666'
+                                            color: 'var(--text-secondary)'
                                         }} />
                                         <input
                                             type="text"
@@ -4180,7 +4180,7 @@ ${contextTickets.map((ticket: any) => {
                                         <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                                             {t('wiki.manage_articles')}
                                         </h2>
-                                        <p style={{ fontSize: '14px', color: '#888', margin: 0, fontWeight: 400 }}>
+                                        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, fontWeight: 400 }}>
                                             {t('wiki.manage.stats', { total: manageArticles.length, selected: selectedArticleIds.size })}
                                         </p>
                                     </div>
@@ -4257,7 +4257,7 @@ ${contextTickets.map((ticket: any) => {
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     cursor: 'pointer',
-                                                    color: '#666',
+                                                    color: 'var(--text-secondary)',
                                                     borderRadius: '50%',
                                                     transition: 'all 0.2s',
                                                 }}
@@ -4309,7 +4309,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: 'var(--glass-bg-hover)',
                                                     border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
-                                                    color: '#ccc',
+                                                    color: 'var(--text-secondary)',
                                                     fontSize: '13px',
                                                     cursor: 'pointer'
                                                 }}
@@ -4372,7 +4372,7 @@ ${contextTickets.map((ticket: any) => {
                                             <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                                 <th style={{ width: '40px', padding: '12px 8px', textAlign: 'left' }}></th>
                                                 <th
-                                                    style={{ padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    style={{ padding: '12px 8px', textAlign: 'left', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                                     onClick={() => setManagerSort(prev => ({ field: 'title', order: prev?.field === 'title' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4383,7 +4383,7 @@ ${contextTickets.map((ticket: any) => {
                                                     </div>
                                                 </th>
                                                 <th
-                                                    style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    style={{ width: '80px', padding: '12px 8px', textAlign: 'left', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                                     onClick={() => setManagerSort(prev => ({ field: 'product_line', order: prev?.field === 'product_line' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4394,7 +4394,7 @@ ${contextTickets.map((ticket: any) => {
                                                     </div>
                                                 </th>
                                                 <th
-                                                    style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    style={{ width: '120px', padding: '12px 8px', textAlign: 'left', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                                     onClick={() => setManagerSort(prev => ({ field: 'product_model', order: prev?.field === 'product_model' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4405,7 +4405,7 @@ ${contextTickets.map((ticket: any) => {
                                                     </div>
                                                 </th>
                                                 <th
-                                                    style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: '#888', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
+                                                    style={{ width: '100px', padding: '12px 8px', textAlign: 'left', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}
                                                     onClick={() => setManagerSort(prev => ({ field: 'category', order: prev?.field === 'category' && prev?.order === 'asc' ? 'desc' : 'asc' }))}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4415,7 +4415,7 @@ ${contextTickets.map((ticket: any) => {
                                                         )}
                                                     </div>
                                                 </th>
-                                                <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: '#888', fontSize: '12px', fontWeight: 500 }}>{t('common.actions')}</th>
+                                                <th style={{ width: '80px', padding: '12px 8px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 500 }}>{t('common.actions')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -4511,12 +4511,12 @@ ${contextTickets.map((ticket: any) => {
                                                                     {lineLabels[article.product_line] || article.product_line}
                                                                 </span>
                                                             </td>
-                                                            <td style={{ padding: '12px 8px', color: '#ccc', fontSize: '13px' }}>
+                                                            <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                                                 {Array.isArray(article.product_models)
                                                                     ? article.product_models[0]
                                                                     : article.product_models || '-'}
                                                             </td>
-                                                            <td style={{ padding: '12px 8px', color: '#888', fontSize: '13px' }}>
+                                                            <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                                                 {article.category}
                                                             </td>
                                                             <td style={{ padding: '12px 8px', textAlign: 'center' }}>
@@ -4562,7 +4562,7 @@ ${contextTickets.map((ticket: any) => {
                                     alignItems: 'center',
                                     background: 'var(--glass-bg-light)'
                                 }}>
-                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         {t('wiki.total_articles', {
                                             count: manageArticles.filter(article => {
                                                 if (managerSearchQuery.trim() === '') return true;
@@ -4619,7 +4619,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 12px' }}>
                                                     {t('wiki.manage.delete_batch')}
                                                 </h3>
-                                                <p style={{ fontSize: '14px', color: '#888', margin: 0, lineHeight: 1.6 }}>
+                                                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
                                                     {t('wiki.manage.delete_warning_list', { count: articlesToDeleteList.length })}
                                                 </p>
                                             </div>
@@ -4636,7 +4636,7 @@ ${contextTickets.map((ticket: any) => {
                                                 {articlesToDeleteList.map(a => (
                                                     <div key={a.id} style={{
                                                         fontSize: '13px',
-                                                        color: '#ccc',
+                                                        color: 'var(--text-secondary)',
                                                         padding: '6px 0',
                                                         borderBottom: '1px solid var(--glass-border)',
                                                         whiteSpace: 'nowrap',
@@ -4713,7 +4713,7 @@ ${contextTickets.map((ticket: any) => {
                                                         background: 'transparent',
                                                         border: '1px solid var(--glass-border)',
                                                         borderRadius: '12px',
-                                                        color: '#888',
+                                                        color: 'var(--text-secondary)',
                                                         fontSize: '15px',
                                                         fontWeight: 500,
                                                         cursor: isDeleting ? 'not-allowed' : 'pointer'
@@ -4807,7 +4807,7 @@ ${contextTickets.map((ticket: any) => {
                                             </h2>
                                             <p style={{
                                                 fontSize: '14px',
-                                                color: '#888',
+                                                color: 'var(--text-secondary)',
                                                 margin: 0,
                                                 fontWeight: 400
                                             }}>
@@ -5072,7 +5072,7 @@ ${contextTickets.map((ticket: any) => {
                                                         borderRadius: '10px',
                                                         border: '1px solid var(--glass-border)',
                                                         fontSize: '12px',
-                                                        color: '#666',
+                                                        color: 'var(--text-secondary)',
                                                         lineHeight: '1.4'
                                                     }}>
                                                         <span style={{ fontSize: '16px', flexShrink: 0 }}>{tip.icon}</span>
@@ -5123,7 +5123,7 @@ ${contextTickets.map((ticket: any) => {
                             </h2>
                             <button
                                 onClick={() => setShowAuditModal(false)}
-                                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
                             >
                                 <X size={20} />
                             </button>
