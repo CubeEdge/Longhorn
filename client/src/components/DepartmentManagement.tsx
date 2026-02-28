@@ -112,7 +112,7 @@ const DepartmentManagement: React.FC = () => {
                             <select
                                 value={grantUserId}
                                 onChange={e => setGrantUserId(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: 8, color: 'white' }}
+                                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: 8, color: 'var(--text-main)' }}
                                 required
                             >
                                 <option value="">{t('dept_mgmt.select_user')}</option>
@@ -152,7 +152,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantType === 'Read' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantType === 'Read' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -174,7 +174,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantType === 'Contribute' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantType === 'Contribute' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -196,7 +196,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantType === 'Full' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantType === 'Full' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -238,7 +238,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantExpiry === '7days' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantExpiry === '7days' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -260,7 +260,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantExpiry === '1month' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantExpiry === '1month' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -282,7 +282,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: grantExpiry === 'permanent' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: grantExpiry === 'permanent' ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -309,7 +309,7 @@ const DepartmentManagement: React.FC = () => {
                                         border: '1px solid rgba(255, 255, 255, 0.15)',
                                         borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontWeight: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 700 : 600,
                                         cursor: 'pointer',
                                         fontSize: '0.85rem',
@@ -344,7 +344,7 @@ const DepartmentManagement: React.FC = () => {
                                 placeholder={t('dept_mgmt.dept_name_placeholder')}
                                 value={newDeptName}
                                 onChange={e => setNewDeptName(e.target.value)}
-                                style={{ flex: 2, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'white' }}
+                                style={{ flex: 2, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'var(--text-main)' }}
                             />
                             <div style={{ position: 'relative', flex: 1 }}>
                                 <input

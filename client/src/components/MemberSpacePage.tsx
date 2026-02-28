@@ -88,7 +88,7 @@ export const MemberSpacePage: React.FC = () => {
                         borderRadius: '8px',
                         fontSize: '0.95rem',
                         background: 'rgba(255, 255, 255, 0.05)',
-                        color: '#fff'
+                        color: 'var(--text-main)'
                     }}
                 />
             </div>
@@ -173,7 +173,7 @@ export const MemberSpacePage: React.FC = () => {
                         </div>
 
                         {/* Capacity */}
-                        <div style={{ fontFamily: 'monospace', color: '#fff' }}>
+                        <div style={{ fontFamily: 'monospace', color: 'var(--text-main)' }}>
                             {formatSize(user.total_size)}
                         </div>
 

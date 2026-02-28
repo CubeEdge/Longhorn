@@ -201,7 +201,7 @@ const ImageView: React.FC<any> = ({ node, updateAttributes, selected, getPos, ed
                                     background: 'rgba(255,255,255,0.15)',
                                     border: '1px solid rgba(255,255,255,0.3)',
                                     borderRadius: '4px',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     fontSize: '11px',
                                     cursor: 'pointer',
                                 }}

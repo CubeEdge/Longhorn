@@ -50,7 +50,7 @@ const TicketAiWizard: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', color: '#eee' }}>
+        <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto', color: 'var(--text-main)' }}>
             <header style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                     background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
@@ -100,7 +100,7 @@ const TicketAiWizard: React.FC = () => {
                             border: '1px solid rgba(255,255,255,0.1)',
                             borderRadius: '8px',
                             padding: '12px',
-                            color: '#fff',
+                            color: 'var(--text-main)',
                             fontSize: '0.95rem',
                             lineHeight: '1.5',
                             resize: 'none',
@@ -231,7 +231,7 @@ const TicketAiWizard: React.FC = () => {
                                     style={{
                                         flex: 1,
                                         background: '#10b981', // Success green is allowed for confirming actions
-                                        color: 'white',
+                                        color: 'var(--text-main)',
                                         border: 'none',
                                         padding: '12px',
                                         borderRadius: '8px',
@@ -261,7 +261,7 @@ const inputStyle: React.CSSProperties = {
     borderRadius: '6px',
     border: '1px solid rgba(255,255,255,0.2)',
     background: 'rgba(0,0,0,0.3)',
-    color: 'white',
+    color: 'var(--text-main)',
     fontSize: '0.9rem'
 };
 

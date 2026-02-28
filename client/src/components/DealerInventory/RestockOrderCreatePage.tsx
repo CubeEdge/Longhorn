@@ -210,7 +210,7 @@ const RestockOrderCreatePage: React.FC = () => {
                                 background: 'transparent',
                                 border: 'none',
                                 outline: 'none',
-                                color: 'white',
+                                color: 'var(--text-main)',
                                 width: '100%',
                                 fontSize: '1rem'
                             }}
@@ -404,7 +404,7 @@ const RestockOrderCreatePage: React.FC = () => {
                                                     borderRadius: '50%',
                                                     border: '1px solid var(--glass-border)',
                                                     background: 'rgba(255,255,255,0.05)',
-                                                    color: 'white',
+                                                    color: 'var(--text-main)',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -424,7 +424,7 @@ const RestockOrderCreatePage: React.FC = () => {
                                                     borderRadius: '50%',
                                                     border: '1px solid var(--glass-border)',
                                                     background: 'rgba(255,255,255,0.05)',
-                                                    color: 'white',
+                                                    color: 'var(--text-main)',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -456,7 +456,7 @@ const RestockOrderCreatePage: React.FC = () => {
                                         background: 'rgba(255,255,255,0.05)',
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: 12,
-                                        color: 'white',
+                                        color: 'var(--text-main)',
                                         resize: 'none',
                                         fontSize: '0.9rem'
                                     }}

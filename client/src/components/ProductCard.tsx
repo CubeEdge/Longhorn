@@ -37,7 +37,7 @@ export const ProductCard: React.FC<any> = ({ productName, serialNumber, warranty
             </div>
 
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <div style={{ fontSize: '14.5px', fontWeight: 600, color: '#e0e0e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {productName}
                 </div>
                 <div style={{ fontSize: '12px', color: '#777', fontFamily: 'monospace' }}>

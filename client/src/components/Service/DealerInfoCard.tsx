@@ -101,7 +101,7 @@ const DealerInfoCard: React.FC<DealerInfoCardProps> = ({
             <div style={{ 
                 fontSize: '1.1rem', 
                 fontWeight: 700, 
-                color: '#fff',
+                color: 'var(--text-main)',
                 marginBottom: '8px'
             }}>
                 {dealerName || '未知经销商'}

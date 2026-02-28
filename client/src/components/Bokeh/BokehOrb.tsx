@@ -77,7 +77,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                 background: 'rgba(0,0,0,0.8)',
                 padding: '4px 8px',
                 borderRadius: '6px',
-                color: 'white',
+                color: 'var(--text-main)',
                 fontSize: '12px',
                 pointerEvents: 'none',
                 whiteSpace: 'nowrap',

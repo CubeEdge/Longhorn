@@ -899,7 +899,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     <button
                         onClick={() => window.open(originalUrl, '_blank')}
                         className="btn-icon-text"
-                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
                     >
                         <Download size={16} /> 原图 ({formatSize(file.size)})
                     </button>
@@ -907,7 +907,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     <button
                         onClick={() => handleStar(file)}
                         className="btn-icon-text"
-                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
                     >
                         <Star size={16} fill={starredFiles.includes(file.path) ? "orange" : "none"} color={starredFiles.includes(file.path) ? "orange" : "white"} /> 收藏
                     </button>
@@ -929,7 +929,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
                     marginBottom: 20,
@@ -942,7 +942,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     gap: 12
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                        <button onClick={() => setSelectedPaths([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedPaths.length}</span>{t('browser.items_count')}</span>
@@ -969,7 +969,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                 disabled={isProcessing}
                                 style={{
                                     background: 'rgba(255, 255, 255, 0.1)',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     border: '1px solid rgba(255, 255, 255, 0.1)',
                                     padding: '8px 16px',
                                     borderRadius: '10px',
@@ -1554,7 +1554,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: shareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: shareExpires === '7' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1576,7 +1576,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: shareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: shareExpires === '30' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1598,7 +1598,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: shareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: shareExpires === 'never' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1625,7 +1625,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: !['7', '30', 'never'].includes(shareExpires) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: !['7', '30', 'never'].includes(shareExpires) ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1660,7 +1660,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                 border: '1px solid rgba(255, 255, 255, 0.15)',
                                                 borderLeft: shareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontWeight: shareLanguage === lang ? 700 : 600,
                                                 cursor: 'pointer',
                                                 fontSize: '0.9rem',
@@ -1749,7 +1749,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                     <div className="preview-overlay" onClick={closePreview}>
                         <div className="preview-header" onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <button onClick={closePreview} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={24} /></button>
+                                <button onClick={closePreview} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
                                 <span style={{ fontWeight: 600 }}>{previewFile.name}</span>
                             </div>
                             <div style={{ display: 'flex', gap: 12 }}>
@@ -1875,7 +1875,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: batchShareExpires === '7' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === '7' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1897,7 +1897,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: batchShareExpires === '30' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === '30' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1919,7 +1919,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: batchShareExpires === 'never' ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: batchShareExpires === 'never' ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1946,7 +1946,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                             border: '1px solid rgba(255, 255, 255, 0.15)',
                                             borderLeft: !['7', '30', 'never'].includes(batchShareExpires) ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontWeight: !['7', '30', 'never'].includes(batchShareExpires) ? 700 : 600,
                                             cursor: 'pointer',
                                             fontSize: '0.9rem',
@@ -1981,7 +1981,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                                                 border: '1px solid rgba(255, 255, 255, 0.15)',
                                                 borderLeft: batchShareLanguage === lang ? '4px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.15)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontWeight: batchShareLanguage === lang ? 700 : 600,
                                                 cursor: 'pointer',
                                                 fontSize: '0.9rem',

@@ -112,7 +112,7 @@ export const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, sta
         >
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         <span style={{ color: styles.color, display: 'flex', flexShrink: 0 }}>{styles.icon}</span>
                         {ticketNumber || `TICKET-${Math.floor(Math.random() * 1000)}`}
                     </span>
@@ -123,7 +123,7 @@ export const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, sta
                 <div style={{
                     fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#e0e0e0',
+                    color: 'var(--text-main)',
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
@@ -137,7 +137,7 @@ export const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, sta
             </div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {productModel && (
-                    <span style={{ fontSize: '11px', color: '#666', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
                         {productModel}
                     </span>
                 )}
@@ -155,7 +155,7 @@ export const TicketCard: React.FC<any> = ({ ticketNumber, ticketType, title, sta
                     }
 
                     return (
-                        <span style={{ fontSize: '11px', color: '#888' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             {display}
                         </span>
                     );

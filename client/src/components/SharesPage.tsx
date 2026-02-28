@@ -323,7 +323,7 @@ export const SharesPage: React.FC = () => {
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
                     marginBottom: 20,
@@ -334,7 +334,7 @@ export const SharesPage: React.FC = () => {
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                        <button onClick={() => { setSelectedIds([]); setSelectedCollectionIds([]); }} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('my_shares.selected_items', { count: selectedIds.length + selectedCollectionIds.length })}</span>
@@ -344,7 +344,7 @@ export const SharesPage: React.FC = () => {
                             onClick={(e) => { e.stopPropagation(); e.preventDefault(); bulkDelete(); }}
                             style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 padding: '8px 16px',
                                 borderRadius: '10px',

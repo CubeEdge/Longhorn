@@ -232,7 +232,7 @@ const RecycleBin: React.FC = () => {
                                         borderRadius: '8px',
                                         border: 'none',
                                         background: '#34C759',
-                                        color: '#FFF',
+                                        color: 'var(--text-main)',
                                         fontWeight: 600,
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -250,7 +250,7 @@ const RecycleBin: React.FC = () => {
                                         borderRadius: '8px',
                                         border: 'none',
                                         background: '#FF3B30',
-                                        color: '#FFF',
+                                        color: 'var(--text-main)',
                                         fontWeight: 600,
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -518,7 +518,7 @@ const RecycleBin: React.FC = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 cursor: 'pointer',
-                                color: '#FFF'
+                                color: 'var(--text-main)'
                             }}
                         >
                             <X size={24} />

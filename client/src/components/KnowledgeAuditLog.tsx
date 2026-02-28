@@ -86,13 +86,13 @@ export default function KnowledgeAuditLog() {
             <div style={{
                 padding: '80px 32px',
                 textAlign: 'center',
-                color: '#666'
+                color: 'var(--text-secondary)'
             }}>
                 <div style={{
                     fontSize: '48px',
                     marginBottom: '16px'
                 }}>🔒</div>
-                <h2 style={{ fontSize: '24px', marginBottom: '12px', color: '#fff' }}>
+                <h2 style={{ fontSize: '24px', marginBottom: '12px', color: 'var(--text-main)' }}>
                     仅管理员可访问
                 </h2>
                 <p>审计日志功能仅限管理员查看</p>
@@ -184,12 +184,12 @@ export default function KnowledgeAuditLog() {
                     <h1 style={{
                         fontSize: '28px',
                         fontWeight: 600,
-                        color: '#fff',
+                        color: 'var(--text-main)',
                         marginBottom: '8px'
                     }}>
                         知识库审计日志
                     </h1>
-                    <p style={{ color: '#999', fontSize: '14px' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                         追踪所有知识库写操作，包括创建、更新、删除和导入
                     </p>
                 </div>
@@ -232,7 +232,7 @@ export default function KnowledgeAuditLog() {
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
-                        <div style={{ fontSize: '14px', color: '#999', marginBottom: '8px' }}>总操作数</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>总操作数</div>
                         <div style={{ fontSize: '32px', fontWeight: 700, color: '#FFD700' }}>
                             {stats.total.total_operations}
                         </div>
@@ -243,7 +243,7 @@ export default function KnowledgeAuditLog() {
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
-                        <div style={{ fontSize: '14px', color: '#999', marginBottom: '8px' }}>操作人数</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>操作人数</div>
                         <div style={{ fontSize: '32px', fontWeight: 700, color: '#10b981' }}>
                             {stats.total.total_users}
                         </div>
@@ -254,7 +254,7 @@ export default function KnowledgeAuditLog() {
                         borderRadius: '12px',
                         padding: '24px'
                     }}>
-                        <div style={{ fontSize: '14px', color: '#999', marginBottom: '8px' }}>批量导入次数</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>批量导入次数</div>
                         <div style={{ fontSize: '32px', fontWeight: 700, color: '#8b5cf6' }}>
                             {stats.total.total_batches}
                         </div>
@@ -281,7 +281,7 @@ export default function KnowledgeAuditLog() {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <label style={{ 
                             fontSize: '13px', 
-                            color: '#999', 
+                            color: 'var(--text-secondary)', 
                             marginBottom: '8px',
                             height: '18px',
                             lineHeight: '18px'
@@ -300,7 +300,7 @@ export default function KnowledgeAuditLog() {
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 fontSize: '13px',
                                 outline: 'none',
                                 transition: 'border-color 0.2s',
@@ -315,7 +315,7 @@ export default function KnowledgeAuditLog() {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <label style={{ 
                             fontSize: '13px', 
-                            color: '#999', 
+                            color: 'var(--text-secondary)', 
                             marginBottom: '8px',
                             height: '18px',
                             lineHeight: '18px'
@@ -332,7 +332,7 @@ export default function KnowledgeAuditLog() {
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 fontSize: '13px',
                                 outline: 'none',
                                 cursor: 'pointer',
@@ -353,7 +353,7 @@ export default function KnowledgeAuditLog() {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <label style={{ 
                             fontSize: '13px', 
-                            color: '#999', 
+                            color: 'var(--text-secondary)', 
                             marginBottom: '8px',
                             height: '18px',
                             lineHeight: '18px'
@@ -370,7 +370,7 @@ export default function KnowledgeAuditLog() {
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 fontSize: '13px',
                                 outline: 'none',
                                 cursor: 'pointer',
@@ -403,7 +403,7 @@ export default function KnowledgeAuditLog() {
                                 background: 'rgba(255,255,255,0.05)',
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
-                                color: '#999',
+                                color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 fontSize: '13px',
                                 fontWeight: 500,
@@ -434,7 +434,7 @@ export default function KnowledgeAuditLog() {
                 overflow: 'hidden'
             }}>
                 {loading ? (
-                    <div style={{ padding: '80px', textAlign: 'center', color: '#666' }}>
+                    <div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ 
                             fontSize: '32px', 
                             animation: 'spin 1s linear infinite',
@@ -443,7 +443,7 @@ export default function KnowledgeAuditLog() {
                         <div style={{ marginTop: '16px' }}>加载中...</div>
                     </div>
                 ) : logs.length === 0 ? (
-                    <div style={{ padding: '80px', textAlign: 'center', color: '#666' }}>
+                    <div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
                         <div>暂无审计日志</div>
                     </div>
@@ -453,13 +453,13 @@ export default function KnowledgeAuditLog() {
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>时间</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>操作</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>文章</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>分类</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>产品线</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>操作人</th>
-                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: '#999', fontWeight: 600 }}>来源</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>时间</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>操作</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>文章</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>分类</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>产品线</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>操作人</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>来源</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -471,7 +471,7 @@ export default function KnowledgeAuditLog() {
                                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                         >
-                                            <td style={{ padding: '16px', fontSize: '13px', color: '#999' }}>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                 {formatTime(log.created_at)}
                                             </td>
                                             <td style={{ padding: '16px' }}>
@@ -487,36 +487,36 @@ export default function KnowledgeAuditLog() {
                                                     {OPERATION_LABELS[log.operation] || log.operation}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: '13px', color: '#fff' }}>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-main)' }}>
                                                 <div style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {log.article_title}
                                                 </div>
                                                 {log.operation_detail && (
-                                                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                                                         {log.operation_detail}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: '13px', color: '#999' }}>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                 {log.category || '-'}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: '13px', color: '#999' }}>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                 {log.product_line || '-'}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: '13px', color: '#fff' }}>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-main)' }}>
                                                 {log.user_name}
                                                 {log.user_role && (
-                                                    <span style={{ fontSize: '11px', color: '#666', marginLeft: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
                                                         ({log.user_role})
                                                     </span>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '16px', fontSize: '12px', color: '#999' }}>
+                                            <td style={{ padding: '16px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                 {log.source_type && (
                                                     <div>
                                                         <div>{log.source_type}</div>
                                                         {log.source_reference && (
-                                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                                                                 {log.source_reference}
                                                             </div>
                                                         )}
@@ -537,7 +537,7 @@ export default function KnowledgeAuditLog() {
                             justifyContent: 'space-between',
                             alignItems: 'center'
                         }}>
-                            <div style={{ fontSize: '13px', color: '#999' }}>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                                 共 {total} 条记录
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>

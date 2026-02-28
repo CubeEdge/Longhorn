@@ -164,7 +164,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                 <div onClick={e => e.stopPropagation()} style={{ background: '#1c1c1e', padding: '24px', borderRadius: '16px', textAlign: 'center' }}>
                     <p style={{ marginBottom: 16 }}>No words loaded. Try refreshing.</p>
                     <button onClick={() => fetchBatch()} style={{ padding: '8px 16px', background: 'var(--accent-blue)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Retry</button>
-                    <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>Close</button>
+                    <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: 8 }}>Close</button>
                 </div>
             </div>
         )
@@ -416,7 +416,7 @@ const DailyWordModal: React.FC<DailyWordModalProps> = ({ onClose }) => {
                     </div>
 
                     {loading ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                             <RefreshCw className="spin" size={32} style={{ marginBottom: 16 }} />
                             <p>Fetching {level} words...</p>
                         </div>

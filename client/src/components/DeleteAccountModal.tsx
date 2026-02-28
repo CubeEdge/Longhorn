@@ -151,7 +151,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         // Case B: 有关联数据，不能删除
                         <>
                             <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                {entityName} <strong style={{ color: 'white' }}>[{account.name}]</strong> 关联了{' '}
+                                {entityName} <strong style={{ color: 'var(--text-main)' }}>[{account.name}]</strong> 关联了{' '}
                                 <span 
                                     onClick={handleTicketsClick}
                                     style={{ 
@@ -207,7 +207,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         // Case A: 无关联数据，可以软删除
                         <>
                             <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                您确定要删除{entityName} <strong style={{ color: 'white' }}>[{account.name}]</strong> 吗？
+                                您确定要删除{entityName} <strong style={{ color: 'var(--text-main)' }}>[{account.name}]</strong> 吗？
                             </p>
                             <p style={{ 
                                 margin: 0, 
@@ -240,7 +240,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                         style={{
                             background: 'rgba(255, 255, 255, 0.05)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: 'white',
+                            color: 'var(--text-main)',
                             padding: '10px 20px',
                             borderRadius: 8,
                             cursor: loading ? 'not-allowed' : 'pointer',

@@ -270,7 +270,7 @@ const DealerInventoryListPage: React.FC = () => {
                             background: 'transparent',
                             border: 'none',
                             outline: 'none',
-                            color: 'white',
+                            color: 'var(--text-main)',
                             width: '100%'
                         }}
                     />

@@ -69,7 +69,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     <div style={{
                         fontSize: '14px',
                         fontWeight: 600,
-                        color: '#fff',
+                        color: 'var(--text-main)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
@@ -79,7 +79,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     {modelText && (
                         <div style={{
                             fontSize: '12px',
-                            color: '#888',
+                            color: 'var(--text-secondary)',
                             marginTop: '2px'
                         }}>
                             {modelText}
@@ -141,7 +141,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     <div style={{
                         fontSize: '14px',
                         fontWeight: 600,
-                        color: '#fff',
+                        color: 'var(--text-main)',
                         lineHeight: '1.4',
                         flex: 1
                     }}>
@@ -152,7 +152,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 {summary && (
                     <div style={{
                         fontSize: '12px',
-                        color: '#888',
+                        color: 'var(--text-secondary)',
                         lineHeight: '1.5',
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -171,14 +171,14 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                     paddingTop: '8px'
                 }}>
                     {modelText && (
-                        <span style={{ fontSize: '11px', color: '#666' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                             {modelText}
                         </span>
                     )}
                     {category && (
                         <>
-                            <span style={{ color: '#444' }}>·</span>
-                            <span style={{ fontSize: '11px', color: '#666' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>·</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                                 {category}
                             </span>
                         </>
@@ -238,7 +238,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 <div style={{
                     fontSize: '15px',
                     fontWeight: 600,
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     flex: 1,
                     lineHeight: '1.4'
                 }}>
@@ -249,7 +249,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             {summary && (
                 <div style={{
                     fontSize: '13px',
-                    color: '#888',
+                    color: 'var(--text-secondary)',
                     lineHeight: '1.5',
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
@@ -267,14 +267,14 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 marginTop: '4px'
             }}>
                 {modelText && (
-                    <span style={{ fontSize: '12px', color: '#666' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {modelText}
                     </span>
                 )}
                 {category && (
                     <>
-                        <span style={{ color: '#444' }}>·</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>·</span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                             {category}
                         </span>
                     </>

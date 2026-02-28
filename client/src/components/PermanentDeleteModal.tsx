@@ -123,7 +123,7 @@ const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
                 <div style={{ padding: '24px' }}>
                     <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         您确定要<strong style={{ color: '#ef4444' }}>永久删除</strong>{entityName}{' '}
-                        <strong style={{ color: 'white' }}>[{account.name}]</strong> 吗？
+                        <strong style={{ color: 'var(--text-main)' }}>[{account.name}]</strong> 吗？
                     </p>
                     
                     <div style={{
@@ -171,7 +171,7 @@ const PermanentDeleteModal: React.FC<PermanentDeleteModalProps> = ({
                         style={{
                             background: 'rgba(255, 255, 255, 0.05)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: 'white',
+                            color: 'var(--text-main)',
                             padding: '10px 20px',
                             borderRadius: 8,
                             cursor: loading ? 'not-allowed' : 'pointer',

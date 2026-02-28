@@ -755,12 +755,12 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 fontSize: '24px',
                                 fontWeight: 700,
                                 margin: 0,
-                                color: '#fff'
+                                color: 'var(--text-main)'
                             }}>
                                 {t('wiki.import_knowledge')}
                             </h2>
                             <p style={{
-                                color: '#888',
+                                color: 'var(--text-secondary)',
                                 fontSize: '14px',
                                 margin: 0,
                                 fontWeight: 400
@@ -813,7 +813,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     fontSize: '16px',
                                     fontWeight: 600,
                                     marginBottom: '16px',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     letterSpacing: '0.3px'
                                 }}>
                                     内容来源
@@ -879,15 +879,15 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 color: '#FFD700',
                                                 marginBottom: '12px'
                                             }}>+</div>
-                                            <div style={{ fontSize: '15px', color: '#ddd', marginBottom: '6px', fontWeight: 500 }}>
+                                            <div style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 500 }}>
                                                 选择Word文档
                                             </div>
-                                            <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                                                 或拖拽DOCX文件到此处
                                             </div>
                                             <div style={{
                                                 fontSize: '11px',
-                                                color: '#999',
+                                                color: 'var(--text-secondary)',
                                                 padding: '6px 12px',
                                                 background: 'rgba(255,215,0,0.1)',
                                                 borderRadius: '6px',
@@ -917,7 +917,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#FFD700', marginBottom: '2px' }}>
                                                         {docxFile.name}
                                                     </div>
-                                                    <div style={{ fontSize: '11px', color: '#999' }}>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                                                         {formatSize(docxFile.size)}
                                                     </div>
                                                 </div>
@@ -928,7 +928,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         background: '#ff4444',
                                                         border: 'none',
                                                         borderRadius: '4px',
-                                                        color: '#fff',
+                                                        color: 'var(--text-main)',
                                                         cursor: 'pointer',
                                                         fontSize: '12px'
                                                     }}
@@ -953,7 +953,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: '#1a1a1a',
                                                 border: '1px solid #444',
                                                 borderRadius: '6px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '13px'
                                             }}
                                         />
@@ -965,11 +965,11 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 onChange={(e) => setTurboMode(e.target.checked)}
                                                 style={{ width: '14px', height: '14px', cursor: 'pointer' }}
                                             />
-                                            <label htmlFor="turbo-mode" style={{ fontSize: '11px', color: '#aaa', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <label htmlFor="turbo-mode" style={{ fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 🚀 Turbo 模式 (Jina Reader 增强：自动还原表格、图片并绕过反爬)
                                             </label>
                                         </div>
-                                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
+                                        <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                                             💡 提示：支持导入 Application Note、官方博客等，建议默认开启
                                         </div>
                                     </div>
@@ -988,7 +988,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: '#1a1a1a',
                                                 border: '1px solid #444',
                                                 borderRadius: '6px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '13px',
                                                 fontFamily: 'monospace',
                                                 resize: 'vertical'
@@ -1005,7 +1005,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     borderRadius: '10px',
                                     border: '1px solid rgba(255,255,255,0.06)'
                                 }}>
-                                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px', fontWeight: 500 }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', fontWeight: 500 }}>
                                         导入方式配置
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -1079,7 +1079,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     <h3 style={{
                                         fontSize: '16px',
                                         fontWeight: 600,
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         letterSpacing: '0.3px',
                                         margin: 0
                                     }}>
@@ -1125,9 +1125,9 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
                                     {/* Title Input (optional) */}
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                        <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                                             {t('wiki.import_title_label')}
-                                            <span style={{ color: '#666', marginLeft: '4px', fontSize: '11px' }}>{t('common.optional')}</span>
+                                            <span style={{ color: 'var(--text-secondary)', marginLeft: '4px', fontSize: '11px' }}>{t('common.optional')}</span>
                                         </label>
                                         <input
                                             type="text"
@@ -1140,7 +1140,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: 'rgba(255,255,255,0.03)',
                                                 border: '1px solid rgba(255,255,255,0.1)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '14px',
                                                 transition: 'all 0.2s'
                                             }}
@@ -1149,7 +1149,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
 
                                     {/* Product Line */}
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                        <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                                             {t('wiki.import_product_line')} *
                                         </label>
                                         <select
@@ -1164,7 +1164,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: 'rgba(255,255,255,0.03)',
                                                 border: '1px solid rgba(255,255,255,0.1)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '14px',
                                                 cursor: 'pointer'
                                             }}
@@ -1182,13 +1182,13 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         <label style={{
                                             display: 'block',
                                             fontSize: '13px',
-                                            color: '#999',
+                                            color: 'var(--text-secondary)',
                                             marginBottom: '8px',
                                             fontWeight: 500
                                         }}>
                                             {t('wiki.import_product_models')}
                                             <span style={{
-                                                color: '#666',
+                                                color: 'var(--text-secondary)',
                                                 marginLeft: '4px',
                                                 fontSize: '11px'
                                             }}>
@@ -1239,7 +1239,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                         {/* Category */}
                                         <div>
-                                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                                                 {t('wiki.import_category')} *
                                             </label>
                                             <select
@@ -1251,7 +1251,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     background: 'rgba(255,255,255,0.03)',
                                                     border: '1px solid rgba(255,255,255,0.1)',
                                                     borderRadius: '8px',
-                                                    color: '#fff',
+                                                    color: 'var(--text-main)',
                                                     fontSize: '14px',
                                                     cursor: 'pointer'
                                                 }}
@@ -1264,7 +1264,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
 
                                         {/* Visibility */}
                                         <div>
-                                            <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                                                 {t('wiki.import_visibility')} *
                                             </label>
                                             <select
@@ -1276,7 +1276,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     background: 'rgba(255,255,255,0.03)',
                                                     border: '1px solid rgba(255,255,255,0.1)',
                                                     borderRadius: '8px',
-                                                    color: '#fff',
+                                                    color: 'var(--text-main)',
                                                     fontSize: '14px',
                                                     cursor: 'pointer'
                                                 }}
@@ -1292,7 +1292,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
 
                                     {/* Tags */}
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '13px', color: '#999', marginBottom: '8px', fontWeight: 500 }}>
+                                        <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 500 }}>
                                             {t('wiki.import_tags')}
                                         </label>
                                         <input
@@ -1306,7 +1306,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: 'rgba(255,255,255,0.03)',
                                                 border: '1px solid rgba(255,255,255,0.1)',
                                                 borderRadius: '8px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '14px',
                                                 transition: 'all 0.2s'
                                             }}
@@ -1346,7 +1346,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         <h3 style={{
                                             fontSize: '20px',
                                             fontWeight: 600,
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             margin: '0 0 16px 0',
                                             letterSpacing: '0.5px',
                                             textAlign: 'center'
@@ -1360,10 +1360,10 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             borderLeft: '3px solid #FFD700',
                                             borderRadius: '8px',
                                             lineHeight: '1.6',
-                                            color: '#aaa',
+                                            color: 'var(--text-secondary)',
                                             fontSize: '14px'
                                         }}>
-                                            正在为 <span style={{ color: '#fff', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 {importMode === 'url' && urlInput ? (
+                                            正在为 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{productModels.join(', ')}</span> 导入来自 {importMode === 'url' && urlInput ? (
                                                 <a
                                                     href={urlInput}
                                                     target="_blank"
@@ -1375,7 +1375,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 <span style={{ color: '#FFD700', fontWeight: 600 }}>{docxFile?.name || urlInput || '文本输入'}</span>
                                             )} 的知识。
                                             <br />
-                                            导入分类：<span style={{ color: '#fff' }}>{category}</span>，源模式：<span style={{ color: '#fff' }}>{importMode.toUpperCase()}</span>{bokehOptimize && '，已开启 Bokeh 优化'}。
+                                            导入分类：<span style={{ color: 'var(--text-main)' }}>{category}</span>，源模式：<span style={{ color: 'var(--text-main)' }}>{importMode.toUpperCase()}</span>{bokehOptimize && '，已开启 Bokeh 优化'}。
                                         </div>
                                     </div>
 
@@ -1431,7 +1431,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         {step.details && step.status === 'processing' && (
                                                             <div style={{
                                                                 fontSize: '12px',
-                                                                color: '#666',
+                                                                color: 'var(--text-secondary)',
                                                                 marginTop: '4px'
                                                             }}>
                                                                 {step.details}
@@ -1457,7 +1457,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                 </div>
                                                                 <div style={{
                                                                     fontSize: '11px',
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     marginTop: '6px'
                                                                 }}>
                                                                     正在解析文档结构、提取图片、生成AI摘要...
@@ -1492,7 +1492,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     display: 'flex',
                                                                     justifyContent: 'space-between',
                                                                     fontSize: '12px',
-                                                                    color: '#999'
+                                                                    color: 'var(--text-secondary)'
                                                                 }}>
                                                                     <span>{formatSize(uploadedSize)} / {formatSize(totalFileSize)}</span>
                                                                     <span style={{ color: '#FFD700' }}>{uploadSpeed}</span>
@@ -1536,11 +1536,11 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     display: 'flex',
                                                                     justifyContent: 'space-between',
                                                                     fontSize: '11px',
-                                                                    color: '#888',
+                                                                    color: 'var(--text-secondary)',
                                                                     marginTop: '6px'
                                                                 }}>
                                                                     <span>正在获取...</span>
-                                                                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{step.progress || 0}%</span>
+                                                                    <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{step.progress || 0}%</span>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1610,7 +1610,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
                                                             fontSize: '14px',
-                                                            color: '#fff',
+                                                            color: 'var(--text-main)',
                                                             fontWeight: 700
                                                         }}>
                                                             ✗
@@ -1634,35 +1634,35 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             marginBottom: '20px'
                                         }}>
                                             <div style={{ textAlign: 'center' }}>
-                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
                                                     {progress.stats.chapters}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                                     知识文章
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'center' }}>
-                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
                                                     {progress.stats.images}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                                     提取图片
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'center' }}>
-                                                <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
                                                     {progress.stats.tables}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                                     转换表格
                                                 </div>
                                             </div>
                                             {importMode === 'docx' && (
                                                 <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                                                    <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
                                                         {progress.stats.totalSize.split(' ')[0]}
                                                     </div>
-                                                    <div style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                                         文件大小({progress.stats.totalSize.split(' ')[1] || 'MB'})
                                                     </div>
                                                 </div>
@@ -1739,7 +1739,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                         background: '#10B981',
                                                         border: 'none',
                                                         borderRadius: '10px',
-                                                        color: '#fff',
+                                                        color: 'var(--text-main)',
                                                         fontSize: '14px',
                                                         fontWeight: 700,
                                                         cursor: 'pointer',
@@ -1828,7 +1828,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     }}>
                                         <p style={{
                                             fontSize: '14px',
-                                            color: '#ccc',
+                                            color: 'var(--text-secondary)',
                                             lineHeight: '1.6',
                                             textAlign: 'center',
                                             margin: 0
@@ -1849,7 +1849,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
                                             border: 'none',
                                             borderRadius: '12px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontSize: '15px',
                                             fontWeight: 600,
                                             cursor: 'pointer',
@@ -1935,7 +1935,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     }}>
                                         <p style={{
                                             fontSize: '14px',
-                                            color: '#ccc',
+                                            color: 'var(--text-secondary)',
                                             lineHeight: '1.6',
                                             marginBottom: '12px',
                                             textAlign: 'center'
@@ -1945,17 +1945,17 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                         {warningDialog.details && (
                                             <div style={{
                                                 fontSize: '13px',
-                                                color: '#999',
+                                                color: 'var(--text-secondary)',
                                                 marginTop: '12px',
                                                 paddingTop: '12px',
                                                 borderTop: '1px solid rgba(255,255,255,0.05)'
                                             }}>
                                                 <div style={{ marginBottom: '6px' }}>
-                                                    <span style={{ color: '#666' }}>文档内容：</span>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>文档内容：</span>
                                                     <span style={{ color: '#FFD700', fontWeight: 500 }}>{warningDialog.details.detected}</span>
                                                 </div>
                                                 <div>
-                                                    <span style={{ color: '#666' }}>您的选择：</span>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>您的选择：</span>
                                                     <span style={{ color: '#0f0', fontWeight: 500 }}>{warningDialog.details.selected}</span>
                                                 </div>
                                             </div>
@@ -1992,7 +1992,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
 
                                     <p style={{
                                         fontSize: '12px',
-                                        color: '#666',
+                                        color: 'var(--text-secondary)',
                                         textAlign: 'center',
                                         marginTop: '16px',
                                         lineHeight: '1.5'

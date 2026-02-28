@@ -485,7 +485,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     style={{
                                         fontSize: title.length > 40 ? '1.4rem' : '1.8rem',
                                         fontWeight: 800,
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         letterSpacing: '-0.5px',
                                         margin: 0,
                                         flex: 1,
@@ -572,7 +572,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                 border: '1px solid rgba(255,255,255,0.1)',
                                                 borderRadius: '8px',
                                                 padding: '14px',
-                                                color: '#fff',
+                                                color: 'var(--text-main)',
                                                 fontSize: '14px',
                                                 lineHeight: 1.6,
                                                 resize: 'none',
@@ -636,7 +636,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             background: 'linear-gradient(135deg, #00BFA5, #8E24AA)',
                                             border: 'none',
                                             borderRadius: '8px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontSize: '13px',
                                             fontWeight: 600,
                                             cursor: isOptimizing ? 'not-allowed' : 'pointer',
@@ -691,7 +691,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                         padding: '12px 16px',
                                                         background: 'transparent',
                                                         border: 'none',
-                                                        color: '#fff',
+                                                        color: 'var(--text-main)',
                                                         fontSize: '13px',
                                                         cursor: 'pointer',
                                                         textAlign: 'left',
@@ -789,7 +789,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         background: '#10B981',
                                         border: 'none',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: 'var(--text-main)',
                                         fontSize: '13px',
                                         fontWeight: 700,
                                         cursor: isSaving ? 'not-allowed' : 'pointer',
@@ -827,7 +827,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             background: 'rgba(255,255,255,0.05)',
                                             border: '1px solid rgba(255,255,255,0.1)',
                                             borderRadius: '6px',
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             fontSize: '12px',
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -940,7 +940,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                                         padding: '10px 14px',
                                                         background: 'transparent',
                                                         border: 'none',
-                                                        color: '#aaa',
+                                                        color: 'var(--text-secondary)',
                                                         fontSize: '12px',
                                                         textAlign: 'left',
                                                         cursor: 'pointer',
@@ -1012,10 +1012,10 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             }}>
                                 {confirmAction === 'delete' ? <Trash2 size={28} /> : <Send size={28} />}
                             </div>
-                            <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: '0 0 12px' }}>
+                            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 12px' }}>
                                 {confirmAction === 'delete' ? '删除草稿' : '发布为正式版？'}
                             </h3>
-                            <p style={{ fontSize: '14px', color: '#888', margin: 0, lineHeight: 1.6 }}>
+                            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
                                 {confirmAction === 'delete'
                                     ? '确定要删除当前草稿吗？此操作不可逆。删除后将展示之前已发布的线上版本。'
                                     : '发布后，内容将立刻对用户可见，并自动创建一个备份快照以供回滚。'}
@@ -1098,7 +1098,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         gap: '20px',
                         boxShadow: '0 20px 60px rgba(0,0,0,0.6)'
                     }}>
-                        <div style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
+                        <div style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '18px', fontWeight: 600 }}>
                             <Sparkles className="animate-pulse" style={{ color: '#10B981' }} />
                             Bokeh 正在优化中...
                         </div>
@@ -1113,7 +1113,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             }} />
                         </div>
 
-                        <div style={{ color: '#888', fontSize: '13px', textAlign: 'center' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center' }}>
                             AI 正在分析并处理内容，可能需要十多秒，请耐心等待。
                         </div>
 
@@ -1190,13 +1190,13 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 }}>
                                     <Sparkles size={20} />
                                 </div>
-                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#fff' }}>
+                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-main)' }}>
                                     Bokeh AI 优化结果预览
                                 </h3>
                             </div>
                             <button
                                 onClick={handleCancelBokehOptimization}
-                                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
                             >
                                 <X size={24} />
                             </button>
@@ -1205,13 +1205,13 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                             {/* Left Side - Original */}
                             <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#888', fontSize: '13px', fontWeight: 600, textAlign: 'center' }}>
+                                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, textAlign: 'center' }}>
                                     原版内容
                                 </div>
                                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: 'rgba(255,255,255,0.6)' }} className="markdown-content">
                                     {(bokehReviewMode === 'summary' || bokehReviewMode === 'full') && (
                                         <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
-                                            <h4 style={{ color: '#fff', marginBottom: '8px' }}>当前摘要:</h4>
+                                            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>当前摘要:</h4>
                                             <p>{summary || '（暂无摘要）'}</p>
                                         </div>
                                     )}
@@ -1226,7 +1226,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                 <div style={{ padding: '12px 20px', background: 'rgba(16, 185, 129, 0.05)', borderBottom: '1px solid rgba(16, 185, 129, 0.1)', color: '#10B981', fontSize: '13px', fontWeight: 600, textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
                                     <Sparkles size={14} /> Bokeh 优化版
                                 </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: '#fff' }} className="markdown-content">
+                                <div style={{ flex: 1, overflowY: 'auto', padding: '24px', color: 'var(--text-main)' }} className="markdown-content">
                                     {(bokehReviewMode === 'summary' || bokehReviewMode === 'full') && bokehReviewSummary && (
                                         <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
                                             <h4 style={{ color: '#10B981', marginBottom: '8px' }}>优化后摘要:</h4>
@@ -1255,7 +1255,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     background: 'transparent',
                                     border: '1px solid rgba(255,255,255,0.15)',
                                     borderRadius: '8px',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     fontSize: '14px',
                                     cursor: 'pointer'
                                 }}
@@ -1269,7 +1269,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     background: '#10B981',
                                     border: 'none',
                                     borderRadius: '8px',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     fontSize: '14px',
                                     fontWeight: 600,
                                     cursor: 'pointer',

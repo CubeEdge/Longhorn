@@ -218,10 +218,10 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: 0 }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                             {t('synonym.title')}
                         </h2>
-                        <p style={{ fontSize: '14px', color: '#888', margin: 0 }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
                             {t('synonym.stats', { groups: groups.length, words: totalWords })}
                         </p>
                     </div>
@@ -239,7 +239,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                             border: 'none',
                             borderRadius: '50%',
                             cursor: 'pointer',
-                            color: '#fff',
+                            color: 'var(--text-main)',
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
@@ -270,7 +270,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                             placeholder={t('synonym.search_placeholder')}
                             style={{
                                 background: 'none', border: 'none', outline: 'none',
-                                color: '#ddd', fontSize: '14px', width: '100%'
+                                color: 'var(--text-secondary)', fontSize: '14px', width: '100%'
                             }}
                         />
                     </div>
@@ -302,7 +302,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '12px',
-                            color: '#888',
+                            color: 'var(--text-secondary)',
                             fontSize: '14px'
                         }}>
                             <Loader2 size={24} color="#FFD700" style={{ animation: 'spin 1s linear infinite' }} />
@@ -339,7 +339,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                 flex: 1, background: 'rgba(0,0,0,0.3)',
                                                 border: '1px solid rgba(255,255,255,0.08)',
                                                 borderRadius: '8px', padding: '8px 12px',
-                                                color: '#ddd', fontSize: '14px', outline: 'none'
+                                                color: 'var(--text-secondary)', fontSize: '14px', outline: 'none'
                                             }}
                                         />
                                         <button onClick={createGroup} style={{
@@ -353,12 +353,12 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                         <button onClick={() => { setShowNewGroup(false); setNewGroupCategory(''); setNewGroupWords(''); }} style={{
                                             padding: '8px', borderRadius: '8px',
                                             background: 'rgba(255,255,255,0.05)', border: 'none',
-                                            color: '#888', cursor: 'pointer'
+                                            color: 'var(--text-secondary)', cursor: 'pointer'
                                         }}>
                                             <X size={16} />
                                         </button>
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#888' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         {t('synonym.words_hint')}
                                     </div>
                                 </div>
@@ -401,7 +401,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                             background: 'rgba(255,255,255,0.04)',
                                                             border: '1px solid rgba(255,255,255,0.08)',
                                                             borderRadius: '6px', padding: '3px 8px',
-                                                            fontSize: '13px', color: '#ccc',
+                                                            fontSize: '13px', color: 'var(--text-secondary)',
                                                             transition: 'all 0.15s'
                                                         }}
                                                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
@@ -441,7 +441,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                                 display: 'inline-flex', alignItems: 'center',
                                                                 background: 'none', border: '1px dashed rgba(255,255,255,0.1)',
                                                                 borderRadius: '6px', padding: '3px 8px',
-                                                                color: '#666', fontSize: '13px', cursor: 'pointer',
+                                                                color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
                                                                 transition: 'all 0.15s'
                                                             }}
                                                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'; e.currentTarget.style.color = '#FFD700'; }}
@@ -468,7 +468,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                         style={{
                                                             padding: '4px 6px', borderRadius: '6px',
                                                             background: 'none', border: 'none',
-                                                            color: '#555', cursor: 'pointer', transition: 'all 0.15s'
+                                                            color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s'
                                                         }}
                                                         onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.color = '#555'; }}
@@ -485,7 +485,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                             {filteredGroups.length === 0 && !loading && (
                                 <div style={{
                                     textAlign: 'center', padding: '48px 0',
-                                    color: '#666', fontSize: '14px'
+                                    color: 'var(--text-secondary)', fontSize: '14px'
                                 }}>
                                     {searchQuery ? t('synonym.no_match') : t('synonym.empty')}
                                 </div>

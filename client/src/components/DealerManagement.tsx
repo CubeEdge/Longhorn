@@ -397,7 +397,7 @@ const DealerManagement: React.FC = () => {
                                     flex: 1,
                                     background: 'transparent',
                                     border: 'none',
-                                    color: 'white',
+                                    color: 'var(--text-main)',
                                     fontSize: '0.95rem',
                                     outline: 'none',
                                     padding: '0 8px'
@@ -703,7 +703,7 @@ const DealerManagement: React.FC = () => {
                     disabled={page === 1}
                     onClick={() => setPage(Math.max(1, page - 1))}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
                 >
                     {t('common.prev') || 'Prev'}
                 </button>
@@ -713,7 +713,7 @@ const DealerManagement: React.FC = () => {
                 <button
                     onClick={() => setPage(page + 1)}
                     className="btn-secondary"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}
                 >
                     {t('common.next') || 'Next'}
                 </button>

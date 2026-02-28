@@ -223,7 +223,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             fontSize: '1.5rem',
                             fontWeight: 700,
                             margin: 0,
-                            color: '#FFFFFF'
+                            color: 'var(--text-main)'
                         }}>
                             {t('modal.select_destination')}
                         </h2>
@@ -248,7 +248,7 @@ const FolderTreeSelector: React.FC<Props & { username?: string }> = ({ token, cu
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: isProcessing ? 'not-allowed' : 'pointer',
-                            color: '#fff',
+                            color: 'var(--text-main)',
                             transition: 'background 0.2s',
                             opacity: isProcessing ? 0.5 : 1
                         }}

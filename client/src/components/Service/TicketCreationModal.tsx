@@ -193,7 +193,7 @@ const TicketCreationModal: React.FC = () => {
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '10px',
         padding: '0 16px',
-        color: 'white',
+        color: 'var(--text-main)',
         fontSize: '14px',
         outline: 'none'
     };
@@ -252,7 +252,7 @@ const TicketCreationModal: React.FC = () => {
                             {renderTypeIcon()}
                         </div>
                         <div>
-                            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'white', margin: 0 }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>
                                 {ticketType === 'Inquiry' ? t('ticket.create.inquiry') :
                                     ticketType === 'RMA' ? t('ticket.create.rma') :
                                         t('ticket.create.dealerrepair')}

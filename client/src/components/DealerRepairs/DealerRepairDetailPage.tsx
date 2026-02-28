@@ -451,7 +451,7 @@ const DealerRepairDetailPage: React.FC = () => {
                                 <Package size={14} /> {t('dealer_repair.parts_used')} ({repair.parts_used?.length || 0})
                             </div>
                             {repair.parts_used && repair.parts_used.length > 0 ? (
-                                <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: '#ccc' }}>
+                                <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: 'var(--text-secondary)' }}>
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>
                                             <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_name')}</th>

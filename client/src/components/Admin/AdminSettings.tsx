@@ -1674,7 +1674,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     padding: 10px;
                     background: rgba(255,255,255,0.05);
                     border: 1px dashed rgba(255,255,255,0.2);
-                    color: white;
+                    color: var(--text-main);
                     border-radius: 8px;
                     font-size: 0.85rem;
                     display: flex;
@@ -1688,7 +1688,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 .edit-name-input {
                     background: transparent;
                     border: 1px solid transparent;
-                    color: white;
+                    color: var(--text-main);
                     font-size: 1.4rem;
                     font-weight: 600;
                     padding: 4px 8px;
@@ -1729,11 +1729,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     backdrop-filter: blur(10px);
                 }
                 .setting-card-mini { display: flex; align-items: center; justify-content: space-between; padding: 8px; opacity: 0.7; }
-                .setting-label { font-weight: 600; color: white; margin-bottom: 2px; }
+                .setting-label { font-weight: 600; color: var(--text-main); margin-bottom: 2px; }
                 .setting-desc { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
                 .setting-field { margin-bottom: 12px; }
                 .setting-field label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
-                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: white; padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+                .text-input { width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
                 .text-input:focus { border-color: #FFD700; }
                 .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 16px 0; }
             `}</style>

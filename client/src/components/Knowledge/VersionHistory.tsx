@@ -213,7 +213,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                         <ChevronLeft size={20} />
                     </button>
                     <History size={18} color="#FFD700" />
-                    <h3 style={{ margin: 0, color: '#fff', fontSize: '16px' }}>版本历史</h3>
+                    <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '16px' }}>版本历史</h3>
                 </div>
 
                 {/* Version List */}
@@ -447,7 +447,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                             ) : (
                                 <XCircle size={18} color="#fff" />
                             )}
-                            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 500 }}>
+                            <span style={{ color: 'var(--text-main)', fontSize: '14px', fontWeight: 500 }}>
                                 {toast.message}
                             </span>
                         </motion.div>

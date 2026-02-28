@@ -99,7 +99,7 @@ export const SearchPage: React.FC = () => {
                             border: '2px solid var(--glass-border)',
                             borderRadius: '10px',
                             background: 'var(--glass-bg)',
-                            color: '#fff',
+                            color: 'var(--text-main)',
                             outline: 'none'
                         }}
                         onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
@@ -129,7 +129,7 @@ export const SearchPage: React.FC = () => {
                             background: showFilters ? 'rgba(255, 210, 0, 0.2)' : 'var(--glass-bg)',
                             border: '2px solid var(--glass-border)',
                             borderRadius: '10px',
-                            color: '#fff',
+                            color: 'var(--text-main)',
                             cursor: 'pointer'
                         }}
                     >

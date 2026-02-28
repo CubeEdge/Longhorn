@@ -257,7 +257,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                                     display: 'flex', alignItems: 'center', gap: '6px',
                                     background: 'rgba(255,255,255,0.1)',
                                     border: 'none',
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     padding: '8px 16px',
                                     borderRadius: '8px',
                                     cursor: 'pointer'

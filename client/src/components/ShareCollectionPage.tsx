@@ -248,7 +248,7 @@ const ShareCollectionPage: React.FC = () => {
                     background: var(--bg-input);
                     border: 1px solid var(--border-color);
                     border-radius: 8px;
-                    color: white;
+                    color: var(--text-main);
                     margin-bottom: 16px;
                     font-size: 1rem;
                 }

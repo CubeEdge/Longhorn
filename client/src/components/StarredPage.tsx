@@ -170,7 +170,7 @@ export const StarredPage: React.FC = () => {
 
         // Simple fallback
         return (
-            <div style={{ textAlign: 'center', color: '#fff', padding: 40 }}>
+            <div style={{ textAlign: 'center', color: 'var(--text-main)', padding: 40 }}>
                 <File size={64} style={{ opacity: 0.5, marginBottom: 20 }} />
                 <h3>{t('starred.cannot_preview')}</h3>
                 <p>{t('starred.download_to_view')}</p>
@@ -295,7 +295,7 @@ export const StarredPage: React.FC = () => {
                     background: 'rgba(32, 32, 32, 0.95)',
                     backdropFilter: 'blur(16px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
+                    color: 'var(--text-main)',
                     padding: '12px 24px',
                     borderRadius: '16px',
                     marginBottom: 20,
@@ -306,7 +306,7 @@ export const StarredPage: React.FC = () => {
                     animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                        <button onClick={() => setSelectedIds([])} className="btn-icon-only" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-main)' }}>
                             <X size={18} />
                         </button>
                         <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('browser.selected')}<span style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>{selectedIds.length}</span>{t('browser.items_count')}</span>
@@ -316,7 +316,7 @@ export const StarredPage: React.FC = () => {
                             onClick={bulkUnstar}
                             style={{
                                 background: 'rgba(255, 255, 255, 0.1)',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 padding: '8px 16px',
                                 borderRadius: '10px',
@@ -498,7 +498,7 @@ export const StarredPage: React.FC = () => {
                 <div className="preview-overlay" onClick={() => setPreviewFile(null)}>
                     <div className="preview-header" onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><X size={24} /></button>
+                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
                             <span style={{ fontWeight: 600 }}>{getFileName(previewFile.file_path || '')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 12 }}>
@@ -510,7 +510,7 @@ export const StarredPage: React.FC = () => {
                     <div className="preview-content">{renderPreviewContent(previewFile)}</div>
 
                     <div className="preview-actions">
-                        <div className="hint" style={{ color: 'white', opacity: 0.6 }}>
+                        <div className="hint" style={{ color: 'var(--text-main)', opacity: 0.6 }}>
                             {formatSize(previewFile.size || 0)} • {t('browser.uploader_label')} {previewFile.uploader || 'unknown'} • {t('browser.access_label')} {previewFile.accessCount || 0}
                         </div>
                     </div>

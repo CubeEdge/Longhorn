@@ -95,7 +95,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                     <div style={{
                         fontSize: '13px',
                         fontWeight: 600,
-                        color: '#fff',
+                        color: 'var(--text-main)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
@@ -104,14 +104,14 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                     </div>
                     <div style={{
                         fontSize: '11px',
-                        color: '#666',
+                        color: 'var(--text-secondary)',
                         marginTop: '2px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px'
                     }}>
                         <span>{ticketNumber}</span>
-                        <span style={{ color: '#444' }}>·</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>·</span>
                         <span style={{ color: config.color }}>{config.label}</span>
                     </div>
                 </div>
@@ -174,7 +174,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                 </div>
                 <div style={{
                     fontSize: '12px',
-                    color: '#666',
+                    color: 'var(--text-secondary)',
                     fontFamily: 'monospace'
                 }}>
                     {ticketNumber}
@@ -184,7 +184,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             <div style={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#fff',
+                color: 'var(--text-main)',
                 lineHeight: '1.4'
             }}>
                 {title}
@@ -197,11 +197,11 @@ export const TicketCard: React.FC<TicketCardProps> = ({
                 marginTop: '4px'
             }}>
                 {productModel && (
-                    <span style={{ fontSize: '12px', color: '#888' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {productModel}
                     </span>
                 )}
-                <span style={{ color: '#444' }}>·</span>
+                <span style={{ color: 'var(--text-secondary)' }}>·</span>
                 <span style={{
                     fontSize: '12px',
                     color: status === 'Closed' || status === 'Resolved' ? '#10B981' : '#888'

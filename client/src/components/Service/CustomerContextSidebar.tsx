@@ -156,7 +156,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     if (loading) {
         return (
             <div style={sidebarStyle}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
                     <div className="loading-spinner" style={{ width: 24, height: 24 }} />
                 </div>
             </div>
@@ -184,7 +184,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 {onClose && (
                     <button
                         onClick={onClose}
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#666', padding: 4 }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}
                     >
                         <X size={18} />
                     </button>
@@ -222,7 +222,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             {dealerId && <ChevronRight size={14} style={{ color: 'rgba(255, 215, 0, 0.5)' }} />}
                         </div>
 
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
                             {dealerName || '未知经销商'}
                         </div>
 
@@ -274,7 +274,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 style={{
                                     fontSize: '1rem',
                                     fontWeight: 700,
-                                    color: '#fff',
+                                    color: 'var(--text-main)',
                                     marginBottom: '4px'
                                 }}
                             >
@@ -432,7 +432,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                         {/* 设备型号和SN */}
                         <div style={{ marginBottom: '12px' }}>
-                            <div style={{ fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
                                 {data.device.model_name}
                             </div>
                             <div style={{
@@ -474,7 +474,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                             <div>
                                 <div style={labelStyle}>固件版本</div>
-                                <div style={{ fontSize: '0.85rem', color: '#fff' }}>{data.device.firmware_version || '-'}</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.firmware_version || '-'}</div>
                             </div>
                             <div>
                                 <div style={labelStyle}>保修状态</div>
@@ -488,7 +488,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             </div>
                             <div style={{ gridColumn: 'span 2' }}>
                                 <div style={labelStyle}>购买日期</div>
-                                <div style={{ fontSize: '0.85rem', color: '#fff' }}>{data.device.purchase_date || '-'}</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.purchase_date || '-'}</div>
                             </div>
                         </div>
 
@@ -524,7 +524,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center'
                                             }}>
-                                                <span style={{ fontSize: '0.8rem', color: '#ddd' }}>{part.part_name}</span>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{part.part_name}</span>
                                                 <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
                                                     {part.part_number}
                                                 </span>

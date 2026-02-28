@@ -603,7 +603,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 .tiptap-editor-content h1 {
                     font-size: 28px;
                     font-weight: 700;
-                    color: #fff;
+                    color: var(--text-main);
                     margin: 24px 0 16px;
                     padding-bottom: 12px;
                     border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -611,7 +611,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 .tiptap-editor-content h2 {
                     font-size: 22px;
                     font-weight: 600;
-                    color: #fff;
+                    color: var(--text-main);
                     margin: 20px 0 12px;
                 }
                 .tiptap-editor-content h3 {

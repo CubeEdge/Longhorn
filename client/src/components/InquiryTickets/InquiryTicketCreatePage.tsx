@@ -245,7 +245,7 @@ const InquiryTicketCreatePage: React.FC = () => {
                     </div>
                     <button
                         onClick={() => setShowAi(!showAi)}
-                        style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.9rem' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.9rem' }}
                     >
                         {showAi ? 'Hide' : 'Show'}
                     </button>
@@ -253,7 +253,7 @@ const InquiryTicketCreatePage: React.FC = () => {
 
                 {showAi && (
                     <>
-                        <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#aaa' }}>
+                        <p style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                             Paste email content, chat logs, or issue descriptions here to auto-fill the form.
                         </p>
                         <textarea
@@ -267,7 +267,7 @@ const InquiryTicketCreatePage: React.FC = () => {
                                 border: '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '8px',
                                 padding: '12px',
-                                color: '#eee',
+                                color: 'var(--text-main)',
                                 marginBottom: '12px',
                                 fontSize: '0.9rem'
                             }}
@@ -294,8 +294,8 @@ const InquiryTicketCreatePage: React.FC = () => {
                                             borderRadius: '6px',
                                             borderLeft: '3px solid #FFD700'
                                         }}>
-                                            <span style={{ color: '#888' }}>{s.field}:</span>{' '}
-                                            <span style={{ color: '#eee', fontWeight: 500 }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>{s.field}:</span>{' '}
+                                            <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>
                                                 {s.value.length > 30 ? s.value.substring(0, 30) + '...' : s.value}
                                             </span>
                                             {s.confidence && (
@@ -311,7 +311,7 @@ const InquiryTicketCreatePage: React.FC = () => {
                             <button
                                 onClick={() => setAiInput('')}
                                 className="btn btn-ghost btn-sm"
-                                style={{ color: '#888' }}
+                                style={{ color: 'var(--text-secondary)' }}
                                 disabled={aiLoading}
                             >
                                 <RotateCcw size={14} style={{ marginRight: '6px' }} />

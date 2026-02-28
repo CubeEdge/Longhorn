@@ -97,7 +97,7 @@ export const ConfirmDialog: React.FC = () => {
                         margin: 0,
                         fontSize: '18px',
                         fontWeight: 600,
-                        color: '#fff',
+                        color: 'var(--text-main)',
                         letterSpacing: '-0.3px'
                     }}>
                         {title || t('dialog.confirm_title') || 'Confirm Action'}

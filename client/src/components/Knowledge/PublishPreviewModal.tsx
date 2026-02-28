@@ -153,7 +153,7 @@ const PublishPreviewModal: React.FC<PublishPreviewModalProps> = ({
                     justifyContent: 'space-between'
                 }}>
                     <div>
-                        <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <Send size={18} color="#FFD700" />
                             发布预览确认
                         </h3>

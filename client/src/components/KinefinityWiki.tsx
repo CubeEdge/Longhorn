@@ -5053,7 +5053,7 @@ ${contextTickets.map((ticket: any) => {
                                             flexDirection: 'column',
                                             gap: '12px'
                                         }}>
-                                            <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }}>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600 }}>
                                                 {t('wiki.toc.tips_title')}
                                             </div>
                                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
