@@ -1,11 +1,42 @@
 # Longhorn 开发任务 backlog
 
-> **最后更新**: 2026-02-27
-> **版本**: 12.1.78
+> **最后更新**: 2026-02-28
+> **版本**: 12.2.1
 
 ---
 
 ## 进行中任务
+
+### [SVC-P2] Service P2 架构升级 (已完成 100%)
+**Phase 2.5: 导航与集成** ✅
+- [x] 侧边栏分组重构：MANAGEMENT/WORKSPACE/OPERATIONS/KNOWLEDGE/ARCHIVES
+- [x] 角色统一：Manager→Lead, Staff→Member (数据库迁移)
+- [x] Files 入口修复：Lead 角色现在可访问 Files 模块
+- [x] 版本发布：v12.2.1 已部署至 mini 服务器
+**Phase 2.1: 数据基础** ✅
+- [x] 数据库迁移：020_p2_unified_tickets.sql, 021_migrate_tickets_data.js
+- [x] SLA 引擎：sla_service.js (时长矩阵/状态检测/超时计数)
+- [x] 保修计算引擎：warranty_service.js
+- [x] 向后兼容 API 适配层：legacy-adapter.js
+
+**Phase 2.2: 权限与协作** ✅
+- [x] 穿透式权限中间件：middleware/permission.js
+- [x] @Mention 解析与通知：ticket-activities.js
+- [x] participants 管理 API + 活动时间轴 API
+
+**Phase 2.3: 前端重构** ✅
+- [x] Workspace 组件群：WorkspaceComponents.tsx
+- [x] 工单详情页增强：TicketDetailComponents.tsx
+- [x] Overview 仪表盘：OverviewDashboard.tsx
+- [x] View As 权限组件：ViewAsComponents.tsx
+- [x] 导航架构重构：ServiceNavigation.tsx (独立模块化导航)
+
+**Phase 2.4: 验证与调优** ✅
+- [x] 数据迁移验证：本地 43 条 / 远程 48 条
+- [x] SLA 验证脚本：scripts/validate_sla.js
+- [x] 权限场景测试：scripts/test_view_as.js (93.8% 通过率)
+- [x] 性能优化索引
+
 ### [WIKI-006] 知识库检索与翻译精度优化 (待开始)
 - [ ] 针对长篇技术文档的章节化摘要生成
 - [ ] 优化 PDF 导入时的表格排版
@@ -13,6 +44,14 @@
 ---
 
 ## 📅 最近更新历史 (From 1_Backlog.md)
+
+### 2026-02-28 (P2 架构升级)
+- **Service P2 架构升级代码实施 (v12.2.0)**:
+    - **数据库层**: 创建统一工单表、活动时间轴表、通知表、序列管理表，编写数据迁移脚本
+    - **SLA 引擎**: 实现时长矩阵、状态检测、超时计数、节点切换触发
+    - **统一工单 API**: 单表多态 CRUD、工单升级转换、SLA 自动集成
+    - **通知系统**: 前后端联动，支持 SLA 超时、@Mention、指派等多种通知类型
+    - **前端组件**: 通知铃铛/面板、优先级/SLA状态/倒计时组件，全部 macOS26 毛玻璃风格
 
 ### 2026-02-27 (Session 11)
 - **Tech Hub 布局精修与样式对齐 (v12.1.78)**:

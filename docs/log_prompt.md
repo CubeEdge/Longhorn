@@ -2,6 +2,59 @@
 
 ---
 
+## 2026-02-28 12:30 (耗时: 45m)
+
+**User Prompt**:
+1. Service PRD_P2.md 表格格式优化（导航架构表、工单卡片字段表）。
+2. 侧边栏没有看到 P2 架构的菜单入口（MANAGEMENT/WORKSPACE/OPERATIONS 等分组）。
+3. Files 文件管理应用在 App Rail 中不见了。
+
+**Agent Response**:
+1. **PRD 表格优化**: 简化了两个 Markdown 表格的格式，使其更清晰易读。
+2. **角色统一**: 发现数据库角色命名不一致（Manager/Staff vs Lead/Member），统一将数据库中的 `Manager→Lead`, `Staff→Member` 迁移，消除代码与数据的语义鸿沟。
+3. **侧边栏重构**: 按 PRD P2 规范重构 Sidebar，实现动态分段结构：
+   - MANAGEMENT (Lead/Admin 可见): Overview
+   - WORKSPACE (All): My Tasks, Mentioned, Team Queue
+   - OPERATIONS (All): 咨询工单, RMA工单, 经销商维修
+   - KNOWLEDGE (All): Tech Hub
+   - ARCHIVES (Admin/Lead/Member): 渠道/客户/资产/配件
+4. **Files 权限修复**: `canAccessFilesModule` 原仅包含 Admin/Lead/Member，因角色统一后 Lead 包含原 Manager，Files 入口现已对 Lead 角色可见。
+5. **版本部署**: 递增版本至 v12.2.1，执行 `./scripts/deploy.sh` 完成远程部署。
+
+**Result**:
+侧边栏按 PRD 规范完成分组重构，Files 入口恢复，角色命名统一，v12.2.1 已上线。
+
+---
+
+## 2026-02-28 18:15 (耗时: 90m)
+
+**User Prompt**:
+Service P2 架构升级实施（代码层面），基于已完成的 P2 文档更新。
+
+**Agent Response**:
+- **Phase 1: 数据库重构**：
+    - 创建 `020_p2_unified_tickets.sql`：统一工单表 `tickets`、活动时间轴 `ticket_activities`、通知 `notifications`、序列管理 `ticket_sequences`
+    - 创建 `021_migrate_tickets_data.js`：从旧表 (inquiry_tickets/rma_tickets/dealer_repairs) 迁移数据到新统一表
+    - 更新 `apply_service_migrations.js`：支持 `.js` 迁移脚本
+- **Phase 2: 后端 API**：
+    - `sla_service.js`：SLA 引擎服务（时长矩阵、状态检测、超时计数）
+    - `routes/tickets.js`：统一工单 CRUD + 升级 API
+    - `routes/ticket-activities.js`：活动时间轴 + @Mention 处理
+    - `routes/notifications.js`：通知中心 API + 通知创建辅助函数
+    - 更新 `service/index.js`：注册新路由
+- **Phase 3: 前端界面 (macOS26 风格)**：
+    - `useNotificationStore.ts`：通知状态管理
+    - `NotificationBell.tsx`：铃铛组件 (Kine Red 未读标记)
+    - `NotificationCenter.tsx`：通知面板 (毛玻璃效果)
+    - `SlaComponents.tsx`：优先级/SLA状态/倒计时组件
+    - 集成到 `App.tsx` TopBar
+- **版本更新**：Client v12.2.0 / Server v1.6.0
+
+**Result**:
+P2 架构升级后端与前端核心组件已完成，包括统一工单表、SLA 引擎、活动时间轴、通知系统。前端构建验证通过。
+
+---
+
 ## 2026-02-27 16:44 (耗时: 23m)
 
 **User Prompt**:

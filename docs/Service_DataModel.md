@@ -1,13 +1,16 @@
 # Service 数据模型设计
 
-**版本**: 0.8.3
-**最后更新**: 2026-02-26 (Deployed v1.5.30)
+**版本**: 0.9.0 (P2 Integration)
+**最后更新**: 2026-02-28
 
-> **v0.7.1 更新**：
-> - 账户类型更新：CORPORATE → ORGANIZATION
-> - 新增经销商专属字段：dealer_level（tier1/tier2/tier3/Direct）
-> - 区分 service_tier（终端客户服务等级）和 dealer_level（经销商等级）
-> **参考来源**：A02-产品返修记录.xlsx、EAGLE知识库.xlsx、Knowledge base_Edge.xlsx、固件Knowledge Base.xlsx
+> **v0.9.0 更新 (P2 升级)**：
+> - 工单模型重构：分表设计合并为统一 tickets 表 (ticket_type 区分)
+> - 新增 SLA 引擎字段：node_entered_at, sla_due_at, sla_status, breach_counter
+> - 新增协作机制字段：current_node, participants, snooze_until
+> - 新增活动时间轴表 (ticket_activities)
+> - 新增系统通知表 (notifications)
+> - 资产表扩展 IoT 和保修计算字段
+> **参考来源**：Service PRD_P2.md v1.6, A02-产品返修记录.xlsx
 
 ---
 
@@ -176,12 +179,13 @@ FOREIGN KEY (account_id) REFERENCES accounts(id)
 
 ---
 
-### 1.2.2 账户设备关联 (account_devices)
+### 1.2.2 账户设备关联 / Installed_Base (account_devices)
 
-> **设计说明**：记录账户名下的设备资产，支持设备历史追溯（设备可能转让，但历史归属可查）。
+> **设计说明**：记录账户名下的设备资产（Installed_Base），支持设备历史追溯、IoT 数据绑定和保修计算。
+> **P2 更新**：新增 IoT 绑定字段和保修计算引擎字段，支持瀑布流保修判定逻辑。
 
 ```sql
-account_devices (账户设备关联)
+account_devices (账户设备关联 / Installed_Base)
 ├── id: SERIAL PRIMARY KEY
 ├── account_id: INT NOT NULL -- 关联账户ID
 ├── product_id: INT NOT NULL -- 关联产品ID
@@ -189,8 +193,34 @@ account_devices (账户设备关联)
 │
 ├── // 设备信息
 ├── firmware_version: VARCHAR(20) -- 当前固件版本
+├── hardware_version: VARCHAR(50) -- 硬件版本/批次
 ├── purchase_date: DATE -- 购买日期
-├── warranty_until: DATE -- 保修截止日期
+├── warranty_until: DATE -- 保修截止日期 (计算结果)
+│
+├── // IoT 绑定 (P2 新增)
+├── iot_device_id: VARCHAR(100) -- IoT 设备ID (来自 Kine App 绑定)
+├── iot_bind_time: TIMESTAMP -- IoT 绑定时间
+├── iot_data: JSON -- IoT 累计数据快照 (运行时长、快门次数等)
+│
+├── // 保修计算引擎字段 (P2 新增)
+├── warranty_source: ENUM('iot', 'invoice', 'registration', 'direct_sale', 'fallback') -- 保修依据来源
+│   -- iot: IoT 首次开机时间
+│   -- invoice: 发票日期
+│   -- registration: 用户注册日期
+│   -- direct_sale: 直销发货日期
+│   -- fallback: SN 出厂日期 + 180天
+├── warranty_start_date: DATE -- 保修起算日期
+├── warranty_duration_months: INT DEFAULT 24 -- 保修时长 (月)
+├── warranty_calculated_at: TIMESTAMP -- 保修计算时间
+│
+├── // 发票信息 (用于保修计算)
+├── invoice_date: DATE -- 发票日期
+├── invoice_number: VARCHAR(100) -- 发票号
+├── invoice_attachment_id: INT -- 发票附件ID
+│
+├── // 注册信息 (用于保修计算)
+├── registration_date: DATE -- 用户注册日期
+├── registration_source: VARCHAR(50) -- 注册来源 (Kine App / Web)
 │
 ├── // 状态
 ├── device_status: ENUM('ACTIVE', 'SOLD', 'RETIRED') DEFAULT 'ACTIVE'
@@ -199,6 +229,7 @@ account_devices (账户设备关联)
 │   -- RETIRED: 已报废
 │
 ├── // 系统字段
+├── notes: TEXT -- 备注
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
@@ -207,12 +238,21 @@ FOREIGN KEY (product_id) REFERENCES products(id)
 UNIQUE KEY (account_id, serial_number)
 ```
 
+**保修计算瀑布流逻辑**（优先级从高到低）：
+1. **IoT 首次开机** → `warranty_start_date = iot_data.first_boot`
+2. **发票日期** → `warranty_start_date = invoice_date`
+3. **用户注册日期** → `warranty_start_date = registration_date`
+4. **直销发货日期** → `warranty_start_date = direct_sale_date`
+5. **兜底逻辑** → `warranty_start_date = sn_manufacture_date + 180天`
+
 **索引**：
 - PRIMARY KEY (id)
 - INDEX idx_account (account_id)
 - INDEX idx_product (product_id)
 - INDEX idx_serial_number (serial_number)
 - INDEX idx_device_status (device_status)
+- INDEX idx_iot_device (iot_device_id)
+- INDEX idx_warranty_until (warranty_until)
 
 ---
 
@@ -283,139 +323,115 @@ users (系统用户 - 员工)
 
 ## 2. 工单模型
 
-### 2.1 咨询工单 (inquiry_tickets)
+> **P2 架构升级**：采用单表多态设计，将原 `inquiry_tickets`、`rma_tickets`、`dealer_repairs` 三表合并为统一的 `tickets` 表，通过 `ticket_type` 字段区分工单类型。
+
+### 2.1 统一工单表 (tickets)
 
 ```sql
-inquiry_tickets (咨询工单 - 系统入口)
-├── id: SERIAL PRIMARY KEY
-├── ticket_number: VARCHAR(20) UNIQUE NOT NULL -- 工单编号 (KYYMM-XXXX)
-│
-├── // 账户与联系人信息 (代客户服务模式下可选)
-├── account_id: INT -- 关联账户 (工单归属，可为空)
-├── contact_id: INT -- 关联联系人 (具体对接人，可为空)
-├── reporter_name: VARCHAR(255) -- 报告人姓名 (冗余，便于显示)
-├── dealer_id: INT -- 关联经销商 (可为空)
-│
-├── // 产品信息 (可选)
-├── product_id: INT -- 关联产品 (可为空)
-├── serial_number: VARCHAR(100) -- 序列号 (可为空)
-│
-├── // 服务内容
-├── service_type: ENUM('consultation', 'troubleshooting', 'remote_assist', 'complaint') -- 服务类型
-├── channel: ENUM('phone', 'email', 'wechat', 'enterprise_wechat') -- 沟通渠道
-├── problem_summary: VARCHAR(500) -- 问题摘要
-├── communication_log: TEXT -- 沟通记录
-├── resolution: TEXT -- 处理结果
-│
-├── // 处理信息
-├── handler_id: INT -- 处理人ID
-├── handler_name: VARCHAR(255) -- 处理人姓名
-│
-├── // 状态管理
-├── status: ENUM('in_progress', 'waiting_customer', 'resolved', 'auto_closed', 'converted') -- 状态
-├── status_changed_at: TIMESTAMP -- 最近状态变更时间
-├── waiting_customer_since: TIMESTAMP -- 进入待反馈状态的时间
-│
-├── // 时间追踪
-├── first_response_at: TIMESTAMP -- 首次响应时间
-├── first_response_minutes: INT -- 首次响应时长(分钟)
-├── total_duration_minutes: INT -- 总服务时长(分钟)
-├── effective_duration_minutes: INT -- 有效处理时长(分钟)
-├── waiting_duration_minutes: INT -- 等待客户反馈累计时长(分钟)
-│
-├── // 关联
-├── related_ticket_id: INT -- 升级后的工单ID
-├── related_ticket_type: ENUM('rma', 'dealer_repair') -- 关联工单类型
-├── reopened_from_id: INT -- 如是重新打开，原咨询工单ID
-│
-├── // 自动关闭提醒
-├── auto_close_reminder_sent: BOOLEAN DEFAULT false -- 是否已发送关闭提醒
-├── auto_close_at: TIMESTAMP -- 预计自动关闭时间
-│
-├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-
-FOREIGN KEY (account_id) REFERENCES accounts(id)
-FOREIGN KEY (contact_id) REFERENCES contacts(id)
-FOREIGN KEY (dealer_id) REFERENCES accounts(id) -- 经销商也是账户的一种
-FOREIGN KEY (product_id) REFERENCES products(id)
-FOREIGN KEY (handler_id) REFERENCES users(id)
-```
-
-**索引**：
-- PRIMARY KEY (id)
-- UNIQUE KEY (ticket_number)
-- INDEX idx_account (account_id)
-- INDEX idx_contact (contact_id)
-- INDEX idx_dealer (dealer_id)
-- INDEX idx_handler (handler_id)
-- INDEX idx_status (status)
-- INDEX idx_created_at (created_at)
-
----
-
-### 2.2 工单实体 (tickets)
-
-```sql
-tickets (工单/RMA返厂单/经销商维修单)
+tickets (统一工单表 - 单表多态设计)
 ├── id: SERIAL PRIMARY KEY
 ├── ticket_number: VARCHAR(30) UNIQUE NOT NULL -- 工单编号
-│   -- 格式：RMA-{C}-YYMM-XXXX 或 SVC-D-YYMM-XXXX
-│   -- {C} = D(Dealer) 或 C(Customer)
+│   -- 格式规范：
+│   -- Inquiry: KYYMM-XXXX (如 K2602-0001)
+│   -- RMA:     RMA-{C/D}-YYMM-XXXX (C=Customer, D=Dealer)
+│   -- SVC:     SVC-D-YYMM-XXXX (经销商维修)
 │
-├── ticket_type: ENUM('rma', 'dealer_repair') -- 工单类型
+├── // ===== 工单类型与状态机 (P2 核心) =====
+├── ticket_type: ENUM('inquiry', 'rma', 'svc') NOT NULL -- 工单类型
+│   -- inquiry: 咨询工单（入口）
+│   -- rma: RMA 返厂单
+│   -- svc: 经销商现场维修单
 │
-├── // 问题分类
+├── current_node: VARCHAR(50) -- 当前流程节点 (状态机)
+│   -- inquiry 流程: draft → in_progress → waiting_customer → resolved → auto_closed → converted
+│   -- rma 流程: submitted → ms_review → op_receiving → op_diagnosing → op_repairing → op_qa → ms_closing → closed
+│   -- svc 流程: submitted → ge_review → dl_receiving → dl_repairing → dl_qa → ge_closing → closed
+│
+├── status: ENUM('open', 'in_progress', 'waiting', 'resolved', 'closed', 'cancelled') -- 汇总状态
+│   -- 用于看板筛选，由 current_node 映射
+├── status_changed_at: TIMESTAMP -- 最近状态变更时间
+│
+├── // ===== SLA 引擎字段 (P2 新增) =====
+├── priority: ENUM('P0', 'P1', 'P2') DEFAULT 'P2' -- 优先级
+│   -- P0: 紧急 (首响2h, 方案4h, 报价24h, 完结<36h)
+│   -- P1: 高   (首响8h, 方案24h, 报价48h, 完结3工作日)
+│   -- P2: 常规 (首响24h, 方案48h, 报价5天, 完结7工作日)
+├── node_entered_at: TIMESTAMP -- 进入当前节点时间
+├── sla_due_at: TIMESTAMP -- 当前节点 SLA 截止时间
+├── sla_status: ENUM('normal', 'warning', 'breached') DEFAULT 'normal' -- SLA 状态
+│   -- normal: 正常
+│   -- warning: 即将超时 (剩余 < 25%)
+│   -- breached: 已超时
+├── breach_counter: INT DEFAULT 0 -- 累计超时次数
+│
+├── // ===== 协作机制 (P2 新增) =====
+├── participants: JSON -- 参与者数组 [{user_id, role, added_at, added_by}]
+│   -- 被 @Mention 或主动加入的用户
+├── snooze_until: TIMESTAMP -- 贪睡模式截止时间
+│
+├── // ===== 账户与联系人 =====
+├── account_id: INT -- 关联账户 (工单归属)
+├── contact_id: INT -- 关联联系人 (具体对接人)
+├── dealer_id: INT -- 关联经销商 (经销商也是账户)
+├── reporter_name: VARCHAR(255) -- 报告人姓名 (冗余显示)
+├── reporter_type: ENUM('customer', 'dealer', 'internal') -- 反馈人类型
+├── region: VARCHAR(100) -- 地区
+│
+├── // ===== 产品信息 =====
+├── product_id: INT -- 关联产品 (inquiry 可为空)
+├── serial_number: VARCHAR(100) -- 序列号 (inquiry 可为空)
+├── firmware_version: VARCHAR(20) -- 固件版本
+├── hardware_version: VARCHAR(50) -- 硬件版本/批次
+│
+├── // ===== 问题分类 =====
 ├── issue_type: ENUM('production', 'shipping', 'customer_return', 'internal_sample') -- 来源类型
 ├── issue_category: VARCHAR(100) -- 大类 (稳定性/素材/监看/SSD/音频/兼容性/时码/硬件结构)
 ├── issue_subcategory: VARCHAR(100) -- 小类
 ├── severity: ENUM('1', '2', '3') -- 等级
 │
-├── // 产品信息
-├── product_id: INT NOT NULL -- 关联产品
-├── serial_number: VARCHAR(100) NOT NULL -- 序列号
-├── firmware_version: VARCHAR(20) -- 固件版本
-├── hardware_version: VARCHAR(50) -- 硬件版本/批次
+├── // ===== 咨询工单特有字段 =====
+├── service_type: ENUM('consultation', 'troubleshooting', 'remote_assist', 'complaint') -- 服务类型
+├── channel: ENUM('phone', 'email', 'wechat', 'enterprise_wechat') -- 沟通渠道
+├── problem_summary: VARCHAR(500) -- 问题摘要
+├── communication_log: TEXT -- 沟通记录
 │
-├── // 问题描述 (市场部填写)
+├── // ===== 问题描述 (MS 填写) =====
 ├── problem_description: TEXT -- 问题描述
 ├── solution_for_customer: TEXT -- 解决方案(对客户)
 ├── is_warranty: BOOLEAN -- 是否在保
 │
-├── // 维修信息 (生产部填写)
+├── // ===== 维修信息 (OP/DL 填写) =====
 ├── repair_content: TEXT -- 维修内容
 ├── problem_analysis: TEXT -- 问题分析
+├── resolution: TEXT -- 处理结果/解决方案
 │
-├── // 关联人员
-├── reporter_name: VARCHAR(255) -- 反馈人姓名
-├── reporter_type: ENUM('customer', 'dealer', 'internal') -- 反馈人类型
-├── account_id: INT -- 关联账户 (工单归属)
-├── contact_id: INT -- 关联联系人 (具体对接人)
-├── dealer_id: INT -- 关联经销商
-├── region: VARCHAR(100) -- 地区
-│
-├── // 内部负责人
-├── submitted_by: INT -- 提交人(市场部)
-├── assigned_to: INT -- 当前处理人(生产部)
+├── // ===== 内部负责人 =====
+├── submitted_by: INT -- 提交人 (MS)
+├── assigned_to: INT -- 当前处理人 (OP/DL)
 ├── created_by: INT -- 创建人
 │
-├── // 收款信息
-├── payment_channel: ENUM('wechat', 'alipay', 'bank_transfer') -- 收款渠道
+├── // ===== 收款信息 =====
+├── payment_channel: ENUM('wechat', 'alipay', 'bank_transfer', 'paypal') -- 收款渠道
 ├── payment_amount: DECIMAL(10,2) -- 收款金额
 ├── payment_date: DATE -- 收款日期
 │
-├── // 状态与时间
-├── status: ENUM('pending', 'in_progress', 'repaired', 'waiting_payment', 'closed') -- 状态
+├── // ===== 时间追踪 =====
 ├── feedback_date: DATE -- 反馈时间
 ├── ship_date: DATE -- 发货日期 (原始发货)
 ├── received_date: DATE -- 收货日期 (返修收货)
 ├── completed_date: DATE -- 完成日期
+├── first_response_at: TIMESTAMP -- 首次响应时间
+├── first_response_minutes: INT -- 首次响应时长(分钟)
+├── waiting_customer_since: TIMESTAMP -- 进入待反馈状态的时间
 │
-├── // 外部链接
-├── external_link: TEXT -- RMA工单链接
+├── // ===== 自动关闭 (inquiry 特有) =====
+├── auto_close_reminder_sent: BOOLEAN DEFAULT false -- 是否已发送关闭提醒
+├── auto_close_at: TIMESTAMP -- 预计自动关闭时间
 │
-├── // 关联咨询工单
-├── inquiry_ticket_id: INT -- 关联的咨询工单ID
+├── // ===== 工单关联 =====
+├── parent_ticket_id: INT -- 父工单ID (inquiry → rma/svc 升级时设置)
+├── reopened_from_id: INT -- 重新打开来源工单ID
+├── external_link: TEXT -- 外部工单链接
 │
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -423,35 +439,210 @@ tickets (工单/RMA返厂单/经销商维修单)
 FOREIGN KEY (product_id) REFERENCES products(id)
 FOREIGN KEY (account_id) REFERENCES accounts(id)
 FOREIGN KEY (contact_id) REFERENCES contacts(id)
-FOREIGN KEY (dealer_id) REFERENCES accounts(id) -- 经销商也是账户的一种
+FOREIGN KEY (dealer_id) REFERENCES accounts(id)
 FOREIGN KEY (submitted_by) REFERENCES users(id)
 FOREIGN KEY (assigned_to) REFERENCES users(id)
 FOREIGN KEY (created_by) REFERENCES users(id)
-FOREIGN KEY (inquiry_ticket_id) REFERENCES inquiry_tickets(id)
+FOREIGN KEY (parent_ticket_id) REFERENCES tickets(id)
+FOREIGN KEY (reopened_from_id) REFERENCES tickets(id)
 ```
+
+**SLA 时长矩阵**（单位：工作时间）：
+
+| 优先级 | 首次响应 | 方案输出 | 报价输出 | 工单完结 |
+|--------|----------|----------|----------|----------|
+| P0     | 2h       | 4h       | 24h      | < 36h    |
+| P1     | 8h       | 24h      | 48h      | 3 工作日 |
+| P2     | 24h      | 48h      | 5 天     | 7 工作日 |
+
+**状态机节点映射**：
+
+| current_node       | status      | 说明 |
+|--------------------|-------------|------|
+| draft              | open        | 草稿 |
+| in_progress        | in_progress | 处理中 |
+| waiting_customer   | waiting     | 等待客户反馈 |
+| submitted          | open        | 已提交待审核 |
+| ms_review/ge_review| in_progress | MS/GE 审核中 |
+| op_*/dl_*          | in_progress | OP/DL 处理中 |
+| ms_closing/ge_closing | in_progress | 结案审核 |
+| resolved           | resolved    | 已解决 |
+| closed             | closed      | 已关闭 |
+| auto_closed        | closed      | 自动关闭 |
+| cancelled          | cancelled   | 已取消 |
 
 **索引**：
 - PRIMARY KEY (id)
 - UNIQUE KEY (ticket_number)
 - INDEX idx_ticket_type (ticket_type)
+- INDEX idx_current_node (current_node)
+- INDEX idx_status (status)
+- INDEX idx_priority (priority)
+- INDEX idx_sla_status (sla_status)
 - INDEX idx_product (product_id)
 - INDEX idx_account (account_id)
 - INDEX idx_contact (contact_id)
 - INDEX idx_dealer (dealer_id)
 - INDEX idx_serial_number (serial_number)
-- INDEX idx_status (status)
+- INDEX idx_assigned_to (assigned_to)
+- INDEX idx_submitted_by (submitted_by)
 - INDEX idx_created_at (created_at)
-- INDEX idx_inquiry (inquiry_ticket_id)
+- INDEX idx_parent_ticket (parent_ticket_id)
+- INDEX idx_sla_due (sla_due_at)
 
 ---
 
-### 2.3 工单附件 (issue_attachments)
+### 2.2 工单活动时间轴 (ticket_activities) [P2 新增]
+
+> **设计说明**：记录工单生命周期内的所有事件，包括状态变更、评论、附件上传、@Mention 等。
+> 支持 Commercial View (MS) 和 Technician View (OP/RD) 的分级视图。
+
+```sql
+ticket_activities (工单活动时间轴)
+├── id: SERIAL PRIMARY KEY
+├── ticket_id: INT NOT NULL -- 关联工单
+│
+├── // 活动类型
+├── activity_type: ENUM(
+│     'status_change',      -- 状态变更
+│     'comment',             -- 评论/备注
+│     'internal_note',       -- 内部备注 (Technician View 可见)
+│     'attachment',          -- 附件上传
+│     'mention',             -- @提及
+│     'participant_added',   -- 新增参与者
+│     'assignment_change',   -- 指派变更
+│     'priority_change',     -- 优先级变更
+│     'sla_breach',          -- SLA 超时
+│     'field_update',        -- 字段更新
+│     'ticket_linked',       -- 工单关联
+│     'system_event'         -- 系统事件 (自动关闭等)
+│   ) NOT NULL
+│
+├── // 活动内容
+├── content: TEXT -- 活动内容/评论文本
+├── content_html: TEXT -- HTML 格式内容 (支持富文本)
+├── metadata: JSON -- 活动元数据
+│   -- status_change: {from_node, to_node, from_status, to_status}
+│   -- mention: {mentioned_users: [{user_id, name}]}
+│   -- attachment: {file_id, file_name, file_type, file_size}
+│   -- priority_change: {from_priority, to_priority}
+│   -- assignment_change: {from_user_id, to_user_id}
+│   -- field_update: {field_name, old_value, new_value}
+│
+├── // 可见性控制
+├── visibility: ENUM('all', 'internal', 'technician') DEFAULT 'all'
+│   -- all: 所有人可见 (Commercial View)
+│   -- internal: 仅内部员工可见
+│   -- technician: Technician View (仅 OP/RD 可见)
+│
+├── // 操作人
+├── actor_id: INT -- 操作人 ID (系统事件时为空)
+├── actor_name: VARCHAR(255) -- 操作人姓名 (冗余)
+├── actor_role: VARCHAR(50) -- 操作人角色 (MS/OP/RD/GE/DL)
+│
+├── // 系统字段
+├── is_edited: BOOLEAN DEFAULT false -- 是否被编辑过
+├── edited_at: TIMESTAMP -- 编辑时间
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+FOREIGN KEY (actor_id) REFERENCES users(id)
+```
+
+**视图分级说明**：
+- **Commercial View (MS)**：显示 `visibility = 'all'` 的活动，用于与客户/经销商沟通
+- **Technician View (OP/RD)**：显示 `visibility IN ('all', 'internal', 'technician')` 的活动，包含技术细节
+
+**索引**：
+- PRIMARY KEY (id)
+- INDEX idx_ticket (ticket_id)
+- INDEX idx_activity_type (activity_type)
+- INDEX idx_visibility (visibility)
+- INDEX idx_actor (actor_id)
+- INDEX idx_created_at (created_at)
+
+---
+
+### 2.3 系统通知 (notifications) [P2 新增]
+
+> **设计说明**：系统内推送通知，参考 macOS 26 通知中心风格。
+> 支持 SLA 预警、@Mention、工单状态变更、系统公告等多种通知类型。
+
+```sql
+notifications (系统通知)
+├── id: SERIAL PRIMARY KEY
+├── recipient_id: INT NOT NULL -- 接收人 ID
+│
+├── // 通知类型
+├── notification_type: ENUM(
+│     'mention',           -- @提及
+│     'assignment',        -- 工单指派
+│     'status_change',     -- 工单状态变更
+│     'sla_warning',       -- SLA 即将超时预警
+│     'sla_breach',        -- SLA 超时
+│     'new_comment',       -- 新评论
+│     'participant_added', -- 被加入参与者
+│     'snooze_expired',    -- 贪睡到期
+│     'system_announce'    -- 系统公告
+│   ) NOT NULL
+│
+├── // 通知内容
+├── title: VARCHAR(255) NOT NULL -- 通知标题
+├── content: TEXT -- 通知内容
+├── icon: VARCHAR(50) -- 图标标识 (ticket/warning/info/success)
+│
+├── // 关联实体
+├── related_type: ENUM('ticket', 'system') -- 关联实体类型
+├── related_id: INT -- 关联实体 ID (ticket_id 等)
+├── action_url: VARCHAR(500) -- 点击跳转 URL
+│
+├── // 通知元数据
+├── metadata: JSON -- 额外信息
+│   -- mention: {ticket_number, mentioned_by, activity_id}
+│   -- sla_warning: {ticket_number, sla_due_at, remaining_time}
+│   -- assignment: {ticket_number, assigned_by}
+│
+├── // 状态
+├── is_read: BOOLEAN DEFAULT false -- 是否已读
+├── read_at: TIMESTAMP -- 阅读时间
+├── is_archived: BOOLEAN DEFAULT false -- 是否已归档
+│
+├── // 系统字段
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+```
+
+**通知触发规则**：
+| 事件 | 接收人 | notification_type |
+|------|--------|-------------------|
+| @Mention 某用户 | 被提及用户 | mention |
+| 工单指派给某人 | 被指派人 | assignment |
+| SLA 剩余时间 < 25% | assigned_to + participants | sla_warning |
+| SLA 超时 | assigned_to + MS 管理层 | sla_breach |
+| 工单状态变更 | participants | status_change |
+| 新评论 | 工单相关人 | new_comment |
+| 贪睡到期 | snooze 设置者 | snooze_expired |
+
+**索引**：
+- PRIMARY KEY (id)
+- INDEX idx_recipient (recipient_id)
+- INDEX idx_notification_type (notification_type)
+- INDEX idx_is_read (is_read)
+- INDEX idx_related (related_type, related_id)
+- INDEX idx_created_at (created_at)
+
+---
+
+### 2.4 工单附件 (issue_attachments)
+
+> **P2 更新**：简化关联结构，统一关联 tickets 表。
 
 ```sql
 issue_attachments (工单附件)
 ├── id: SERIAL PRIMARY KEY
-├── issue_id: INT NOT NULL -- 关联工单 (可以是 inquiry_tickets 或 tickets)
-├── issue_type: ENUM('inquiry', 'ticket') -- 工单类型
+├── ticket_id: INT NOT NULL -- 关联工单 (tickets 统一表)
+├── activity_id: INT -- 关联活动 (如果是通过评论上传)
 ├── file_name: VARCHAR(255) NOT NULL -- 文件名
 ├── file_path: VARCHAR(500) -- 文件路径
 ├── file_url: TEXT -- 文件URL
@@ -461,20 +652,26 @@ issue_attachments (工单附件)
 ├── uploaded_by: INT -- 上传人
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
+FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+FOREIGN KEY (activity_id) REFERENCES ticket_activities(id)
 FOREIGN KEY (uploaded_by) REFERENCES users(id)
 ```
 
 **索引**：
 - PRIMARY KEY (id)
-- INDEX idx_issue (issue_id, issue_type)
+- INDEX idx_ticket (ticket_id)
+- INDEX idx_activity (activity_id)
 - INDEX idx_uploaded_by (uploaded_by)
 
 ---
 
-### 2.4 工单评论 (issue_comments)
+### 2.5 工单评论 (issue_comments) [已弃用]
+
+> **ℹ️ 迁移说明**：P2 架构中，评论已合并到 `ticket_activities` 表，通过 `activity_type = 'comment'` 或 `'internal_note'` 区分。
+> 保留此表定义仅用于历史数据参考和迁移，新开发请使用 `ticket_activities` 表。
 
 ```sql
-issue_comments (工单评论)
+issue_comments (工单评论) [已弃用，请使用 ticket_activities]
 ├── id: SERIAL PRIMARY KEY
 ├── issue_id: INT NOT NULL -- 关联工单
 ├── issue_type: ENUM('inquiry', 'ticket') -- 工单类型
@@ -1257,27 +1454,35 @@ ai_usage_logs (AI 使用审计)
 | 2026-02-11 | v1.3 | 账户类型更新，新增经销商专属字段 | - | CORPORATE→ORGANIZATION，新增 dealer_level 等字段 |
 | 2026-02-22 | v1.4 | 新增 `search_synonyms` 同义词库支持 | - | 对应 Wiki 搜索召回优化需求 |
 | 2026-02-25 | v1.5 | 完善 `knowledge_articles` 章节字段与 `knowledge_audit_log` 审计日志 | Jihua | 对应 Phase 3/4 深度优化交付 |
+| 2026-02-28 | **v0.9.0** | **P2 架构升级**：统一 tickets 表、SLA 引擎、活动时间轴、通知系统 | - | **重大更新** |
 
 
 ---
 
-## 附录：表关系图
+## 附录：表关系图 (P2 架构)
 
 ```
 Core Entities:
-  products ←── inquiry_tickets
-  accounts ←── contacts
-  accounts ←── account_devices
-  accounts ←── tickets (account_id)
-  contacts ←── tickets (contact_id)
-  accounts ←── dealer_inventory (dealer作为account的一种)
+  products
+  accounts ←─ contacts
+  accounts ←─ account_devices (Installed_Base)
   users
 
-Ticketing System:
-  inquiry_tickets → (upgrade) → tickets
-  tickets → issue_attachments
-  tickets → issue_comments
-  tickets → repair_exceptions
+Ticketing System (P2 统一架构):
+  tickets (统一工单表, ticket_type: inquiry/rma/svc)
+    ├─ ticket_activities (活动时间轴)
+    ├─ issue_attachments (附件)
+    ├─ repair_exceptions (维修异常)
+    └─ logistics_tracking (物流跟踪)
+  
+  tickets.parent_ticket_id → tickets (工单升级关联)
+  tickets.account_id → accounts
+  tickets.contact_id → contacts
+  tickets.dealer_id → accounts (DEALER)
+
+Notification System (P2 新增):
+  notifications → users (recipient_id)
+  notifications → tickets (related_id)
 
 Knowledge Base:
   knowledge_articles → knowledge_products
@@ -1285,8 +1490,7 @@ Knowledge Base:
   knowledge_articles → troubleshooting_steps
   knowledge_articles → compatibility_entries
   knowledge_articles → knowledge_audit_log
-  search_synonyms (用于搜索优化)
-
+  search_synonyms (搜索优化)
 
 Inventory & Billing:
   accounts (DEALER) → dealer_inventory
@@ -1297,15 +1501,24 @@ Inventory & Billing:
 
 Product Evolution:
   product_bugs ← tickets
-  feature_requests ← feature_request_customers ← accounts
+  feature_requests ← feature_request_accounts ← accounts
   customer_voices ← tickets
 
 Supporting:
-  logistics_tracking ← tickets
   ai_suggestions
   issue_stats_daily
   issue_stats_monthly
 ```
+
+### P2 核心变更摘要
+
+1. **工单模型统一**：原 `inquiry_tickets` + `tickets` 合并为单一 `tickets` 表
+2. **SLA 引擎**：新增 `priority`, `node_entered_at`, `sla_due_at`, `sla_status`, `breach_counter` 字段
+3. **状态机**：`current_node` 字段支持细粒度流程节点
+4. **协作机制**：`participants` 数组支持 @Mention 和参与者管理
+5. **活动时间轴**：`ticket_activities` 表记录工单全生命周期事件
+6. **通知系统**：`notifications` 表支持系统内推送
+7. **保修计算**：`account_devices` 表扩展 IoT 和保修计算字段
 
 ---
 

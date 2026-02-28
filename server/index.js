@@ -3564,17 +3564,22 @@ app.get('/api/recycle-bin/thumbnail', authenticate, async (req, res) => {
 // Periodic Tasks
 async function cleanupRecycleBin() {
     console.log('🧹 Running 30-day recycle bin cleanup...');
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-    const items = db.prepare("SELECT * FROM recycle_bin WHERE deletion_date < ?").all(thirtyDaysAgo);
+    try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+        const items = db.prepare("SELECT * FROM recycle_bin WHERE deletion_date < ?").all(thirtyDaysAgo);
 
-    for (const item of items) {
-        try {
-            await fs.remove(path.join(RECYCLE_DIR, item.deleted_path));
-            db.prepare("DELETE FROM recycle_bin WHERE id = ?").run(item.id);
-            console.log(`🗑️ Permanently deleted expired item: ${item.name}`);
-        } catch (e) {
-            console.error(`❌ Failed to cleanup item ${item.id}:`, e);
+        for (const item of items) {
+            try {
+                await fs.remove(path.join(RECYCLE_DIR, item.deleted_path));
+                db.prepare("DELETE FROM recycle_bin WHERE id = ?").run(item.id);
+                console.log(`🗑️ Permanently deleted expired item: ${item.name}`);
+            } catch (e) {
+                console.error(`❌ Failed to cleanup item ${item.id}:`, e);
+            }
         }
+    } catch (err) {
+        // recycle_bin table may not exist (e.g., service-only mode)
+        console.log('🧹 Recycle bin cleanup skipped (table not available)');
     }
 }
 

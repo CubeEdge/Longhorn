@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-02-28 12:30 - P2 导航架构重构与角色统一 (v12.2.1)
+
+### Tasks Completed:
+1. **PRD 表格优化**: 简化 Service PRD_P2.md 中导航架构表和工单卡片字段表的 Markdown 格式。
+2. **角色命名统一**: 
+   - 数据库迁移：`Manager` → `Lead`, `Staff` → `Member`
+   - 消除代码与数据库之间的语义鸿沟
+3. **侧边栏分组重构** (`App.tsx`):
+   - MANAGEMENT (Lead/Admin): Overview
+   - WORKSPACE (All): My Tasks, Mentioned, Team Queue
+   - OPERATIONS (All): 咨询工单, RMA工单, 经销商维修
+   - KNOWLEDGE (All): Tech Hub
+   - ARCHIVES (Admin/Lead/Member): 渠道/客户/资产/配件
+4. **Files 入口修复**: 确认 `canAccessFilesModule` 包含 Lead 角色，Files 图标在 App Rail 中对 Lead 可见。
+5. **版本发布**: Client v12.2.1 已部署至 mini 服务器。
+
+### Technical Output:
+- **Modified**: `client/src/App.tsx`, `client/src/hooks/useNavigationState.ts`, `client/src/index.css`
+- **Database**: `server/longhorn.db` (users.role 字段值迁移)
+- **Version**: Client `12.2.1`
+
+---
+
 ## 2026-02-27 16:44 - Tech Hub 布局对齐与全局样式同步 (v12.1.78 / s1.5.51)
 
 ### Tasks Completed:

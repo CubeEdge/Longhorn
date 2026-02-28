@@ -24,8 +24,9 @@ function runMigrations(db) {
         )
     `);
 
+    // Get all migration files (both .sql and .js)
     const files = fs.readdirSync(migrationsDir)
-        .filter(f => f.endsWith('.sql'))
+        .filter(f => f.endsWith('.sql') || f.endsWith('.js'))
         .sort();
 
     for (const file of files) {
@@ -33,21 +34,36 @@ function runMigrations(db) {
 
         if (!applied) {
             console.log(`[Service] Running migration: ${file}`);
-            const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+            const filePath = path.join(migrationsDir, file);
 
-            // Split by lines and group into statements (naive split by semicolon at end of line might fail on comments, but let's try the simple approach from index.js)
-            // The index.js used split(';'). Let's match that.
-            const statements = sql.split(';').filter(s => s.trim());
+            if (file.endsWith('.sql')) {
+                // Handle SQL migrations
+                const sql = fs.readFileSync(filePath, 'utf8');
+                const statements = sql.split(';').filter(s => s.trim());
 
-            for (const stmt of statements) {
-                try {
-                    db.exec(stmt);
-                } catch (err) {
-                    if (!err.message.includes('duplicate column name')) {
-                        console.error(`[Service] Migration error in ${file}:`, err.message);
-                    } else {
-                        console.log(`[Service] Skipped duplicate column in ${file}`);
+                for (const stmt of statements) {
+                    try {
+                        db.exec(stmt);
+                    } catch (err) {
+                        if (!err.message.includes('duplicate column name')) {
+                            console.error(`[Service] Migration error in ${file}:`, err.message);
+                        } else {
+                            console.log(`[Service] Skipped duplicate column in ${file}`);
+                        }
                     }
+                }
+            } else if (file.endsWith('.js')) {
+                // Handle JavaScript migrations (data migrations)
+                try {
+                    const migration = require(filePath);
+                    if (typeof migration.migrateData === 'function') {
+                        migration.migrateData();
+                    } else {
+                        console.log(`[Service] JS migration ${file} has no migrateData function, skipping execution`);
+                    }
+                } catch (err) {
+                    console.error(`[Service] JS Migration error in ${file}:`, err.message);
+                    throw err; // Re-throw to stop migration process
                 }
             }
 

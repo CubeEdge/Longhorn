@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Save, ArrowUpCircle, RotateCcw, Loader2, Paperclip, Film, FileText, Download, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, ArrowUpCircle, RotateCcw, Loader2, Paperclip, Film, FileText, Download, MessageSquare, CheckCircle, Clock, AlertCircle, Activity } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useConfirm } from '../../store/useConfirm';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useRouteMemoryStore } from '../../store/useRouteMemoryStore';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
+import { ActivityTimeline, CommentInput } from '../Workspace/TicketDetailComponents';
 
 interface Attachment {
     id: number;
@@ -78,10 +79,21 @@ const InquiryTicketDetailPage: React.FC = () => {
     const [resolution, setResolution] = useState('');
     const [communicationLog, setCommunicationLog] = useState('');
     const [status, setStatus] = useState('');
+    
+    // Activity timeline (P2)
+    const [activities, setActivities] = useState<any[]>([]);
+    const [activitiesLoading, setActivitiesLoading] = useState(false);
 
     useEffect(() => {
         fetchTicket();
     }, [id]);
+    
+    // Fetch activities when ticket is loaded
+    useEffect(() => {
+        if (ticket?.id) {
+            fetchActivities();
+        }
+    }, [ticket?.id]);
 
     const fetchTicket = async () => {
         setLoading(true);
@@ -102,6 +114,39 @@ const InquiryTicketDetailPage: React.FC = () => {
             console.error('Failed to fetch inquiry ticket:', err);
         } finally {
             setLoading(false);
+        }
+    };
+    
+    const fetchActivities = async () => {
+        if (!id) return;
+        setActivitiesLoading(true);
+        try {
+            const res = await axios.get(`/api/v1/tickets/${id}/activities`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setActivities(res.data.data || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch activities:', err);
+            setActivities([]);
+        } finally {
+            setActivitiesLoading(false);
+        }
+    };
+    
+    const handleAddComment = async (content: string, visibility: string) => {
+        try {
+            await axios.post(`/api/v1/tickets/${id}/activities`, {
+                activity_type: 'comment',
+                content,
+                visibility
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchActivities();
+        } catch (err) {
+            console.error('Failed to add comment:', err);
         }
     };
 
@@ -442,6 +487,21 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 </div>
                             </section>
                         )}
+
+                        {/* Activity Timeline (P2) */}
+                        <div className="ticket-card" style={{ marginTop: '24px' }}>
+                            <div className="ticket-card-title">
+                                <Activity size={14} /> 活动时间轴
+                            </div>
+                            <ActivityTimeline 
+                                activities={activities} 
+                                loading={activitiesLoading} 
+                            />
+                            <CommentInput 
+                                onSubmit={handleAddComment}
+                                loading={false}
+                            />
+                        </div>
 
                     </div>
                 </div>

@@ -1,11 +1,20 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.4
+**版本**: 0.9.5 (P2 Integration)
 **状态**: 草稿
-**最后更新**: 2026-02-26 (Deployed v12.1.26)
-**关联PRD**: Service_PRD.md v0.13.2
+**最后更新**: 2026-02-28
+**关联PRD**: Service_PRD.md v0.13.3 (P2)
 **关联场景**: Service_UserScenarios.md v0.7.0
+**关联数据模型**: Service_DataModel.md v0.9.0 (P2)
 
+> **P2 架构升级 (2026-02-28)**：
+> - 新增统一工单 API (`/api/v1/tickets`) - 整合 inquiry/rma/svc 三种工单类型
+> - 新增工单活动时间轴 API - 支持 Commercial View / Technician View
+> - 增强通知系统 API - 支持 SLA 预警、@Mention、工单状态变更
+> - 新增 SLA 管理 API - 支持优先级、超时计算、breach 统计
+> - 新增 @Mention API - 支持协作机制和参与者管理
+> - 新增保修计算 API - 支持瀑布流保修判定逻辑
+>
 > **重要更新（2026-02-10）**：
 > - 拆分 Files 模块：核心文件操作路由迁移至独立模块，`server/index.js` 已精简。
 > - 增强系统备份：支持通过数据库配置自动备份策略，新增手动触发 API。
@@ -2522,6 +2531,81 @@
 
 **GET** `/api/v1/products/{id}`
 
+### 11.3 产品管理 CRUD (Admin)
+
+> **权限**: Admin / Lead 角色专用。挂载路径：`/api/v1/admin/products`
+
+#### 11.3.1 产品列表（分页筛选）
+
+**GET** `/api/v1/admin/products`
+
+**查询参数**:
+
+| 参数 | 类型 | 说明 |
+|-----|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认20 |
+| product_family | string | 产品族群筛选：A/B/C/D |
+| is_active | bool | 是否在售 |
+| keyword | string | 关键词搜索（名称/型号/系列） |
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "model_name": "MAVO Edge 8K",
+      "product_family": "A",
+      "category": "camera",
+      "series": "Edge",
+      "is_active": true,
+      "ticket_count": 45
+    }
+  ],
+  "meta": { "page": 1, "page_size": 20, "total": 11 }
+}
+```
+
+#### 11.3.2 产品详情
+
+**GET** `/api/v1/admin/products/{id}`
+
+#### 11.3.3 创建产品
+
+**POST** `/api/v1/admin/products`
+
+```json
+// Request
+{
+  "model_name": "MAVO Edge 8K",
+  "product_family": "A",   // A/B/C/D
+  "category": "camera",    // camera/viewfinder/accessory/cable
+  "series": "Edge",
+  "current_firmware_version": "8025",
+  "is_active": true
+}
+```
+
+#### 11.3.4 更新产品
+
+**PUT** `/api/v1/admin/products/{id}`
+
+> 请求体字段同创建，全量替换。
+
+#### 11.3.5 删除产品
+
+**DELETE** `/api/v1/admin/products/{id}`
+
+> 软删除：存在关联工单时仅设置 `is_active = false`，无关联时才物理删除。
+
+#### 11.3.6 查看产品关联工单
+
+**GET** `/api/v1/admin/products/{id}/tickets`
+
+**查询参数**: `page`, `page_size`, `ticket_type` (inquiry/rma/svc)
+
 ---
 
 ## 12. 客户 API
@@ -3292,13 +3376,34 @@
 
 ---
 
-## 19. 通知 API
+## 19. 通知 API [P2 增强]
 
-> 默认方案: Phase 1 实现基础通知，不含推送
+> **P2 升级**：完整的系统内推送通知，参考 macOS 26 通知中心风格。
+> 支持 SLA 预警、@Mention、工单状态变更、系统公告等多种通知类型。
 
 ### 19.1 获取通知列表
 
 **GET** `/api/v1/notifications`
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认20 |
+| is_read | bool | 筛选已读/未读 |
+| type | string | 通知类型筛选 |
+
+**通知类型 (notification_type)**：
+- `mention` - @提及
+- `assignment` - 工单指派
+- `status_change` - 工单状态变更
+- `sla_warning` - SLA 即将超时预警
+- `sla_breach` - SLA 超时
+- `new_comment` - 新评论
+- `participant_added` - 被加入参与者
+- `snooze_expired` - 贪睡到期
+- `system_announce` - 系统公告
 
 ```json
 // Response
@@ -3307,16 +3412,61 @@
   "data": [
     {
       "id": "notif_001",
-      "type": "issue_assigned",
-      "title": "新工单分配",
-      "message": "工单 IS-2026-0156 已分配给您",
-      "related_issue_id": "issue_001",
+      "notification_type": "mention",
+      "title": "@提及了你",
+      "content": "Effy 在工单 RMA-D-2602-0001 中提及了你",
+      "icon": "ticket",
+      "related_type": "ticket",
+      "related_id": 123,
+      "action_url": "/tickets/123",
+      "metadata": {
+        "ticket_number": "RMA-D-2602-0001",
+        "mentioned_by": "Effy",
+        "activity_id": 456
+      },
       "is_read": false,
-      "created_at": "2026-01-30T10:30:00Z"
+      "created_at": "2026-02-28T10:30:00Z"
+    },
+    {
+      "id": "notif_002",
+      "notification_type": "sla_warning",
+      "title": "SLA 即将超时",
+      "content": "工单 K2602-0089 将在 2 小时内超时",
+      "icon": "warning",
+      "related_type": "ticket",
+      "related_id": 89,
+      "action_url": "/tickets/89",
+      "metadata": {
+        "ticket_number": "K2602-0089",
+        "sla_due_at": "2026-02-28T12:30:00Z",
+        "remaining_time": "2h"
+      },
+      "is_read": false,
+      "created_at": "2026-02-28T10:15:00Z"
+    },
+    {
+      "id": "notif_003",
+      "notification_type": "assignment",
+      "title": "新工单分配",
+      "content": "工单 RMA-D-2602-0156 已分配给您",
+      "icon": "ticket",
+      "related_type": "ticket",
+      "related_id": 156,
+      "action_url": "/tickets/156",
+      "metadata": {
+        "ticket_number": "RMA-D-2602-0156",
+        "assigned_by": "刘珖龙"
+      },
+      "is_read": true,
+      "read_at": "2026-02-28T10:35:00Z",
+      "created_at": "2026-02-28T09:30:00Z"
     }
   ],
   "meta": {
-    "unread_count": 5
+    "page": 1,
+    "page_size": 20,
+    "total": 15,
+    "unread_count": 8
   }
 }
 ```
@@ -3326,9 +3476,89 @@
 **POST** `/api/v1/notifications/mark-read`
 
 ```json
+// Request - 标记指定通知已读
+{
+  "notification_ids": ["notif_001", "notif_002"]
+}
+
+// Request - 标记全部已读
+{
+  "mark_all": true
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "marked_count": 2,
+    "unread_count": 6
+  }
+}
+```
+
+### 19.3 归档通知 [P2 新增]
+
+**POST** `/api/v1/notifications/archive`
+
+```json
 // Request
 {
   "notification_ids": ["notif_001", "notif_002"]
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "archived_count": 2
+  }
+}
+```
+
+### 19.4 获取未读计数 [P2 新增]
+
+**GET** `/api/v1/notifications/unread-count`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "unread_count": 8,
+    "by_type": {
+      "mention": 2,
+      "assignment": 1,
+      "sla_warning": 3,
+      "new_comment": 2
+    }
+  }
+}
+```
+
+### 19.5 通知偏好设置 [P2 新增]
+
+**GET** `/api/v1/notifications/preferences`
+
+**PATCH** `/api/v1/notifications/preferences`
+
+```json
+// GET Response
+{
+  "success": true,
+  "data": {
+    "mention": { "enabled": true, "sound": true },
+    "assignment": { "enabled": true, "sound": true },
+    "status_change": { "enabled": true, "sound": false },
+    "sla_warning": { "enabled": true, "sound": true },
+    "sla_breach": { "enabled": true, "sound": true },
+    "new_comment": { "enabled": true, "sound": false },
+    "system_announce": { "enabled": true, "sound": false }
+  }
+}
+
+// PATCH Request
+{
+  "sla_warning": { "enabled": true, "sound": false }
 }
 ```
 
@@ -3711,6 +3941,420 @@
     ],
     "total_tokens": 37000,
     "estimated_cost_usd": "0.0074"
+  }
+}
+```
+
+---
+
+## 22. P2 统一工单 API [P2 新增]
+
+> **P2 架构升级**：将 inquiry_tickets、rma_tickets、dealer_repairs 三种工单统一为单一 tickets API。
+> 通过 `ticket_type` 参数区分工单类型。原有分类 API 仍保留兼容。
+
+### 22.1 获取统一工单列表
+
+**GET** `/api/v1/tickets`
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| page | int | 页码，默认1 |
+| page_size | int | 每页数量，默认20 |
+| ticket_type | string | 工单类型: inquiry/rma/svc，多选用逗号分隔 |
+| status | string | 状态筛选: open/in_progress/waiting/resolved/closed |
+| current_node | string | 节点筛选 |
+| priority | string | 优先级: P0/P1/P2 |
+| sla_status | string | SLA 状态: normal/warning/breached |
+| assigned_to | int | 指派人 ID |
+| account_id | int | 账户 ID |
+| dealer_id | int | 经销商 ID |
+| keyword | string | 关键词搜索 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "ticket_number": "K2602-0001",
+      "ticket_type": "inquiry",
+      "current_node": "in_progress",
+      "status": "in_progress",
+      "priority": "P2",
+      "sla_status": "normal",
+      "sla_due_at": "2026-02-28T18:00:00Z",
+      "problem_summary": "拍摄时偶发死机",
+      "reporter_name": "张先生",
+      "account": { "id": 1, "name": "XX影视" },
+      "assigned_to": { "id": 2, "name": "Effy" },
+      "participants": [{ "user_id": 3, "name": "陈高松" }],
+      "created_at": "2026-02-28T10:00:00Z",
+      "updated_at": "2026-02-28T14:00:00Z"
+    },
+    {
+      "id": 2,
+      "ticket_number": "RMA-D-2602-0001",
+      "ticket_type": "rma",
+      "current_node": "op_repairing",
+      "status": "in_progress",
+      "priority": "P1",
+      "sla_status": "warning",
+      "sla_due_at": "2026-02-28T16:00:00Z",
+      "problem_description": "SDI模块无输出",
+      "serial_number": "ME_207890",
+      "product": { "id": 1, "name": "MAVO Edge 8K" },
+      "reporter_name": "Max Mueller",
+      "assigned_to": { "id": 4, "name": "陈高松" },
+      "created_at": "2026-02-27T10:00:00Z",
+      "updated_at": "2026-02-28T12:00:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "page_size": 20,
+    "total": 156,
+    "sla_summary": {
+      "normal": 120,
+      "warning": 25,
+      "breached": 11
+    }
+  }
+}
+```
+
+### 22.2 获取工单详情
+
+**GET** `/api/v1/tickets/{id}`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "ticket_number": "RMA-D-2602-0001",
+    "ticket_type": "rma",
+    
+    "// 状态机与 SLA",
+    "current_node": "op_repairing",
+    "status": "in_progress",
+    "priority": "P1",
+    "node_entered_at": "2026-02-28T10:00:00Z",
+    "sla_due_at": "2026-02-28T16:00:00Z",
+    "sla_status": "warning",
+    "breach_counter": 0,
+    
+    "// 协作信息",
+    "participants": [
+      { "user_id": 2, "name": "Effy", "role": "MS", "added_at": "2026-02-27T10:00:00Z" },
+      { "user_id": 3, "name": "刘珖龙", "role": "MS", "added_at": "2026-02-28T09:00:00Z" }
+    ],
+    "snooze_until": null,
+    
+    "// 完整工单信息..."
+  }
+}
+```
+
+### 22.3 更新工单状态/节点
+
+**PATCH** `/api/v1/tickets/{id}`
+
+```json
+// Request - 更新节点 (状态流转)
+{
+  "current_node": "op_qa",
+  "comment": "维修完成，转 QA 检查"
+}
+
+// Request - 更新优先级
+{
+  "priority": "P0",
+  "comment": "客户要求紧急处理"
+}
+```
+
+### 22.4 设置贪睡模式
+
+**POST** `/api/v1/tickets/{id}/snooze`
+
+```json
+// Request
+{
+  "snooze_until": "2026-03-01T09:00:00Z",
+  "reason": "等待客户寄送设备"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "snooze_until": "2026-03-01T09:00:00Z",
+    "sla_paused": true
+  }
+}
+```
+
+---
+
+## 23. 工单活动时间轴 API [P2 新增]
+
+> 记录工单生命周期内的所有事件，支持 Commercial View / Technician View 分级视图。
+
+### 23.1 获取工单活动时间轴
+
+**GET** `/api/v1/tickets/{id}/activities`
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| view | string | 视图模式: commercial / technician，默认 commercial |
+| activity_type | string | 活动类型筛选 |
+| page | int | 页码 |
+| page_size | int | 每页数量 |
+
+```json
+// Response (commercial view)
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "activity_type": "status_change",
+      "content": "工单状态从 [submitted] 变更为 [ms_review]",
+      "metadata": {
+        "from_node": "submitted",
+        "to_node": "ms_review"
+      },
+      "visibility": "all",
+      "actor": { "id": 2, "name": "Effy", "role": "MS" },
+      "created_at": "2026-02-28T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "activity_type": "comment",
+      "content": "已确认问题，建议返厂维修",
+      "visibility": "all",
+      "actor": { "id": 2, "name": "Effy", "role": "MS" },
+      "created_at": "2026-02-28T10:35:00Z"
+    },
+    {
+      "id": 3,
+      "activity_type": "mention",
+      "content": "@陈高松 请帮忙看下这个硬件问题",
+      "metadata": {
+        "mentioned_users": [{ "user_id": 4, "name": "陈高松" }]
+      },
+      "visibility": "all",
+      "actor": { "id": 2, "name": "Effy", "role": "MS" },
+      "created_at": "2026-02-28T11:00:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "total": 12
+  }
+}
+```
+
+### 23.2 添加评论/备注
+
+**POST** `/api/v1/tickets/{id}/activities`
+
+```json
+// Request - 添加评论 (所有人可见)
+{
+  "activity_type": "comment",
+  "content": "已联系客户确认问题",
+  "visibility": "all"
+}
+
+// Request - 添加内部备注 (Technician View)
+{
+  "activity_type": "internal_note",
+  "content": "检查主板 U23 芯片，可能是虚焘问题",
+  "visibility": "technician"
+}
+
+// Request - @提及用户
+{
+  "activity_type": "comment",
+  "content": "@陈高松 请帮忙检查 SDI 模块",
+  "visibility": "all",
+  "mentions": [4]  // 被 @提及的用户 ID
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "id": 15,
+    "activity_type": "comment",
+    "content": "@陈高松 请帮忙检查 SDI 模块",
+    "actor": { "id": 2, "name": "Effy" },
+    "created_at": "2026-02-28T14:00:00Z"
+  }
+}
+```
+
+### 23.3 编辑活动
+
+**PATCH** `/api/v1/tickets/{ticket_id}/activities/{activity_id}`
+
+```json
+// Request
+{
+  "content": "已联系客户确认问题（已更新）"
+}
+```
+
+---
+
+## 24. SLA 管理 API [P2 新增]
+
+> 支持 SLA 配置、超时计算、breach 统计。
+
+### 24.1 获取 SLA 配置
+
+**GET** `/api/v1/sla/config`
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "matrix": {
+      "P0": {
+        "first_response": "2h",
+        "solution_output": "4h",
+        "quotation_output": "24h",
+        "ticket_close": "36h"
+      },
+      "P1": {
+        "first_response": "8h",
+        "solution_output": "24h",
+        "quotation_output": "48h",
+        "ticket_close": "3d"
+      },
+      "P2": {
+        "first_response": "24h",
+        "solution_output": "48h",
+        "quotation_output": "5d",
+        "ticket_close": "7d"
+      }
+    },
+    "warning_threshold": 0.25,
+    "business_hours": {
+      "start": "09:00",
+      "end": "18:00",
+      "timezone": "Asia/Shanghai",
+      "working_days": [1, 2, 3, 4, 5]
+    }
+  }
+}
+```
+
+### 24.2 获取 SLA 统计
+
+**GET** `/api/v1/sla/stats`
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| period | string | 统计周期: day/week/month |
+| ticket_type | string | 工单类型筛选 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "period": "2026-02",
+    "summary": {
+      "total_tickets": 156,
+      "on_time_rate": 0.92,
+      "breach_count": 11,
+      "avg_response_time": "4.5h"
+    },
+    "by_priority": {
+      "P0": { "total": 12, "on_time": 10, "breach": 2 },
+      "P1": { "total": 45, "on_time": 40, "breach": 5 },
+      "P2": { "total": 99, "on_time": 95, "breach": 4 }
+    },
+    "breach_trend": [
+      { "date": "2026-02-01", "count": 1 },
+      { "date": "2026-02-02", "count": 0 },
+      { "date": "2026-02-03", "count": 2 }
+    ]
+  }
+}
+```
+
+---
+
+## 25. 保修计算 API [P2 新增]
+
+> 支持瀑布流保修判定逻辑：IoT > 发票 > 注册 > 直销 > 兜底。
+
+### 25.1 查询设备保修状态
+
+**GET** `/api/v1/warranty/check`
+
+**查询参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| serial_number | string | 序列号 |
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "serial_number": "ME_207890",
+    "product": { "id": 1, "name": "MAVO Edge 8K" },
+    "warranty_status": "in_warranty",
+    "warranty_source": "iot",
+    "warranty_start_date": "2025-03-15",
+    "warranty_until": "2027-03-15",
+    "warranty_duration_months": 24,
+    "calculation_details": {
+      "iot_first_boot": "2025-03-15T10:00:00Z",
+      "invoice_date": null,
+      "registration_date": "2025-03-20",
+      "fallback_date": "2025-01-10"
+    },
+    "calculated_at": "2026-02-28T10:00:00Z"
+  }
+}
+```
+
+### 25.2 更新保修信息
+
+**PATCH** `/api/v1/devices/{serial_number}/warranty`
+
+```json
+// Request - 上传发票更新保修
+{
+  "invoice_date": "2025-03-10",
+  "invoice_number": "INV-2025-0123",
+  "invoice_attachment_id": 456
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "warranty_source": "invoice",
+    "warranty_start_date": "2025-03-10",
+    "warranty_until": "2027-03-10",
+    "previous_source": "iot",
+    "recalculated": true
   }
 }
 ```

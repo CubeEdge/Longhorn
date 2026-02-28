@@ -21,7 +21,10 @@ import {
   Users,
   Building,
   Wrench,
-  Package
+  Package,
+  CheckSquare,
+  Bell,
+  Inbox
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -55,6 +58,8 @@ import AppRail from './components/AppRail';
 // ... imports
 import TicketCreationModal from './components/Service/TicketCreationModal';
 import BokehContainer from './components/Bokeh/BokehContainer';
+import WorkspacePage from './components/Service/WorkspacePage';
+import ServiceOverviewPage from './components/Service/ServiceOverviewPage';
 
 
 
@@ -65,6 +70,7 @@ import type { ModuleType } from './hooks/useNavigationState';
 import ShareCollectionPage from './components/ShareCollectionPage';
 import Toast from './components/Toast';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { NotificationBell, NotificationCenter } from './components/Notifications';
 import { useRouteMemoryStore } from './store/useRouteMemoryStore';
 import { useListStateStore } from './store/useListStateStore';
 
@@ -115,6 +121,7 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       {/* Global Ticket Creation Modal */}
       <TicketCreationModal />
       <BokehContainer />
+      <NotificationCenter />
     </div>
   );
 };
@@ -142,6 +149,14 @@ const App: React.FC = () => {
           <Route path="/" element={<HomeRedirect user={user} />} />
 
           {/* ==================== SERVICE MODULE ==================== */}
+          {/* P2: Overview Dashboard (管理仪表盘) */}
+          <Route path="/service/overview" element={<ServiceOverviewPage />} />
+          
+          {/* P2: Workspace (个人执行台) */}
+          <Route path="/service/workspace" element={<WorkspacePage />} />
+          <Route path="/service/mentioned" element={<WorkspacePage />} />
+          <Route path="/service/team-queue" element={<WorkspacePage />} />
+          
           {/* Inquiry Tickets (咨询工单) - Layer 1 */}
           <Route path="/service/inquiry-tickets" element={<InquiryTicketListPage />} />
           <Route path="/service/inquiry-tickets/new" element={<InquiryTicketCreatePage />} />
@@ -343,77 +358,93 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
         </p>
       </div>
 
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         {currentModule === 'service' && (
           <>
-            <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''} `} onClick={onClose}>
+            {/* MANAGEMENT - Lead/Admin Only */}
+            {(role === 'Admin' || role === 'Lead') && (
+              <>
+                <div className="sidebar-section-title">MANAGEMENT</div>
+                <Link to={getRoute('/service/overview')} className={`sidebar-item ${location.pathname === '/service/overview' ? 'active' : ''}`} onClick={onClose}>
+                  <LayoutDashboard size={18} />
+                  <span>Overview</span>
+                </Link>
+              </>
+            )}
+
+            {/* WORKSPACE - All Users */}
+            <div className="sidebar-section-title">WORKSPACE</div>
+            <Link to={getRoute('/service/workspace')} className={`sidebar-item ${location.pathname === '/service/workspace' ? 'active' : ''}`} onClick={onClose}>
+              <CheckSquare size={18} />
+              <span>My Tasks</span>
+            </Link>
+            <Link to={getRoute('/service/mentioned')} className={`sidebar-item ${location.pathname === '/service/mentioned' ? 'active' : ''}`} onClick={onClose}>
+              <Bell size={18} />
+              <span>Mentioned</span>
+            </Link>
+            <Link to={getRoute('/service/team-queue')} className={`sidebar-item ${location.pathname === '/service/team-queue' ? 'active' : ''}`} onClick={onClose}>
+              <Inbox size={18} />
+              <span>Team Queue</span>
+            </Link>
+
+            {/* OPERATIONS - Ticket Types */}
+            <div className="sidebar-section-title">OPERATIONS</div>
+            <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
               <MessageCircleQuestion size={18} />
               <span>{t('sidebar.inquiry_tickets')}</span>
             </Link>
-            <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''} `} onClick={onClose}>
+            <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
               <ClipboardList size={18} />
               <span>{t('sidebar.rma_tickets')}</span>
             </Link>
-            <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''} `} onClick={onClose}>
+            <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
               <Wrench size={18} />
               <span>{t('sidebar.dealer_repairs')}</span>
             </Link>
 
-            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-
-            {/* 档案和基础信息 (Archives) - 三级入口结构 */}
-            <div style={{ padding: '0 24px 8px', fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>
-              档案和基础信息
-            </div>
-
-            {/* 1. 渠道和经销商 (第一入口) */}
-            <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''} `} onClick={onClose}>
-              <Building size={18} />
-              <span>{t('sidebar.archives_dealers') || '渠道和经销商'}</span>
-            </Link>
-
-            {/* 2. 客户档案 (第二入口) */}
-            <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''} `} onClick={onClose}>
-              <Users size={18} />
-              <span>{t('sidebar.archives_customers') || '客户档案'}</span>
-            </Link>
-
-            {/* 3. 产品管理 (第三入口) */}
-            <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''} `} onClick={onClose}>
-              <Box size={18} />
-              <span>{t('sidebar.archives_assets') || '产品管理'}</span>
-            </Link>
-
-            {/* 4. 配件库存 (第四入口) - 经销商可见 */}
-            <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''} `} onClick={onClose}>
-              <Package size={18} />
-              <span>{t('sidebar.parts_inventory') || '配件库存'}</span>
-            </Link>
-
-            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-
-            {/* Kinefinity WIKI - All Users */}
+            {/* KNOWLEDGE */}
+            <div className="sidebar-section-title">KNOWLEDGE</div>
             <Link
               to="/tech-hub/wiki?line=A"
-              className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''} `}
+              className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''}`}
               onClick={() => {
-                // Clear wiki state to ensure navigating to homepage
                 localStorage.removeItem('wiki-last-article');
                 onClose();
               }}
             >
               <Book size={18} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span style={{ lineHeight: 1.1 }}>Tech Hub</span>
-                <span style={{ fontSize: '0.75rem', opacity: 0.7, lineHeight: 1.1 }}>知识中心</span>
-              </div>
+              <span>Tech Hub</span>
             </Link>
 
+            {/* ARCHIVES - Role-based visibility */}
+            {(role === 'Admin' || role === 'Lead' || role === 'Member') && (
+              <>
+                <div className="sidebar-section-title">ARCHIVES</div>
+                <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''}`} onClick={onClose}>
+                  <Building size={18} />
+                  <span>渠道 Dealers</span>
+                </Link>
+                <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''}`} onClick={onClose}>
+                  <Users size={18} />
+                  <span>客户 Customers</span>
+                </Link>
+                <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
+                  <Box size={18} />
+                  <span>资产 Assets</span>
+                </Link>
+              </>
+            )}
+            <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
+              <Package size={18} />
+              <span>配件 Parts</span>
+            </Link>
+
+            {/* Admin Section */}
             {role === 'Admin' && (
               <>
                 <div style={{ marginTop: 'auto' }} />
-                <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-                <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''} `} onClick={onClose}>
+                <div className="sidebar-section-title">ADMIN</div>
+                <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''}`} onClick={onClose}>
                   <Settings size={18} />
                   <span>{t('sidebar.service_admin')}</span>
                 </Link>
@@ -869,7 +900,10 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
         {(currentModule === 'files' || currentModule === 'service') && <DailyWordBadge />}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Notification Bell - Service Module only */}
+        {currentModule === 'service' && <NotificationBell />}
+
         {/* Search - only visible in FILES module (for now) */}
         {currentModule === 'files' && (
           <button
