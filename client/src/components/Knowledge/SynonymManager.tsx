@@ -197,14 +197,14 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+            background: 'var(--glass-bg-hover)', backdropFilter: 'blur(8px)',
             zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
             animation: 'fadeIn 0.2s ease'
         }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div style={{
                 width: '90%', maxWidth: '900px', height: '80vh',
                 maxHeight: '800px',
-                background: 'linear-gradient(145deg, #1e1e1e 0%, #181818 100%)',
+                background: 'var(--bg-sidebar)',
                 borderRadius: '16px',
                 border: '1px solid rgba(255,255,255,0.08)',
                 boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
@@ -324,7 +324,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                             onChange={e => setNewGroupCategory(e.target.value)}
                                             placeholder={t('synonym.category_placeholder')}
                                             style={{
-                                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,215,0,0.15)',
+                                                background: 'var(--glass-bg)', border: '1px solid rgba(255,215,0,0.15)',
                                                 borderRadius: '8px', padding: '8px 12px',
                                                 color: '#FFD700', fontSize: '14px', fontWeight: 600,
                                                 outline: 'none', width: '120px'
@@ -336,7 +336,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                             placeholder={t('synonym.words_placeholder')}
                                             onKeyDown={e => { if (e.key === 'Enter') createGroup(); }}
                                             style={{
-                                                flex: 1, background: 'rgba(0,0,0,0.3)',
+                                                flex: 1, background: 'var(--glass-bg)',
                                                 border: '1px solid rgba(255,255,255,0.08)',
                                                 borderRadius: '8px', padding: '8px 12px',
                                                 color: 'var(--text-secondary)', fontSize: '14px', outline: 'none'
@@ -439,7 +439,7 @@ export const SynonymManager: React.FC<SynonymManagerProps> = ({ isOpen, onClose 
                                                             onClick={() => { setEditingGroupId(group.id); setNewWordInput(''); }}
                                                             style={{
                                                                 display: 'inline-flex', alignItems: 'center',
-                                                                background: 'none', border: '1px dashed rgba(255,255,255,0.1)',
+                                                                background: 'none', border: '1px dashed var(--glass-border)',
                                                                 borderRadius: '6px', padding: '3px 8px',
                                                                 color: 'var(--text-secondary)', fontSize: '13px', cursor: 'pointer',
                                                                 transition: 'all 0.15s'

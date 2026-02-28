@@ -728,7 +728,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
         <>
             <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                background: 'var(--glass-bg-hover)', backdropFilter: 'blur(8px)',
                 zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden'
             }} onClick={(e) => { if (e.target === e.currentTarget && onClose) onClose(); }}>
@@ -827,7 +827,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                     padding: '4px',
                                     background: 'rgba(255,255,255,0.02)',
                                     borderRadius: '10px',
-                                    border: '1px solid rgba(255,255,255,0.05)'
+                                    border: '1px solid var(--glass-border)'
                                 }}>
                                     {[
                                         { mode: 'docx' as const, label: t('wiki.import_mode_docx') },
@@ -950,7 +950,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 width: '100%',
                                                 padding: '10px',
-                                                background: '#1a1a1a',
+                                                background: 'var(--bg-sidebar)',
                                                 border: '1px solid #444',
                                                 borderRadius: '6px',
                                                 color: 'var(--text-main)',
@@ -985,7 +985,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 width: '100%',
                                                 minHeight: '200px',
                                                 padding: '10px',
-                                                background: '#1a1a1a',
+                                                background: 'var(--bg-sidebar)',
                                                 border: '1px solid #444',
                                                 borderRadius: '6px',
                                                 color: 'var(--text-main)',
@@ -1138,7 +1138,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 width: '100%',
                                                 padding: '10px 12px',
                                                 background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontSize: '14px',
@@ -1162,7 +1162,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 width: '100%',
                                                 padding: '10px 12px',
                                                 background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontSize: '14px',
@@ -1201,7 +1201,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             gap: '8px',
                                             padding: '12px',
                                             background: 'rgba(255,255,255,0.03)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '10px'
                                         }}>
                                             {(productModelOptions[productLine] || []).map(model => {
@@ -1249,7 +1249,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     width: '100%',
                                                     padding: '10px 12px',
                                                     background: 'rgba(255,255,255,0.03)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
                                                     color: 'var(--text-main)',
                                                     fontSize: '14px',
@@ -1274,7 +1274,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     width: '100%',
                                                     padding: '10px 12px',
                                                     background: 'rgba(255,255,255,0.03)',
-                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    border: '1px solid var(--glass-border)',
                                                     borderRadius: '8px',
                                                     color: 'var(--text-main)',
                                                     fontSize: '14px',
@@ -1304,7 +1304,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 width: '100%',
                                                 padding: '10px 12px',
                                                 background: 'rgba(255,255,255,0.03)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontSize: '14px',
@@ -1772,7 +1772,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 left: 0,
                                 right: 0,
                                 bottom: 0,
-                                background: 'rgba(0,0,0,0.6)',
+                                background: 'var(--glass-bg-hover)',
                                 backdropFilter: 'blur(8px)',
                                 WebkitBackdropFilter: 'blur(8px)',
                                 display: 'flex',
@@ -1782,7 +1782,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 animation: 'fadeIn 0.2s ease-out'
                             }}>
                                 <div style={{
-                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                    background: 'var(--bg-sidebar)',
                                     border: '1px solid rgba(255,68,68,0.3)',
                                     borderRadius: '16px',
                                     padding: '32px',
@@ -1879,7 +1879,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 left: 0,
                                 right: 0,
                                 bottom: 0,
-                                background: 'rgba(0,0,0,0.6)',
+                                background: 'var(--glass-bg-hover)',
                                 backdropFilter: 'blur(8px)',
                                 WebkitBackdropFilter: 'blur(8px)',
                                 display: 'flex',
@@ -1889,7 +1889,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                 animation: 'fadeIn 0.2s ease-out'
                             }}>
                                 <div style={{
-                                    background: 'linear-gradient(145deg, #2a2a2a 0%, #222 100%)',
+                                    background: 'var(--bg-sidebar)',
                                     border: '1px solid rgba(255,215,0,0.2)',
                                     borderRadius: '16px',
                                     padding: '32px',
