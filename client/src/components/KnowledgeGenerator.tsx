@@ -1034,7 +1034,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                     Bokeh 优化
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: '10px', color: bokehOptimize ? 'rgba(255,255,255,0.6)' : '#666', marginTop: '2px' }}>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                                                 优化排版 + 摘要
                                             </div>
                                         </button>
@@ -1475,7 +1475,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     <div style={{
                                                                         width: `${step.progress || 0}%`,
                                                                         height: '100%',
-                                                                        background: '#FFFFFF',
+                                                                        background: 'var(--text-main)',
                                                                         transition: 'width 0.3s ease-out',
                                                                         borderRadius: '2px'
                                                                     }} />
@@ -1525,7 +1525,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                                     <div style={{
                                                                         width: `${step.progress || 0}%`,
                                                                         height: '100%',
-                                                                        background: '#FFFFFF',
+                                                                        background: 'var(--text-main)',
                                                                         transition: 'width 0.3s ease-out',
                                                                         borderRadius: '2px'
                                                                     }} />

@@ -111,7 +111,7 @@ const TicketAiWizard: React.FC = () => {
                         onClick={handleGenerate}
                         disabled={loading || !inputText.trim()}
                         style={{
-                            background: loading ? '#4b5563' : '#FFD700',
+                            background: loading ? 'var(--text-secondary)' : '#FFD700',
                             color: loading ? 'white' : 'black',
                             border: 'none',
                             padding: '12px',

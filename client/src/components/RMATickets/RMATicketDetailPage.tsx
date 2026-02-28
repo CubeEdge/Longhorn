@@ -77,7 +77,7 @@ const statusConfig: Record<string, { color: string, icon: any }> = {
     Shipped: { color: '#06b6d4', icon: Truck },     // 已发货 - Cyan
     Returned: { color: '#10b981', icon: CheckCircle }, // 已寄回 - Green (same as Dashboard)
     Completed: { color: '#10B981', icon: CheckCircle }, // 已完成
-    Cancelled: { color: '#6b7280', icon: XCircle }  // 已取消
+    Cancelled: { color: 'var(--text-secondary)', icon: XCircle }  // 已取消
 };
 
 const RMATicketDetailPage: React.FC = () => {

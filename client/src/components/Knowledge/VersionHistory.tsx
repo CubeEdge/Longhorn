@@ -223,7 +223,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({
                             <Loader2 size={24} className="animate-spin" color="#FFD700" />
                         </div>
                     ) : versions.length === 0 ? (
-                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '40px' }}>
+                        <div style={{ textAlign: 'center', color: 'var(--text-main)', padding: '40px' }}>
                             暂无版本历史
                         </div>
                     ) : (

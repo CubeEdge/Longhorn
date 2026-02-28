@@ -165,7 +165,7 @@ export const StarredPage: React.FC = () => {
         const url = `/preview/${file.file_path}`;
 
         if (ext?.match(/(mp4|mov|m4v|hevc|h265)$/i)) return <video controls autoPlay className="preview-media" onClick={e => e.stopPropagation()}><source src={url} /></video>;
-        if (ext === 'pdf') return <iframe src={url} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} style={{ width: '100%', height: '80vh', border: 'none', background: '#fff' }} />;
+        if (ext === 'pdf') return <iframe src={url} className="doc-preview-container" title="PDF" onClick={e => e.stopPropagation()} style={{ width: '100%', height: '80vh', border: 'none', background: 'var(--text-main)' }} />;
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return <img src={url} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />;
 
         // Simple fallback

@@ -50,7 +50,7 @@ const BokehOrb: React.FC<BokehOrbProps> = ({ onClick }) => {
                     width: '14px',
                     height: '14px',
                     borderRadius: '50%',
-                    background: '#fff',
+                    background: 'var(--text-main)',
                     boxShadow: '0 0 12px 4px #fff, 0 0 20px 8px rgba(16, 185, 129, 0.6)',
                     filter: 'blur(1px)',
                     position: 'relative',

@@ -453,7 +453,7 @@ const DealerRepairDetailPage: React.FC = () => {
                             {repair.parts_used && repair.parts_used.length > 0 ? (
                                 <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', color: 'var(--text-secondary)' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'rgba(255,255,255,0.4)' }}>
+                                        <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-main)' }}>
                                             <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_name')}</th>
                                             <th style={{ textAlign: 'left', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.part_number')}</th>
                                             <th style={{ textAlign: 'right', padding: '8px', fontWeight: 600 }}>{t('dealer_repair.quantity')}</th>
@@ -472,7 +472,7 @@ const DealerRepairDetailPage: React.FC = () => {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div style={{ color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>{t('dealer_repair.no_parts_used')}</div>
+                                <div style={{ color: 'var(--text-main)', fontStyle: 'italic' }}>{t('dealer_repair.no_parts_used')}</div>
                             )}
                         </div>
 

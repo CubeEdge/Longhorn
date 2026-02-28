@@ -370,7 +370,7 @@ const ProductManagement: React.FC = () => {
                                         padding: '10px 12px',
                                         background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
                                         border: 'none',
-                                        color: statusFilter === 'inactive' ? '#9ca3af' : 'var(--text-main)',
+                                        color: statusFilter === 'inactive' ? 'var(--text-secondary)' : 'var(--text-main)',
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
                                         textAlign: 'left'

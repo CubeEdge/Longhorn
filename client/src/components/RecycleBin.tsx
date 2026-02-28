@@ -181,7 +181,7 @@ const RecycleBin: React.FC = () => {
                                     padding: '8px 12px',
                                     border: 'none',
                                     borderRadius: '6px',
-                                    background: viewMode === 'grid' ? '#FFF' : 'transparent',
+                                    background: viewMode === 'grid' ? 'var(--text-main)' : 'transparent',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -197,7 +197,7 @@ const RecycleBin: React.FC = () => {
                                     padding: '8px 12px',
                                     border: 'none',
                                     borderRadius: '6px',
-                                    background: viewMode === 'list' ? '#FFF' : 'transparent',
+                                    background: viewMode === 'list' ? 'var(--text-main)' : 'transparent',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -536,7 +536,7 @@ const RecycleBin: React.FC = () => {
                                     return <video src={previewUrl} controls style={{ maxWidth: '100%', maxHeight: '80vh' }} />;
                                 }
                                 return (
-                                    <div style={{ background: '#FFF', padding: '40px', borderRadius: '12px', textAlign: 'center' }}>
+                                    <div style={{ background: 'var(--text-main)', padding: '40px', borderRadius: '12px', textAlign: 'center' }}>
                                         <p>{t('recycle.no_preview')}</p>
                                     </div>
                                 );

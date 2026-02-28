@@ -1395,7 +1395,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ mode = 'all' }) => {
                             position: 'fixed',
                             top: contextMenu.y,
                             left: contextMenu.x,
-                            background: '#fff',
+                            background: 'var(--text-main)',
                             border: '1px solid var(--glass-border)',
                             borderRadius: '8px',
                             boxShadow: 'var(--glass-shadow-lg)',

@@ -514,7 +514,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         background: 'var(--glass-bg-light)',
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
-                                        color: summary ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                                        color: summary ? 'var(--text-main)' : 'rgba(255,255,255,0.5)',
                                         fontSize: '13px',
                                         fontWeight: 500,
                                         cursor: 'pointer',
@@ -586,7 +586,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                             justifyContent: 'space-between',
                                             marginTop: '10px',
                                             fontSize: '11px',
-                                            color: 'rgba(255,255,255,0.4)'
+                                            color: 'var(--text-main)'
                                         }}>
                                             <span>用于列表预览和 SEO 优化</span>
                                             <span style={{

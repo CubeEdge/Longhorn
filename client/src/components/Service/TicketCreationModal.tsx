@@ -209,7 +209,7 @@ const TicketCreationModal: React.FC = () => {
     const sectionTitleStyle: React.CSSProperties = {
         fontSize: '11px',
         fontWeight: 600,
-        color: 'rgba(255,255,255,0.4)',
+        color: 'var(--text-main)',
         textTransform: 'uppercase',
         letterSpacing: '1.5px',
         marginBottom: '16px'
@@ -453,7 +453,7 @@ const TicketCreationModal: React.FC = () => {
                                         transition: 'all 0.2s'
                                     }}>
                                         <Upload size={22} style={{ color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }} />
-                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>点击或拖拽文件到此处</span>
+                                        <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>点击或拖拽文件到此处</span>
                                         <span style={{ fontSize: '11px', color: 'var(--glass-border)', marginTop: '4px' }}>图片、视频、PDF (最大 50MB)</span>
                                         <input
                                             type="file"
