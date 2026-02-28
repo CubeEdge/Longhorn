@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-03-01 00:15 - 侧栏重构 + WorkspacePage 三视图 (v12.2.2)
+
+### Tasks Completed:
+1. **侧栏分组重构** (`App.tsx`):
+   - 移除 MANAGEMENT/KNOWLEDGE/ADMIN section header
+   - Overview 移入 WORKSPACE 首位（仅 Lead/Admin 可见）
+   - 工作区/工单/档案三个 section 支持折叠/展开，localStorage 持久化
+   - Tech Hub 独立菜单项，Admin 合并为底部单项
+   - 全部菜单文字 i18n 化
+2. **WorkspacePage 完全重写** (`WorkspacePage.tsx`):
+   - 三视图：My Tasks（混合排序）、Mentioned（协作）、Team Queue（部门池）
+   - Star/Snooze/Pick Up 交互 + 右键上下文菜单
+   - 统一 `/api/v1/tickets` 数据获取
+3. **i18n 补全** (`translations.ts`): zh/en/de/ja 四语言 21 个新 key
+
+### Technical Output:
+- **Modified**: `client/src/App.tsx`, `client/src/components/Service/WorkspacePage.tsx`, `client/src/i18n/translations.ts`, `client/package.json`
+- **Version**: Client `12.2.2`
+
+---
+
 ## 2026-02-28 12:30 - P2 导航架构重构与角色统一 (v12.2.1)
 
 ### Tasks Completed:

@@ -24,7 +24,9 @@ import {
   Package,
   CheckSquare,
   Bell,
-  Inbox
+  Inbox,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -151,12 +153,12 @@ const App: React.FC = () => {
           {/* ==================== SERVICE MODULE ==================== */}
           {/* P2: Overview Dashboard (管理仪表盘) */}
           <Route path="/service/overview" element={<ServiceOverviewPage />} />
-          
+
           {/* P2: Workspace (个人执行台) */}
           <Route path="/service/workspace" element={<WorkspacePage />} />
           <Route path="/service/mentioned" element={<WorkspacePage />} />
           <Route path="/service/team-queue" element={<WorkspacePage />} />
-          
+
           {/* Inquiry Tickets (咨询工单) - Layer 1 */}
           <Route path="/service/inquiry-tickets" element={<InquiryTicketListPage />} />
           <Route path="/service/inquiry-tickets/new" element={<InquiryTicketCreatePage />} />
@@ -200,7 +202,7 @@ const App: React.FC = () => {
 
           {/* Knowledge Audit Log - Internal Staff Only (Admin) */}
           <Route path="/service/knowledge/audit" element={
-            user?.role === 'Admin' ? <KnowledgeAuditLog /> : <Navigate to="/" />
+            (user?.role === 'Admin' || user?.role === 'Exec') ? <KnowledgeAuditLog /> : <Navigate to="/" />
           } />
           <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />
           <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
@@ -215,7 +217,7 @@ const App: React.FC = () => {
           <Route path="/service/inventory/restock/:id" element={<RestockOrderDetailPage />} />
 
           {/* Service Admin Settings */}
-          <Route path="/service/admin/*" element={user?.role === 'Admin' ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
+          <Route path="/service/admin/*" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
 
           {/* Legacy Service Routes - Redirects */}
           <Route path="/service/records" element={<Navigate to="/service/inquiry-tickets" replace />} />
@@ -243,11 +245,11 @@ const App: React.FC = () => {
           <Route path="/files/recent" element={<RecentPage />} />
 
           {/* ==================== ADMIN ROUTES ==================== */}
-          <Route path="/root" element={user?.role === 'Admin' ? <RootDirectoryView /> : <Navigate to="/" />} />
-          <Route path="/members" element={user?.role === 'Admin' ? <MemberSpacePage /> : <Navigate to="/" />} />
+          <Route path="/root" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <RootDirectoryView /> : <Navigate to="/" />} />
+          <Route path="/members" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <MemberSpacePage /> : <Navigate to="/" />} />
           {/* Files Admin - Using /admin/* */}
-          <Route path="/admin/*" element={user?.role === 'Admin' ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
-          <Route path="/department-dashboard" element={user?.role === 'Lead' ? <DepartmentDashboard /> : <Navigate to="/" />} />
+          <Route path="/admin/*" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
+          <Route path="/department-dashboard" element={(user?.role === 'Lead' || user?.role === 'Exec') ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
           {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
           {/* Old service routes → new service routes */}
@@ -288,11 +290,31 @@ const DeptRedirect: React.FC = () => {
   return <Navigate to={newPath} replace />;
 };
 
+const SIDEBAR_EXPANDED_KEY = 'longhorn_sidebar_expanded';
+
 const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, currentModule: ModuleType }> = ({ role, isOpen, onClose, currentModule }) => {
   const location = useLocation();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
   const { t } = useLanguage();
+
+  // Collapsible section state
+  const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
+      return saved ? JSON.parse(saved) : { workspace: true, operations: true, archives: true };
+    } catch {
+      return { workspace: true, operations: true, archives: true };
+    }
+  });
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const next = { ...prev, [sectionId]: !prev[sectionId] };
+      localStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
   const { saveRoute, getRoute } = useRouteMemoryStore();
 
   // Save route on change
@@ -361,49 +383,37 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         {currentModule === 'service' && (
           <>
-            {/* MANAGEMENT - Lead/Admin Only */}
-            {(role === 'Admin' || role === 'Lead') && (
+            {/* WORKSPACE section - collapsible */}
+            <div className="sidebar-section-title" onClick={() => toggleSection('workspace')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{t('sidebar.section_workspace')}</span>
+              {expandedSections.workspace !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </div>
+            {expandedSections.workspace !== false && (
               <>
-                <div className="sidebar-section-title">MANAGEMENT</div>
-                <Link to={getRoute('/service/overview')} className={`sidebar-item ${location.pathname === '/service/overview' ? 'active' : ''}`} onClick={onClose}>
-                  <LayoutDashboard size={18} />
-                  <span>Overview</span>
+                {/* Overview - Lead/Admin Only */}
+                {(role === 'Admin' || role === 'Exec' || role === 'Lead') && (
+                  <Link to={getRoute('/service/overview')} className={`sidebar-item ${location.pathname === '/service/overview' ? 'active' : ''}`} onClick={onClose}>
+                    <LayoutDashboard size={18} />
+                    <span>{t('sidebar.overview')}</span>
+                  </Link>
+                )}
+                <Link to={getRoute('/service/workspace')} className={`sidebar-item ${location.pathname === '/service/workspace' ? 'active' : ''}`} onClick={onClose}>
+                  <CheckSquare size={18} />
+                  <span>{t('sidebar.my_tasks')}</span>
+                </Link>
+                <Link to={getRoute('/service/mentioned')} className={`sidebar-item ${location.pathname === '/service/mentioned' ? 'active' : ''}`} onClick={onClose}>
+                  <Bell size={18} />
+                  <span>{t('sidebar.mentioned')}</span>
+                </Link>
+                <Link to={getRoute('/service/team-queue')} className={`sidebar-item ${location.pathname === '/service/team-queue' ? 'active' : ''}`} onClick={onClose}>
+                  <Inbox size={18} />
+                  <span>{t('sidebar.team_queue')}</span>
                 </Link>
               </>
             )}
 
-            {/* WORKSPACE - All Users */}
-            <div className="sidebar-section-title">WORKSPACE</div>
-            <Link to={getRoute('/service/workspace')} className={`sidebar-item ${location.pathname === '/service/workspace' ? 'active' : ''}`} onClick={onClose}>
-              <CheckSquare size={18} />
-              <span>My Tasks</span>
-            </Link>
-            <Link to={getRoute('/service/mentioned')} className={`sidebar-item ${location.pathname === '/service/mentioned' ? 'active' : ''}`} onClick={onClose}>
-              <Bell size={18} />
-              <span>Mentioned</span>
-            </Link>
-            <Link to={getRoute('/service/team-queue')} className={`sidebar-item ${location.pathname === '/service/team-queue' ? 'active' : ''}`} onClick={onClose}>
-              <Inbox size={18} />
-              <span>Team Queue</span>
-            </Link>
-
-            {/* OPERATIONS - Ticket Types */}
-            <div className="sidebar-section-title">OPERATIONS</div>
-            <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
-              <MessageCircleQuestion size={18} />
-              <span>{t('sidebar.inquiry_tickets')}</span>
-            </Link>
-            <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
-              <ClipboardList size={18} />
-              <span>{t('sidebar.rma_tickets')}</span>
-            </Link>
-            <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
-              <Wrench size={18} />
-              <span>{t('sidebar.dealer_repairs')}</span>
-            </Link>
-
-            {/* KNOWLEDGE */}
-            <div className="sidebar-section-title">KNOWLEDGE</div>
+            {/* 知识中心 - with divider lines */}
+            <div style={{ borderTop: '1px solid var(--text-secondary)', opacity: 0.3, margin: '8px 12px' }} />
             <Link
               to="/tech-hub/wiki?line=A"
               className={`sidebar-item ${location.pathname.startsWith('/tech-hub/wiki') ? 'active' : ''}`}
@@ -413,37 +423,66 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               }}
             >
               <Book size={18} />
-              <span>Tech Hub</span>
+              <span>{t('sidebar.tech_hub')}</span>
             </Link>
+            <div style={{ borderTop: '1px solid var(--text-secondary)', opacity: 0.3, margin: '8px 12px' }} />
 
-            {/* ARCHIVES - Role-based visibility */}
-            {(role === 'Admin' || role === 'Lead' || role === 'Member') && (
+            {/* OPERATIONS section (统计和所有工单) - collapsible, after Tech Hub */}
+            <div className="sidebar-section-title" onClick={() => toggleSection('operations')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{t('sidebar.section_operations')}</span>
+              {expandedSections.operations !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </div>
+            {expandedSections.operations !== false && (
               <>
-                <div className="sidebar-section-title">ARCHIVES</div>
-                <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''}`} onClick={onClose}>
-                  <Building size={18} />
-                  <span>渠道 Dealers</span>
+                <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
+                  <MessageCircleQuestion size={18} />
+                  <span>{t('sidebar.inquiry_tickets')}</span>
                 </Link>
-                <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''}`} onClick={onClose}>
-                  <Users size={18} />
-                  <span>客户 Customers</span>
+                <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
+                  <ClipboardList size={18} />
+                  <span>{t('sidebar.rma_tickets')}</span>
                 </Link>
-                <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
-                  <Box size={18} />
-                  <span>资产 Assets</span>
+                <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
+                  <Wrench size={18} />
+                  <span>{t('sidebar.dealer_repairs')}</span>
+                </Link>
+                <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
+                  <Package size={18} />
+                  <span>{t('sidebar.parts_inventory')}</span>
                 </Link>
               </>
             )}
-            <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
-              <Package size={18} />
-              <span>配件 Parts</span>
-            </Link>
 
-            {/* Admin Section */}
-            {role === 'Admin' && (
+            {/* ARCHIVES section (档案和基础信息) - collapsible, Role-based visibility */}
+            {(role === 'Admin' || role === 'Exec' || role === 'Lead' || role === 'Member') && (
+              <>
+                <div className="sidebar-section-title" onClick={() => toggleSection('archives')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{t('sidebar.section_archives')}</span>
+                  {expandedSections.archives !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.archives !== false && (
+                  <>
+                    <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''}`} onClick={onClose}>
+                      <Building size={18} />
+                      <span>{t('sidebar.archives_dealers')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/customers')} className={`sidebar-item ${location.pathname.startsWith('/service/customers') ? 'active' : ''}`} onClick={onClose}>
+                      <Users size={18} />
+                      <span>{t('sidebar.archives_customers')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
+                      <Box size={18} />
+                      <span>{t('sidebar.archives_assets')}</span>
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Admin - bottom single item, no section header */}
+            {(role === 'Admin' || role === 'Exec') && (
               <>
                 <div style={{ marginTop: 'auto' }} />
-                <div className="sidebar-section-title">ADMIN</div>
                 <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''}`} onClick={onClose}>
                   <Settings size={18} />
                   <span>{t('sidebar.service_admin')}</span>
@@ -498,7 +537,7 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
               <span>{t('browser.recycle')}</span>
             </Link>
 
-            {role === 'Admin' && (
+            {(role === 'Admin' || role === 'Exec') && (
               <>
                 <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
                 <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
@@ -954,7 +993,7 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{user.username}</span>
               <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
-                {user.role === 'Admin' ? t('role.admin') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
+                {user.role === 'Admin' ? t('role.admin') : user.role === 'Exec' ? t('role.exec') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
               </span>
             </div>
           </div>
@@ -1160,7 +1199,7 @@ const HomeRedirect: React.FC<{ user: any }> = ({ user }) => {
   const canAccessFiles = canAccessFilesModule(user?.role || '');
 
   // Admin goes to admin panel
-  if (user?.role === 'Admin') {
+  if (user?.role === 'Admin' || user?.role === 'Exec') {
     return <Navigate to="/admin" replace />;
   }
 

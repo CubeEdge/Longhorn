@@ -113,7 +113,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
                 conditions.push('ka.product_line = ?');
                 params.push(product_line);
             }
-            if (visibility && (user.role === 'Admin' || user.role === 'Lead')) {
+            if (visibility && (user.role === 'Admin' || user.role === 'Exec' || user.role === 'Lead')) {
                 conditions.push('ka.visibility = ?');
                 params.push(visibility);
             }
@@ -1784,7 +1784,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
     }
 
     function buildVisibilityConditions(user) {
-        if (user.role === 'Admin') {
+        if (user.role === 'Admin' || user.role === 'Exec') {
             return { sql: '1=1', params: [] };
         }
 
@@ -1810,7 +1810,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
     }
 
     function canAccessArticle(user, article) {
-        if (user.role === 'Admin') return true;
+        if (user.role === 'Admin' || user.role === 'Exec') return true;
         if (article.visibility === 'Public') return true;
         if (article.visibility === 'Dealer' && (user.user_type === 'Dealer' || user.user_type === 'Employee')) return true;
         if (article.visibility === 'Internal' && user.user_type === 'Employee') return true;
@@ -1822,7 +1822,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
     }
 
     function canEditArticle(user, article) {
-        if (user.role === 'Admin') return true;
+        if (user.role === 'Admin' || user.role === 'Exec') return true;
         if (user.role === 'Lead') return true;
         return article.created_by === user.id;
     }

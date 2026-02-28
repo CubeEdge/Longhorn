@@ -102,17 +102,17 @@ module.exports = function (db, authenticate, serviceUpload) {
             id: row.id,
             ticket_number: row.ticket_number,
             ticket_type: row.ticket_type,
-            
+
             // Status
             current_node: row.current_node,
             status: row.status,
-            
+
             // SLA
             priority: row.priority,
             sla_due_at: row.sla_due_at,
             sla_status: row.sla_status,
             breach_counter: row.breach_counter,
-            
+
             // Account/Contact
             account_id: row.account_id,
             account_name: row.account_name,
@@ -123,18 +123,18 @@ module.exports = function (db, authenticate, serviceUpload) {
             reporter_name: row.reporter_name,
             reporter_type: row.reporter_type,
             region: row.region,
-            
+
             // Product
             product_id: row.product_id,
             product_name: row.product_name,
             serial_number: row.serial_number,
-            
+
             // Assignment
             assigned_to: row.assigned_to,
             assigned_name: row.assigned_name,
             submitted_by: row.submitted_by,
             submitted_name: row.submitted_name,
-            
+
             // Timestamps
             created_at: row.created_at,
             updated_at: row.updated_at
@@ -146,58 +146,58 @@ module.exports = function (db, authenticate, serviceUpload) {
                 // Product details
                 firmware_version: row.firmware_version,
                 hardware_version: row.hardware_version,
-                
+
                 // Issue classification
                 issue_type: row.issue_type,
                 issue_category: row.issue_category,
                 issue_subcategory: row.issue_subcategory,
                 severity: row.severity,
-                
+
                 // Inquiry fields
                 service_type: row.service_type,
                 channel: row.channel,
                 problem_summary: row.problem_summary,
                 communication_log: row.communication_log,
-                
+
                 // Problem & solution
                 problem_description: row.problem_description,
                 solution_for_customer: row.solution_for_customer,
                 is_warranty: row.is_warranty,
-                
+
                 // Repair info
                 repair_content: row.repair_content,
                 problem_analysis: row.problem_analysis,
                 resolution: row.resolution,
-                
+
                 // Payment
                 payment_channel: row.payment_channel,
                 payment_amount: row.payment_amount,
                 payment_date: row.payment_date,
-                
+
                 // Dates
                 feedback_date: row.feedback_date,
                 ship_date: row.ship_date,
                 received_date: row.received_date,
                 completed_date: row.completed_date,
                 first_response_at: row.first_response_at,
-                
+
                 // SLA details
                 node_entered_at: row.node_entered_at,
-                
+
                 // Collaboration
                 participants: row.participants ? JSON.parse(row.participants) : [],
                 snooze_until: row.snooze_until,
-                
+
                 // Links
                 parent_ticket_id: row.parent_ticket_id,
                 parent_ticket_number: row.parent_ticket_number,
                 external_link: row.external_link,
-                
+
                 // Approval
                 approval_status: row.approval_status,
                 approved_by: row.approved_by,
                 approved_at: row.approved_at,
-                
+
                 // Auto close
                 auto_close_reminder_sent: row.auto_close_reminder_sent,
                 auto_close_at: row.auto_close_at
@@ -329,9 +329,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                     a.name as account_name,
                     c.name as contact_name,
                     d.name as dealer_name,
-                    p.name as product_name,
-                    u1.name as assigned_name,
-                    u2.name as submitted_name
+                    p.model_name as product_name,
+                    u1.username as assigned_name,
+                    u2.username as submitted_name
                 FROM tickets t
                 LEFT JOIN accounts a ON t.account_id = a.id
                 LEFT JOIN contacts c ON t.contact_id = c.id
@@ -377,9 +377,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                     a.name as account_name,
                     c.name as contact_name,
                     d.name as dealer_name,
-                    p.name as product_name,
-                    u1.name as assigned_name,
-                    u2.name as submitted_name,
+                    p.model_name as product_name,
+                    u1.username as assigned_name,
+                    u2.username as submitted_name,
                     pt.ticket_number as parent_ticket_number
                 FROM tickets t
                 LEFT JOIN accounts a ON t.account_id = a.id
@@ -427,7 +427,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ticket_type,
                 priority = 'P2',
                 channel_code = 'D',
-                
+
                 // Account/Contact
                 account_id,
                 contact_id,
@@ -435,36 +435,36 @@ module.exports = function (db, authenticate, serviceUpload) {
                 reporter_name,
                 reporter_type,
                 region,
-                
+
                 // Product
                 product_id,
                 serial_number,
                 firmware_version,
                 hardware_version,
-                
+
                 // Issue
                 issue_type,
                 issue_category,
                 issue_subcategory,
                 severity,
-                
+
                 // Inquiry
                 service_type,
                 channel,
                 problem_summary,
                 communication_log,
-                
+
                 // Problem
                 problem_description,
                 solution_for_customer,
                 is_warranty,
-                
+
                 // Assignment
                 assigned_to,
-                
+
                 // Dates
                 feedback_date,
-                
+
                 // Parent
                 parent_ticket_id
             } = req.body;
@@ -608,7 +608,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             if (updates.current_node && updates.current_node !== ticket.current_node) {
                 const priority = updates.priority || ticket.priority;
                 const slaUpdate = slaService.updateSlaOnNodeChange(db, id, updates.current_node, priority);
-                
+
                 // Record activity
                 db.prepare(`
                     INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)

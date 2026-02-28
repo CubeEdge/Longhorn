@@ -805,7 +805,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
     }
 
     function canAccessIssue(user, issue) {
-        if (user.role === 'Admin') {
+        if (user.role === 'Admin' || user.role === 'Exec') {
             return { read: true, write: true, assign: true, close: true };
         }
 

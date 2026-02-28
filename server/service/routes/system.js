@@ -331,7 +331,7 @@ module.exports = function (db, authenticate) {
             const user = req.user;
             let hasAccess = false;
 
-            if (user.role === 'Admin' || user.role === 'Lead') {
+            if (user.role === 'Admin' || user.role === 'Exec' || user.role === 'Lead') {
                 hasAccess = true;
             } else if (user.user_type === 'Dealer' && attachment.dealer_id === user.dealer_id) {
                 hasAccess = true;

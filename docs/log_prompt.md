@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-03-01 00:15 (耗时: 35m)
+
+**User Prompt**:
+侧边栏菜单入口重构（Overview 归入 Workspace、折叠展开、多语言处理、去除多余 section）+ WorkspacePage 三视图重写（My Tasks 混合排序、Mentioned 协作、Team Queue 部门池 + Star/Snooze/Pick Up 交互）。
+
+**Agent Response**:
+1. **侧栏结构重构** (`App.tsx`):
+   - 移除 MANAGEMENT/KNOWLEDGE/ADMIN section，Overview 归入工作区首位
+   - 三个 section（工作区/工单/档案）支持折叠/展开，localStorage 持久化
+   - Tech Hub 独立为无 section 的单项，Admin 合并至底部单项
+   - 全部菜单文字 i18n 化（`t()` 函数）
+2. **WorkspacePage 完全重写** (`WorkspacePage.tsx`):
+   - 三视图架构：My Tasks / Mentioned / Team Queue
+   - 混合排序：Critical/Breached → Starred → SLA 剩余时间
+   - Star/Snooze/Pick Up 交互，右键上下文菜单
+3. **i18n 补全** (`translations.ts`): 四种语言（zh/en/de/ja）添加 21 个新 key
+4. **版本部署**: v12.2.2 构建部署成功，浏览器验证通过
+
+**Result**:
+侧栏按 PRD P2 规范完成重构，WorkspacePage 三视图上线，v12.2.2 已部署。
+
+---
+
 ## 2026-02-28 12:30 (耗时: 45m)
 
 **User Prompt**:

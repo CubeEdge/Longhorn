@@ -3,9 +3,11 @@ import { create } from 'zustand';
 interface User {
     id: number;
     username: string;
-    role: 'Admin' | 'Lead' | 'Member' | 'Dealer';
+    role: 'Admin' | 'Exec' | 'Lead' | 'Member' | 'Dealer';
     department_name?: string;
-    user_type?: 'Internal' | 'Dealer' | 'Customer';
+    user_type?: 'Internal' | 'Employee' | 'Dealer' | 'Customer';
+    job_title?: string;
+    display_name?: string;
     dealer_id?: number;
     dealer_name?: string;
 }

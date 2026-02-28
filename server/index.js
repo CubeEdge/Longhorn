@@ -605,7 +605,8 @@ const authenticate = (req, res, next) => {
                 // Reload user from DB to ensure latest role/department info
                 // Use both integer and float comparison for backward compatibility
                 const user = db.prepare(`
-                    SELECT id, username, role, department_id, user_type 
+                    SELECT id, username, role, department_id, user_type, 
+                           job_title, display_name, department_name
                     FROM users
                     WHERE id = ? OR id = CAST(? AS REAL)
                 `).get(decoded.id, decoded.id);
@@ -634,7 +635,7 @@ const hasPermission = (user, folderPath, accessType = 'Read') => {
         // fs.appendFileSync(path.join(__dirname, 'debug_perm.txt'), ...); // Disabled detailed logging
     } catch (e) { }
 
-    if (user.role === 'Admin') return true;
+    if (user.role === 'Admin' || user.role === 'Exec') return true;
 
     const normalizedPath = folderPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 
@@ -721,7 +722,7 @@ async function moveItemToRecycle(subPath, userId) {
 }
 
 const isAdmin = (req, res, next) => {
-    if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+    if (req.user.role !== 'Admin' && req.user.role !== 'Exec') return res.status(403).json({ error: 'Admin only' });
     next();
 };
 
@@ -1147,11 +1148,17 @@ app.post('/api/login', (req, res) => {
     if (user && bcrypt.compareSync(password, user.password)) {
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
 
+        // Update last_login_at
+        try { db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(new Date().toISOString(), user.id); } catch (e) { }
+
         const userInfo = {
             id: user.id,
             username: user.username,
             role: user.role,
-            department_name: user.department_name
+            department_name: user.department_name,
+            job_title: user.job_title || null,
+            display_name: user.display_name || user.username,
+            user_type: user.user_type || 'Employee'
         };
 
         // Ensure personal member folder exists
@@ -1170,7 +1177,7 @@ app.post('/api/login', (req, res) => {
 app.get('/api/user/accessible-departments', authenticate, (req, res) => {
     try {
         // Admin can see all departments
-        if (req.user.role === 'Admin') {
+        if (req.user.role === 'Admin' || req.user.role === 'Exec') {
             const allDepts = db.prepare('SELECT * FROM departments').all();
             console.log('[API] Admin accessible-departments:', allDepts);
             return res.json(allDepts);
@@ -1949,7 +1956,7 @@ app.get('/api/search', authenticate, async (req, res) => {
 
         // Get accessible departments
         let searchDepts = [];
-        if (user.role === 'Admin') {
+        if (user.role === 'Admin' || user.role === 'Exec') {
             searchDepts = db.prepare('SELECT * FROM departments').all();
         } else {
             const userDept = db.prepare('SELECT * FROM departments WHERE id = ?').get(user.department_id);
@@ -3402,7 +3409,7 @@ app.get('/api/recycle-bin', authenticate, (req, res) => {
         // Filter items based on user permissions
         const filteredItems = items.filter(item => {
             // Admin sees everything
-            if (req.user.role === 'Admin') return true;
+            if (req.user.role === 'Admin' || req.user.role === 'Exec') return true;
 
             // Check if user has Read permission to the original path
             return hasPermission(req.user, item.original_path, 'Read');
@@ -4027,7 +4034,7 @@ function generateIssueNumber() {
 
 // Permission check for issues
 function canAccessIssue(user, issue) {
-    if (user.role === 'Admin') return { read: true, write: true };
+    if (user.role === 'Admin' || user.role === 'Exec') return { read: true, write: true };
 
     // Lead can access all issues, write own department's
     if (user.role === 'Lead') {

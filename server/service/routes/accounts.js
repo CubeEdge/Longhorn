@@ -7,7 +7,7 @@
 
 const express = require('express');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
@@ -16,12 +16,12 @@ module.exports = function(db, authenticate) {
      */
     function generateAccountNumber() {
         const year = new Date().getFullYear();
-        
+
         // 获取或创建年度序列
         let sequence = db.prepare(
             'SELECT last_sequence FROM account_sequences WHERE year = ?'
         ).get(year);
-        
+
         let nextNum = 1;
         if (sequence) {
             nextNum = sequence.last_sequence + 1;
@@ -33,7 +33,7 @@ module.exports = function(db, authenticate) {
                 'INSERT INTO account_sequences (year, last_sequence) VALUES (?, 1)'
             ).run(year);
         }
-        
+
         return `ACC-${year}-${String(nextNum).padStart(4, '0')}`;
     }
 
@@ -49,17 +49,17 @@ module.exports = function(db, authenticate) {
      */
     router.get('/', authenticate, (req, res) => {
         try {
-            const { 
-                account_type, 
-                service_tier, 
-                search, 
+            const {
+                account_type,
+                service_tier,
+                search,
                 region,
                 is_active,
                 status, // 'active', 'inactive', 'deleted'
                 sort_by = 'created_at',
                 sort_order = 'desc',
-                page = 1, 
-                page_size = 20 
+                page = 1,
+                page_size = 20
             } = req.query;
 
             let conditions = [];
@@ -77,7 +77,7 @@ module.exports = function(db, authenticate) {
                 conditions.push('a.region = ?');
                 params.push(region);
             }
-            
+
             // 支持状态筛选: active, inactive
             if (status) {
                 if (status === 'active') {
@@ -91,7 +91,7 @@ module.exports = function(db, authenticate) {
                 conditions.push('a.is_active = ?');
                 params.push(is_active === 'true' || is_active === '1' ? 1 : 0);
             }
-            
+
             if (search) {
                 conditions.push('(a.name LIKE ? OR a.email LIKE ? OR a.phone LIKE ? OR a.account_number LIKE ?)');
                 const searchPattern = `%${search}%`;
@@ -643,7 +643,7 @@ module.exports = function(db, authenticate) {
             if (!type || type === 'inquiry') queries.push(inquiryQuery);
             if (!type || type === 'rma') queries.push(rmaQuery);
             if (!type || type === 'dealer_repair') queries.push(repairQuery);
-            
+
             unionQuery = queries.join(' UNION ALL ');
             unionQuery += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
 
@@ -687,9 +687,9 @@ module.exports = function(db, authenticate) {
             const user = req.user;
 
             // 权限检查：只有 Admin 或市场部 Lead 可以停用
-            const canDeactivate = user.role === 'Admin' || 
+            const canDeactivate = user.role === 'Admin' || user.role === 'Exec' ||
                 (user.role === 'Lead' && user.department === '市场部');
-            
+
             if (!canDeactivate) {
                 return res.status(403).json({
                     success: false,
@@ -736,7 +736,7 @@ module.exports = function(db, authenticate) {
 
                 // 2. 处理该经销商下的客户（parent_dealer_id = id 的账户）
                 const childAccounts = db.prepare('SELECT id FROM accounts WHERE parent_dealer_id = ?').all(id);
-                
+
                 for (const child of childAccounts) {
                     // 转移客户
                     if (transfer_type === 'dealer_to_dealer' && successor_account_id) {
@@ -810,9 +810,9 @@ module.exports = function(db, authenticate) {
             const user = req.user;
 
             // 权限检查：只有 Admin 或市场部 Lead 可以激活
-            const canReactivate = user.role === 'Admin' || 
+            const canReactivate = user.role === 'Admin' || user.role === 'Exec' ||
                 (user.role === 'Lead' && user.department === '市场部');
-            
+
             if (!canReactivate) {
                 return res.status(403).json({
                     success: false,
@@ -914,10 +914,10 @@ module.exports = function(db, authenticate) {
             const user = req.user;
 
             // 权限检查：只有 Admin 或市场部可以转换客户类型
-            const canConvert = user.role === 'Admin' || 
+            const canConvert = user.role === 'Admin' || user.role === 'Exec' ||
                 (user.role === 'Lead' && user.department === '市场部') ||
                 user.department === '市场部';
-            
+
             if (!canConvert) {
                 return res.status(403).json({
                     success: false,
@@ -1070,9 +1070,9 @@ module.exports = function(db, authenticate) {
             // dealer_id: 经销商账户关联（适用于 DEALER）
             // 根据账户类型选择正确的检查字段
             const isDealer = account.account_type === 'DEALER';
-            
+
             let inquiryCount, rmaCount, repairCount;
-            
+
             if (isDealer) {
                 // 经销商账户：检查 dealer_id
                 inquiryCount = db.prepare(

@@ -1,7 +1,7 @@
 # Longhorn 开发任务 backlog
 
-> **最后更新**: 2026-02-28
-> **版本**: 12.2.1
+> **最后更新**: 2026-03-01
+> **版本**: 12.2.2
 
 ---
 
@@ -44,6 +44,13 @@
 ---
 
 ## 📅 最近更新历史 (From 1_Backlog.md)
+
+### 2026-03-01 (侧栏重构 + WorkspacePage 三视图)
+- **侧栏菜单重构与 WorkspacePage 升级 (v12.2.2)**:
+    - **侧栏重构**: 移除 MANAGEMENT/KNOWLEDGE/ADMIN section，工作区/工单/档案可折叠展开
+    - **WorkspacePage**: 三视图（My Tasks/Mentioned/Team Queue），PRD 混合排序，Star/Snooze/Pick Up 交互
+    - **i18n**: 四种语言 21 个新 key 补全
+    - **部署验证**: v12.2.2 构建并部署，浏览器验证全部通过
 
 ### 2026-02-28 (P2 架构升级)
 - **Service P2 架构升级代码实施 (v12.2.0)**:

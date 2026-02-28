@@ -606,7 +606,7 @@ module.exports = function (db, authenticate) {
             }
 
             // Only Admin can delete, or creator can delete if still Created
-            const canDelete = req.user.role === 'Admin' ||
+            const canDelete = req.user.role === 'Admin' || req.user.role === 'Exec' ||
                 (record.created_by === req.user.id && record.status === 'Created');
 
             if (!canDelete) {
@@ -676,7 +676,7 @@ module.exports = function (db, authenticate) {
     }
 
     function canAccessServiceRecord(user, record) {
-        if (user.role === 'Admin' || user.role === 'Lead') {
+        if (user.role === 'Admin' || user.role === 'Exec' || user.role === 'Lead') {
             return { read: true, write: true, upgrade: true };
         }
 
