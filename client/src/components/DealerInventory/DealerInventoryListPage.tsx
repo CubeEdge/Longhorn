@@ -302,7 +302,7 @@ const DealerInventoryListPage: React.FC = () => {
                         type="checkbox"
                         checked={showLowStockOnly}
                         onChange={e => setShowLowStockOnly(e.target.checked)}
-                        style={{ accentcolor: 'var(--accent-blue)' }}
+                        style={{ accentColor: 'var(--accent-blue)' }}
                     />
                     <span style={{ fontSize: '0.9rem' }}>{t('inventory.show_low_stock_only') || '仅显示低库存'}</span>
                 </label>
