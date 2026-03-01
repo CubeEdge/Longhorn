@@ -6,16 +6,17 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   Star, Loader2, Search, MoreHorizontal,
-  Flame, Hand, MessageSquare, Clock, ChevronLeft, CheckSquare
+  Flame, Hand, MessageSquare, Clock, CheckSquare
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useConfirm } from '../../store/useConfirm';
-import TicketDetailComponents from '../Workspace/TicketDetailComponents';
+// TicketDetailComponents now used via UnifiedTicketDetail
+import UnifiedTicketDetail from '../Workspace/UnifiedTicketDetail';
 
 // ==============================
 // Types
@@ -74,7 +75,6 @@ function saveStarredIds(stars: Record<number, number>) {
 
 const WorkspacePage: React.FC = () => {
   const { token, user } = useAuthStore();
-  const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
 
@@ -87,36 +87,9 @@ const WorkspacePage: React.FC = () => {
   // Context menu
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; ticketId: number } | null>(null);
 
-  // Drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // Detail view state
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
-  const [drawerLoading, setDrawerLoading] = useState(false);
   const confirm = useConfirm();
-
-  // Fetch activities when drawer opens
-  useEffect(() => {
-    if (isDrawerOpen && selectedTicket) {
-      const fetchActivities = async () => {
-        setDrawerLoading(true);
-        try {
-          const res = await axios.get(`/api/v1/tickets/${selectedTicket.id}/activities`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.data.success) {
-            setDrawerActivities(res.data.data);
-          }
-        } catch (err) {
-          console.error('[Workspace] Failed to fetch activities for drawer', err);
-        } finally {
-          setDrawerLoading(false);
-        }
-      };
-      fetchActivities();
-    } else {
-      setDrawerActivities([]);
-    }
-  }, [isDrawerOpen, selectedTicket, token]);
 
   // Determine current view from route
   const currentView: WorkspaceView = useMemo(() => {
@@ -128,7 +101,7 @@ const WorkspacePage: React.FC = () => {
   // Fetch tickets
   useEffect(() => {
     fetchTickets();
-  }, [currentView]);
+  }, [currentView, location.search]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -139,12 +112,15 @@ const WorkspacePage: React.FC = () => {
         sort_order: 'ASC'
       };
 
+      const searchParams = new URLSearchParams(location.search);
+      const urlAssignee = searchParams.get('assignee');
+
       if (currentView === 'my-tasks') {
         // Assigned to me, not closed
         params.assigned_to = String((user as any)?.id || '');
       } else if (currentView === 'team-queue') {
-        // Unassigned tickets
-        params.assigned_to = '0'; // Will need special handling on backend
+        // Unassigned or specific assignee from URL
+        params.assigned_to = urlAssignee || '0';
       }
       // For 'mentioned', we fetch all and filter client-side
 
@@ -172,12 +148,14 @@ const WorkspacePage: React.FC = () => {
         });
       }
 
-      // For team-queue: filter unassigned (assigned_to is null)
+      // For team-queue: filter unassigned (assigned_to is null) or specific assignee
       if (currentView === 'team-queue') {
-        data = data.filter(t =>
-          !t.assigned_to &&
-          !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node)
-        );
+        data = data.filter(t => {
+          if (urlAssignee === 'all') return true;
+          return urlAssignee ? String(t.assigned_to) === urlAssignee : !t.assigned_to;
+        });
+
+        data = data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
       }
 
       // Load snooze state from tickets
@@ -200,9 +178,28 @@ const WorkspacePage: React.FC = () => {
 
   // Hybrid sort (PRD Section 6.3.B)
   const sortedTickets = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const urlSlaStatus = searchParams.get('sla_status');
+    const urlNode = searchParams.get('node');
+
     let result = tickets.filter(t => {
       // Hide snoozed (except P0 - Critical can't be snoozed)
       if (snoozedIds.has(t.id) && t.priority !== 'P0') return false;
+
+      // URL Filters
+      if (urlSlaStatus) {
+        const statuses = urlSlaStatus.split(',');
+        if (!statuses.includes(t.sla_status?.toLowerCase()) && !statuses.includes(t.sla_status)) {
+          return false;
+        }
+      }
+
+      if (urlNode) {
+        const nodes = urlNode.split(',');
+        if (!nodes.includes(t.current_node)) {
+          return false;
+        }
+      }
 
       // Search filter
       if (searchQuery) {
@@ -239,7 +236,7 @@ const WorkspacePage: React.FC = () => {
     });
 
     return result;
-  }, [tickets, searchQuery, starredMap, snoozedIds]);
+  }, [tickets, searchQuery, starredMap, snoozedIds, location.search]);
 
   // Toggle star
   const toggleStar = useCallback((id: number) => {
@@ -304,19 +301,11 @@ const WorkspacePage: React.FC = () => {
   };
 
   // Navigate to ticket detail (Full View)
-  const navigateToTicketFull = useCallback((ticket: Ticket) => {
-    const typeRoutes: Record<string, string> = {
-      inquiry: `/service/inquiry-tickets/${ticket.id}`,
-      rma: `/service/rma-tickets/${ticket.id}`,
-      svc: `/service/dealer-repairs/${ticket.id}`
-    };
-    navigate(typeRoutes[ticket.ticket_type.toLowerCase()] || typeRoutes.inquiry);
-  }, [navigate]);
+  // Legacy navigateToTicketFull removed as inline view IS the full view now.
 
-  // Handle row click (Open Drawer)
+  // Handle row click
   const handleTicketClick = (ticket: Ticket) => {
     setSelectedTicket(ticket);
-    setIsDrawerOpen(true);
   };
 
   // Right-click handler
@@ -378,11 +367,17 @@ const WorkspacePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px 20px 20px' }}>
           <div>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
-              <CheckSquare size={28} color="#3B82F6" />
-              {t('workspace.page_title')}
+              {currentView === 'my-tasks' && <CheckSquare size={28} color="#3B82F6" />}
+              {currentView === 'mentioned' && <MessageSquare size={28} color="#8B5CF6" />}
+              {currentView === 'team-queue' && <Loader2 size={28} color="#F59E0B" />}
+              {currentView === 'my-tasks' && t('workspace.page_title')}
+              {currentView === 'mentioned' && (t('sidebar.service_mentioned', { defaultValue: '协作' }) || '协作')}
+              {currentView === 'team-queue' && (t('sidebar.service_team_queue', { defaultValue: '部门池' }) || '部门池')}
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
-              {t('workspace.page_subtitle')}
+              {currentView === 'my-tasks' && t('workspace.page_subtitle')}
+              {currentView === 'mentioned' && t('workspace.mentioned_subtitle', { defaultValue: '提及您的工单和内部协作任务' })}
+              {currentView === 'team-queue' && t('workspace.team_queue_subtitle', { defaultValue: '待领取的部门公共池任务' })}
             </p>
           </div>
 
@@ -421,69 +416,11 @@ const WorkspacePage: React.FC = () => {
 
       {/* Main Content Area */}
       {selectedTicket ? (
-        <div style={{ padding: '0 24px 24px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'fadeIn 0.2s ease-out' }}>
-          {/* Back button and detail header */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, paddingTop: 10 }}>
-            <button
-              onClick={() => setSelectedTicket(null)}
-              className="btn-ghost"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)',
-                background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px',
-                borderRadius: 8, fontSize: '0.9rem', transition: 'all 0.2s', marginLeft: -12
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <ChevronLeft size={18} /> {t('action.back')}
-            </button>
-            <div style={{ width: '1px', height: '16px', background: 'var(--glass-border)', margin: '0 16px' }} />
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              {selectedTicket.ticket_number}
-              <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                {selectedTicket.problem_summary}
-              </span>
-            </h3>
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={() => navigateToTicketFull(selectedTicket)}
-              className="btn-primary"
-              style={{
-                padding: '8px 16px', borderRadius: 8, fontSize: '0.9rem',
-                background: 'var(--accent-blue)', color: 'var(--bg-main)', border: 'none', cursor: 'pointer', fontWeight: 600
-              }}
-            >
-              {t('workspace.view_full')}
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 24, flex: 1, overflow: 'hidden' }}>
-            <div style={{ flex: '0 0 320px', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--glass-border)' }} className="custom-scroll">
-              <TicketDetailComponents.TicketInfoCard ticket={selectedTicket as any} />
-            </div>
-
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--glass-border)', position: 'relative' }} className="custom-scroll">
-              <div style={{ padding: 24, paddingBottom: 16 }}>
-                <h4 style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('ticket.problem_desc')}
-                </h4>
-                <div style={{ color: 'var(--text-main)', fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                  {selectedTicket.problem_description || selectedTicket.problem_summary || '-'}
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--glass-border)', margin: '0 24px' }} />
-
-              <div style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h4 style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('ticket.activity_timeline')}
-                </h4>
-                <div style={{ flex: 1 }}>
-                  <TicketDetailComponents.ActivityTimeline activities={drawerActivities} loading={drawerLoading} />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div style={{ padding: '0 24px 24px', flex: 1, overflow: 'auto' }}>
+          <UnifiedTicketDetail
+            ticketId={selectedTicket.id}
+            onBack={() => setSelectedTicket(null)}
+          />
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
@@ -556,10 +493,9 @@ const WorkspacePage: React.FC = () => {
                       {/* ID */}
                       <td style={{ padding: '16px' }}>
                         <span style={{
-                          fontSize: '1.2rem',
+                          fontSize: '1.05rem',
                           fontWeight: 700,
-                          color: '#FFFFFF',
-                          fontFamily: 'monospace',
+                          color: 'var(--text-primary)',
                           whiteSpace: 'nowrap'
                         }}>
                           {ticket.ticket_number}
@@ -579,14 +515,18 @@ const WorkspacePage: React.FC = () => {
                           }}>
                             {ticket.priority}
                           </span>
-                          <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>-</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
                           <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            {ticket.account_name || 'Anonymous'}
-                            {ticket.contact_name && ticket.contact_name !== ticket.account_name && ` · ${ticket.contact_name}`}
-                            {(!ticket.account_name && ticket.reporter_name) && ` · ${ticket.reporter_name}`}
+                            {(() => {
+                              const acc = ticket.account_name;
+                              const person = ticket.contact_name || ticket.reporter_name;
+                              if (acc && person && acc !== person && acc.toLowerCase() !== person.toLowerCase()) {
+                                return <>{acc} <span style={{ color: 'var(--text-tertiary)' }}>· {person}</span></>;
+                              }
+                              return acc || person || '-';
+                            })()}
                             {ticket.product_name && <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>· {ticket.product_name}</span>}
                           </span>
                           {ticket.account?.service_tier && ['VIP', 'VVIP'].includes(ticket.account.service_tier) && (

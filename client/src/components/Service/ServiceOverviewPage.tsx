@@ -7,12 +7,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown,
   Users, RefreshCw, ChevronRight, Loader2
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useLanguage } from '../../i18n/useLanguage';
 
 interface DashboardStats {
   total_open: number;
@@ -44,6 +45,7 @@ interface RiskTicket {
 const ServiceOverviewPage: React.FC = () => {
   const { token } = useAuthStore();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -58,20 +60,20 @@ const ServiceOverviewPage: React.FC = () => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch all tickets for analysis
-      const ticketsRes = await axios.get('/api/v1/inquiry-tickets?page_size=100', {
+      // Fetch all tickets from UPGRADED P2 tickets API for holistic analysis
+      const ticketsRes = await axios.get('/api/v1/tickets?page_size=500', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const tickets = ticketsRes.data.data || [];
-      
+
       // Calculate stats
       const now = Date.now();
       const today = new Date().toDateString();
-      
+
       const openTickets = tickets.filter((t: any) => !['Resolved', 'AutoClosed', 'Closed'].includes(t.status));
-      const closedToday = tickets.filter((t: any) => 
-        ['Resolved', 'AutoClosed'].includes(t.status) && 
+      const closedToday = tickets.filter((t: any) =>
+        ['Resolved', 'AutoClosed'].includes(t.status) &&
         new Date(t.resolved_at || t.updated_at).toDateString() === today
       );
 
@@ -82,17 +84,17 @@ const ServiceOverviewPage: React.FC = () => {
       }).map((t: any) => ({
         id: t.id,
         ticket_number: t.ticket_number,
-        ticket_type: 'inquiry',
+        ticket_type: t.ticket_type || 'ticket',
         problem_summary: t.problem_summary || '无描述',
         sla_status: (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60) > 48 ? 'breached' : 'warning',
-        assigned_name: t.handler?.name || '未分配',
+        assigned_name: t.assigned_name || '未分配',
         remaining_hours: Math.max(0, 48 - (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60))
       }));
 
-      // Team load analysis
+      // Team load analysis with P2 fields
       const handlerMap = new Map<string, { name: string; tickets: any[] }>();
       openTickets.forEach((t: any) => {
-        const name = t.handler?.name || '未分配';
+        const name = t.assigned_name || '未分配';
         if (!handlerMap.has(name)) {
           handlerMap.set(name, { name, tickets: [] });
         }
@@ -100,7 +102,7 @@ const ServiceOverviewPage: React.FC = () => {
       });
 
       const teamData = Array.from(handlerMap.values()).map(h => ({
-        id: h.tickets[0]?.handler?.id || 0,
+        id: h.tickets[0]?.assigned_to || 0,
         name: h.name,
         active_tickets: h.tickets.length,
         avg_resolution_hours: 24,
@@ -127,7 +129,9 @@ const ServiceOverviewPage: React.FC = () => {
 
       setRiskTickets(risks.slice(0, 5));
       setTeamLoad(teamData.slice(0, 6));
-      setApprovalCount(Math.floor(Math.random() * 3)); // Placeholder
+      // Retrieve actual waiting approvals count, bypassing fake rng
+      const approvals = tickets.filter((t: any) => t.current_node === 'ms_review' || t.current_node === 'ge_review').length;
+      setApprovalCount(approvals);
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
     } finally {
@@ -148,8 +152,8 @@ const ServiceOverviewPage: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>服务概览</h1>
-          <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>Service Overview Dashboard</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>{t('overview.title') || '服务概览'}</h1>
+          <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>{t('overview.subtitle') || 'Service Overview Dashboard'}</p>
         </div>
         <button
           onClick={fetchDashboardData}
@@ -166,7 +170,7 @@ const ServiceOverviewPage: React.FC = () => {
           }}
         >
           <RefreshCw size={16} />
-          刷新
+          {t('overview.refresh') || '刷新'}
         </button>
       </div>
 
@@ -174,39 +178,39 @@ const ServiceOverviewPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {/* Approvals Card */}
         <ActionCard
-          title="待审批"
-          subtitle="Approvals"
+          title={t('overview.approvals') || "待审批"}
+          subtitle={t('overview.approvals_sub') || "Approvals"}
           value={approvalCount}
           icon={CheckCircle}
           color="#10B981"
-          onClick={() => {}}
+          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all&node=ms_review,ge_review')}
         />
 
         {/* Risks Card */}
         <ActionCard
-          title="风险工单"
-          subtitle="SLA Risks"
+          title={t('overview.risks') || "风险工单"}
+          subtitle={t('overview.risks_sub') || "SLA Risks"}
           value={riskTickets.length}
           icon={AlertTriangle}
           color="#EF4444"
-          onClick={() => navigate('/service/workspace?view=sla_warning')}
+          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all&sla_status=warning,breached')}
           alert={riskTickets.length > 0}
         />
 
         {/* Open Tickets */}
         <ActionCard
-          title="进行中"
-          subtitle="Open Tickets"
+          title={t('overview.open') || "进行中"}
+          subtitle={t('overview.open_sub') || "Open Tickets"}
           value={stats?.total_open || 0}
           icon={Clock}
           color="#3B82F6"
-          onClick={() => navigate('/service/workspace')}
+          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all')}
         />
 
         {/* Closed Today */}
         <ActionCard
-          title="今日完成"
-          subtitle="Closed Today"
+          title={t('overview.closed_today') || "今日完成"}
+          subtitle={t('overview.closed_today_sub') || "Closed Today"}
           value={stats?.total_closed_today || 0}
           icon={CheckCircle}
           color="#10B981"
@@ -226,15 +230,15 @@ const ServiceOverviewPage: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <AlertTriangle size={18} color="#EF4444" />
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>风险工单</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.risks') || '风险工单'}</span>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
-              点击可催办 @Assignee
+              {t('overview.risks_hint') || '点击可催办 @Assignee'}
             </span>
           </div>
 
           {riskTickets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
-              暂无风险工单 🎉
+              {t('overview.no_risks') || '暂无风险工单 🎉'}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -255,9 +259,9 @@ const ServiceOverviewPage: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <Users size={18} color="#FFD700" />
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>团队负载</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.team_load') || '团队负载'}</span>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
-              点击柱子可改派任务
+              {t('overview.team_hint') || '点击柱子可改派任务'}
             </span>
           </div>
 
@@ -280,17 +284,17 @@ const ServiceOverviewPage: React.FC = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <Clock size={18} color="#FFD700" />
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>SLA 健康度</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.sla_health') || 'SLA 健康度'}</span>
         </div>
 
         <div style={{ display: 'flex', gap: 40, alignItems: 'center' }}>
           <SlaGauge breachRate={stats?.sla_breach_rate || 0} />
-          
+
           <div style={{ flex: 1 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-              <MiniStat label="平均响应" value={`${stats?.avg_response_time || 0}h`} trend={-8} />
-              <MiniStat label="今日处理" value={stats?.total_closed_today || 0} trend={15} />
-              <MiniStat label="超时率" value={`${(stats?.sla_breach_rate || 0).toFixed(1)}%`} trend={stats?.sla_breach_rate ? 5 : -10} negative />
+              <MiniStat label={t('overview.avg_response') || "平均响应"} value={`${stats?.avg_response_time || 0}h`} trend={-8} />
+              <MiniStat label={t('overview.today_processed') || "今日处理"} value={stats?.total_closed_today || 0} trend={15} />
+              <MiniStat label={t('overview.breach_rate') || "超时率"} value={`${(stats?.sla_breach_rate || 0).toFixed(1)}%`} trend={stats?.sla_breach_rate ? 5 : -10} negative />
             </div>
           </div>
         </div>
@@ -386,12 +390,18 @@ const RiskTicketRow: React.FC<{ ticket: RiskTicket; onClick: () => void }> = ({ 
 );
 
 const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ member, maxTickets }) => {
+  const navigate = useNavigate();
   const width = (member.active_tickets / maxTickets) * 100;
   const isOverloaded = member.active_tickets > 10;
   const color = isOverloaded ? '#EF4444' : '#10B981';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div
+      onClick={() => navigate(`/service/workspace?view=team-queue&assignee=${member.id}`)}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0', transition: 'opacity 0.2s' }}
+      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+    >
       <div style={{ width: 80, fontSize: 13, color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {member.name}
       </div>
@@ -418,9 +428,10 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
 };
 
 const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
+  const { t } = useLanguage();
   const healthRate = 100 - breachRate;
   const color = breachRate > 20 ? '#EF4444' : breachRate > 10 ? '#F59E0B' : '#10B981';
-  const label = breachRate > 20 ? '需关注' : breachRate > 10 ? '一般' : '健康';
+  const label = breachRate > 20 ? (t('overview.health_poor') || '需关注') : breachRate > 10 ? (t('overview.health_fair') || '一般') : (t('overview.health_good') || '健康');
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

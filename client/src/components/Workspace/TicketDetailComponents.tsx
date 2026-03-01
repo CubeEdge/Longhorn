@@ -4,7 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { 
+import { t } from 'i18next';
+import { MentionCommentInput } from './MentionCommentInput';
+import {
   Clock, User, Tag, Package, Calendar, MessageSquare,
   AlertTriangle, ArrowRight, Send,
   AtSign, Paperclip
@@ -93,7 +95,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   return (
     <div style={{ padding: '16px 0' }}>
       {activities.map((activity, index) => (
-        <div 
+        <div
           key={activity.id}
           style={{
             display: 'flex',
@@ -113,7 +115,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
               background: 'rgba(255,255,255,0.1)'
             }} />
           )}
-          
+
           {/* Icon */}
           <div style={{
             width: 32,
@@ -129,39 +131,39 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
           }}>
             {getActivityIcon(activity.activity_type)}
           </div>
-          
+
           {/* Content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              marginBottom: 4 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: 4
             }}>
-              <span style={{ 
-                fontWeight: 500, 
+              <span style={{
+                fontWeight: 500,
                 color: '#fff',
-                fontSize: 14 
+                fontSize: 14
               }}>
                 {activity.actor?.name || '系统'}
               </span>
               {getVisibilityBadge(activity.visibility)}
-              <span style={{ 
-                marginLeft: 'auto', 
-                fontSize: 12, 
-                color: '#666' 
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: 12,
+                color: '#666'
               }}>
                 {formatTime(activity.created_at)}
               </span>
             </div>
-            
-            <div 
-              style={{ 
-                color: '#aaa', 
+
+            <div
+              style={{
+                color: '#aaa',
                 fontSize: 14,
                 lineHeight: 1.5
               }}
-              dangerouslySetInnerHTML={{ 
-                __html: activity.content_html || activity.content 
+              dangerouslySetInnerHTML={{
+                __html: activity.content_html || activity.content
               }}
             />
           </div>
@@ -175,92 +177,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 // Comment Input
 // ==============================
 
-interface CommentInputProps {
-  onSubmit: (content: string, visibility: string) => void;
-  loading?: boolean;
-}
-
-export const CommentInput: React.FC<CommentInputProps> = ({
-  onSubmit,
-  loading
-}) => {
-  const [content, setContent] = useState('');
-  const [visibility, setVisibility] = useState('all');
-
-  const handleSubmit = () => {
-    if (!content.trim()) return;
-    onSubmit(content, visibility);
-    setContent('');
-  };
-
-  return (
-    <div style={{
-      borderTop: '1px solid rgba(255,255,255,0.08)',
-      padding: 16,
-      background: 'rgba(30, 30, 30, 0.6)'
-    }}>
-      <textarea
-        value={content}
-        onChange={e => setContent(e.target.value)}
-        placeholder="添加评论... (支持 @用户 提及)"
-        style={{
-          width: '100%',
-          minHeight: 80,
-          padding: 12,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 8,
-          color: '#fff',
-          fontSize: 14,
-          resize: 'vertical',
-          marginBottom: 12
-        }}
-      />
-      
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <select
-          value={visibility}
-          onChange={e => setVisibility(e.target.value)}
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 6,
-            padding: '6px 10px',
-            color: '#ccc',
-            fontSize: 13
-          }}
-        >
-          <option value="all">所有人可见</option>
-          <option value="internal">仅内部</option>
-          <option value="op_only">仅 OP</option>
-        </select>
-        
-        <div style={{ flex: 1 }} />
-        
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !content.trim()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 16px',
-            background: content.trim() ? '#FFD700' : 'rgba(255,255,255,0.1)',
-            color: content.trim() ? '#000' : '#666',
-            border: 'none',
-            borderRadius: 6,
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: content.trim() ? 'pointer' : 'not-allowed'
-          }}
-        >
-          <Send size={14} />
-          发送
-        </button>
-      </div>
-    </div>
-  );
-};
+export const CommentInput = MentionCommentInput;
 
 // ==============================
 // Participants Panel
@@ -290,7 +207,7 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
       mentioned: '被@',
       follower: '关注者'
     };
-    
+
     return (
       <span style={{
         fontSize: 10,
@@ -306,8 +223,8 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
 
   const allParticipants = [
     ...(owner ? [{ user_id: owner.id, name: owner.name, role: 'owner' as const, added_at: '' }] : []),
-    ...(assignee && assignee.id !== owner?.id 
-      ? [{ user_id: assignee.id, name: assignee.name, role: 'assignee' as const, added_at: '' }] 
+    ...(assignee && assignee.id !== owner?.id
+      ? [{ user_id: assignee.id, name: assignee.name, role: 'assignee' as const, added_at: '' }]
       : []),
     ...participants.filter(p => p.user_id !== owner?.id && p.user_id !== assignee?.id)
   ];
@@ -317,9 +234,9 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
       padding: 16,
       borderBottom: '1px solid rgba(255,255,255,0.08)'
     }}>
-      <div style={{ 
-        fontSize: 12, 
-        color: '#888', 
+      <div style={{
+        fontSize: 12,
+        color: '#888',
         marginBottom: 12,
         display: 'flex',
         alignItems: 'center',
@@ -328,10 +245,10 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
         <User size={14} />
         参与者 ({allParticipants.length})
       </div>
-      
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {allParticipants.map(p => (
-          <div 
+          <div
             key={p.user_id}
             style={{
               display: 'flex',
@@ -406,16 +323,16 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
       borderBottom: '1px solid rgba(255,255,255,0.08)'
     }}>
       {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 8, 
-        marginBottom: 16 
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16
       }}>
-        <span style={{ 
-          fontSize: 16, 
-          fontWeight: 600, 
-          color: '#fff' 
+        <span style={{
+          fontSize: 16,
+          fontWeight: 600,
+          color: '#fff'
         }}>
           {ticket.ticket_number}
         </span>
@@ -447,12 +364,12 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
           </span>
         )}
       </div>
-      
+
       {/* Info Grid */}
-      <div style={{ 
-        display: 'grid', 
+      <div style={{
+        display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: 12 
+        gap: 12
       }}>
         {infoItems.map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -480,9 +397,9 @@ function formatTime(dateStr: string): string {
   if (diffMins < 1) return '刚刚';
   if (diffMins < 60) return `${diffMins}分钟前`;
   if (diffHours < 24) return `${diffHours}小时前`;
-  
-  return date.toLocaleString('zh-CN', { 
-    month: 'short', 
+
+  return date.toLocaleString('zh-CN', {
+    month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'

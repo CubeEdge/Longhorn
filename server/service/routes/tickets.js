@@ -375,9 +375,18 @@ module.exports = function (db, authenticate, serviceUpload) {
                 SELECT 
                     t.*,
                     a.name as account_name,
+                    a.service_tier as account_service_tier,
+                    a.account_type as account_type,
+                    a.region as account_region,
                     c.name as contact_name,
+                    c.email as contact_email,
+                    c.job_title as contact_job_title,
                     d.name as dealer_name,
+                    d.dealer_code as dealer_code,
                     p.model_name as product_name,
+                    p.serial_number as product_serial_number,
+                    p.firmware_version as product_firmware,
+                    p.product_line as product_line,
                     u1.username as assigned_name,
                     u2.username as submitted_name,
                     pt.ticket_number as parent_ticket_number
@@ -404,13 +413,87 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // Calculate SLA remaining time
             const slaInfo = slaService.checkSlaStatus(row);
-            const data = {
+            const ticketData = {
                 ...formatTicket(row, true),
                 sla_remaining_hours: slaInfo.remaining_hours,
                 sla_remaining_percent: slaInfo.remaining_percent
             };
 
-            res.json({ success: true, data });
+            // --- Enrichments for detail view ---
+
+            // 1. Account context: ticket stats
+            let accountContext = null;
+            if (row.account_id) {
+                const stats = db.prepare(`
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN ticket_type = 'inquiry' THEN 1 ELSE 0 END) as inquiry_count,
+                        SUM(CASE WHEN ticket_type = 'rma' THEN 1 ELSE 0 END) as rma_count,
+                        SUM(CASE WHEN ticket_type = 'svc' THEN 1 ELSE 0 END) as svc_count
+                    FROM tickets WHERE account_id = ?
+                `).get(row.account_id);
+
+                const contacts = db.prepare(`
+                    SELECT id, name, email, job_title, is_primary FROM contacts WHERE account_id = ? ORDER BY is_primary DESC LIMIT 5
+                `).all(row.account_id);
+
+                accountContext = {
+                    id: row.account_id,
+                    name: row.account_name,
+                    service_tier: row.account_service_tier,
+                    account_type: row.account_type,
+                    region: row.account_region,
+                    ticket_stats: stats || { total: 0, inquiry_count: 0, rma_count: 0, svc_count: 0 },
+                    contacts: contacts || []
+                };
+            }
+
+            // 2. Product context: repair history for this SN
+            let productContext = null;
+            if (row.product_id) {
+                const repairHistory = db.prepare(`
+                    SELECT t.id, t.ticket_number, t.ticket_type, t.status, t.current_node, t.problem_summary, t.created_at
+                    FROM tickets t
+                    WHERE t.product_id = ? AND t.id != ?
+                    ORDER BY t.created_at DESC
+                    LIMIT 10
+                `).all(row.product_id, id);
+
+                productContext = {
+                    id: row.product_id,
+                    model_name: row.product_name,
+                    serial_number: row.product_serial_number || row.serial_number,
+                    firmware_version: row.product_firmware,
+                    product_line: row.product_line,
+                    repair_history: repairHistory || []
+                };
+            }
+
+            // 3. Activities (倒序)
+            const activities = db.prepare(`
+                SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC
+            `).all(id);
+
+            // 4. Participants (table may not exist yet)
+            let participants = [];
+            try {
+                participants = db.prepare(`
+                    SELECT tp.*, u.username as name FROM ticket_participants tp
+                    LEFT JOIN users u ON tp.user_id = u.id
+                    WHERE tp.ticket_id = ?
+                `).all(id);
+            } catch (_e) {
+                // ticket_participants table not yet created
+            }
+
+            res.json({
+                success: true,
+                data: ticketData,
+                account: accountContext,
+                product: productContext,
+                activities: activities || [],
+                participants: participants || []
+            });
         } catch (err) {
             console.error('[Tickets] Get error:', err);
             res.status(500).json({ success: false, error: err.message });
@@ -863,6 +946,58 @@ module.exports = function (db, authenticate, serviceUpload) {
             });
         } catch (err) {
             console.error('[Tickets] Stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/participants
+     * Add a participant (Silent Invite)
+     */
+    router.post('/:id/participants', authenticate, (req, res) => {
+        try {
+            const ticketId = req.params.id;
+            const { user_id } = req.body;
+
+            if (!user_id) return res.status(400).json({ success: false, error: 'User ID required' });
+
+            // Allow multiple users as array, or single
+            const uids = Array.isArray(user_id) ? user_id : [user_id];
+
+            for (const uid of uids) {
+                // Ignore if already exists
+                const existing = db.prepare('SELECT id FROM ticket_participants WHERE ticket_id = ? AND user_id = ?').get(ticketId, uid);
+                if (!existing) {
+                    db.prepare('INSERT INTO ticket_participants (ticket_id, user_id, joined_at) VALUES (?, ?, ?)')
+                        .run(ticketId, uid, new Date().toISOString());
+                }
+            }
+
+            res.json({ success: true, message: 'Participants added' });
+        } catch (err) {
+            console.error('[Tickets] Add participants error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * DELETE /api/v1/tickets/:id/participants/:userId
+     * Remove a participant (Leave/Remove)
+     */
+    router.delete('/:id/participants/:userId', authenticate, (req, res) => {
+        try {
+            const ticketId = req.params.id;
+            const userId = req.params.userId;
+
+            const result = db.prepare('DELETE FROM ticket_participants WHERE ticket_id = ? AND user_id = ?').run(ticketId, userId);
+
+            if (result.changes === 0) {
+                return res.status(404).json({ success: false, error: 'Participant not found' });
+            }
+
+            res.json({ success: true, message: 'Participant removed' });
+        } catch (err) {
+            console.error('[Tickets] Remove participant error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

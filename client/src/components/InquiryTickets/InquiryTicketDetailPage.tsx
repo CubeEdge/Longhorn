@@ -79,7 +79,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     const [resolution, setResolution] = useState('');
     const [communicationLog, setCommunicationLog] = useState('');
     const [status, setStatus] = useState('');
-    
+
     // Activity timeline (P2)
     const [activities, setActivities] = useState<any[]>([]);
     const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -87,7 +87,7 @@ const InquiryTicketDetailPage: React.FC = () => {
     useEffect(() => {
         fetchTicket();
     }, [id]);
-    
+
     // Fetch activities when ticket is loaded
     useEffect(() => {
         if (ticket?.id) {
@@ -116,7 +116,7 @@ const InquiryTicketDetailPage: React.FC = () => {
             setLoading(false);
         }
     };
-    
+
     const fetchActivities = async () => {
         if (!id) return;
         setActivitiesLoading(true);
@@ -134,13 +134,14 @@ const InquiryTicketDetailPage: React.FC = () => {
             setActivitiesLoading(false);
         }
     };
-    
-    const handleAddComment = async (content: string, visibility: string) => {
+
+    const handleAddComment = async (content: string, visibility: string, mentions: number[] = []) => {
         try {
             await axios.post(`/api/v1/tickets/${id}/activities`, {
                 activity_type: 'comment',
                 content,
-                visibility
+                visibility,
+                mentions
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -493,11 +494,11 @@ const InquiryTicketDetailPage: React.FC = () => {
                             <div className="ticket-card-title">
                                 <Activity size={14} /> 活动时间轴
                             </div>
-                            <ActivityTimeline 
-                                activities={activities} 
-                                loading={activitiesLoading} 
+                            <ActivityTimeline
+                                activities={activities}
+                                loading={activitiesLoading}
                             />
-                            <CommentInput 
+                            <CommentInput
                                 onSubmit={handleAddComment}
                                 loading={false}
                             />

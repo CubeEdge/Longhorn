@@ -20,12 +20,12 @@ module.exports = function (db, authenticate) {
      */
     function parseMentions(content) {
         if (!content) return [];
-        
+
         // Match @[name](user_id) or @username patterns
         const mentionRegex = /@\[([^\]]+)\]\((\d+)\)|@(\w+)/g;
         const mentions = [];
         let match;
-        
+
         while ((match = mentionRegex.exec(content)) !== null) {
             if (match[2]) {
                 // @[name](user_id) format
@@ -38,7 +38,7 @@ module.exports = function (db, authenticate) {
                 }
             }
         }
-        
+
         return mentions;
     }
 
@@ -47,10 +47,10 @@ module.exports = function (db, authenticate) {
      */
     function createMentionNotifications(ticketId, ticketNumber, mentions, actorId, actorName, activityId) {
         const now = new Date().toISOString();
-        
+
         for (const mention of mentions) {
             if (mention.user_id === actorId) continue; // Don't notify self
-            
+
             db.prepare(`
                 INSERT INTO notifications (
                     recipient_id, notification_type, title, content, icon,
@@ -72,31 +72,21 @@ module.exports = function (db, authenticate) {
      * Add user to ticket participants
      */
     function addParticipant(ticketId, userId, role, addedBy) {
-        const ticket = db.prepare('SELECT participants FROM tickets WHERE id = ?').get(ticketId);
-        let participants = [];
-        
         try {
-            participants = ticket.participants ? JSON.parse(ticket.participants) : [];
+            // Check if already participant
+            const existing = db.prepare('SELECT id FROM ticket_participants WHERE ticket_id = ? AND user_id = ?').get(ticketId, userId);
+            if (existing) {
+                return false;
+            }
+
+            db.prepare('INSERT INTO ticket_participants (ticket_id, user_id, joined_at) VALUES (?, ?, ?)')
+                .run(ticketId, userId, new Date().toISOString());
+
+            return true;
         } catch (e) {
-            participants = [];
-        }
-        
-        // Check if already participant
-        if (participants.some(p => p.user_id === userId)) {
+            console.error('[Activities] addParticipant error:', e);
             return false;
         }
-        
-        participants.push({
-            user_id: userId,
-            role: role || 'mentioned',
-            added_at: new Date().toISOString(),
-            added_by: addedBy
-        });
-        
-        db.prepare('UPDATE tickets SET participants = ? WHERE id = ?')
-            .run(JSON.stringify(participants), ticketId);
-        
-        return true;
     }
 
     /**
@@ -217,7 +207,8 @@ module.exports = function (db, authenticate) {
                 content,
                 content_html,
                 visibility = 'all',
-                metadata
+                metadata,
+                mentions = []
             } = req.body;
             const user = req.user;
 
@@ -283,14 +274,27 @@ module.exports = function (db, authenticate) {
 
             const activityId = result.lastInsertRowid;
 
-            // Handle @mentions
-            const mentions = parseMentions(content);
-            if (mentions.length > 0) {
+            // Handle @mentions (either from text or explicit array)
+            let parsedMentions = parseMentions(content);
+
+            // If explicit mentions array provided (preferred), use it to complement text mentions
+            if (Array.isArray(mentions) && mentions.length > 0) {
+                for (const userId of mentions) {
+                    if (!parsedMentions.some(m => m.user_id === parseInt(userId))) {
+                        const mUser = db.prepare('SELECT id, username as name FROM users WHERE id = ?').get(userId);
+                        if (mUser) {
+                            parsedMentions.push({ user_id: mUser.id, name: mUser.name });
+                        }
+                    }
+                }
+            }
+
+            if (parsedMentions.length > 0) {
                 // Create mention notifications
-                createMentionNotifications(ticketId, ticket.ticket_number, mentions, user.id, user.name, activityId);
-                
+                createMentionNotifications(ticketId, ticket.ticket_number, parsedMentions, user.id, user.name, activityId);
+
                 // Add mentioned users as participants
-                for (const mention of mentions) {
+                for (const mention of parsedMentions) {
                     addParticipant(ticketId, mention.user_id, 'mentioned', user.id);
                 }
 
@@ -302,8 +306,8 @@ module.exports = function (db, authenticate) {
                     ) VALUES (?, 'mention', ?, ?, 'internal', ?, ?, ?, ?)
                 `).run(
                     ticketId,
-                    `提及了 ${mentions.map(m => m.name).join(', ')}`,
-                    JSON.stringify({ mentioned_users: mentions }),
+                    `提及了 ${parsedMentions.map(m => m.name).join(', ')}`,
+                    JSON.stringify({ mentioned_users: parsedMentions }),
                     user.id,
                     user.name,
                     actorRole,

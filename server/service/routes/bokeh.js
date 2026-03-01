@@ -198,15 +198,22 @@ module.exports = (db, authenticate, aiService) => {
                     const account = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
                     customer_name = account?.name;
                 }
-                // 获取联系人姓名
+                // 获取联系人姓名 (兼容新旧表)
                 try {
                     let contactIdQuery = null;
-                    if (r.ticket_type === 'inquiry' && r.ticket_id) {
-                        contactIdQuery = db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
-                    } else if (r.ticket_type === 'rma' && r.ticket_id) {
-                        contactIdQuery = db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id);
-                    } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
-                        contactIdQuery = db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id);
+                    // 先尝试新统一 tickets 表
+                    if (r.ticket_id) {
+                        contactIdQuery = db.prepare('SELECT contact_id FROM tickets WHERE id = ?').get(r.ticket_id);
+                    }
+                    // 回退旧表
+                    if (!contactIdQuery?.contact_id) {
+                        if (r.ticket_type === 'inquiry' && r.ticket_id) {
+                            try { contactIdQuery = db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
+                        } else if (r.ticket_type === 'rma' && r.ticket_id) {
+                            try { contactIdQuery = db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
+                        } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
+                            try { contactIdQuery = db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
+                        }
                     }
 
                     if (contactIdQuery && contactIdQuery.contact_id) {
@@ -270,6 +277,17 @@ module.exports = (db, authenticate, aiService) => {
             // Fetch ticket data based on type
             let ticketData;
             let view_name;
+
+            // Support 'unified' type for new tickets table
+            if (ticket_type === 'unified') {
+                ticketData = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticket_id);
+                if (!ticketData) {
+                    return res.status(404).json({ error: 'Ticket not found' });
+                }
+                // Index directly from tickets table
+                const result = indexUnifiedTicket(db, ticketData);
+                return res.json(result);
+            }
 
             switch (ticket_type) {
                 case 'inquiry':
@@ -396,41 +414,57 @@ module.exports = (db, authenticate, aiService) => {
                 return res.status(403).json({ error: 'Admin access required' });
             }
 
-            let indexed = { inquiry: 0, rma: 0, dealer_repair: 0 };
+            let indexed = { inquiry: 0, rma: 0, dealer_repair: 0, unified: 0 };
 
-            // Index inquiry tickets
-            const inquiryTickets = db.prepare('SELECT id FROM v_inquiry_tickets_ready_for_index').all();
-            for (const t of inquiryTickets) {
-                try {
-                    // Call internal index API logic (simplified inline)
-                    await indexTicket(db, 'inquiry', t.id);
-                    indexed.inquiry++;
-                } catch (err) {
-                    console.error(`Failed to index inquiry ticket ${t.id}:`, err.message);
+            // 1. Index from legacy views (旧数据)
+            try {
+                const inquiryTickets = db.prepare('SELECT id FROM v_inquiry_tickets_ready_for_index').all();
+                for (const t of inquiryTickets) {
+                    try {
+                        await indexTicket(db, 'inquiry', t.id);
+                        indexed.inquiry++;
+                    } catch (err) {
+                        console.error(`Failed to index inquiry ticket ${t.id}:`, err.message);
+                    }
                 }
-            }
+            } catch (_e) { console.warn('[Batch] v_inquiry view not available, skipping'); }
 
-            // Index RMA tickets
-            const rmaTickets = db.prepare('SELECT id FROM v_rma_tickets_ready_for_index').all();
-            for (const t of rmaTickets) {
-                try {
-                    await indexTicket(db, 'rma', t.id);
-                    indexed.rma++;
-                } catch (err) {
-                    console.error(`Failed to index RMA ticket ${t.id}:`, err.message);
+            try {
+                const rmaTickets = db.prepare('SELECT id FROM v_rma_tickets_ready_for_index').all();
+                for (const t of rmaTickets) {
+                    try {
+                        await indexTicket(db, 'rma', t.id);
+                        indexed.rma++;
+                    } catch (err) {
+                        console.error(`Failed to index RMA ticket ${t.id}:`, err.message);
+                    }
                 }
-            }
+            } catch (_e) { console.warn('[Batch] v_rma view not available, skipping'); }
 
-            // Index dealer repair tickets
-            const dealerRepairs = db.prepare('SELECT id FROM v_dealer_repairs_ready_for_index').all();
-            for (const t of dealerRepairs) {
-                try {
-                    await indexTicket(db, 'dealer_repair', t.id);
-                    indexed.dealer_repair++;
-                } catch (err) {
-                    console.error(`Failed to index dealer repair ${t.id}:`, err.message);
+            try {
+                const dealerRepairs = db.prepare('SELECT id FROM v_dealer_repairs_ready_for_index').all();
+                for (const t of dealerRepairs) {
+                    try {
+                        await indexTicket(db, 'dealer_repair', t.id);
+                        indexed.dealer_repair++;
+                    } catch (err) {
+                        console.error(`Failed to index dealer repair ${t.id}:`, err.message);
+                    }
                 }
-            }
+            } catch (_e) { console.warn('[Batch] v_dealer view not available, skipping'); }
+
+            // 2. Index from new unified tickets table (新数据)
+            try {
+                const unifiedTickets = db.prepare("SELECT * FROM tickets WHERE status IN ('resolved','closed')").all();
+                for (const t of unifiedTickets) {
+                    try {
+                        indexUnifiedTicket(db, t);
+                        indexed.unified++;
+                    } catch (err) {
+                        console.error(`Failed to index unified ticket ${t.id}:`, err.message);
+                    }
+                }
+            } catch (_e) { console.warn('[Batch] tickets table not available, skipping'); }
 
             res.json({
                 success: true,
@@ -526,4 +560,72 @@ function indexTicket(db, ticket_type, ticket_id) {
         visibility,
         closed_at
     });
+}
+
+/**
+ * Index a ticket from the new unified `tickets` table.
+ * Maps fields to the same ticket_search_index schema.
+ */
+function indexUnifiedTicket(db, ticketData) {
+    const ticket_type = ticketData.ticket_type || 'inquiry';
+    const ticket_id = ticketData.id;
+
+    // Delete any existing entry
+    db.prepare(
+        'DELETE FROM ticket_search_index WHERE ticket_type = ? AND ticket_id = ?'
+    ).run(ticket_type, ticket_id);
+
+    // Build index fields
+    const title = ticketData.problem_summary || ticketData.problem_description?.substring(0, 100) || '工单';
+    const description = [
+        ticketData.problem_description,
+        ticketData.problem_analysis,
+        ticketData.communication_log,
+        ticketData.solution_for_customer
+    ].filter(Boolean).join('\n');
+    const resolution = ticketData.resolution || ticketData.repair_content || '';
+    const tags = JSON.stringify([]);
+    const product_model = ticketData.product_id ?
+        (db.prepare('SELECT model_name FROM products WHERE id = ?').get(ticketData.product_id)?.model_name || null) : null;
+    const serial_number = ticketData.serial_number || null;
+    const category = ticketData.issue_category || null;
+    const closed_at = ticketData.completed_date || ticketData.updated_at;
+    const visibility = ticketData.dealer_id ? 'dealer' : 'internal';
+
+    db.prepare(`
+        INSERT INTO ticket_search_index (
+            ticket_type, ticket_id, ticket_number,
+            title, description, resolution, tags,
+            product_model, serial_number, category, status,
+            dealer_id, account_id, visibility, closed_at
+        ) VALUES (
+            @ticket_type, @ticket_id, @ticket_number,
+            @title, @description, @resolution, @tags,
+            @product_model, @serial_number, @category, @status,
+            @dealer_id, @account_id, @visibility, @closed_at
+        )
+    `).run({
+        ticket_type,
+        ticket_id,
+        ticket_number: ticketData.ticket_number,
+        title,
+        description,
+        resolution,
+        tags,
+        product_model,
+        serial_number,
+        category,
+        status: ticketData.status,
+        dealer_id: ticketData.dealer_id || null,
+        account_id: ticketData.account_id || null,
+        visibility,
+        closed_at
+    });
+
+    return {
+        success: true,
+        message: 'Unified ticket indexed successfully',
+        indexed: true,
+        ticket_number: ticketData.ticket_number
+    };
 }

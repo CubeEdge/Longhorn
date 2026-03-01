@@ -24,9 +24,9 @@ interface CacheOptions {
 type TicketType = 'inquiry' | 'rma' | 'dealer';
 
 const endpoints: Record<TicketType, string> = {
-    inquiry: '/api/v1/inquiry-tickets',
-    rma: '/api/v1/rma-tickets',
-    dealer: '/api/v1/dealer-repairs'
+    inquiry: '/api/v1/tickets',
+    rma: '/api/v1/tickets',
+    dealer: '/api/v1/tickets'
 };
 
 const fetcher = async <T>(url: string, token: string): Promise<TicketResponse<T>> => {
@@ -59,6 +59,13 @@ export function useCachedTickets<T = any>(
     // Build URL with query params
     const baseUrl = endpoints[ticketType];
     const searchParams = new URLSearchParams();
+
+    // Fallback alignment for P2 unified ticket routing
+    if (baseUrl.includes('/api/v1/tickets')) {
+        let dbType = ticketType as string;
+        if (dbType === 'dealer') dbType = 'svc';
+        searchParams.append('ticket_type', dbType);
+    }
 
     Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -107,6 +114,12 @@ export function prefetchTickets<T = any>(
 
     const baseUrl = endpoints[ticketType];
     const searchParams = new URLSearchParams();
+
+    if (baseUrl.includes('/api/v1/tickets')) {
+        let dbType = ticketType as string;
+        if (dbType === 'dealer') dbType = 'svc';
+        searchParams.append('ticket_type', dbType);
+    }
 
     Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {

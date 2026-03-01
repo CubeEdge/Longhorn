@@ -4,6 +4,50 @@
 
 ---
 
+## 2026-03-01 10:45 - Workspace 线上遗留 Bug 彻底修复与全景部署上线 (v12.2.10)
+
+### Tasks Completed:
+1. **清理遗留 API 调用入口** (`WorkspacePage.tsx`):
+   - 由于已经采用全局内联加载的新规范设计，彻底移除了 `InquiryTicketDetailPage` 的独立跳转入口，化解了老旧路由层因使用新版 `ticket.id` 调用遗留 `/api/v1/inquiry-tickets` 解析导致的 404/NotFound (“工单不存在”) 的核心阻断点。
+2. **修正视图状态识别缺陷** (`WorkspacePage.tsx`):
+   - 修复了因为代码回滚误操作写死的页面头部（强制显示 `CheckSquare` 和 `我的任务`）。重设了条件渲染逻辑，现在进入协作页面和部门池将正确提示专属多语言主副标题及视觉图标。
+3. **清理僵尸引入并重跑 Full 级构架**:
+   - 根除了因删除遗留跳转引入的未读取的 `useNavigate` 编译死穴，防止远程 Build 断点。
+   - 使用 `./scripts/deploy.sh --full` 强制进行原子发版，重刷远端的 Client 包体积环境至 `v12.2.10`，彻底阻击此前 `FAST_MODE` 引起的客户端版本同步截断漏发。
+4. **演示权限对齐**:
+   - 操作了远程 Database 内核，通过 CLI 更新预置测试用例的 `assigned_to = 1`，将预置资产分配给最高管理员体验账号。
+
+### Technical Output:
+- **Modified**: `client/src/components/Service/WorkspacePage.tsx` (移除冗余旧导航、修正三视图标识、解构未使用声明)
+- **Version**: Client `12.2.10`
+
+---
+
+## 2026-03-01 10:28 - 我的任务 (My Tasks) UI 重构及测试环境部署 (v12.2.8)
+
+### Tasks Completed:
+1. **列表 UI 标准化重塑** (`WorkspacePage.tsx`):
+   - 基于 HTML Table 重新实现了严谨的工单列表布局。
+   - 配置字段栏目：Star/Lock, ID, 标题, 状态, SLA 计时器。
+   - Title 列利用重塑的 `TicketTitleCell` 组件将 VIP 客户评级与案件主题深度融合展示。
+   - 套用 macOS 26 设计规范修饰了主列表头，剥离了视觉冗余（侧滑抽屉与旧图标）。
+2. **详情查看层级重构** (`TicketDetailComponents.tsx`):
+   - 移除 Side Drawer。列表行点击后，直接在本地展示完整的双分栏工单详情视图（左信息，右事件轴）。
+   - 实装单页级别的 macOS 返回按钮 (`BackButton`)，提供极佳的反向原生级别路由交互体验。
+3. **交互操作优化与双语闭环**:
+   - 升级了 Snooze 操作流程，加入了防止误操作的安全确认弹窗（同时绕开核心 P0 级别工单干预）。
+   - 梳理覆盖了全部前端翻译字典字典 (`translations.ts`)，保证四语言随时在线可用。
+4. **数据预置与部署上线** (`seed_complex_tickets.js`):
+   - 编写 NodeJS 原生 SQL 注入脚本，强校验和预置了 10 个满足 P2 业务特性的复杂测试工单（跨越 VIP/RMA 等真实服务场景）。
+   - 处理了跨表查询的 `accounts` 外键兼容，并在远端 `mini` 单独投递执行了数据初始化指令。
+   - 通过 `/upd` 强制更新版本并部署上线 v12.2.8 版本，成功平滑重载 PM2。
+
+### Technical Output:
+- **Modified**: `client/src/components/Service/WorkspacePage.tsx`, `client/src/components/Service/TicketDetailComponents.tsx`, `server/scripts/seed_complex_tickets.js`, `client/package.json`, `client/src/i18n/translations.ts`
+- **Version**: Client `12.2.8`
+
+---
+
 ## 2026-03-01 00:15 - 侧栏重构 + WorkspacePage 三视图 (v12.2.2)
 
 ### Tasks Completed:

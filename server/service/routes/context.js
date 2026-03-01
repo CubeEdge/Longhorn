@@ -167,8 +167,8 @@ module.exports = (db, authenticate) => {
             const { account_id } = req.query;
 
             if (!account_id) {
-                return res.status(400).json({ 
-                    success: false, 
+                return res.status(400).json({
+                    success: false,
                     error: { code: 'MISSING_PARAM', message: 'account_id is required' }
                 });
             }
@@ -185,8 +185,8 @@ module.exports = (db, authenticate) => {
             `).get(account_id);
 
             if (!account) {
-                return res.status(404).json({ 
-                    success: false, 
+                return res.status(404).json({
+                    success: false,
                     error: { code: 'NOT_FOUND', message: 'Account not found' }
                 });
             }
@@ -297,8 +297,8 @@ module.exports = (db, authenticate) => {
 
         } catch (err) {
             console.error('[Context] Error fetching by account:', err);
-            res.status(500).json({ 
-                success: false, 
+            res.status(500).json({
+                success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
             });
         }

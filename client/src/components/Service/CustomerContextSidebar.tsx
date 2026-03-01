@@ -38,44 +38,53 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const fetchContext = async () => {
         setLoading(true);
         try {
-            // Fetch customer data
-            let customerUrl = '';
-            if (accountId) customerUrl = `/api/v1/context/by-account?account_id=${accountId}`;
-            else if (accountName) customerUrl = `/api/v1/context/by-account?account_name=${encodeURIComponent(accountName)}`;
-
-            // Fetch device data
-            let deviceUrl = '';
-            if (serialNumber) deviceUrl = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
-
             const result: any = {};
+            const promises = [];
 
-            if (customerUrl) {
-                const customerRes = await fetch(customerUrl, {
+            if (accountId) {
+                const customerUrl = `/api/v1/context/by-account?account_id=${accountId}`;
+                promises.push(fetch(customerUrl, {
                     headers: { Authorization: `Bearer ${token}` }
-                });
-                const customerJson = await customerRes.json();
-                if (customerJson.success) {
-                    result.account = customerJson.data.account;
-                    result.contacts = customerJson.data.contacts;
-                    result.ai_profile = customerJson.data.ai_profile;
-                }
-            }
-
-            if (deviceUrl) {
-                const deviceRes = await fetch(deviceUrl, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const deviceJson = await deviceRes.json();
-                if (deviceJson.success) {
-                    result.device = deviceJson.data.device;
-                    result.parts_catalog = deviceJson.data.parts_catalog;
-                    // Device might also have ai_profile with ticket stats
-                    if (deviceJson.data.ai_profile) {
-                        result.device_ai_profile = deviceJson.data.ai_profile;
+                }).then(async (res) => {
+                    const json = await res.json();
+                    if (json.success) {
+                        result.account = json.data.account;
+                        result.contacts = json.data.contacts;
+                        result.ai_profile = json.data.ai_profile;
                     }
-                }
+                }));
             }
 
+            if (dealerId) {
+                const dealerUrl = `/api/v1/context/by-account?account_id=${dealerId}`;
+                promises.push(fetch(dealerUrl, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(async (res) => {
+                    const json = await res.json();
+                    if (json.success) {
+                        result.dealerRecord = json.data.account;
+                        result.dealer_ai_profile = json.data.ai_profile;
+                    }
+                }));
+            }
+
+            if (serialNumber) {
+                const deviceUrl = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
+                promises.push(fetch(deviceUrl, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(async (res) => {
+                    const json = await res.json();
+                    if (json.success) {
+                        result.device = json.data.device;
+                        result.parts_catalog = json.data.parts_catalog;
+                        if (json.data.ai_profile) {
+                            result.device_ai_profile = json.data.ai_profile;
+                        }
+                    }
+                }));
+            }
+
+            await Promise.allSettled(promises);
             setData(result);
         } catch (err) {
             console.error('Failed to fetch context', err);
@@ -243,6 +252,27 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 </div>
                             )}
                         </div>
+
+                        {/* 经销商工单统计 */}
+                        {data?.dealer_ai_profile && data.dealer_ai_profile.ticket_count > 0 && (
+                            <div style={{
+                                background: 'rgba(255, 215, 0, 0.08)',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                marginTop: '12px'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                    <Ticket size={12} style={{ color: 'rgba(255, 215, 0, 0.7)' }} />
+                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255, 215, 0, 0.8)', fontWeight: 600 }}>工单统计</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                    总计 <span style={{ color: 'rgba(255, 215, 0, 0.9)', fontWeight: 600 }}>{data.dealer_ai_profile.ticket_count}</span>
+                                    {data.dealer_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.dealer_ai_profile.inquiry_count}</span>}
+                                    {data.dealer_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.dealer_ai_profile.rma_count}</span>}
+                                    {data.dealer_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.dealer_ai_profile.repair_count}</span>}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -416,7 +446,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             cursor: 'pointer',
                             transition: 'all 0.2s ease'
                         }}
-                        onClick={() => data.device?.id && navigate(`/service/devices/${data.device.id}`)}
+                        onClick={() => data.device?.serial_number && navigate(`/service/products?search=${data.device.serial_number}`)}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.background = 'var(--glass-border)';
                             e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.2)';

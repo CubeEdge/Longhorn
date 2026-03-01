@@ -117,11 +117,13 @@ const ServiceNavigation: React.FC = () => {
   // Toggle section expansion
   const toggleSection = useCallback((sectionId: string) => {
     setExpandedSections(prev => {
-      const newState = { ...prev, [sectionId]: !prev[sectionId] };
+      const section = sections.find(s => s.id === sectionId);
+      const currentState = prev[sectionId] ?? section?.defaultExpanded ?? true;
+      const newState = { ...prev, [sectionId]: !currentState };
       localStorage.setItem(NAV_EXPANDED_KEY, JSON.stringify(newState));
       return newState;
     });
-  }, []);
+  }, [sections]);
 
   // Check if path is active
   const isPathActive = useCallback((path: string) => {

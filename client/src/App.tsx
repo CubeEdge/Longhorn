@@ -310,7 +310,8 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
-      const next = { ...prev, [sectionId]: !prev[sectionId] };
+      const currentState = prev[sectionId] !== false; // If undefined or true, it's currently expanded
+      const next = { ...prev, [sectionId]: !currentState };
       localStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(next));
       return next;
     });
