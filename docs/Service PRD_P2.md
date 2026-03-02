@@ -270,7 +270,7 @@ JSON
 # 5. 业务流程逻辑 (BPM Workflows)  
 **5.1 咨询工单 (Inquiry Ticket) - 沟通中心**  
 * **责任方**: **MS** (始终持有)。  
-* **协作**: MS 遇到技术难题，在时间轴 @RD 或 @OP。RD/OP 在 Inbox 的 "Mentioned" 列表中看到此单，进入回复。  
+* **协作**: MS 遇到技术难题，在时间轴 @RD 或 @OP。RD/OP 在 Workbench 的 "Mentioned" 列表中看到此单，进入回复。  
 * **转化**: 点击 [ Convert ] 生成 RMA/SVC。  
 **5.2 RMA 返厂单 (RMA Ticket) - 乒乓协作模型**  
 * **责任方**: **MS** 与 **OP** 交替持有。  
@@ -411,7 +411,6 @@ B. 豁免/退款流程 (Exception with Approval):
     * **点击星号**：将工单提权至第二梯队。  
 
 以下是单张卡片的标准字段布局（从左到右）：  
-
 
 
 | 区域 | 字段/元素 | 视觉样式 (Style) | 数据源 (Source) |

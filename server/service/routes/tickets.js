@@ -113,27 +113,49 @@ module.exports = function (db, authenticate, serviceUpload) {
             sla_status: row.sla_status,
             breach_counter: row.breach_counter,
 
-            // Account/Contact
+            // Account/Contact - nested structure for frontend compatibility
             account_id: row.account_id,
             account_name: row.account_name,
+            account: row.account_id ? {
+                id: row.account_id,
+                name: row.account_name,
+                account_type: row.account_type,
+                service_tier: row.account_service_tier
+            } : null,
             contact_id: row.contact_id,
             contact_name: row.contact_name,
+            contact: row.contact_id ? {
+                id: row.contact_id,
+                name: row.contact_name
+            } : null,
             dealer_id: row.dealer_id,
             dealer_name: row.dealer_name,
             reporter_name: row.reporter_name,
             reporter_type: row.reporter_type,
             region: row.region,
 
-            // Product
+            // Product - nested structure for frontend compatibility
             product_id: row.product_id,
             product_name: row.product_name,
+            product: row.product_id ? {
+                id: row.product_id,
+                name: row.product_name
+            } : null,
             serial_number: row.serial_number,
 
             // Assignment
             assigned_to: row.assigned_to,
             assigned_name: row.assigned_name,
+            handler: row.assigned_to ? {
+                id: row.assigned_to,
+                name: row.assigned_name
+            } : null,
             submitted_by: row.submitted_by,
             submitted_name: row.submitted_name,
+
+            // Problem summary (needed for list view title)
+            problem_summary: row.problem_summary,
+            problem_description: row.problem_description,
 
             // Timestamps
             created_at: row.created_at,
@@ -327,6 +349,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 SELECT 
                     t.*,
                     a.name as account_name,
+                    a.service_tier as account_service_tier,
+                    a.account_type as account_type,
                     c.name as contact_name,
                     d.name as dealer_name,
                     p.model_name as product_name,
@@ -411,10 +435,25 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(403).json({ success: false, error: '无权访问此工单' });
             }
 
+            // If contact_id is null but account_id exists, fetch primary contact
+            let contactInfo = {
+                contact_id: row.contact_id,
+                contact_name: row.contact_name
+            };
+            if (!row.contact_id && row.account_id) {
+                const primaryContact = db.prepare(`
+                    SELECT id, name FROM contacts WHERE account_id = ? AND is_primary = 1 LIMIT 1
+                `).get(row.account_id);
+                if (primaryContact) {
+                    contactInfo.contact_id = primaryContact.id;
+                    contactInfo.contact_name = primaryContact.name;
+                }
+            }
+
             // Calculate SLA remaining time
             const slaInfo = slaService.checkSlaStatus(row);
             const ticketData = {
-                ...formatTicket(row, true),
+                ...formatTicket({ ...row, ...contactInfo }, true),
                 sla_remaining_hours: slaInfo.remaining_hours,
                 sla_remaining_percent: slaInfo.remaining_percent
             };
@@ -474,13 +513,22 @@ module.exports = function (db, authenticate, serviceUpload) {
                 SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC
             `).all(id);
 
-            // 4. Participants (table may not exist yet)
+            // 4. Participants with role info
             let participants = [];
             try {
                 participants = db.prepare(`
-                    SELECT tp.*, u.username as name FROM ticket_participants tp
+                    SELECT tp.user_id, tp.role, tp.join_method, tp.joined_at, u.username as name 
+                    FROM ticket_participants tp
                     LEFT JOIN users u ON tp.user_id = u.id
                     WHERE tp.ticket_id = ?
+                    ORDER BY 
+                        CASE tp.role 
+                            WHEN 'owner' THEN 1 
+                            WHEN 'assignee' THEN 2 
+                            WHEN 'mentioned' THEN 3 
+                            ELSE 4 
+                        END,
+                        tp.joined_at ASC
                 `).all(id);
             } catch (_e) {
                 // ticket_participants table not yet created
@@ -953,23 +1001,46 @@ module.exports = function (db, authenticate, serviceUpload) {
     /**
      * POST /api/v1/tickets/:id/participants
      * Add a participant (Silent Invite)
+     * P2: Records invite stats for memory feature
      */
     router.post('/:id/participants', authenticate, (req, res) => {
         try {
             const ticketId = req.params.id;
             const { user_id } = req.body;
+            const inviterId = req.user.id;
 
             if (!user_id) return res.status(400).json({ success: false, error: 'User ID required' });
 
             // Allow multiple users as array, or single
             const uids = Array.isArray(user_id) ? user_id : [user_id];
+            const now = new Date().toISOString();
 
             for (const uid of uids) {
                 // Ignore if already exists
                 const existing = db.prepare('SELECT id FROM ticket_participants WHERE ticket_id = ? AND user_id = ?').get(ticketId, uid);
                 if (!existing) {
-                    db.prepare('INSERT INTO ticket_participants (ticket_id, user_id, joined_at) VALUES (?, ?, ?)')
-                        .run(ticketId, uid, new Date().toISOString());
+                    db.prepare(`
+                        INSERT INTO ticket_participants (ticket_id, user_id, role, added_by, join_method, joined_at) 
+                        VALUES (?, ?, 'follower', ?, 'invite', ?)
+                    `).run(ticketId, uid, inviterId, now);
+                    
+                    // P2: Update invite stats
+                    try {
+                        const result = db.prepare(`
+                            UPDATE user_invite_stats 
+                            SET invite_count = invite_count + 1, last_invite_at = ?
+                            WHERE user_id = ? AND invited_user_id = ?
+                        `).run(now, inviterId, uid);
+                        
+                        if (result.changes === 0) {
+                            db.prepare(`
+                                INSERT INTO user_invite_stats (user_id, invited_user_id, invite_count, last_invite_at)
+                                VALUES (?, ?, 1, ?)
+                            `).run(inviterId, uid, now);
+                        }
+                    } catch (e) {
+                        console.error('[Tickets] Update invite stats error:', e);
+                    }
                 }
             }
 
@@ -998,6 +1069,75 @@ module.exports = function (db, authenticate, serviceUpload) {
             res.json({ success: true, message: 'Participant removed' });
         } catch (err) {
             console.error('[Tickets] Remove participant error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/v1/tickets/mention-stats
+     * Get frequently mentioned users for current user (sorted by mention count)
+     */
+    router.get('/mention-stats', authenticate, (req, res) => {
+        try {
+            const userId = req.user.id;
+            
+            // Get frequently mentioned users sorted by count
+            const stats = db.prepare(`
+                SELECT 
+                    ms.mentioned_user_id as user_id,
+                    u.username as name,
+                    d.name as department,
+                    d.code as dept_code,
+                    ms.mention_count,
+                    ms.last_mention_at
+                FROM user_mention_stats ms
+                LEFT JOIN users u ON ms.mentioned_user_id = u.id
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE ms.user_id = ?
+                ORDER BY ms.mention_count DESC, ms.last_mention_at DESC
+                LIMIT 20
+            `).all(userId);
+            
+            res.json({
+                success: true,
+                data: stats
+            });
+        } catch (err) {
+            console.error('[Tickets] Mention stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/v1/tickets/invite-stats
+     * Get frequently invited users for current user (sorted by invite count)
+     */
+    router.get('/invite-stats', authenticate, (req, res) => {
+        try {
+            const userId = req.user.id;
+            
+            const stats = db.prepare(`
+                SELECT 
+                    is.invited_user_id as user_id,
+                    u.username as name,
+                    d.name as department,
+                    d.code as dept_code,
+                    is.invite_count,
+                    is.last_invite_at
+                FROM user_invite_stats is
+                LEFT JOIN users u ON is.invited_user_id = u.id
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE is.user_id = ?
+                ORDER BY is.invite_count DESC, is.last_invite_at DESC
+                LIMIT 20
+            `).all(userId);
+            
+            res.json({
+                success: true,
+                data: stats
+            });
+        } catch (err) {
+            console.error('[Tickets] Invite stats error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

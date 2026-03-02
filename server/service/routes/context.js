@@ -74,44 +74,25 @@ module.exports = (db, authenticate) => {
                 WHERE ad.account_id = ?
             `).all(cId);
 
-            // 3. Fetch Service History (Inquiry, RMA, Dealer Repairs) - 使用 account_id
-            // Inquiry Tickets
-            const inquiries = db.prepare(`
+            // 3. Fetch Service History - 使用统一 tickets 表
+            const tickets = db.prepare(`
                 SELECT 
-                    id, ticket_number, 'Inquiry' as type, 
-                    service_type as category, problem_summary as summary, 
+                    id, ticket_number, 
+                    CASE ticket_type
+                        WHEN 'inquiry' THEN 'Inquiry'
+                        WHEN 'rma' THEN 'RMA'
+                        WHEN 'svc' THEN 'DealerRepair'
+                        ELSE ticket_type
+                    END as type,
+                    COALESCE(service_type, issue_category) as category,
+                    COALESCE(problem_summary, problem_description) as summary,
                     status, created_at as date
-                FROM inquiry_tickets 
+                FROM tickets 
                 WHERE account_id = ?
                 ORDER BY created_at DESC
             `).all(cId);
 
-            // RMA Tickets
-            const rmas = db.prepare(`
-                SELECT 
-                    id, ticket_number, 'RMA' as type, 
-                    issue_category as category, problem_description as summary, 
-                    status, created_at as date
-                FROM rma_tickets 
-                WHERE account_id = ?
-                ORDER BY created_at DESC
-            `).all(cId);
-
-            // Dealer Repairs
-            const repairs = db.prepare(`
-                SELECT 
-                    id, ticket_number, 'DealerRepair' as type, 
-                    issue_category as category, problem_description as summary, 
-                    status, created_at as date
-                FROM dealer_repairs 
-                WHERE account_id = ?
-                ORDER BY created_at DESC
-            `).all(cId);
-
-            // Combine and sort history
-            const history = [...inquiries, ...rmas, ...repairs].sort((a, b) =>
-                new Date(b.date) - new Date(a.date)
-            );
+            const history = tickets;
 
             // 4. Mock AI Profile (Placeholder for future AI analysis)
             let parsedTags = ["Verified Customer"];
@@ -221,43 +202,32 @@ module.exports = (db, authenticate) => {
             `).all(account_id);
 
             // 4. 获取服务历史
-            const inquiries = db.prepare(`
+            const tickets = db.prepare(`
                 SELECT 
-                    it.id, it.ticket_number, 'Inquiry' as type,
-                    it.service_type as category, it.problem_summary as summary,
-                    it.status, it.created_at as date,
-                    it.customer_name as contact_name
-                FROM inquiry_tickets it
-                WHERE it.account_id = ?
-                ORDER BY it.created_at DESC
+                    id, ticket_number, 
+                    CASE ticket_type
+                        WHEN 'inquiry' THEN 'Inquiry'
+                        WHEN 'rma' THEN 'RMA'
+                        WHEN 'svc' THEN 'DealerRepair'
+                        ELSE ticket_type
+                    END as type,
+                    COALESCE(service_type, issue_category) as category,
+                    COALESCE(problem_summary, problem_description) as summary,
+                    status, created_at as date,
+                    COALESCE(contact_name, customer_name, reporter_name) as contact_name
+                FROM tickets
+                WHERE account_id = ?
+                ORDER BY created_at DESC
             `).all(account_id);
 
-            const rmas = db.prepare(`
-                SELECT 
-                    rt.id, rt.ticket_number, 'RMA' as type,
-                    rt.issue_category as category, rt.problem_description as summary,
-                    rt.status, rt.created_at as date,
-                    rt.reporter_name as contact_name
-                FROM rma_tickets rt
-                WHERE rt.account_id = ?
-                ORDER BY rt.created_at DESC
-            `).all(account_id);
-
-            const repairs = db.prepare(`
-                SELECT 
-                    dr.id, dr.ticket_number, 'DealerRepair' as type,
-                    dr.issue_category as category, dr.problem_description as summary,
-                    dr.status, dr.created_at as date,
-                    dr.customer_name as contact_name
-                FROM dealer_repairs dr
-                WHERE dr.account_id = ?
-                ORDER BY dr.created_at DESC
-            `).all(account_id);
-
-            const history = [...inquiries, ...rmas, ...repairs]
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            // 5. 生成AI档案
+            const history = tickets;
+            
+            // Count by type for stats
+            const inquiries = history.filter(t => t.ticket_type === 'inquiry');
+            const rmas = history.filter(t => t.ticket_type === 'rma');
+            const repairs = history.filter(t => t.ticket_type === 'svc' || t.ticket_type === 'DealerRepair');
+            
+            // 5. 生成 AI 档案
             let parsedTags = [account.account_type];
             if (account.industry_tags) {
                 try {
@@ -327,40 +297,25 @@ module.exports = (db, authenticate) => {
 
             const pId = device.id;
 
-            // 2. Fetch Service History for this Device (使用工单表自带的 customer_name)
-            const inquiries = db.prepare(`
+            // 2. Fetch Service History for this Device
+            const tickets = db.prepare(`
                 SELECT 
-                    it.id, it.ticket_number, 'Inquiry' as type, 
-                    it.problem_summary as summary, it.status, it.created_at as date,
-                    it.customer_name
-                FROM inquiry_tickets it
-                WHERE it.product_id = ?
-                ORDER BY it.created_at DESC
+                    id, ticket_number, 
+                    CASE ticket_type
+                        WHEN 'inquiry' THEN 'Inquiry'
+                        WHEN 'rma' THEN 'RMA'
+                        WHEN 'svc' THEN 'DealerRepair'
+                        ELSE ticket_type
+                    END as type,
+                    COALESCE(problem_summary, problem_description) as summary,
+                    status, created_at as date,
+                    COALESCE(contact_name, customer_name, reporter_name) as customer_name
+                FROM tickets
+                WHERE product_id = ?
+                ORDER BY created_at DESC
             `).all(pId);
 
-            const rmas = db.prepare(`
-                SELECT 
-                    rt.id, rt.ticket_number, 'RMA' as type, 
-                    rt.problem_description as summary, rt.status, rt.created_at as date,
-                    rt.reporter_name as customer_name
-                FROM rma_tickets rt
-                WHERE rt.product_id = ?
-                ORDER BY rt.created_at DESC
-            `).all(pId);
-
-            const repairs = db.prepare(`
-                SELECT 
-                    dr.id, dr.ticket_number, 'DealerRepair' as type, 
-                    dr.problem_description as summary, dr.status, dr.created_at as date,
-                    dr.customer_name
-                FROM dealer_repairs dr
-                WHERE dr.product_id = ?
-                ORDER BY dr.created_at DESC
-            `).all(pId);
-
-            const history = [...inquiries, ...rmas, ...repairs].sort((a, b) =>
-                new Date(b.date) - new Date(a.date)
-            );
+            const history = tickets;
 
             // 3. Infer Ownership History (simplistic version)
             // Just listing unique customers associated with this device over time

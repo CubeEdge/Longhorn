@@ -14,6 +14,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
+// 工单统计类型
+interface TicketStats {
+  inquiry: number;
+  rma: number;
+  svc: number;
+  total: number;
+}
+
 // 账户类型定义
 interface Account {
   id: number;
@@ -28,6 +36,7 @@ interface Account {
   primary_contact_name?: string;
   primary_contact_email?: string;
   primary_contact_phone?: string;
+  ticket_stats?: TicketStats;
 }
 
 // 联系人类型定义
@@ -279,6 +288,27 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
             <div className="mt-1 text-sm text-gray-600">
               👤 {account.primary_contact_name}
               {account.primary_contact_phone && ` · ${account.primary_contact_phone}`}
+            </div>
+          )}
+          {/* 工单统计 */}
+          {account.ticket_stats && account.ticket_stats.total > 0 && (
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="text-gray-400">工单:</span>
+              {account.ticket_stats.inquiry > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                  咨询 {account.ticket_stats.inquiry}
+                </span>
+              )}
+              {account.ticket_stats.rma > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">
+                  RMA {account.ticket_stats.rma}
+                </span>
+              )}
+              {account.ticket_stats.svc > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-600">
+                  维修 {account.ticket_stats.svc}
+                </span>
+              )}
             </div>
           )}
         </div>

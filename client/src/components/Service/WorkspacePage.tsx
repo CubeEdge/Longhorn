@@ -5,7 +5,7 @@
  * 适用角色: All (员工的主战场，主管的副战场)
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Star, Loader2, Search, MoreHorizontal,
@@ -56,6 +56,20 @@ type WorkspaceView = 'my-tasks' | 'mentioned' | 'team-queue';
 // Star storage key
 const STAR_STORAGE_KEY = 'longhorn_workspace_stars';
 
+// View state storage keys for each workspace view
+const VIEW_STATE_KEYS: Record<WorkspaceView, string> = {
+  'my-tasks': 'longhorn_workspace_my_tasks_state',
+  'mentioned': 'longhorn_workspace_mentioned_state',
+  'team-queue': 'longhorn_workspace_team_queue_state'
+};
+
+interface ViewState {
+  searchQuery: string;
+  selectedTicketId: number | null;
+  scrollPosition: number;
+  timestamp: number;
+}
+
 function loadStarredIds(): Record<number, number> {
   try {
     const saved = localStorage.getItem(STAR_STORAGE_KEY);
@@ -69,6 +83,29 @@ function saveStarredIds(stars: Record<number, number>) {
   localStorage.setItem(STAR_STORAGE_KEY, JSON.stringify(stars));
 }
 
+function loadViewState(view: WorkspaceView): ViewState | null {
+  try {
+    const saved = localStorage.getItem(VIEW_STATE_KEYS[view]);
+    if (saved) {
+      const state = JSON.parse(saved);
+      // Only restore if within 24 hours
+      if (Date.now() - state.timestamp < 24 * 60 * 60 * 1000) {
+        return state;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function saveViewState(view: WorkspaceView, state: Omit<ViewState, 'timestamp'>) {
+  try {
+    localStorage.setItem(VIEW_STATE_KEYS[view], JSON.stringify({
+      ...state,
+      timestamp: Date.now()
+    }));
+  } catch {}
+}
+
 // ==============================
 // Main Component
 // ==============================
@@ -78,19 +115,6 @@ const WorkspacePage: React.FC = () => {
   const location = useLocation();
   const { t } = useLanguage();
 
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  // Star: { ticketId: timestamp } for sorting by star time
-  const [starredMap, setStarredMap] = useState<Record<number, number>>(loadStarredIds);
-  const [snoozedIds, setSnoozedIds] = useState<Set<number>>(new Set());
-  // Context menu
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; ticketId: number } | null>(null);
-
-  // Detail view state
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const confirm = useConfirm();
-
   // Determine current view from route
   const currentView: WorkspaceView = useMemo(() => {
     if (location.pathname.includes('/mentioned')) return 'mentioned';
@@ -98,10 +122,68 @@ const WorkspacePage: React.FC = () => {
     return 'my-tasks';
   }, [location.pathname]);
 
+  // Load saved state for current view
+  const savedState = useMemo(() => loadViewState(currentView), [currentView]);
+
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(savedState?.searchQuery || '');
+  // Star: { ticketId: timestamp } for sorting by star time
+  const [starredMap, setStarredMap] = useState<Record<number, number>>(loadStarredIds);
+  const [snoozedIds, setSnoozedIds] = useState<Set<number>>(new Set());
+  // Context menu
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; ticketId: number } | null>(null);
+
+  // Detail view state - restore from saved state
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const confirm = useConfirm();
+  
+  // Ref for scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   // Fetch tickets
   useEffect(() => {
     fetchTickets();
   }, [currentView, location.search]);
+
+  // Restore selected ticket after tickets load
+  useEffect(() => {
+    if (!loading && tickets.length > 0 && savedState?.selectedTicketId) {
+      const ticket = tickets.find(t => t.id === savedState.selectedTicketId);
+      if (ticket) {
+        setSelectedTicket(ticket);
+      }
+    }
+  }, [loading, tickets, savedState?.selectedTicketId]);
+
+  // Restore scroll position when returning to list view
+  useEffect(() => {
+    if (!selectedTicket && scrollContainerRef.current && savedState?.scrollPosition) {
+      scrollContainerRef.current.scrollTop = savedState.scrollPosition;
+    }
+  }, [selectedTicket, savedState?.scrollPosition]);
+
+  // Save state when leaving the page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveViewState(currentView, {
+        searchQuery,
+        selectedTicketId: selectedTicket?.id || null,
+        scrollPosition: scrollContainerRef.current?.scrollTop || 0
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also save when component unmounts (navigating away)
+      saveViewState(currentView, {
+        searchQuery,
+        selectedTicketId: selectedTicket?.id || null,
+        scrollPosition: scrollContainerRef.current?.scrollTop || 0
+      });
+    };
+  }, [currentView, searchQuery, selectedTicket]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -423,7 +505,7 @@ const WorkspacePage: React.FC = () => {
           />
         </div>
       ) : (
-        <div style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
+        <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
               <Loader2 className="animate-spin" size={24} style={{ color: 'var(--text-tertiary)' }} />

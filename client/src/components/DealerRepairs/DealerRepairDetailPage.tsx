@@ -119,7 +119,8 @@ const DealerRepairDetailPage: React.FC = () => {
 
     const fetchRepair = async () => {
         try {
-            const response = await axios.get(`/api/v1/dealer-repairs/${id}`, {
+            // P2: Use unified tickets API
+            const response = await axios.get(`/api/v1/tickets/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = response.data.data;
@@ -141,7 +142,8 @@ const DealerRepairDetailPage: React.FC = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.put(`/api/v1/dealer-repairs/${id}`, {
+            // P2: Use unified tickets API (changed from PUT to PATCH)
+            await axios.patch(`/api/v1/tickets/${id}`, {
                 diagnosis_result: diagnosisResult,
                 repair_content: repairContent,
                 labor_hours: laborHours,
@@ -483,7 +485,6 @@ const DealerRepairDetailPage: React.FC = () => {
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={repair.account_id}
-                        accountName={repair.account?.name || repair.customer_name}
                         serialNumber={repair.serial_number}
                         dealerId={repair.dealer_id || repair.dealer?.id}
                         dealerName={repair.dealer_name || repair.dealer?.name}

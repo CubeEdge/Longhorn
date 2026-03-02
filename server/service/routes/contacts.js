@@ -130,17 +130,17 @@ module.exports = function (db, authenticate) {
 
             // 获取该联系人的工单历史
             const tickets = db.prepare(`
-                SELECT 'inquiry' as type, ticket_number, status, created_at, problem_summary as summary
-                FROM inquiry_tickets WHERE contact_id = ?
-                UNION ALL
-                SELECT 'rma' as type, ticket_number, status, created_at, problem_description as summary
-                FROM rma_tickets WHERE contact_id = ?
-                UNION ALL
-                SELECT 'dealer_repair' as type, ticket_number, status, created_at, problem_description as summary
-                FROM dealer_repairs WHERE contact_id = ?
+                SELECT 
+                    ticket_type as type, 
+                    ticket_number, 
+                    status, 
+                    created_at, 
+                    COALESCE(problem_summary, problem_description, title) as summary
+                FROM tickets 
+                WHERE contact_id = ?
                 ORDER BY created_at DESC
                 LIMIT 10
-            `).all(contactId, contactId, contactId);
+            `).all(contactId);
 
             res.json({
                 success: true,
@@ -274,9 +274,7 @@ module.exports = function (db, authenticate) {
             }
 
             // 先将工单表中引用该联系人的记录置为 NULL，避免外键约束错误
-            db.prepare('UPDATE inquiry_tickets SET contact_id = NULL WHERE contact_id = ?').run(contactId);
-            db.prepare('UPDATE rma_tickets SET contact_id = NULL WHERE contact_id = ?').run(contactId);
-            db.prepare('UPDATE dealer_repairs SET contact_id = NULL WHERE contact_id = ?').run(contactId);
+            db.prepare('UPDATE tickets SET contact_id = NULL WHERE contact_id = ?').run(contactId);
 
             // 硬删除：真正从数据库中删除记录
             db.prepare('DELETE FROM contacts WHERE id = ?').run(contactId);

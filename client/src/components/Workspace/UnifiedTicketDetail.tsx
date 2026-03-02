@@ -110,6 +110,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
 
     useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
+    // Debug: Log ticket data when it changes
+    useEffect(() => {
+        if (ticket) {
+            console.log('[UnifiedDetail] Ticket data:', {
+                id: ticket.id,
+                ticket_number: ticket.ticket_number,
+                account_id: ticket.account_id,
+                serial_number: ticket.serial_number,
+                dealer_id: ticket.dealer_id,
+                account_name: ticket.account_name,
+                product_name: ticket.product_name
+            });
+        }
+    }, [ticket]);
+
     const handleAddComment = async (content: string, visibility: string, mentions: number[] = []) => {
         try {
             await axios.post(`/api/v1/tickets/${ticketId}/activities`, {
@@ -118,7 +133,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                 visibility,
                 mentions
             }, { headers: { Authorization: `Bearer ${token}` } });
-            fetchDetail();
+            // 只刷新活动列表，不重新获取整个工单详情
+            const activitiesRes = await axios.get(`/api/v1/tickets/${ticketId}/activities`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (activitiesRes.data.success) {
+                setActivities(activitiesRes.data.data || []);
+            }
         } catch (err) {
             console.error('[UnifiedDetail] Failed to add comment', err);
         }
@@ -168,17 +189,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                 <button
                     onClick={onBack}
                     style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '6px 14px', borderRadius: 8,
-                        border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)',
-                        color: '#ccc', cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 36, height: 36,
+                        borderRadius: '50%',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'rgba(255,255,255,0.04)',
+                        color: '#fff',
+                        cursor: 'pointer',
                         transition: 'all 0.15s',
+                        padding: 0,
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                 >
-                    <ArrowLeft size={16} />
-                    {t('action.back') || '返回'}
+                    <ArrowLeft size={18} />
                 </button>
 
                 <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>
@@ -336,11 +360,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                     {/* CustomerContextSidebar — 与「所有工单」详情页完全一致 */}
                     <CustomerContextSidebar
                         accountId={ticket.account_id as number | undefined}
-                        accountName={ticket.account_name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id as number | undefined}
                         dealerName={ticket.dealer_name}
                         dealerCode={ticket.dealer_code}
+                        dealerContactName={ticket.contact_name}
+                        dealerContactTitle={ticket.reporter_name}
                     />
                 </div>
             </div>

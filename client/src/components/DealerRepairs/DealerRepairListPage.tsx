@@ -47,15 +47,24 @@ interface DealerRepair {
 
 // Status colors using Kine brand colors from context.md
 // Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
+// P2 Unified Status: open, in_progress, waiting, resolved, closed, cancelled
 const statusColors: Record<string, string> = {
-    Received: 'var(--accent-blue)',       // Kine Yellow - received
-    Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
-    Diagnosing: '#8b5cf6',     // Purple - in diagnosis
-    AwaitingParts: '#f97316',  // Orange - waiting for parts
-    InRepair: '#3b82f6',       // Blue - in repair
-    Completed: '#10B981',      // Kine Green - completed
-    Returned: '#06b6d4',       // Cyan - returned
-    Cancelled: '#6b7280'       // Gray - cancelled
+    // Legacy statuses
+    Received: 'var(--accent-blue)',
+    Confirming: '#f59e0b',
+    Diagnosing: '#8b5cf6',
+    AwaitingParts: '#f97316',
+    InRepair: '#3b82f6',
+    Completed: '#10B981',
+    Returned: '#06b6d4',
+    Cancelled: '#6b7280',
+    // P2 Unified statuses
+    open: 'var(--accent-blue)',
+    in_progress: '#8b5cf6',
+    waiting: '#f97316',
+    resolved: '#10B981',
+    closed: '#10B981',
+    cancelled: '#6b7280'
 };
 
 const CollapsibleSection: React.FC<{
@@ -268,6 +277,7 @@ const DealerRepairListPage: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
+            // Legacy statuses
             Received: t('dealer_repair.status.received' as any) || '已收货',
             Confirming: t('dealer_repair.status.confirming' as any) || '确认中',
             Diagnosing: t('dealer_repair.status.diagnosing' as any) || '检测中',
@@ -275,22 +285,27 @@ const DealerRepairListPage: React.FC = () => {
             InRepair: t('dealer_repair.status.in_repair' as any) || '维修中',
             Completed: t('dealer_repair.status.completed' as any) || '已完成',
             Returned: t('dealer_repair.status.returned' as any) || '已返还',
-            Cancelled: t('dealer_repair.status.cancelled' as any) || '已取消'
+            Cancelled: t('dealer_repair.status.cancelled' as any) || '已取消',
+            // P2 Unified statuses
+            open: '新工单',
+            in_progress: '处理中',
+            waiting: '等待中',
+            resolved: '已解决',
+            closed: '已完成',
+            cancelled: '已取消'
         };
         return labels[status] || status;
     };
 
-    // Group repairs by status
+    // Group repairs by status (P2 Unified Status)
     const groupedRepairs = useMemo(() => {
         const groups: Record<string, DealerRepair[]> = {
-            Received: [],
-            Confirming: [],
-            Diagnosing: [],
-            AwaitingParts: [],
-            InRepair: [],
-            Completed: [],
-            Returned: [],
-            Cancelled: []
+            open: [],
+            in_progress: [],
+            waiting: [],
+            resolved: [],
+            closed: [],
+            cancelled: []
         };
         repairs.forEach(repair => {
             if (groups[repair.status]) {
@@ -300,8 +315,9 @@ const DealerRepairListPage: React.FC = () => {
         return groups;
     }, [repairs]);
 
-    const statusOrder = ['Received', 'Confirming', 'Diagnosing', 'AwaitingParts', 'InRepair', 'Completed', 'Returned', 'Cancelled'];
+    const statusOrder = ['open', 'in_progress', 'waiting', 'resolved', 'closed', 'cancelled'];
     const statusIcons: Record<string, React.ElementType> = {
+        // Legacy statuses
         Received: Package,
         Confirming: HelpCircle,
         Diagnosing: Clock,
@@ -309,7 +325,14 @@ const DealerRepairListPage: React.FC = () => {
         InRepair: Clock,
         Completed: CheckCircle,
         Returned: CheckCircle,
-        Cancelled: AlertCircle
+        Cancelled: AlertCircle,
+        // P2 Unified statuses
+        open: Package,
+        in_progress: Clock,
+        waiting: AlertCircle,
+        resolved: CheckCircle,
+        closed: CheckCircle,
+        cancelled: AlertCircle
     };
 
     const RepairCard = ({ repair }: { repair: DealerRepair }) => (
@@ -623,14 +646,13 @@ const DealerRepairListPage: React.FC = () => {
                             onChange={(val) => updateFilter({ status: val })}
                             options={[
                                 { value: 'all', label: t('filter.all_status') },
-                                { value: 'Received', label: t('dealer_repair.status.received' as any) || '已收货' },
-                                { value: 'Confirming', label: t('dealer_repair.status.confirming' as any) || '确认中' },
-                                { value: 'Diagnosing', label: t('dealer_repair.status.diagnosing' as any) || '检测中' },
-                                { value: 'AwaitingParts', label: t('dealer_repair.status.awaiting_parts' as any) || '待配件' },
-                                { value: 'InRepair', label: t('dealer_repair.status.in_repair' as any) || '维修中' },
-                                { value: 'Completed', label: t('dealer_repair.status.completed' as any) || '已完成' },
-                                { value: 'Returned', label: t('dealer_repair.status.returned' as any) || '已返还' },
-                                { value: 'Cancelled', label: t('dealer_repair.status.cancelled' as any) || '已取消' }
+                                // P2 Unified Status
+                                { value: 'open', label: '新工单' },
+                                { value: 'in_progress', label: '处理中' },
+                                { value: 'waiting', label: '等待中' },
+                                { value: 'resolved', label: '已解决' },
+                                { value: 'closed', label: '已完成' },
+                                { value: 'cancelled', label: '已取消' }
                             ]}
                         />
                     </div>
@@ -669,7 +691,7 @@ const DealerRepairListPage: React.FC = () => {
                         const statusRepairs = groupedRepairs[status] || [];
                         if (statusRepairs.length === 0) return null;
                         const Icon = statusIcons[status];
-                        const defaultOpen = ['Received', 'Confirming', 'Diagnosing', 'InRepair'].includes(status);
+                        const defaultOpen = ['open', 'in_progress', 'waiting'].includes(status);
                         return (
                             <CollapsibleSection
                                 key={status}

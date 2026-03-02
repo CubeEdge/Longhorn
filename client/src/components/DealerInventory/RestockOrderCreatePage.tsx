@@ -173,14 +173,20 @@ const RestockOrderCreatePage: React.FC = () => {
 
     return (
         <div className="fade-in" style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto' }}>
-            {/* 返回按钮 */}
+            {/* 返回按钮 - Wiki Style */}
             <button
                 onClick={() => navigate('/service/inventory/restock')}
-                className="btn-glass"
-                style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: 'none', background: 'rgba(255,255,255,0.1)',
+                    color: '#fff', cursor: 'pointer', marginBottom: 24,
+                    transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
             >
-                <ArrowLeft size={16} />
-                {t('common.back') || '返回'}
+                <ArrowLeft size={18} />
             </button>
 
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 32 }}>

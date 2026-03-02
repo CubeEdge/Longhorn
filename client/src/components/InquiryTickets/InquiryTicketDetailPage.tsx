@@ -98,7 +98,8 @@ const InquiryTicketDetailPage: React.FC = () => {
     const fetchTicket = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`/api/v1/inquiry-tickets/${id}`, {
+            // P2: Use unified tickets API
+            const res = await axios.get(`/api/v1/tickets/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -155,7 +156,8 @@ const InquiryTicketDetailPage: React.FC = () => {
         if (!ticket) return;
         setSaving(true);
         try {
-            await axios.patch(`/api/v1/inquiry-tickets/${id}`, {
+            // P2: Use unified tickets API
+            await axios.patch(`/api/v1/tickets/${id}`, {
                 resolution,
                 communication_log: communicationLog,
                 status
@@ -184,8 +186,9 @@ const InquiryTicketDetailPage: React.FC = () => {
         if (!confirmed) return;
 
         try {
-            await axios.post(`/api/v1/inquiry-tickets/${id}/upgrade`, {
-                upgrade_type: 'rma'
+            // P2: Use unified tickets API convert endpoint
+            await axios.post(`/api/v1/tickets/${id}/convert`, {
+                target_type: 'rma'
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -198,7 +201,10 @@ const InquiryTicketDetailPage: React.FC = () => {
     const handleReopen = async () => {
         if (!ticket) return;
         try {
-            await axios.post(`/api/v1/inquiry-tickets/${id}/reopen`, {}, {
+            // P2: Use unified tickets API - reopen by changing current_node
+            await axios.patch(`/api/v1/tickets/${id}`, {
+                current_node: 'in_progress'
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchTicket();
@@ -290,7 +296,7 @@ const InquiryTicketDetailPage: React.FC = () => {
                             gap: '6px'
                         }}>
                             {statusColors[ticket.status]?.border !== 'transparent' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: statusColors[ticket.status]?.text || '#fff' }} />}
-                            {t(`inquiry_ticket.status.${ticket.status.replace(/([A-Z])/g, '_$1').toLowerCase().slice(1)}` as any) || ticket.status}
+                            {t(`inquiry_ticket.status.${ticket.status}` as any) || ticket.status}
                         </div>
 
                         <div style={{ flex: 1 }} />
@@ -381,7 +387,16 @@ const InquiryTicketDetailPage: React.FC = () => {
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.contact')}</div>
-                                    <div className="ticket-info-value">{ticket.contact?.name || ticket.contact_name || ticket.account?.name || ticket.customer_name || '-'}</div>
+                                    <div className="ticket-info-value">
+                                        {(() => {
+                                            const accountName = ticket.account?.name || ticket.customer_name;
+                                            const contactName = ticket.contact?.name || ticket.contact_name;
+                                            if (accountName && contactName && accountName !== contactName) {
+                                                return `${accountName} · ${contactName}`;
+                                            }
+                                            return accountName || contactName || '-';
+                                        })()}
+                                    </div>
                                 </div>
                                 <div className="ticket-info-item">
                                     <div className="ticket-info-label">{t('ticket.product')}</div>
@@ -511,7 +526,6 @@ const InquiryTicketDetailPage: React.FC = () => {
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
-                        accountName={ticket.customer_name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
                         dealerName={ticket.dealer_name ?? undefined}

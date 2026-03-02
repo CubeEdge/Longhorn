@@ -71,7 +71,7 @@ module.exports = function (db, authenticate) {
     /**
      * Add user to ticket participants
      */
-    function addParticipant(ticketId, userId, role, addedBy) {
+    function addParticipant(ticketId, userId, role = 'mentioned', addedBy = null, joinMethod = 'mention') {
         try {
             // Check if already participant
             const existing = db.prepare('SELECT id FROM ticket_participants WHERE ticket_id = ? AND user_id = ?').get(ticketId, userId);
@@ -79,13 +79,45 @@ module.exports = function (db, authenticate) {
                 return false;
             }
 
-            db.prepare('INSERT INTO ticket_participants (ticket_id, user_id, joined_at) VALUES (?, ?, ?)')
-                .run(ticketId, userId, new Date().toISOString());
+            db.prepare(`
+                INSERT INTO ticket_participants (ticket_id, user_id, role, added_by, join_method, joined_at) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(ticketId, userId, role, addedBy, joinMethod, new Date().toISOString());
 
             return true;
         } catch (e) {
             console.error('[Activities] addParticipant error:', e);
             return false;
+        }
+    }
+
+    /**
+     * Update mention stats for sorting users by frequency
+     */
+    function updateMentionStats(actorId, mentionedUserIds) {
+        if (!actorId || !mentionedUserIds?.length) return;
+        const now = new Date().toISOString();
+        
+        for (const mentionedId of mentionedUserIds) {
+            if (mentionedId === actorId) continue;
+            try {
+                // Try update first
+                const result = db.prepare(`
+                    UPDATE user_mention_stats 
+                    SET mention_count = mention_count + 1, last_mention_at = ?
+                    WHERE user_id = ? AND mentioned_user_id = ?
+                `).run(now, actorId, mentionedId);
+                
+                // If no row updated, insert
+                if (result.changes === 0) {
+                    db.prepare(`
+                        INSERT INTO user_mention_stats (user_id, mentioned_user_id, mention_count, last_mention_at)
+                        VALUES (?, ?, 1, ?)
+                    `).run(actorId, mentionedId, now);
+                }
+            } catch (e) {
+                console.error('[Activities] updateMentionStats error:', e);
+            }
         }
     }
 
@@ -126,12 +158,8 @@ module.exports = function (db, authenticate) {
             const { visibility, activity_type, page = 1, page_size = 50 } = req.query;
             const user = req.user;
 
-            // Check ticket access - support both unified tickets and legacy inquiry_tickets
-            let ticket = db.prepare('SELECT id, dealer_id FROM tickets WHERE id = ?').get(ticketId);
-            if (!ticket) {
-                // Fallback to inquiry_tickets table
-                ticket = db.prepare('SELECT id, dealer_id FROM inquiry_tickets WHERE id = ?').get(ticketId);
-            }
+            // Check ticket access
+            const ticket = db.prepare('SELECT id, dealer_id FROM tickets WHERE id = ?').get(ticketId);
             if (!ticket) {
                 return res.status(404).json({ success: false, error: '工单不存在' });
             }
@@ -216,14 +244,9 @@ module.exports = function (db, authenticate) {
                 return res.status(400).json({ success: false, error: '内容不能为空' });
             }
 
-            // Check ticket - support both unified tickets and legacy inquiry_tickets
-            let ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId);
-            let ticketTable = 'tickets';
-            if (!ticket) {
-                // Fallback to inquiry_tickets table
-                ticket = db.prepare('SELECT * FROM inquiry_tickets WHERE id = ?').get(ticketId);
-                ticketTable = 'inquiry_tickets';
-            }
+            // Check ticket
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId);
+            const ticketTable = 'tickets';
             if (!ticket) {
                 return res.status(404).json({ success: false, error: '工单不存在' });
             }
@@ -295,8 +318,11 @@ module.exports = function (db, authenticate) {
 
                 // Add mentioned users as participants
                 for (const mention of parsedMentions) {
-                    addParticipant(ticketId, mention.user_id, 'mentioned', user.id);
+                    addParticipant(ticketId, mention.user_id, 'mentioned', user.id, 'mention');
                 }
+
+                // Update mention stats for user sorting
+                updateMentionStats(user.id, parsedMentions.map(m => m.user_id));
 
                 // Record mention activity
                 db.prepare(`

@@ -105,7 +105,8 @@ const RMATicketDetailPage: React.FC = () => {
     const fetchTicket = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`/api/v1/rma-tickets/${id}`, {
+            // P2: Use unified tickets API
+            const res = await axios.get(`/api/v1/tickets/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -127,7 +128,8 @@ const RMATicketDetailPage: React.FC = () => {
         if (!ticket) return;
         setSaving(true);
         try {
-            await axios.patch(`/api/v1/rma-tickets/${id}`, {
+            // P2: Use unified tickets API
+            await axios.patch(`/api/v1/tickets/${id}`, {
                 solution_for_customer: solutionForCustomer,
                 repair_content: repairContent,
                 problem_analysis: problemAnalysis,
@@ -443,7 +445,6 @@ const RMATicketDetailPage: React.FC = () => {
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid var(--glass-border)', background: 'var(--bg-main)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
                         accountId={ticket.account_id ?? undefined}
-                        accountName={ticket.account?.name || ticket.customer?.name}
                         serialNumber={ticket.serial_number}
                         dealerId={ticket.dealer_id ?? undefined}
                         dealerName={ticket.dealer_name ?? undefined}

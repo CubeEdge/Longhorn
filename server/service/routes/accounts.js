@@ -136,7 +136,11 @@ module.exports = function (db, authenticate) {
                     a.dealer_level,
                     a.repair_level,
                     a.region,
-                    a.can_repair
+                    a.can_repair,
+                    -- 工单统计
+                    (SELECT COUNT(*) FROM tickets WHERE account_id = a.id AND ticket_type = 'inquiry') as inquiry_count,
+                    (SELECT COUNT(*) FROM tickets WHERE account_id = a.id AND ticket_type = 'rma') as rma_count,
+                    (SELECT COUNT(*) FROM tickets WHERE account_id = a.id AND ticket_type = 'svc') as svc_count
                 FROM accounts a
                 LEFT JOIN contacts c ON c.account_id = a.id AND c.status = 'PRIMARY'
                 ${whereClause}
@@ -150,7 +154,13 @@ module.exports = function (db, authenticate) {
                     ...a,
                     industry_tags: a.industry_tags ? JSON.parse(a.industry_tags) : [],
                     is_active: !!a.is_active,
-                    can_repair: !!a.can_repair
+                    can_repair: !!a.can_repair,
+                    ticket_stats: {
+                        inquiry: a.inquiry_count || 0,
+                        rma: a.rma_count || 0,
+                        svc: a.svc_count || 0,
+                        total: (a.inquiry_count || 0) + (a.rma_count || 0) + (a.svc_count || 0)
+                    }
                 })),
                 meta: {
                     page: parseInt(page),
@@ -344,17 +354,17 @@ module.exports = function (db, authenticate) {
                 // 经销商：查询自己提交的工单（通过 dealer_id）
                 stats = db.prepare(`
                     SELECT 
-                        (SELECT COUNT(*) FROM inquiry_tickets WHERE dealer_id = ?) as inquiry_count,
-                        (SELECT COUNT(*) FROM rma_tickets WHERE dealer_id = ?) as rma_count,
-                        (SELECT COUNT(*) FROM dealer_repairs WHERE dealer_id = ?) as repair_count
+                        (SELECT COUNT(*) FROM tickets WHERE dealer_id = ? AND ticket_type = 'inquiry') as inquiry_count,
+                        (SELECT COUNT(*) FROM tickets WHERE dealer_id = ? AND ticket_type = 'rma') as rma_count,
+                        (SELECT COUNT(*) FROM tickets WHERE dealer_id = ? AND ticket_type = 'svc') as repair_count
                 `).get(accountId, accountId, accountId);
             } else {
                 // 客户：查询关联到自己的工单（通过 account_id）
                 stats = db.prepare(`
                     SELECT 
-                        (SELECT COUNT(*) FROM inquiry_tickets WHERE account_id = ?) as inquiry_count,
-                        (SELECT COUNT(*) FROM rma_tickets WHERE account_id = ?) as rma_count,
-                        (SELECT COUNT(*) FROM dealer_repairs WHERE account_id = ?) as repair_count
+                        (SELECT COUNT(*) FROM tickets WHERE account_id = ? AND ticket_type = 'inquiry') as inquiry_count,
+                        (SELECT COUNT(*) FROM tickets WHERE account_id = ? AND ticket_type = 'rma') as rma_count,
+                        (SELECT COUNT(*) FROM tickets WHERE account_id = ? AND ticket_type = 'svc') as repair_count
                 `).get(accountId, accountId, accountId);
             }
 
@@ -596,58 +606,37 @@ module.exports = function (db, authenticate) {
 
             const offset = (parseInt(page) - 1) * parseInt(page_size);
 
-            // 查询咨询工单
-            let inquiryQuery = `
+            // 查询工单 - 统一从 tickets 表查询
+            let ticketQuery = `
                 SELECT 
-                    'inquiry' as ticket_type,
+                    ticket_type,
                     id, ticket_number, status, created_at, updated_at,
-                    service_type as category, problem_summary as summary,
+                    COALESCE(service_type, issue_category) as category,
+                    COALESCE(problem_summary, problem_description, title) as summary,
                     contact_id
-                FROM inquiry_tickets
+                FROM tickets
                 WHERE account_id = ?
             `;
-            if (status) {
-                inquiryQuery += ` AND status = '${status}'`;
+            
+            const queryParams = [accountId];
+            
+            if (type) {
+                const typeMapping = {
+                    'inquiry': 'inquiry',
+                    'rma': 'rma',
+                    'dealer_repair': 'svc'
+                };
+                ticketQuery += ` AND ticket_type = '${typeMapping[type] || type}'`;
             }
-
-            // 查询RMA工单
-            let rmaQuery = `
-                SELECT 
-                    'rma' as ticket_type,
-                    id, ticket_number, status, created_at, updated_at,
-                    issue_category as category, problem_description as summary,
-                    contact_id
-                FROM rma_tickets
-                WHERE account_id = ?
-            `;
+            
             if (status) {
-                rmaQuery += ` AND status = '${status}'`;
+                ticketQuery += ` AND status = '${status}'`;
             }
+            
+            ticketQuery += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+            queryParams.push(parseInt(page_size), offset);
 
-            // 查询经销商维修单
-            let repairQuery = `
-                SELECT 
-                    'dealer_repair' as ticket_type,
-                    id, ticket_number, status, created_at, updated_at,
-                    issue_category as category, problem_description as summary,
-                    contact_id
-                FROM dealer_repairs
-                WHERE account_id = ?
-            `;
-            if (status) {
-                repairQuery += ` AND status = '${status}'`;
-            }
-
-            let unionQuery = '';
-            const queries = [];
-            if (!type || type === 'inquiry') queries.push(inquiryQuery);
-            if (!type || type === 'rma') queries.push(rmaQuery);
-            if (!type || type === 'dealer_repair') queries.push(repairQuery);
-
-            unionQuery = queries.join(' UNION ALL ');
-            unionQuery += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-
-            const tickets = db.prepare(unionQuery).all(accountId, parseInt(page_size), offset);
+            const tickets = db.prepare(ticketQuery).all(...queryParams);
 
             // 获取联系人信息
             const ticketsWithContacts = tickets.map(t => {
@@ -1076,24 +1065,24 @@ module.exports = function (db, authenticate) {
             if (isDealer) {
                 // 经销商账户：检查 dealer_id
                 inquiryCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM inquiry_tickets WHERE dealer_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE dealer_id = ? AND ticket_type = 'inquiry'"
                 ).get(accountId).count;
                 rmaCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM rma_tickets WHERE dealer_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE dealer_id = ? AND ticket_type = 'rma'"
                 ).get(accountId).count;
                 repairCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM dealer_repairs WHERE dealer_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE dealer_id = ? AND ticket_type = 'svc'"
                 ).get(accountId).count;
             } else {
                 // 客户账户：检查 account_id
                 inquiryCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM inquiry_tickets WHERE account_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE account_id = ? AND ticket_type = 'inquiry'"
                 ).get(accountId).count;
                 rmaCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM rma_tickets WHERE account_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE account_id = ? AND ticket_type = 'rma'"
                 ).get(accountId).count;
                 repairCount = db.prepare(
-                    'SELECT COUNT(*) as count FROM dealer_repairs WHERE account_id = ?'
+                    "SELECT COUNT(*) as count FROM tickets WHERE account_id = ? AND ticket_type = 'svc'"
                 ).get(accountId).count;
             }
 

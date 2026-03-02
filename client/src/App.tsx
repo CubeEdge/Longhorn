@@ -75,6 +75,9 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { NotificationBell, NotificationCenter } from './components/Notifications';
 import { useRouteMemoryStore } from './store/useRouteMemoryStore';
 import { useListStateStore } from './store/useListStateStore';
+import { ViewAsIndicator, ViewAsSelector, useViewAs } from './components/Workspace/ViewAsComponents';
+import { Eye } from 'lucide-react';
+import { DebugInfoPanel } from './components/DebugOverlay';
 
 // Main Layout Component for authenticated users
 // Main Layout Component for authenticated users
@@ -82,6 +85,17 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { currentModule, switchModule } = useNavigationState();
   const canAccessFiles = canAccessFilesModule(user.role);
+  
+  // P2: View As functionality
+  const {
+    canUseViewAs,
+    viewingAs,
+    isOpen: isViewAsOpen,
+    setIsOpen: setViewAsOpen,
+    startViewAs,
+    exitViewAs,
+    availableUsers
+  } = useViewAs();
 
   return (
     <div className="app-container fade-in" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', overflow: 'hidden' }}>
@@ -102,14 +116,21 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
 
       {/* Sidebar - Always rendered (logic inside handles content) */}
       <Sidebar
-        role={user.role}
+        role={viewingAs?.role || user.role}
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
         currentModule={currentModule}
       />
 
       <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} currentModule={currentModule} />
+        <TopBar 
+          user={viewingAs || user} 
+          onMenuClick={() => setSidebarOpen(true)} 
+          currentModule={currentModule}
+          canUseViewAs={canUseViewAs}
+          onViewAsClick={() => setViewAsOpen(true)}
+          isViewingAs={!!viewingAs}
+        />
 
         {/* Content Area - All modules support scrolling */}
         <div
@@ -124,6 +145,18 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       <TicketCreationModal />
       <BokehContainer />
       <NotificationCenter />
+      
+      {/* P2: View As Components */}
+      <ViewAsSelector
+        isOpen={isViewAsOpen}
+        onClose={() => setViewAsOpen(false)}
+        onSelect={startViewAs}
+        users={availableUsers}
+      />
+      <ViewAsIndicator viewingAs={viewingAs} onExit={exitViewAs} />
+      
+      {/* P2: Debug Overlay */}
+      <DebugInfoPanel />
     </div>
   );
 };
@@ -708,13 +741,16 @@ const ServiceTopBarStats: React.FC = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        let endpoint = '';
-        if (context === 'inquiry') endpoint = '/api/v1/inquiry-tickets/stats';
-        else if (context === 'rma') endpoint = '/api/v1/rma-tickets/stats';
-        else if (context === 'dealer') endpoint = '/api/v1/dealer-repairs/stats';
+        // P2: Use unified tickets API with ticket_type filter
+        const endpoint = '/api/v1/tickets/stats/summary';
 
         // Build query params with filters
         const params = new URLSearchParams();
+        // P2: Add ticket_type filter for unified API
+        if (context === 'inquiry') params.set('ticket_type', 'inquiry');
+        else if (context === 'rma') params.set('ticket_type', 'rma');
+        else if (context === 'dealer') params.set('ticket_type', 'svc');
+        
         if (timeScope && timeScope !== 'all') params.set('time_scope', timeScope);
         if (productFamily && productFamily !== 'all') params.set('product_family', productFamily);
         if (keyword) params.set('keyword', keyword);
@@ -880,7 +916,14 @@ const ServiceTopBarStats: React.FC = () => {
 };
 
 
-const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: ModuleType }> = ({ user, onMenuClick, currentModule }) => {
+const TopBar: React.FC<{ 
+  user: any, 
+  onMenuClick: () => void, 
+  currentModule: ModuleType,
+  canUseViewAs?: boolean,
+  onViewAsClick?: () => void,
+  isViewingAs?: boolean
+}> = ({ user, onMenuClick, currentModule, canUseViewAs, onViewAsClick, isViewingAs }) => {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -941,6 +984,36 @@ const TopBar: React.FC<{ user: any, onMenuClick: () => void, currentModule: Modu
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* P2: View As Button - Admin Only */}
+        {canUseViewAs && !isViewingAs && (
+          <button
+            onClick={onViewAsClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              background: 'rgba(255, 215, 0, 0.15)',
+              border: '1px solid rgba(255, 215, 0, 0.3)',
+              borderRadius: '8px',
+              color: '#FFD700',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 215, 0, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)';
+            }}
+          >
+            <Eye size={16} />
+            <span className="hidden-mobile">预览视角</span>
+          </button>
+        )}
+        
         {/* Notification Bell - Service Module only */}
         {currentModule === 'service' && <NotificationBell />}
 

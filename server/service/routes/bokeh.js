@@ -198,27 +198,14 @@ module.exports = (db, authenticate, aiService) => {
                     const account = db.prepare('SELECT name FROM accounts WHERE id = ?').get(r.account_id);
                     customer_name = account?.name;
                 }
-                // 获取联系人姓名 (兼容新旧表)
+                // 获取联系人姓名
                 try {
-                    let contactIdQuery = null;
-                    // 先尝试新统一 tickets 表
                     if (r.ticket_id) {
-                        contactIdQuery = db.prepare('SELECT contact_id FROM tickets WHERE id = ?').get(r.ticket_id);
-                    }
-                    // 回退旧表
-                    if (!contactIdQuery?.contact_id) {
-                        if (r.ticket_type === 'inquiry' && r.ticket_id) {
-                            try { contactIdQuery = db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
-                        } else if (r.ticket_type === 'rma' && r.ticket_id) {
-                            try { contactIdQuery = db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
-                        } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
-                            try { contactIdQuery = db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id); } catch (_e) { }
+                        const contactIdQuery = db.prepare('SELECT contact_id FROM tickets WHERE id = ?').get(r.ticket_id);
+                        if (contactIdQuery && contactIdQuery.contact_id) {
+                            const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
+                            contact_name = contact?.name || null;
                         }
-                    }
-
-                    if (contactIdQuery && contactIdQuery.contact_id) {
-                        const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
-                        contact_name = contact?.name || null;
                     }
                 } catch (enrichErr) {
                     console.warn(`[Bokeh Enrichment] Failed to fetch contact for ${r.ticket_type}:${r.ticket_id}`, enrichErr.message);

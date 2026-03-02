@@ -50,15 +50,24 @@ interface RMATicket {
 
 // Status colors using Kine brand colors from context.md
 // Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
+// P2 Unified Status: open, in_progress, waiting, resolved, closed, cancelled
 const statusColors: Record<string, string> = {
-    Pending: 'var(--accent-blue)',        // Kine Yellow - received/waiting
-    Confirming: '#f59e0b',     // Amber - waiting for customer confirmation
-    Diagnosing: '#8b5cf6',     // Purple - in diagnosis
-    InRepair: '#3b82f6',       // Blue - in repair
-    Repaired: '#10B981',       // Kine Green - repaired
-    Shipped: '#06b6d4',        // Cyan - shipped
-    Completed: '#10B981',      // Kine Green - completed
-    Cancelled: '#6b7280'       // Gray - cancelled
+    // Legacy RMA statuses (for backward compatibility)
+    Pending: 'var(--accent-blue)',
+    Confirming: '#f59e0b',
+    Diagnosing: '#8b5cf6',
+    InRepair: '#3b82f6',
+    Repaired: '#10B981',
+    Shipped: '#06b6d4',
+    Completed: '#10B981',
+    Cancelled: '#6b7280',
+    // P2 Unified statuses
+    open: 'var(--accent-blue)',        // New/Pending
+    in_progress: '#8b5cf6',            // In progress/Diagnosing
+    waiting: '#3b82f6',                // Waiting/InRepair
+    resolved: '#10B981',               // Resolved/Repaired
+    closed: '#10B981',                 // Closed/Completed
+    cancelled: '#6b7280'               // Cancelled
 };
 
 const CollapsibleSection: React.FC<{
@@ -279,6 +288,7 @@ const RMATicketListPage: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         const labels: Record<string, string> = {
+            // Legacy RMA statuses
             Pending: t('rma_ticket.status.pending' as any) || '已收货',
             Confirming: t('rma_ticket.status.confirming' as any) || '确认中',
             Diagnosing: t('rma_ticket.status.diagnosing' as any) || '检测中',
@@ -286,22 +296,28 @@ const RMATicketListPage: React.FC = () => {
             Repaired: t('rma_ticket.status.repaired' as any) || '已修复',
             Shipped: t('rma_ticket.status.shipped' as any) || '已发货',
             Completed: t('rma_ticket.status.completed' as any) || '已完成',
-            Cancelled: t('rma_ticket.status.cancelled' as any) || '已取消'
+            Cancelled: t('rma_ticket.status.cancelled' as any) || '已取消',
+            // P2 Unified statuses
+            open: t('rma_ticket.status.pending' as any) || '新工单',
+            in_progress: t('rma_ticket.status.diagnosing' as any) || '处理中',
+            waiting: t('rma_ticket.status.in_repair' as any) || '等待中',
+            resolved: t('rma_ticket.status.repaired' as any) || '已解决',
+            closed: t('rma_ticket.status.completed' as any) || '已完成',
+            cancelled: t('rma_ticket.status.cancelled' as any) || '已取消'
         };
         return labels[status] || status;
     };
 
-    // Group tickets by status
+    // Group tickets by status (P2 Unified Status)
     const groupedTickets = useMemo(() => {
         const groups: Record<string, RMATicket[]> = {
-            Pending: [],
-            Confirming: [],
-            Diagnosing: [],
-            InRepair: [],
-            Repaired: [],
-            Shipped: [],
-            Completed: [],
-            Cancelled: []
+            // P2 Unified statuses
+            open: [],
+            in_progress: [],
+            waiting: [],
+            resolved: [],
+            closed: [],
+            cancelled: []
         };
         tickets.forEach(ticket => {
             if (groups[ticket.status]) {
@@ -311,8 +327,9 @@ const RMATicketListPage: React.FC = () => {
         return groups;
     }, [tickets]);
 
-    const statusOrder = ['Pending', 'Confirming', 'Diagnosing', 'InRepair', 'Repaired', 'Shipped', 'Completed', 'Cancelled'];
+    const statusOrder = ['open', 'in_progress', 'waiting', 'resolved', 'closed', 'cancelled'];
     const statusIcons: Record<string, React.ElementType> = {
+        // Legacy RMA statuses
         Pending: Package,
         Confirming: HelpCircle,
         Diagnosing: Clock,
@@ -320,7 +337,14 @@ const RMATicketListPage: React.FC = () => {
         Repaired: CheckCircle,
         Shipped: Package,
         Completed: CheckCircle,
-        Cancelled: AlertCircle
+        Cancelled: AlertCircle,
+        // P2 Unified statuses
+        open: Package,
+        in_progress: Clock,
+        waiting: Clock,
+        resolved: CheckCircle,
+        closed: CheckCircle,
+        cancelled: AlertCircle
     };
 
     const TicketCard = ({ ticket }: { ticket: RMATicket }) => (
@@ -693,14 +717,13 @@ const RMATicketListPage: React.FC = () => {
                             onChange={(val) => updateFilter({ status: val })}
                             options={[
                                 { value: 'all', label: t('filter.all_status') },
-                                { value: 'Pending', label: t('rma_ticket.status.pending' as any) || '已收货' },
-                                { value: 'Confirming', label: t('rma_ticket.status.confirming' as any) || '确认中' },
-                                { value: 'Diagnosing', label: t('rma_ticket.status.diagnosing' as any) || '检测中' },
-                                { value: 'InRepair', label: t('rma_ticket.status.in_repair' as any) || '维修中' },
-                                { value: 'Repaired', label: t('rma_ticket.status.repaired' as any) || '已修复' },
-                                { value: 'Shipped', label: t('rma_ticket.status.shipped' as any) || '已发货' },
-                                { value: 'Completed', label: t('rma_ticket.status.completed' as any) || '已完成' },
-                                { value: 'Cancelled', label: t('rma_ticket.status.cancelled' as any) || '已取消' }
+                                // P2 Unified Status
+                                { value: 'open', label: '新工单' },
+                                { value: 'in_progress', label: '处理中' },
+                                { value: 'waiting', label: '等待中' },
+                                { value: 'resolved', label: '已解决' },
+                                { value: 'closed', label: '已完成' },
+                                { value: 'cancelled', label: '已取消' }
                             ]}
                         />
                     </div>
@@ -752,7 +775,7 @@ const RMATicketListPage: React.FC = () => {
                         const statusTickets = groupedTickets[status] || [];
                         if (statusTickets.length === 0) return null;
                         const Icon = statusIcons[status];
-                        const defaultOpen = ['Pending', 'Confirming', 'Diagnosing', 'InRepair'].includes(status);
+                        const defaultOpen = ['open', 'in_progress', 'waiting'].includes(status);
                         return (
                             <CollapsibleSection
                                 key={status}

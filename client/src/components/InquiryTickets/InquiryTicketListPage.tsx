@@ -306,7 +306,9 @@ const InquiryTicketListPage: React.FC = () => {
         const now = new Date();
 
         tickets.forEach(ticket => {
-            const isDone = ['Resolved', 'AutoClosed', 'Upgraded'].includes(ticket.status);
+            // P2 Unified Status: open, in_progress, waiting, resolved, closed, cancelled
+            // Legacy statuses: Resolved, AutoClosed, Upgraded
+            const isDone = ['Resolved', 'AutoClosed', 'Upgraded', 'resolved', 'closed', 'cancelled'].includes(ticket.status);
             if (isDone) {
                 groups.done.push(ticket);
                 return;
@@ -328,7 +330,7 @@ const InquiryTicketListPage: React.FC = () => {
     const totalPages = Math.ceil(total / pageSize);
 
     const TicketCard = ({ ticket }: { ticket: InquiryTicket }) => {
-        const statusLabel = t(`inquiry_ticket.status.${ticket.status.replace(/([A-Z])/g, '_$1').toLowerCase().slice(1)}` as any) || ticket.status;
+        const statusLabel = t(`inquiry_ticket.status.${ticket.status}` as any) || ticket.status;
         const family = ticket.product_family || (ticket.product ? 'Unknown' : null);
 
         return (
@@ -725,12 +727,13 @@ const InquiryTicketListPage: React.FC = () => {
                             onChange={(val) => updateFilter({ status: val })}
                             options={[
                                 { value: 'all', label: t('filter.all_status') },
-                                { value: 'Pending', label: t('inquiry_ticket.status.pending' as any) || '待处理' },
-                                { value: 'InProgress', label: t('inquiry_ticket.status.in_progress' as any) || '处理中' },
-                                { value: 'AwaitingFeedback', label: t('inquiry_ticket.status.awaiting_feedback' as any) || '待客户反馈' },
-                                { value: 'Resolved', label: t('inquiry_ticket.status.resolved' as any) || '已解决' },
-                                { value: 'AutoClosed', label: t('inquiry_ticket.status.auto_closed' as any) || '自动关闭' },
-                                { value: 'Upgraded', label: t('inquiry_ticket.status.upgraded' as any) || '已升级' }
+                                // P2 Unified Status
+                                { value: 'open', label: '新工单' },
+                                { value: 'in_progress', label: '处理中' },
+                                { value: 'waiting', label: '等待中' },
+                                { value: 'resolved', label: '已解决' },
+                                { value: 'closed', label: '已关闭' },
+                                { value: 'cancelled', label: '已取消' }
                             ]}
                         />
                     </div>

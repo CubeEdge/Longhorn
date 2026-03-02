@@ -133,9 +133,14 @@ const TicketCreationModal: React.FC = () => {
                 formData.append('attachments', file);
             });
 
-            const endpoint = ticketType === 'Inquiry' ? '/api/v1/inquiry-tickets' :
-                ticketType === 'RMA' ? '/api/v1/rma-tickets' :
-                    '/api/v1/dealer-repairs';
+            // P2: Use unified tickets API
+            const typeMap: Record<string, string> = {
+                'Inquiry': 'inquiry',
+                'RMA': 'rma',
+                'DealerRepair': 'svc'
+            };
+            formData.append('ticket_type', typeMap[ticketType]);
+            const endpoint = '/api/v1/tickets';
 
             const res = await axios.post(endpoint, formData, {
                 headers: {

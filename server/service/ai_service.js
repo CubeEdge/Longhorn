@@ -509,18 +509,12 @@ ${enhancedContext}`;
 
                 // 获取联系人姓名
                 try {
-                    let contactIdQuery = null;
-                    if (r.ticket_type === 'inquiry' && r.ticket_id) {
-                        contactIdQuery = this.db.prepare('SELECT contact_id FROM inquiry_tickets WHERE id = ?').get(r.ticket_id);
-                    } else if (r.ticket_type === 'rma' && r.ticket_id) {
-                        contactIdQuery = this.db.prepare('SELECT contact_id FROM rma_tickets WHERE id = ?').get(r.ticket_id);
-                    } else if (r.ticket_type === 'dealer_repair' && r.ticket_id) {
-                        contactIdQuery = this.db.prepare('SELECT contact_id FROM service_tickets WHERE id = ?').get(r.ticket_id);
-                    }
-
-                    if (contactIdQuery && contactIdQuery.contact_id) {
-                        const contact = this.db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
-                        contact_name = contact?.name || null;
+                    if (r.ticket_id) {
+                        const contactIdQuery = this.db.prepare('SELECT contact_id FROM tickets WHERE id = ?').get(r.ticket_id);
+                        if (contactIdQuery && contactIdQuery.contact_id) {
+                            const contact = this.db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactIdQuery.contact_id);
+                            contact_name = contact?.name || null;
+                        }
                     }
                 } catch (enrichErr) {
                     console.warn(`[AIService Enrichment] Failed to fetch contact for ${r.ticket_type}:${r.ticket_id}`, enrichErr.message);

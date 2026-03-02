@@ -210,60 +210,55 @@ const CustomerDetailPage: React.FC = () => {
                 return;
             }
 
-            // Fetch real tickets data from all three types
-            // 经销商工单通过 dealer_id 关联（经销商提交的工单）
-            // 客户工单通过 account_id 关联
-            // 注意：不使用 keyword 过滤，因为经销商提交的工单 customer_name 是终端客户，不是经销商名称
-
+            // P2: Use unified tickets API with account_id or dealer_id filter
             // 经销商查询 dealer_id（自己提交的工单），客户查询 account_id
             const idParam = isDealer ? `dealer_id=${queryId}` : `account_id=${queryId}`;
 
-            const [inquiryRes, rmaRes, dealerRepairRes] = await Promise.all([
-                axios.get(`/api/v1/inquiry-tickets?${idParam}&page_size=100`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
-                axios.get(`/api/v1/rma-tickets?${idParam}&page_size=100`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
-                axios.get(`/api/v1/dealer-repairs?${idParam}&page_size=100`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
-            ]);
+            const ticketsRes = await axios.get(`/api/v1/tickets?${idParam}&page_size=100`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
-            // Process inquiry tickets
-            const inquiryTickets: Ticket[] = (inquiryRes.data.data || []).map((t: any) => ({
-                id: t.id,
-                ticket_number: t.ticket_number,
-                type: 'inquiry' as const,
-                status: t.status,
-                problem_summary: t.problem_summary,
-                created_at: t.created_at,
-                product_name: t.product?.name
-            }));
+            // Process tickets from unified table
+            const allTicketsRaw = ticketsRes.data.data || [];
+            
+            // Filter and categorize by ticket_type
+            const inquiryTickets: Ticket[] = allTicketsRaw
+                .filter((t: any) => t.ticket_type === 'inquiry')
+                .map((t: any) => ({
+                    id: t.id,
+                    ticket_number: t.ticket_number,
+                    type: 'inquiry' as const,
+                    status: t.status,
+                    problem_summary: t.problem_summary,
+                    created_at: t.created_at,
+                    product_name: t.product_name
+                }));
 
-            // Process RMA tickets
-            const rmaTickets: Ticket[] = (rmaRes.data.data || []).map((t: any) => ({
-                id: t.id,
-                ticket_number: t.ticket_number,
-                type: 'rma' as const,
-                status: t.status,
-                problem_summary: t.problem_description,
-                created_at: t.created_at,
-                product_name: t.product?.name
-            }));
+            const rmaTickets: Ticket[] = allTicketsRaw
+                .filter((t: any) => t.ticket_type === 'rma')
+                .map((t: any) => ({
+                    id: t.id,
+                    ticket_number: t.ticket_number,
+                    type: 'rma' as const,
+                    status: t.status,
+                    problem_summary: t.problem_description,
+                    created_at: t.created_at,
+                    product_name: t.product_name
+                }));
 
-            // Process dealer repair tickets
-            const dealerRepairTickets: Ticket[] = (dealerRepairRes.data.data || []).map((t: any) => ({
-                id: t.id,
-                ticket_number: t.ticket_number,
-                type: 'dealer_repair' as const,
-                status: t.status,
-                problem_summary: t.problem_description || t.repair_content,
-                created_at: t.created_at,
-                product_name: t.product?.name || t.product_name,
-                customer_name: isDealer ? t.account?.name || t.account_name : t.dealer?.name || t.dealer_name,
-                contact_name: isDealer ? t.contact?.name || t.contact_name : t.dealer_contact_name
-            }));
+            const dealerRepairTickets: Ticket[] = allTicketsRaw
+                .filter((t: any) => t.ticket_type === 'svc')
+                .map((t: any) => ({
+                    id: t.id,
+                    ticket_number: t.ticket_number,
+                    type: 'dealer_repair' as const,
+                    status: t.status,
+                    problem_summary: t.problem_description || t.repair_content,
+                    created_at: t.created_at,
+                    product_name: t.product_name,
+                    customer_name: isDealer ? t.account_name : t.dealer_name,
+                    contact_name: isDealer ? t.contact_name : undefined
+                }));
 
             // Combine all tickets and sort by date
             const allTickets = [...inquiryTickets, ...rmaTickets, ...dealerRepairTickets]

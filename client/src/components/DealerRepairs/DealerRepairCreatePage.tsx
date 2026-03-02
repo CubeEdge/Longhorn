@@ -63,7 +63,11 @@ const DealerRepairCreatePage: React.FC = () => {
                 accessories
             };
 
-            const res = await axios.post('/api/v1/dealer-repairs', payload, {
+            // P2: Use unified tickets API with ticket_type
+            const res = await axios.post('/api/v1/tickets', {
+                ...payload,
+                ticket_type: 'svc'  // P2: Required field for unified table
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

@@ -3,9 +3,10 @@
  * P2 架构升级 - 仅管理员可用
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, X, Search, Shield } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import axios from 'axios';
 
 // ==============================
 // Types
@@ -263,11 +264,48 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
 // ==============================
 
 export const useViewAs = () => {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [viewingAs, setViewingAs] = useState<UserOption | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
 
   const canUseViewAs = user?.role === 'Admin';
+
+  // Load available users for View As
+  useEffect(() => {
+    if (!canUseViewAs || !token) return;
+    
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get('/api/admin/users', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const users = res.data.map((u: any) => ({
+          id: u.id,
+          name: u.display_name || u.username,
+          role: u.role,
+          department: u.department_name,
+          dealer_name: u.dealer_name
+        }));
+        setAvailableUsers(users);
+      } catch (err) {
+        console.error('[ViewAs] Failed to fetch users:', err);
+      }
+    };
+    
+    fetchUsers();
+  }, [canUseViewAs, token]);
+
+  // Restore View As state from session on mount
+  useEffect(() => {
+    const savedViewAsId = sessionStorage.getItem('viewAsUserId');
+    if (savedViewAsId && availableUsers.length > 0) {
+      const targetUser = availableUsers.find(u => String(u.id) === savedViewAsId);
+      if (targetUser) {
+        setViewingAs(targetUser);
+      }
+    }
+  }, [availableUsers]);
 
   const startViewAs = (targetUser: UserOption) => {
     setViewingAs(targetUser);
@@ -275,11 +313,17 @@ export const useViewAs = () => {
     
     // Store in session for API requests
     sessionStorage.setItem('viewAsUserId', String(targetUser.id));
+    
+    // Reload page to apply new permissions
+    window.location.reload();
   };
 
   const exitViewAs = () => {
     setViewingAs(null);
     sessionStorage.removeItem('viewAsUserId');
+    
+    // Reload page to restore original permissions
+    window.location.reload();
   };
 
   const getViewAsHeader = () => {
@@ -294,7 +338,8 @@ export const useViewAs = () => {
     setIsOpen,
     startViewAs,
     exitViewAs,
-    getViewAsHeader
+    getViewAsHeader,
+    availableUsers
   };
 };
 

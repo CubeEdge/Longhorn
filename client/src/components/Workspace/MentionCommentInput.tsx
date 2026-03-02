@@ -25,6 +25,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const mentionMenuRef = useRef<HTMLUListElement>(null);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -42,6 +43,18 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
         };
         fetchUsers();
     }, []);
+
+    // Click outside to close mention menu
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showMentionMenu && mentionMenuRef.current && !mentionMenuRef.current.contains(event.target as Node)) {
+                setShowMentionMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showMentionMenu]);
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
@@ -62,7 +75,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
     };
 
     const filteredUsers = showMentionMenu
-        ? users.filter(u => u.name.toLowerCase().includes(mentionQuery)).slice(0, 8)
+        ? users.filter(u => u.name.toLowerCase().includes(mentionQuery) || (u.department && u.department.toLowerCase().includes(mentionQuery)))
         : [];
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,6 +92,10 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
             } else if (e.key === 'Escape') {
                 setShowMentionMenu(false);
             }
+        } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            // Command+Enter (Mac) or Ctrl+Enter (Windows/Linux) to submit
+            e.preventDefault();
+            handleSubmit();
         }
     };
 
@@ -148,9 +165,9 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
             />
 
             {showMentionMenu && filteredUsers.length > 0 && (
-                <ul style={{
+                <ul ref={mentionMenuRef} style={{
                     position: 'absolute',
-                    bottom: 70, // Float above the textarea and buttons
+                    bottom: 70,
                     left: 20,
                     background: '#2A2A2A',
                     border: '1px solid rgba(255,255,255,0.1)',

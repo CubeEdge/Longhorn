@@ -66,9 +66,9 @@ module.exports = function (db, authenticate) {
             const products = db.prepare(`
                 SELECT 
                     p.*,
-                    (SELECT COUNT(*) FROM inquiry_tickets WHERE product_id = p.id) as inquiry_count,
-                    (SELECT COUNT(*) FROM rma_tickets WHERE product_id = p.id) as rma_count,
-                    (SELECT COUNT(*) FROM dealer_repairs WHERE product_id = p.id) as repair_count
+                    (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'inquiry') as inquiry_count,
+                    (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'rma') as rma_count,
+                    (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'svc') as repair_count
                 FROM products p
                 ${whereClause}
                 ORDER BY 
@@ -128,15 +128,15 @@ module.exports = function (db, authenticate) {
 
             // Get related tickets summary
             const inquiryCount = db.prepare(`
-                SELECT COUNT(*) as count FROM inquiry_tickets WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'inquiry'
             `).get(productId);
 
             const rmaCount = db.prepare(`
-                SELECT COUNT(*) as count FROM rma_tickets WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'rma'
             `).get(productId);
 
             const repairCount = db.prepare(`
-                SELECT COUNT(*) as count FROM dealer_repairs WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'svc'
             `).get(productId);
 
             res.json({
@@ -163,18 +163,36 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/admin/products
-     * Create new product
+     * Create new product (Installed Base)
      */
     router.post('/', authenticate, requireAdmin, (req, res) => {
         try {
             const {
+                // Basic info
                 model_name,
                 internal_name,
                 product_family,
                 product_line,
+                serial_number,
+                product_sku,
+                product_type = 'CAMERA',
                 firmware_version,
                 description,
-                is_active = true
+                is_active = true,
+                // IoT
+                is_iot_device = false,
+                // Sales trace
+                sales_channel = 'DIRECT',
+                sold_to_dealer_id,
+                ship_to_dealer_date,
+                // Ownership
+                current_owner_id,
+                registration_date,
+                sales_invoice_date,
+                // Warranty
+                warranty_start_date,
+                warranty_months = 24,
+                warranty_status = 'ACTIVE'
             } = req.body;
 
             if (!model_name) {
@@ -191,26 +209,58 @@ module.exports = function (db, authenticate) {
                 });
             }
 
+            // Calculate warranty end date if start date provided
+            let warranty_end_date = null;
+            if (warranty_start_date && warranty_months) {
+                const start = new Date(warranty_start_date);
+                const end = new Date(start);
+                end.setMonth(end.getMonth() + parseInt(warranty_months));
+                warranty_end_date = end.toISOString().split('T')[0];
+            }
+
             const result = db.prepare(`
                 INSERT INTO products (
                     model_name, internal_name, product_family, product_line,
-                    firmware_version, description, is_active, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    serial_number, product_sku, product_type,
+                    firmware_version, description, is_active,
+                    is_iot_device, sales_channel, sold_to_dealer_id, ship_to_dealer_date,
+                    current_owner_id, registration_date, sales_invoice_date,
+                    warranty_start_date, warranty_months, warranty_end_date, warranty_status,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `).run(
                 model_name,
                 internal_name || model_name,
                 product_family,
                 product_line || '',
+                serial_number || null,
+                product_sku || null,
+                product_type,
                 firmware_version || '',
                 description || '',
-                is_active ? 1 : 0
+                is_active ? 1 : 0,
+                is_iot_device ? 1 : 0,
+                sales_channel,
+                sold_to_dealer_id || null,
+                ship_to_dealer_date || null,
+                current_owner_id || null,
+                registration_date || null,
+                sales_invoice_date || null,
+                warranty_start_date || null,
+                warranty_months,
+                warranty_end_date,
+                warranty_status
             );
 
             const newProduct = db.prepare('SELECT * FROM products WHERE id = ?').get(result.lastInsertRowid);
 
             res.status(201).json({
                 success: true,
-                data: { ...newProduct, is_active: !!newProduct.is_active }
+                data: { 
+                    ...newProduct, 
+                    is_active: !!newProduct.is_active,
+                    is_iot_device: !!newProduct.is_iot_device
+                }
             });
         } catch (err) {
             console.error('[Products Admin] Create error:', err);
@@ -223,19 +273,42 @@ module.exports = function (db, authenticate) {
 
     /**
      * PUT /api/v1/admin/products/:id
-     * Update product
+     * Update product (Installed Base)
      */
     router.put('/:id', authenticate, requireAdmin, (req, res) => {
         try {
             const productId = req.params.id;
             const {
+                // Basic info
                 model_name,
                 internal_name,
                 product_family,
                 product_line,
+                serial_number,
+                product_sku,
+                product_type,
                 firmware_version,
                 description,
-                is_active
+                is_active,
+                // IoT
+                is_iot_device,
+                is_activated,
+                activation_date,
+                // Sales trace
+                sales_channel,
+                original_order_id,
+                sold_to_dealer_id,
+                ship_to_dealer_date,
+                // Ownership
+                current_owner_id,
+                registration_date,
+                sales_invoice_date,
+                sales_invoice_proof,
+                // Warranty
+                warranty_source,
+                warranty_start_date,
+                warranty_months,
+                warranty_status
             } = req.body;
 
             // Check if product exists
@@ -251,14 +324,30 @@ module.exports = function (db, authenticate) {
             const updates = [];
             const params = [];
 
-            if (model_name !== undefined) {
-                updates.push('model_name = ?');
-                params.push(model_name);
+            // Helper to add update
+            const addUpdate = (field, value) => {
+                if (value !== undefined) {
+                    updates.push(`${field} = ?`);
+                    params.push(value);
+                }
+            };
+
+            // Basic fields
+            addUpdate('model_name', model_name);
+            addUpdate('internal_name', internal_name);
+            addUpdate('serial_number', serial_number);
+            addUpdate('product_sku', product_sku);
+            addUpdate('product_type', product_type);
+            addUpdate('product_line', product_line);
+            addUpdate('firmware_version', firmware_version);
+            addUpdate('description', description);
+            
+            if (is_active !== undefined) {
+                updates.push('is_active = ?');
+                params.push(is_active ? 1 : 0);
             }
-            if (internal_name !== undefined) {
-                updates.push('internal_name = ?');
-                params.push(internal_name);
-            }
+
+            // Product family with cascade
             if (product_family !== undefined) {
                 if (!['A', 'B', 'C', 'D'].includes(product_family)) {
                     return res.status(400).json({
@@ -268,35 +357,54 @@ module.exports = function (db, authenticate) {
                 }
                 updates.push('product_family = ?');
                 params.push(product_family);
+                db.prepare(`UPDATE tickets SET product_family = ? WHERE product_id = ?`).run(product_family, productId);
+            }
 
-                // Cascade update to related tickets
-                db.prepare(`
-                    UPDATE inquiry_tickets SET product_family = ? WHERE product_id = ?
-                `).run(product_family, productId);
+            // IoT fields
+            if (is_iot_device !== undefined) {
+                updates.push('is_iot_device = ?');
+                params.push(is_iot_device ? 1 : 0);
+            }
+            if (is_activated !== undefined) {
+                updates.push('is_activated = ?');
+                params.push(is_activated ? 1 : 0);
+            }
+            addUpdate('activation_date', activation_date);
 
-                db.prepare(`
-                    UPDATE rma_tickets SET product_family = ? WHERE product_id = ?
-                `).run(product_family, productId);
+            // Sales trace
+            addUpdate('sales_channel', sales_channel);
+            addUpdate('original_order_id', original_order_id);
+            addUpdate('sold_to_dealer_id', sold_to_dealer_id);
+            addUpdate('ship_to_dealer_date', ship_to_dealer_date);
 
-                db.prepare(`
-                    UPDATE dealer_repairs SET product_family = ? WHERE product_id = ?
-                `).run(product_family, productId);
+            // Ownership
+            addUpdate('current_owner_id', current_owner_id);
+            addUpdate('registration_date', registration_date);
+            addUpdate('sales_invoice_date', sales_invoice_date);
+            addUpdate('sales_invoice_proof', sales_invoice_proof);
+
+            // Warranty
+            addUpdate('warranty_source', warranty_source);
+            addUpdate('warranty_start_date', warranty_start_date);
+            if (warranty_months !== undefined) {
+                updates.push('warranty_months = ?');
+                params.push(warranty_months);
             }
-            if (product_line !== undefined) {
-                updates.push('product_line = ?');
-                params.push(product_line);
-            }
-            if (firmware_version !== undefined) {
-                updates.push('firmware_version = ?');
-                params.push(firmware_version);
-            }
-            if (description !== undefined) {
-                updates.push('description = ?');
-                params.push(description);
-            }
-            if (is_active !== undefined) {
-                updates.push('is_active = ?');
-                params.push(is_active ? 1 : 0);
+            addUpdate('warranty_status', warranty_status);
+
+            // Recalculate warranty end date if start date or months changed
+            if (warranty_start_date !== undefined || warranty_months !== undefined) {
+                const current = db.prepare('SELECT warranty_start_date, warranty_months FROM products WHERE id = ?').get(productId);
+                const start = warranty_start_date !== undefined ? warranty_start_date : current.warranty_start_date;
+                const months = warranty_months !== undefined ? parseInt(warranty_months) : current.warranty_months;
+                
+                if (start && months) {
+                    const startDate = new Date(start);
+                    const endDate = new Date(startDate);
+                    endDate.setMonth(endDate.getMonth() + months);
+                    updates.push('warranty_end_date = ?');
+                    params.push(endDate.toISOString().split('T')[0]);
+                }
             }
 
             if (updates.length === 0) {
@@ -317,7 +425,12 @@ module.exports = function (db, authenticate) {
 
             res.json({
                 success: true,
-                data: { ...updated, is_active: !!updated.is_active }
+                data: { 
+                    ...updated, 
+                    is_active: !!updated.is_active,
+                    is_iot_device: !!updated.is_iot_device,
+                    is_activated: !!updated.is_activated
+                }
             });
         } catch (err) {
             console.error('[Products Admin] Update error:', err);
@@ -347,15 +460,15 @@ module.exports = function (db, authenticate) {
 
             // Check for related tickets
             const inquiryCount = db.prepare(`
-                SELECT COUNT(*) as count FROM inquiry_tickets WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'inquiry'
             `).get(productId);
 
             const rmaCount = db.prepare(`
-                SELECT COUNT(*) as count FROM rma_tickets WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'rma'
             `).get(productId);
 
             const repairCount = db.prepare(`
-                SELECT COUNT(*) as count FROM dealer_repairs WHERE product_id = ?
+                SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'svc'
             `).get(productId);
 
             const totalTickets = inquiryCount.count + rmaCount.count + repairCount.count;
@@ -413,39 +526,27 @@ module.exports = function (db, authenticate) {
 
             const offset = (parseInt(page) - 1) * parseInt(page_size);
 
-            // Get all related tickets (union query)
+            // Get all related tickets
             const tickets = db.prepare(`
                 SELECT 
-                    'Inquiry' as ticket_type,
+                    CASE 
+                        WHEN ticket_type = 'inquiry' THEN 'Inquiry'
+                        WHEN ticket_type = 'rma' THEN 'RMA'
+                        WHEN ticket_type = 'svc' THEN 'DealerRepair'
+                        ELSE ticket_type
+                    END as ticket_type,
                     id, ticket_number, status, created_at,
-                    customer_name as contact_name,
-                    problem_summary as summary
-                FROM inquiry_tickets WHERE product_id = ?
-                UNION ALL
-                SELECT 
-                    'RMA' as ticket_type,
-                    id, ticket_number, status, created_at,
-                    reporter_name as contact_name,
-                    problem_description as summary
-                FROM rma_tickets WHERE product_id = ?
-                UNION ALL
-                SELECT 
-                    'DealerRepair' as ticket_type,
-                    id, ticket_number, status, created_at,
-                    customer_name as contact_name,
-                    problem_description as summary
-                FROM dealer_repairs WHERE product_id = ?
+                    contact_name,
+                    COALESCE(problem_summary, problem_description, title) as summary
+                FROM tickets WHERE product_id = ?
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
-            `).all(productId, productId, productId, parseInt(page_size), offset);
+            `).all(productId, parseInt(page_size), offset);
 
             // Count total
             const countResult = db.prepare(`
-                SELECT 
-                    (SELECT COUNT(*) FROM inquiry_tickets WHERE product_id = ?) +
-                    (SELECT COUNT(*) FROM rma_tickets WHERE product_id = ?) +
-                    (SELECT COUNT(*) FROM dealer_repairs WHERE product_id = ?) as total
-            `).get(productId, productId, productId);
+                SELECT COUNT(*) as total FROM tickets WHERE product_id = ?
+            `).get(productId);
 
             res.json({
                 success: true,

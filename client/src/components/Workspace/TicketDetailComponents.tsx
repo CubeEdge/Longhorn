@@ -3,12 +3,11 @@
  * P2 架构升级 - macOS26 风格
  */
 
-import React, { useState } from 'react';
-import { t } from 'i18next';
+import React from 'react';
 import { MentionCommentInput } from './MentionCommentInput';
 import {
   Clock, User, Tag, Package, Calendar, MessageSquare,
-  AlertTriangle, ArrowRight, Send,
+  AlertTriangle, ArrowRight,
   AtSign, Paperclip
 } from 'lucide-react';
 

@@ -42,10 +42,7 @@ function initService(app, db, options = {}) {
     const serviceRecordsRoutes = require('./routes/service-records')(db, authenticate);
     const contextRoutes = require('./routes/context')(db, authenticate);
 
-    // Phase 1.5: Three-Layer Ticket Model (新三层工单模型) - Legacy, kept for backward compatibility
-    const inquiryTicketsRoutes = require('./routes/inquiry-tickets')(db, authenticate, serviceUpload);
-    const rmaTicketsRoutes = require('./routes/rma-tickets')(db, authenticate, attachmentsDir, multer, serviceUpload);
-    const dealerRepairsRoutes = require('./routes/dealer-repairs')(db, authenticate, serviceUpload);
+    // Phase 1.5: Three-Layer Ticket Model - REMOVED (P2 migrated to unified tickets table)
 
     // P2 Upgrade: Unified Tickets System (统一工单系统)
     const ticketsRoutes = require('./routes/tickets')(db, authenticate, serviceUpload);
@@ -92,10 +89,7 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/service-records', serviceRecordsRoutes);  // Legacy, kept for backward compatibility
     app.use('/api/v1/context', contextRoutes); // Registered Context Route
 
-    // Phase 1.5: Three-Layer Ticket Model routes (新三层工单模型) - Legacy
-    app.use('/api/v1/inquiry-tickets', inquiryTicketsRoutes);
-    app.use('/api/v1/rma-tickets', rmaTicketsRoutes);
-    app.use('/api/v1/dealer-repairs', dealerRepairsRoutes);
+    // Phase 1.5: Three-Layer Ticket Model - REMOVED (P2: use /api/v1/tickets)
 
     // P2 Upgrade: Unified Tickets System routes (统一工单系统)
     app.use('/api/v1/tickets', ticketsRoutes);
@@ -142,9 +136,9 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/system');
     console.log('  - /api/v1/service-records (legacy)');
     console.log('  - /api/v1/context');
-    console.log('  - /api/v1/inquiry-tickets (legacy: 咨询工单)');
-    console.log('  - /api/v1/rma-tickets (legacy: RMA返厂单)');
-    console.log('  - /api/v1/dealer-repairs (legacy: 经销商维修单)');
+    console.log('  - /api/v1/inquiry-tickets (REMOVED: use /api/v1/tickets?ticket_type=inquiry)');
+    console.log('  - /api/v1/rma-tickets (REMOVED: use /api/v1/tickets?ticket_type=rma)');
+    console.log('  - /api/v1/dealer-repairs (REMOVED: use /api/v1/tickets?ticket_type=svc)');
     console.log('  - /api/v1/tickets (P2: 统一工单)');
     console.log('  - /api/v1/tickets/:id/activities (P2: 活动时间轴)');
     console.log('  - /api/v1/notifications (P2: 通知中心)');

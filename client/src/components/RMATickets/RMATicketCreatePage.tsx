@@ -88,7 +88,11 @@ const RMATicketCreatePage: React.FC = () => {
                 dealer_id: dealerId
             };
 
-            const res = await axios.post('/api/v1/rma-tickets', payload, {
+            // P2: Use unified tickets API with ticket_type
+            const res = await axios.post('/api/v1/tickets', {
+                ...payload,
+                ticket_type: 'rma'  // P2: Required field for unified table
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

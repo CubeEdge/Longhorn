@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
 import { useThemeStore } from '../../store/useThemeStore';
+import { DebugModeToggle } from '../DebugOverlay';
 interface AIProvider {
     name: string;
     api_key: string;
@@ -1315,6 +1316,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                         </div>
                                         <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
                                             开启后，Bokeh 智能助手将进入专业协作状态。它将优先调取知识库和工单历史进行回答，且回复风格更加严谨、聚焦技术支持。
+                                        </div>
+                                    </div>
+
+                                    <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
+
+                                    {/* Debug Mode Section */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>开发与测试</div>
+                                    
+                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
+                                        <div style={{ padding: '16px 20px' }}>
+                                            <div style={{ flex: 1, marginBottom: 12 }}>
+                                                <div className="setting-label">UI Debug Mode</div>
+                                                <div className="setting-desc">开启后，界面元素上会显示权限代码标签（如 [Permission: TICKET_APPROVE]），用于开发和测试时验证RBAC逻辑。</div>
+                                            </div>
+                                            <DebugModeToggle />
                                         </div>
                                     </div>
                                 </div>

@@ -615,7 +615,31 @@ const authenticate = (req, res, next) => {
                     return res.sendStatus(401);
                 }
 
-                req.user = user;
+                // P2: View As functionality - Admin can impersonate other users
+                const viewAsUserId = req.headers['x-view-as-user'];
+                if (viewAsUserId && user.role === 'Admin') {
+                    const targetUser = db.prepare(`
+                        SELECT id, username, role, department_id, user_type, 
+                               job_title, display_name, department_name
+                        FROM users
+                        WHERE id = ? OR id = CAST(? AS REAL)
+                    `).get(viewAsUserId, viewAsUserId);
+                    
+                    if (targetUser) {
+                        // Store original admin info for logging
+                        targetUser._originalAdmin = {
+                            id: user.id,
+                            username: user.username
+                        };
+                        req.user = targetUser;
+                        console.log(`[ViewAs] Admin ${user.username} viewing as ${targetUser.username}`);
+                    } else {
+                        req.user = user;
+                    }
+                } else {
+                    req.user = user;
+                }
+                
                 next();
             } catch (err) {
                 console.error('[Auth Middleware] Database Error:', err);

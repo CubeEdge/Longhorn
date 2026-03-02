@@ -5,17 +5,53 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
 import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle } from 'lucide-react';
 
-// Types
+// Types - Installed Base (PRD Service PRD_P2.md lines 209-265)
 interface Product {
+    // Physical Identity
     id: number;
     model_name: string;
     internal_name: string;
+    serial_number: string;
+    product_sku: string;
+    product_type: string;
     product_family: 'A' | 'B' | 'C' | 'D';
+    production_date: string;
+    
+    // IoT Status
+    is_iot_device: boolean;
+    is_activated: boolean;
+    activation_date: string;
+    last_connected_at: string;
     firmware_version: string;
+    ip_address: string;
+    
+    // Sales Trace
+    sales_channel: 'DIRECT' | 'DEALER';
+    original_order_id: string;
+    sold_to_dealer_id: number;
+    ship_to_dealer_date: string;
+    
+    // Ownership
+    current_owner_id: number;
+    current_owner_name?: string;
+    registration_date: string;
+    sales_invoice_date: string;
+    sales_invoice_proof: string;
+    
+    // Warranty
+    warranty_source: 'IOT_ACTIVATION' | 'INVOICE_PROOF' | 'DIRECT_SHIPMENT' | 'DEALER_FALLBACK';
+    warranty_start_date: string;
+    warranty_months: number;
+    warranty_end_date: string;
+    warranty_status: 'ACTIVE' | 'EXPIRED' | 'PENDING';
+    
+    // Basic
     description: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    
+    // Stats
     inquiry_count: number;
     rma_count: number;
     repair_count: number;
@@ -437,6 +473,7 @@ const ProductManagement: React.FC = () => {
                                     )}
                                 </div>
                             </th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>序列号</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>固件版本</th>
                             <th
@@ -479,6 +516,11 @@ const ProductManagement: React.FC = () => {
                                         {product.internal_name && product.internal_name !== product.model_name && (
                                             <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{product.internal_name}</div>
                                         )}
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        <span style={{ fontSize: '0.9rem', fontFamily: 'monospace', opacity: 0.9 }}>
+                                            {product.serial_number || '-'}
+                                        </span>
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'

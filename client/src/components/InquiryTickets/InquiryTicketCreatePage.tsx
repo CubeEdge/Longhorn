@@ -196,7 +196,11 @@ const InquiryTicketCreatePage: React.FC = () => {
             payload.customer_name = customerName || accountContact.reporter_name;
             payload.customer_contact = customerContact;
 
-            const res = await axios.post('/api/v1/inquiry-tickets', payload, {
+            // P2: Use unified tickets API with ticket_type
+            const res = await axios.post('/api/v1/tickets', {
+                ...payload,
+                ticket_type: 'inquiry'  // P2: Required field for unified table
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

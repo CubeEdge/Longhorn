@@ -175,30 +175,50 @@ module.exports = function (db, authenticate) {
     /**
      * GET /api/v1/system/users
      * Get users list for assignment dropdowns
+     * P2: Sort by: 1) current user's dept first, 2) MS > OP > RD, 3) name
      */
     router.get('/users', authenticate, (req, res) => {
         try {
             const { department, role } = req.query;
+            const currentUserId = req.user.id;
 
-            let conditions = ["user_type = 'Employee' OR user_type IS NULL"];
+            let conditions = ["(u.user_type = 'Employee' OR u.user_type IS NULL)"];
             let params = [];
 
             if (department) {
-                conditions.push('department_id = ?');
+                conditions.push('u.department_id = ?');
                 params.push(department);
             }
             if (role) {
-                conditions.push('role = ?');
+                conditions.push('u.role = ?');
                 params.push(role);
             }
 
+            // P2: Get current user's department code for sorting
+            const currentUser = db.prepare(`
+                SELECT d.code as dept_code 
+                FROM users u 
+                LEFT JOIN departments d ON u.department_id = d.id 
+                WHERE u.id = ?
+            `).get(currentUserId);
+            const currentDeptCode = currentUser?.dept_code || '';
+
+            // P2: Sort by: 1) current user's dept first, 2) MS > OP > RD, 3) name
             const users = db.prepare(`
-                SELECT u.id, u.username as name, u.role, d.name as department
+                SELECT u.id, u.username as name, u.role, d.name as department, d.code as dept_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 WHERE ${conditions.join(' AND ')}
-                ORDER BY u.username
-            `).all(...params);
+                ORDER BY 
+                    CASE 
+                        WHEN d.code = ? THEN 0  -- Current user's dept first
+                        WHEN d.code = 'MS' THEN 1
+                        WHEN d.code = 'OP' THEN 2
+                        WHEN d.code = 'RD' THEN 3
+                        ELSE 4
+                    END,
+                    u.username
+            `).all(currentDeptCode, ...params);
 
             res.json({
                 success: true,

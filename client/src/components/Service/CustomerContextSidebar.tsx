@@ -8,7 +8,6 @@ import { useAuthStore } from '../../store/useAuthStore';
 
 interface CustomerContextSidebarProps {
     accountId?: number;
-    accountName?: string;
     serialNumber?: string;
     dealerId?: number;
     dealerName?: string;
@@ -19,7 +18,7 @@ interface CustomerContextSidebarProps {
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
-    accountId, accountName, serialNumber,
+    accountId, serialNumber,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
     onClose
 }) => {
@@ -33,7 +32,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
     useEffect(() => {
         fetchContext();
-    }, [accountId, accountName, serialNumber]);
+    }, [accountId, serialNumber]);
 
     const fetchContext = async () => {
         setLoading(true);
@@ -41,20 +40,31 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             const result: any = {};
             const promises = [];
 
+            console.log('[CustomerContext] Fetching context:', { accountId, serialNumber, dealerId });
+
+            // 1. Fetch customer info if accountId exists
             if (accountId) {
                 const customerUrl = `/api/v1/context/by-account?account_id=${accountId}`;
+                console.log('[CustomerContext] Fetching customer:', customerUrl);
                 promises.push(fetch(customerUrl, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(async (res) => {
                     const json = await res.json();
+                    console.log('[CustomerContext] Customer response:', json);
                     if (json.success) {
                         result.account = json.data.account;
                         result.contacts = json.data.contacts;
                         result.ai_profile = json.data.ai_profile;
+                        result.devices = json.data.devices;
+                        console.log('[CustomerContext] Set account and devices:', { 
+                            account: result.account, 
+                            devicesCount: result.devices?.length 
+                        });
                     }
                 }));
             }
 
+            // 2. Fetch dealer info if dealerId exists
             if (dealerId) {
                 const dealerUrl = `/api/v1/context/by-account?account_id=${dealerId}`;
                 promises.push(fetch(dealerUrl, {
@@ -68,23 +78,37 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 }));
             }
 
+            // 3. Fetch product info by serial number (independent!)
             if (serialNumber) {
-                const deviceUrl = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
-                promises.push(fetch(deviceUrl, {
+                const productUrl = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
+                console.log('[CustomerContext] Fetching product:', productUrl);
+                promises.push(fetch(productUrl, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(async (res) => {
                     const json = await res.json();
+                    console.log('[CustomerContext] Product response:', json);
                     if (json.success) {
                         result.device = json.data.device;
+                        result.service_history = json.data.service_history;
                         result.parts_catalog = json.data.parts_catalog;
-                        if (json.data.ai_profile) {
-                            result.device_ai_profile = json.data.ai_profile;
-                        }
+                        console.log('[CustomerContext] Set device:', result.device);
                     }
                 }));
             }
 
             await Promise.allSettled(promises);
+
+            // If we have devices from account AND serial number lookup, merge them
+            if (result.devices && result.device) {
+                // Device from serial number takes precedence
+                const existingIdx = result.devices.findIndex((d: any) => d.serial_number === serialNumber);
+                if (existingIdx >= 0) {
+                    result.devices[existingIdx] = result.device;
+                } else {
+                    result.devices.unshift(result.device);
+                }
+            }
+
             setData(result);
         } catch (err) {
             console.error('Failed to fetch context', err);
