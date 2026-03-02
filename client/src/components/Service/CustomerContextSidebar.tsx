@@ -1,26 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    User, Smartphone, Package, X, MapPin, Building, ChevronDown, ChevronUp, Ticket, Info, Hash, ChevronRight
+    User, Smartphone, Package, X, MapPin, Building, ChevronDown, ChevronUp, Ticket, Info, Hash, ChevronRight, Search, UserPlus, Trash2, Mail
 } from 'lucide-react';
+import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-// import { useLanguage } from '../../i18n/useLanguage';
+import ContactCleaningModal from './ContactCleaningModal';
+import ConvertIndividualModal from './ConvertIndividualModal';
+import ConfirmModal from './ConfirmModal';
+import LinkCorporateModal from './LinkCorporateModal';
 
 interface CustomerContextSidebarProps {
+    ticketId?: number;
     accountId?: number;
+    contactId?: number;
+    reporterSnapshot?: any;
     serialNumber?: string;
+    customerName?: string;
+    contactName?: string;
     dealerId?: number;
     dealerName?: string;
     dealerCode?: string;
     dealerContactName?: string;
     dealerContactTitle?: string;
+    onCleanComplete?: () => void;
     onClose?: () => void;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
-    accountId, serialNumber,
+    ticketId, accountId, contactId, reporterSnapshot,
+    serialNumber, customerName, contactName,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
-    onClose
+    onCleanComplete, onClose
 }) => {
     // const { t } = useLanguage();
     const { token } = useAuthStore();
@@ -29,6 +40,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const [loading, setLoading] = useState(false);
     const [partsExpanded, setPartsExpanded] = useState(false);
     const [contactsExpanded, setContactsExpanded] = useState(false);
+    const [showCleanModal, setShowCleanModal] = useState(false);
+    const [showConvertModal, setShowConvertModal] = useState(false);
+    const [showSpamModal, setShowSpamModal] = useState(false);
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [isActionLoading, setIsActionLoading] = useState(false);
 
     useEffect(() => {
         fetchContext();
@@ -46,19 +62,19 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             if (accountId) {
                 const customerUrl = `/api/v1/context/by-account?account_id=${accountId}`;
                 console.log('[CustomerContext] Fetching customer:', customerUrl);
-                promises.push(fetch(customerUrl, {
+                promises.push(axios.get(customerUrl, {
                     headers: { Authorization: `Bearer ${token}` }
-                }).then(async (res) => {
-                    const json = await res.json();
+                }).then((res) => {
+                    const json = res.data;
                     console.log('[CustomerContext] Customer response:', json);
                     if (json.success) {
                         result.account = json.data.account;
                         result.contacts = json.data.contacts;
                         result.ai_profile = json.data.ai_profile;
                         result.devices = json.data.devices;
-                        console.log('[CustomerContext] Set account and devices:', { 
-                            account: result.account, 
-                            devicesCount: result.devices?.length 
+                        console.log('[CustomerContext] Set account and devices:', {
+                            account: result.account,
+                            devicesCount: result.devices?.length
                         });
                     }
                 }));
@@ -67,10 +83,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             // 2. Fetch dealer info if dealerId exists
             if (dealerId) {
                 const dealerUrl = `/api/v1/context/by-account?account_id=${dealerId}`;
-                promises.push(fetch(dealerUrl, {
+                promises.push(axios.get(dealerUrl, {
                     headers: { Authorization: `Bearer ${token}` }
-                }).then(async (res) => {
-                    const json = await res.json();
+                }).then((res) => {
+                    const json = res.data;
                     if (json.success) {
                         result.dealerRecord = json.data.account;
                         result.dealer_ai_profile = json.data.ai_profile;
@@ -82,10 +98,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             if (serialNumber) {
                 const productUrl = `/api/v1/context/by-serial-number?serial_number=${serialNumber}`;
                 console.log('[CustomerContext] Fetching product:', productUrl);
-                promises.push(fetch(productUrl, {
+                promises.push(axios.get(productUrl, {
                     headers: { Authorization: `Bearer ${token}` }
-                }).then(async (res) => {
-                    const json = await res.json();
+                }).then((res) => {
+                    const json = res.data;
                     console.log('[CustomerContext] Product response:', json);
                     if (json.success) {
                         result.device = json.data.device;
@@ -206,6 +222,26 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         }
     };
 
+    const handleMarkSpam = async () => {
+        if (!ticketId) return;
+        setIsActionLoading(true);
+        try {
+            const token = useAuthStore.getState().token;
+            const response = await axios.post(`/api/v1/tickets/${ticketId}/mark-spam`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.data.success && onCleanComplete) {
+                setShowSpamModal(false);
+                onCleanComplete();
+            }
+        } catch (err: any) {
+            console.error('Failed to mark spam:', err);
+            alert(err.response?.data?.error || '标记垃圾工单失败');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
             {/* Header - 标题放在顶部 */}
@@ -301,7 +337,108 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 )}
 
                 {/* ===== Card 2: 客户卡片 ===== */}
-                {data?.account && (
+                {/* Status 4: Ghost / Unregistered */}
+                {!data?.account && (reporterSnapshot || contactName || customerName) && (
+                    <div style={{ ...cardStyle, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                        <div style={{ ...cardTitleStyle, color: '#EF4444', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Info size={12} /> ❓ 未知身份
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                <Mail size={12} /> 来源:
+                                <span style={{ color: '#ddd' }}>{reporterSnapshot?.source || 'Email / 电话接入'}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span>原始信息:</span>
+                                <span style={{ color: '#ddd', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                                    {reporterSnapshot ? `${reporterSnapshot.name || ''} ${reporterSnapshot.email ? `<${reporterSnapshot.email}>` : ''} ${reporterSnapshot.phone || ''}` : (contactName || customerName)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Action Required Section */}
+                        <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
+                            <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
+                                ⚠️ 建议操作 (Action Required)
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <button
+                                    onClick={() => setShowLinkModal(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                    }}
+                                >
+                                    <Search size={14} /> 关联到企业
+                                </button>
+                                <button
+                                    onClick={() => setShowConvertModal(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                        background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
+                                        borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                    }}
+                                >
+                                    <UserPlus size={14} /> 转为个人客户
+                                </button>
+                                <button
+                                    onClick={() => setShowSpamModal(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                    }}
+                                >
+                                    <Trash2 size={14} /> 标记为垃圾
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Status 2: Corporate + Temp */}
+                {data?.account && !contactId && reporterSnapshot && (
+                    <div style={{ ...cardStyle, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        <div style={{ ...cardTitleStyle, color: '#F59E0B' }}>
+                            <Building size={12} /> 客户信息 (临时对接)
+                        </div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
+                            {data.account.name}
+                        </h3>
+                        <div style={{ padding: '12px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 8 }}>
+                            <div style={{ fontSize: '0.8rem', color: '#F59E0B', fontWeight: 600, marginBottom: 8 }}>
+                                ⚠️ 未归档联系人
+                            </div>
+                            <div style={rowStyle}>
+                                <User size={14} style={iconColStyle} color="#F59E0B" />
+                                <div style={{ ...textColStyle, color: '#ddd' }}>{reporterSnapshot.name}</div>
+                            </div>
+                            {reporterSnapshot.phone && (
+                                <div style={rowStyle}>
+                                    <Smartphone size={14} style={iconColStyle} color="#F59E0B" />
+                                    <div style={{ ...textColStyle, color: '#ddd' }}>{reporterSnapshot.phone}</div>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setShowCleanModal(true)}
+                                style={{
+                                    marginTop: 10, width: '100%', padding: '6px 0',
+                                    background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    borderRadius: 6, color: '#F59E0B', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
+                                }}
+                            >
+                                + 入库联系人并清洗
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Status 1 & 3: Standard Corporate or Individual */}
+                {data?.account && (!reporterSnapshot || contactId) && (
                     <div
                         style={{
                             ...cardStyle,
@@ -462,6 +599,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     </div>
                 )}
 
+
+
                 {/* ===== Card 3: 设备详情卡片 ===== */}
                 {data?.device && (
                     <div
@@ -599,6 +738,58 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Modals */}
+            {showCleanModal && ticketId && data?.account && reporterSnapshot && (
+                <ContactCleaningModal
+                    ticketId={ticketId}
+                    accountId={data.account.id}
+                    accountName={data.account.name}
+                    reporterSnapshot={reporterSnapshot}
+                    onClose={() => setShowCleanModal(false)}
+                    onSuccess={() => {
+                        setShowCleanModal(false);
+                        if (onCleanComplete) onCleanComplete();
+                    }}
+                />
+            )}
+
+            {/* 新增的未知访客操作弹窗 */}
+            {showConvertModal && ticketId && (
+                <ConvertIndividualModal
+                    ticketId={ticketId}
+                    reporterSnapshot={reporterSnapshot || { name: customerName || contactName }}
+                    onClose={() => setShowConvertModal(false)}
+                    onSuccess={() => {
+                        setShowConvertModal(false);
+                        if (onCleanComplete) onCleanComplete();
+                    }}
+                />
+            )}
+
+            {showLinkModal && ticketId && (
+                <LinkCorporateModal
+                    ticketId={ticketId}
+                    reporterSnapshot={reporterSnapshot || { name: customerName || contactName }}
+                    onClose={() => setShowLinkModal(false)}
+                    onSuccess={() => {
+                        setShowLinkModal(false);
+                        if (onCleanComplete) onCleanComplete();
+                    }}
+                />
+            )}
+
+            {showSpamModal && (
+                <ConfirmModal
+                    title="标记为垃圾工单"
+                    message="确定要将此工单标记为垃圾吗？该操作会将工单状态变更为已关闭，并移除无关任务。"
+                    confirmText="标记垃圾"
+                    isDanger={true}
+                    loading={isActionLoading}
+                    onConfirm={handleMarkSpam}
+                    onCancel={() => setShowSpamModal(false)}
+                />
+            )}
         </div>
     );
 };

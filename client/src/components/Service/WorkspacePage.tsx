@@ -35,6 +35,8 @@ interface Ticket {
   account_name?: string;
   contact_name?: string;
   reporter_name?: string;
+  reporter_snapshot?: any;
+  channel?: string;
   product_name?: string;
   serial_number?: string;
   assigned_to: number | null;
@@ -93,7 +95,7 @@ function loadViewState(view: WorkspaceView): ViewState | null {
         return state;
       }
     }
-  } catch {}
+  } catch { }
   return null;
 }
 
@@ -103,7 +105,7 @@ function saveViewState(view: WorkspaceView, state: Omit<ViewState, 'timestamp'>)
       ...state,
       timestamp: Date.now()
     }));
-  } catch {}
+  } catch { }
 }
 
 // ==============================
@@ -137,7 +139,7 @@ const WorkspacePage: React.FC = () => {
   // Detail view state - restore from saved state
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const confirm = useConfirm();
-  
+
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -601,14 +603,7 @@ const WorkspacePage: React.FC = () => {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
                           <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            {(() => {
-                              const acc = ticket.account_name;
-                              const person = ticket.contact_name || ticket.reporter_name;
-                              if (acc && person && acc !== person && acc.toLowerCase() !== person.toLowerCase()) {
-                                return <>{acc} <span style={{ color: 'var(--text-tertiary)' }}>· {person}</span></>;
-                              }
-                              return acc || person || '-';
-                            })()}
+                            {ticket.account_name || ticket.contact_name || ticket.reporter_name || '-'}
                             {ticket.product_name && <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>· {ticket.product_name}</span>}
                           </span>
                           {ticket.account?.service_tier && ['VIP', 'VVIP'].includes(ticket.account.service_tier) && (

@@ -22,7 +22,10 @@ interface InquiryTicket {
     ticket_number: string;
     customer_name: string;
     account_id: number | null;
+    account_name: string | null;
     contact_id?: number | null;
+    contact_name: string | null;
+    reporter_name: string | null;
     // 新架构字段 - 联系人信息
     contact?: { id: number; name: string; email?: string; job_title?: string } | null;
     account?: { id: number; name: string; account_type?: string } | null;
@@ -31,7 +34,6 @@ interface InquiryTicket {
     dealer_code?: string | null;
     dealer_contact_name?: string | null;
     dealer_contact_title?: string | null;
-    contact_name?: string | null;  // 向后兼容
     contact_job_title?: string | null;
     product: { id: number; name: string } | null;
     serial_number: string;
@@ -525,13 +527,15 @@ const InquiryTicketDetailPage: React.FC = () => {
                 {/* RIGHT COLUMN: Customer Context */}
                 <div style={{ width: '320px', flexShrink: 0, borderLeft: '1px solid #1c1c1e', background: '#000', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <CustomerContextSidebar
-                        accountId={ticket.account_id ?? undefined}
-                        serialNumber={ticket.serial_number}
-                        dealerId={ticket.dealer_id ?? undefined}
-                        dealerName={ticket.dealer_name ?? undefined}
-                        dealerCode={ticket.dealer_code ?? undefined}
-                        dealerContactName={ticket.dealer_contact_name ?? undefined}
-                        dealerContactTitle={ticket.dealer_contact_title ?? undefined}
+                        accountId={ticket.account_id || undefined}
+                        serialNumber={ticket.serial_number || undefined}
+                        customerName={ticket.account_name || ticket.customer_name || undefined}
+                        contactName={ticket.contact_name || ticket.reporter_name || undefined}
+                        dealerId={ticket.dealer_id || undefined}
+                        dealerName={ticket.dealer_name || undefined}
+                        dealerCode={ticket.dealer_code || undefined}
+                        dealerContactName={ticket.dealer_contact_name || undefined}
+                        dealerContactTitle={ticket.dealer_contact_title || undefined}
                     />
                 </div>
             </div>

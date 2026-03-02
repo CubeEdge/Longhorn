@@ -204,29 +204,31 @@ module.exports = (db, authenticate) => {
             // 4. 获取服务历史
             const tickets = db.prepare(`
                 SELECT 
-                    id, ticket_number, 
-                    CASE ticket_type
+                    t.id, t.ticket_number, 
+                    CASE t.ticket_type
                         WHEN 'inquiry' THEN 'Inquiry'
                         WHEN 'rma' THEN 'RMA'
                         WHEN 'svc' THEN 'DealerRepair'
-                        ELSE ticket_type
+                        ELSE t.ticket_type
                     END as type,
-                    COALESCE(service_type, issue_category) as category,
-                    COALESCE(problem_summary, problem_description) as summary,
-                    status, created_at as date,
-                    COALESCE(contact_name, customer_name, reporter_name) as contact_name
-                FROM tickets
-                WHERE account_id = ?
-                ORDER BY created_at DESC
+                    COALESCE(t.service_type, t.issue_category) as category,
+                    COALESCE(t.problem_summary, t.problem_description) as summary,
+                    t.status, t.created_at as date,
+                    COALESCE(c.name, a.name, t.reporter_name) as contact_name
+                FROM tickets t
+                LEFT JOIN accounts a ON t.account_id = a.id
+                LEFT JOIN contacts c ON t.contact_id = c.id
+                WHERE t.account_id = ?
+                ORDER BY t.created_at DESC
             `).all(account_id);
 
             const history = tickets;
-            
+
             // Count by type for stats
             const inquiries = history.filter(t => t.ticket_type === 'inquiry');
             const rmas = history.filter(t => t.ticket_type === 'rma');
             const repairs = history.filter(t => t.ticket_type === 'svc' || t.ticket_type === 'DealerRepair');
-            
+
             // 5. 生成 AI 档案
             let parsedTags = [account.account_type];
             if (account.industry_tags) {
@@ -300,19 +302,21 @@ module.exports = (db, authenticate) => {
             // 2. Fetch Service History for this Device
             const tickets = db.prepare(`
                 SELECT 
-                    id, ticket_number, 
-                    CASE ticket_type
+                    t.id, t.ticket_number, 
+                    CASE t.ticket_type
                         WHEN 'inquiry' THEN 'Inquiry'
                         WHEN 'rma' THEN 'RMA'
                         WHEN 'svc' THEN 'DealerRepair'
-                        ELSE ticket_type
+                        ELSE t.ticket_type
                     END as type,
-                    COALESCE(problem_summary, problem_description) as summary,
-                    status, created_at as date,
-                    COALESCE(contact_name, customer_name, reporter_name) as customer_name
-                FROM tickets
-                WHERE product_id = ?
-                ORDER BY created_at DESC
+                    COALESCE(t.problem_summary, t.problem_description) as summary,
+                    t.status, t.created_at as date,
+                    COALESCE(a.name, c.name, t.reporter_name) as customer_name
+                FROM tickets t
+                LEFT JOIN accounts a ON t.account_id = a.id
+                LEFT JOIN contacts c ON t.contact_id = c.id
+                WHERE t.product_id = ?
+                ORDER BY t.created_at DESC
             `).all(pId);
 
             const history = tickets;

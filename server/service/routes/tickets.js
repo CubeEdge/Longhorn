@@ -133,6 +133,8 @@ module.exports = function (db, authenticate, serviceUpload) {
             reporter_name: row.reporter_name,
             reporter_type: row.reporter_type,
             region: row.region,
+            reporter_snapshot: row.reporter_snapshot ? JSON.parse(row.reporter_snapshot) : null,
+            channel: row.channel,
 
             // Product - nested structure for frontend compatibility
             product_id: row.product_id,
@@ -585,6 +587,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 problem_summary,
                 communication_log,
 
+                // Reporter Snapshot
+                reporter_snapshot,
+
                 // Problem
                 problem_description,
                 solution_for_customer,
@@ -621,6 +626,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ticket_number, ticket_type, current_node, status,
                     priority, node_entered_at, sla_due_at, sla_status,
                     channel_code,
+                    reporter_snapshot,
                     account_id, contact_id, dealer_id, reporter_name, reporter_type, region,
                     product_id, serial_number, firmware_version, hardware_version,
                     issue_type, issue_category, issue_subcategory, severity,
@@ -633,6 +639,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ) VALUES (
                     ?, ?, ?, ?,
                     ?, ?, ?, 'normal',
+                    ?,
                     ?,
                     ?, ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
@@ -650,6 +657,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ticketNumber, ticket_type, initialNode, mapNodeToStatus(initialNode),
                 priority, now, slaDueStr,
                 channel_code,
+                reporter_snapshot ? JSON.stringify(reporter_snapshot) : null,
                 account_id || null, contact_id || null, dealer_id || null, reporter_name || null, reporter_type || null, region || null,
                 product_id || null, serial_number || null, firmware_version || null, hardware_version || null,
                 issue_type || null, issue_category || null, issue_subcategory || null, severity || 3,
@@ -712,6 +720,8 @@ module.exports = function (db, authenticate, serviceUpload) {
             const now = new Date().toISOString();
             const allowedFields = [
                 'priority', 'current_node',
+                // Snapshot & Account
+                'reporter_snapshot', 'channel',
                 'account_id', 'contact_id', 'dealer_id', 'reporter_name', 'reporter_type', 'region',
                 'product_id', 'serial_number', 'firmware_version', 'hardware_version',
                 'issue_type', 'issue_category', 'issue_subcategory', 'severity',
@@ -731,7 +741,11 @@ module.exports = function (db, authenticate, serviceUpload) {
             for (const field of allowedFields) {
                 if (updates[field] !== undefined) {
                     sets.push(`${field} = ?`);
-                    params.push(updates[field]);
+                    if (field === 'reporter_snapshot') {
+                        params.push(updates[field] ? JSON.stringify(updates[field]) : null);
+                    } else {
+                        params.push(updates[field]);
+                    }
                 }
             }
 
@@ -850,6 +864,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ticket_number, ticket_type, current_node, status,
                     priority, node_entered_at, sla_due_at, sla_status,
                     channel_code,
+                    reporter_snapshot,
                     account_id, contact_id, dealer_id, reporter_name, reporter_type, region,
                     product_id, serial_number, firmware_version, hardware_version,
                     issue_type, issue_category, issue_subcategory, severity,
@@ -861,6 +876,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ?, ?, ?, ?,
                     ?, ?, ?, 'normal',
                     ?,
+                    reporter_snapshot,
                     account_id, contact_id, dealer_id, reporter_name, reporter_type, region,
                     product_id, serial_number, firmware_version, hardware_version,
                     issue_type, issue_category, issue_subcategory, severity,
@@ -1023,7 +1039,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                         INSERT INTO ticket_participants (ticket_id, user_id, role, added_by, join_method, joined_at) 
                         VALUES (?, ?, 'follower', ?, 'invite', ?)
                     `).run(ticketId, uid, inviterId, now);
-                    
+
                     // P2: Update invite stats
                     try {
                         const result = db.prepare(`
@@ -1031,7 +1047,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                             SET invite_count = invite_count + 1, last_invite_at = ?
                             WHERE user_id = ? AND invited_user_id = ?
                         `).run(now, inviterId, uid);
-                        
+
                         if (result.changes === 0) {
                             db.prepare(`
                                 INSERT INTO user_invite_stats (user_id, invited_user_id, invite_count, last_invite_at)
@@ -1080,7 +1096,7 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.get('/mention-stats', authenticate, (req, res) => {
         try {
             const userId = req.user.id;
-            
+
             // Get frequently mentioned users sorted by count
             const stats = db.prepare(`
                 SELECT 
@@ -1097,7 +1113,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ORDER BY ms.mention_count DESC, ms.last_mention_at DESC
                 LIMIT 20
             `).all(userId);
-            
+
             res.json({
                 success: true,
                 data: stats
@@ -1115,7 +1131,7 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.get('/invite-stats', authenticate, (req, res) => {
         try {
             const userId = req.user.id;
-            
+
             const stats = db.prepare(`
                 SELECT 
                     is.invited_user_id as user_id,
@@ -1131,13 +1147,164 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ORDER BY is.invite_count DESC, is.last_invite_at DESC
                 LIMIT 20
             `).all(userId);
-            
+
             res.json({
                 success: true,
                 data: stats
             });
         } catch (err) {
             console.error('[Tickets] Invite stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/clean-contact
+     * Clean and formalize reporter_snapshot into a real contact
+     */
+    router.post('/:id/clean-contact', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { account_id, name, phone, email, job_title } = req.body;
+
+            if (!account_id || !name) {
+                return res.status(400).json({ success: false, error: '关联公司 ID 和联系人姓名必填' });
+            }
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            // 1. Create Formal Contact
+            const insertContactSql = `
+                INSERT INTO contacts (
+                    account_id, name, phone, email, job_title, status, is_primary
+                ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0)
+            `;
+            const contactResult = db.prepare(insertContactSql).run(
+                account_id, name, phone || null, email || null, job_title || null
+            );
+            const newContactId = contactResult.lastInsertRowid;
+
+            // 2. Clear snapshot and bind formal identities to the ticket
+            db.prepare(`
+                UPDATE tickets 
+                SET account_id = ?, contact_id = ?, reporter_snapshot = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(account_id, newContactId, id);
+
+            // 3. Optional: Add an activity log
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system', '数据清洗：临时信息已转正', ?, ?, ?, 'all')
+            `).run(id, req.user.id, req.user.name, req.user.department || 'MS');
+
+            res.json({ success: true, data: { contact_id: newContactId } });
+        } catch (err) {
+            console.error('[Tickets] Clean contact error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/convert-to-individual
+     * Create individual account + contact and bind it to ghost ticket
+     */
+    router.post('/:id/convert-to-individual', authenticate, (req, res) => {
+        const dbTransaction = db.transaction(() => {
+            const { id } = req.params;
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) {
+                throw new Error('工单不存在');
+            }
+            if (ticket.account_id) {
+                throw new Error('工单已被关联，无法转换为个人客户');
+            }
+
+            let snapshot = {};
+            if (ticket.reporter_snapshot) {
+                try {
+                    snapshot = JSON.parse(ticket.reporter_snapshot);
+                } catch (e) { }
+            }
+
+            const name = snapshot.name || ticket.contact_name || ticket.reporter_name || '未知访客';
+            const phone = snapshot.phone || null;
+            const email = snapshot.email || null;
+
+            // 1. Create Individual Account
+            const insertAccountSql = `
+                INSERT INTO accounts (name, account_type, status, source)
+                VALUES (?, 'Individual', 'ACTIVE', 'Manual')
+            `;
+            const accountResult = db.prepare(insertAccountSql).run(name);
+            const newAccountId = accountResult.lastInsertRowid;
+
+            // 2. Create Formal Contact
+            const insertContactSql = `
+                INSERT INTO contacts (
+                    account_id, name, phone, email, status, is_primary
+                ) VALUES (?, ?, ?, ?, 'ACTIVE', 1)
+            `;
+            const contactResult = db.prepare(insertContactSql).run(
+                newAccountId, name, phone, email
+            );
+            const newContactId = contactResult.lastInsertRowid;
+
+            // 3. Update Ticket
+            db.prepare(`
+                UPDATE tickets 
+                SET account_id = ?, contact_id = ?, reporter_snapshot = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(newAccountId, newContactId, id);
+
+            // 4. Log Activity
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system', '转化为个人客户：已建档并绑定', ?, ?, ?, 'all')
+            `).run(id, req.user.id, req.user.name, req.user.department || 'MS');
+
+            return newContactId;
+        });
+
+        try {
+            const newContactId = dbTransaction();
+            res.json({ success: true, data: { contact_id: newContactId } });
+        } catch (err) {
+            console.error('[Tickets] Convert to individual error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/mark-spam
+     * Mark a ghost ticket as spam/closed
+     */
+    router.post('/:id/mark-spam', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            // Close ticket
+            db.prepare(`
+                UPDATE tickets 
+                SET status = 'CLOSED', resolution_type = 'Rejected', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(id);
+
+            // Log activity
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system', '已将该工单标记为垃圾信息并关闭', ?, ?, ?, 'all')
+            `).run(id, req.user.id, req.user.name, req.user.department || 'MS');
+
+            res.json({ success: true });
+        } catch (err) {
+            console.error('[Tickets] Mark spam error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

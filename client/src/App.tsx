@@ -85,7 +85,7 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { currentModule, switchModule } = useNavigationState();
   const canAccessFiles = canAccessFilesModule(user.role);
-  
+
   // P2: View As functionality
   const {
     canUseViewAs,
@@ -123,9 +123,9 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       />
 
       <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <TopBar 
-          user={viewingAs || user} 
-          onMenuClick={() => setSidebarOpen(true)} 
+        <TopBar
+          user={viewingAs || user}
+          onMenuClick={() => setSidebarOpen(true)}
           currentModule={currentModule}
           canUseViewAs={canUseViewAs}
           onViewAsClick={() => setViewAsOpen(true)}
@@ -145,7 +145,7 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       <TicketCreationModal />
       <BokehContainer />
       <NotificationCenter />
-      
+
       {/* P2: View As Components */}
       <ViewAsSelector
         isOpen={isViewAsOpen}
@@ -154,7 +154,7 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
         users={availableUsers}
       />
       <ViewAsIndicator viewingAs={viewingAs} onExit={exitViewAs} />
-      
+
       {/* P2: Debug Overlay */}
       <DebugInfoPanel />
     </div>
@@ -249,8 +249,8 @@ const App: React.FC = () => {
           <Route path="/service/inventory/restock/new" element={<RestockOrderCreatePage />} />
           <Route path="/service/inventory/restock/:id" element={<RestockOrderDetailPage />} />
 
-          {/* Service Admin Settings */}
-          <Route path="/service/admin/*" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
+          {/* Admin Panel Routes - Permission handled inside the component */}
+          <Route path="/service/admin/*" element={user ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
 
           {/* Legacy Service Routes - Redirects */}
           <Route path="/service/records" element={<Navigate to="/service/inquiry-tickets" replace />} />
@@ -280,8 +280,8 @@ const App: React.FC = () => {
           {/* ==================== ADMIN ROUTES ==================== */}
           <Route path="/root" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <RootDirectoryView /> : <Navigate to="/" />} />
           <Route path="/members" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <MemberSpacePage /> : <Navigate to="/" />} />
-          {/* Files Admin - Using /admin/* */}
-          <Route path="/admin/*" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
+          {/* Platform Settings (Files module version of admin panel) */}
+          <Route path="/admin/*" element={user ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
           <Route path="/department-dashboard" element={(user?.role === 'Lead' || user?.role === 'Exec') ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
           {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
@@ -750,7 +750,7 @@ const ServiceTopBarStats: React.FC = () => {
         if (context === 'inquiry') params.set('ticket_type', 'inquiry');
         else if (context === 'rma') params.set('ticket_type', 'rma');
         else if (context === 'dealer') params.set('ticket_type', 'svc');
-        
+
         if (timeScope && timeScope !== 'all') params.set('time_scope', timeScope);
         if (productFamily && productFamily !== 'all') params.set('product_family', productFamily);
         if (keyword) params.set('keyword', keyword);
@@ -916,9 +916,9 @@ const ServiceTopBarStats: React.FC = () => {
 };
 
 
-const TopBar: React.FC<{ 
-  user: any, 
-  onMenuClick: () => void, 
+const TopBar: React.FC<{
+  user: any,
+  onMenuClick: () => void,
   currentModule: ModuleType,
   canUseViewAs?: boolean,
   onViewAsClick?: () => void,
@@ -1013,7 +1013,7 @@ const TopBar: React.FC<{
             <span className="hidden-mobile">预览视角</span>
           </button>
         )}
-        
+
         {/* Notification Bell - Service Module only */}
         {currentModule === 'service' && <NotificationBell />}
 

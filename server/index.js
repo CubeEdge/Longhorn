@@ -606,7 +606,7 @@ const authenticate = (req, res, next) => {
                 // Use both integer and float comparison for backward compatibility
                 const user = db.prepare(`
                     SELECT id, username, role, department_id, user_type, 
-                           job_title, display_name, department_name
+                           job_title
                     FROM users
                     WHERE id = ? OR id = CAST(? AS REAL)
                 `).get(decoded.id, decoded.id);
@@ -620,11 +620,11 @@ const authenticate = (req, res, next) => {
                 if (viewAsUserId && user.role === 'Admin') {
                     const targetUser = db.prepare(`
                         SELECT id, username, role, department_id, user_type, 
-                               job_title, display_name, department_name
+                               job_title
                         FROM users
                         WHERE id = ? OR id = CAST(? AS REAL)
                     `).get(viewAsUserId, viewAsUserId);
-                    
+
                     if (targetUser) {
                         // Store original admin info for logging
                         targetUser._originalAdmin = {
@@ -639,7 +639,7 @@ const authenticate = (req, res, next) => {
                 } else {
                     req.user = user;
                 }
-                
+
                 next();
             } catch (err) {
                 console.error('[Auth Middleware] Database Error:', err);

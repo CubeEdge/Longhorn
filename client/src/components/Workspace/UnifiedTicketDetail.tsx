@@ -8,10 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    ArrowLeft, Clock, User, Tag, Package, Calendar, AlertTriangle,
-    Building, MessageSquare, ExternalLink
-} from 'lucide-react';
+import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -43,6 +40,8 @@ interface TicketDetail {
     assigned_name?: string;
     submitted_name?: string;
     reporter_name?: string;
+    reporter_snapshot?: any;
+    channel?: string;
     problem_summary?: string;
     problem_description?: string;
     is_warranty?: boolean;
@@ -268,19 +267,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                                 value={ticket.product_name || '-'} />
                             <InfoRow icon={Tag} label={t('ticket.serial') || '序列号'}
                                 value={ticket.serial_number || '-'} />
-                            <InfoRow icon={User} label={t('ticket.customer') || '客户'}
-                                value={(() => {
-                                    const acc = ticket.account_name;
-                                    const person = ticket.contact_name || ticket.reporter_name;
-                                    if (acc && person && acc !== person && acc.toLowerCase() !== person.toLowerCase()) {
-                                        return `${acc} · ${person}`;
-                                    }
-                                    return acc || person || '-';
-                                })()} />
+                            <InfoRow icon={Building} label={t('ticket.customer') || '客户'}
+                                value={ticket.account_name || '-- (待确认)'} />
+                            <InfoRow icon={User} label={t('ticket.reporter') || '报修人'}
+                                value={ticket.contact_name ? ticket.contact_name : (ticket.reporter_snapshot?.name || ticket.reporter_name ? `${ticket.reporter_snapshot?.name || ticket.reporter_name} (临时)` : '-')} />
                             <InfoRow icon={MessageSquare} label={t('ticket.submitted_by') || '提交者'}
                                 value={ticket.submitted_name || '-'} />
                             {ticket.dealer_name && (
-                                <InfoRow icon={Building} label={t('ticket.dealer') || '经销商'}
+                                <InfoRow icon={Store} label={t('ticket.dealer') || '经销商'}
                                     value={`${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}`} />
                             )}
                             {ticket.parent_ticket_number && (
@@ -359,13 +353,19 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
 
                     {/* CustomerContextSidebar — 与「所有工单」详情页完全一致 */}
                     <CustomerContextSidebar
+                        ticketId={ticket.id}
                         accountId={ticket.account_id as number | undefined}
+                        contactId={ticket.contact_id as number | undefined}
+                        reporterSnapshot={ticket.reporter_snapshot}
                         serialNumber={ticket.serial_number}
+                        customerName={ticket.account_name}
+                        contactName={ticket.contact_name || ticket.reporter_name}
                         dealerId={ticket.dealer_id as number | undefined}
                         dealerName={ticket.dealer_name}
                         dealerCode={ticket.dealer_code}
                         dealerContactName={ticket.contact_name}
                         dealerContactTitle={ticket.reporter_name}
+                        onCleanComplete={fetchDetail}
                     />
                 </div>
             </div>

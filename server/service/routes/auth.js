@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 const TOKEN_EXPIRY = '24h';
 const REFRESH_TOKEN_EXPIRY = '7d';
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
@@ -34,7 +34,7 @@ module.exports = function(db, authenticate) {
             // 经销商用户通过 dealer_id 关联到 accounts 表（新架构）
             const user = db.prepare(`
                 SELECT u.*, d.name as department_name, 
-                       acc.name as dealer_name, acc.dealer_code as dealer_code
+                       acc.name as dealer_name
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 LEFT JOIN accounts acc ON u.dealer_id = acc.id AND acc.account_type = 'DEALER'
@@ -167,7 +167,7 @@ module.exports = function(db, authenticate) {
             // 经销商用户通过 dealer_id 关联到 accounts 表（新架构）
             const user = db.prepare(`
                 SELECT u.*, d.name as department_name, 
-                       acc.name as dealer_name, acc.dealer_code as dealer_code
+                       acc.name as dealer_name
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 LEFT JOIN accounts acc ON u.dealer_id = acc.id AND acc.account_type = 'DEALER'

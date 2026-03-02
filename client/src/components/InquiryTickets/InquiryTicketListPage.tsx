@@ -16,6 +16,7 @@ interface InquiryTicket {
     ticket_number: string;
     service_type: string;
     channel: string;
+    reporter_snapshot?: any;
     // Account/Contact Info
     account_id?: number;
     contact_id?: number;
@@ -393,76 +394,94 @@ const InquiryTicketListPage: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                         {(() => {
                             // 如果有经销商：经销商名称 👤 客户名称 + 客户联系人
-                            // 如果没有经销商：客户名称 + 客户联系人
-                            const accountName = ticket.account?.name || ticket.customer_name || 'Anonymous';
-                            const contactName = ticket.contact?.name || ticket.customer_contact;
+                            // 状态 1-4 逻辑
+                            const accountName = ticket.account?.name;
+                            const contactName = ticket.contact?.name;
+                            const snapshotName = ticket.reporter_snapshot?.name;
+                            const fallbackName = ticket.customer_name || ticket.customer_contact || '未知访客';
                             const dealerName = ticket.dealer_name;
                             const serviceTier = ticket.account?.service_tier || 'Standard';
                             const isVIP = serviceTier === 'VIP';
                             const isVVIP = serviceTier === 'VVIP';
+                            const isIndividual = ticket.account?.account_type === 'Individual' || ticket.account?.account_type === 'Freelancer';
 
-                            if (dealerName) {
-                                // 有经销商：经销商名称 👤 客户名称 + 客户联系人
-                                return (
-                                    <>
-                                        <span style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>{dealerName}</span>
-                                        <span style={{ marginLeft: '8px', marginRight: '4px' }}></span>
-                                        <Users size={14} style={{ color: 'var(--text-secondary)' }} />
-                                        <span style={{ fontWeight: 500 }}>{accountName}</span>
-                                        {contactName && contactName !== accountName && (
-                                            <>
-                                                <span>·</span>
-                                                <span>{contactName}</span>
-                                            </>
-                                        )}
-                                        {/* Service Tier Badge */}
-                                        <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                            marginLeft: '8px',
-                                            padding: '2px 8px',
-                                            borderRadius: '10px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
-                                            color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
-                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
-                                        }}>
-                                            {(isVIP || isVVIP) && '👑'}{serviceTier}
-                                        </span>
-                                    </>
-                                );
-                            } else {
-                                // 无经销商：客户名称 + 客户联系人
-                                return (
-                                    <>
-                                        <span style={{ fontWeight: 500 }}>{accountName}</span>
-                                        {contactName && contactName !== accountName && (
-                                            <>
-                                                <span>·</span>
-                                                <span>{contactName}</span>
-                                            </>
-                                        )}
-                                        {/* Service Tier Badge */}
-                                        <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                            marginLeft: '8px',
-                                            padding: '2px 8px',
-                                            borderRadius: '10px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
-                                            color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
-                                            border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
-                                        }}>
-                                            {(isVIP || isVVIP) && '👑'}{serviceTier}
-                                        </span>
-                                    </>
-                                );
-                            }
+                            const renderCustomerBadge = () => {
+                                if (dealerName) {
+                                    return (
+                                        <>
+                                            <span style={{ color: 'var(--accent-blue)', fontWeight: 500 }}>{dealerName}</span>
+                                            <span style={{ marginLeft: '8px', marginRight: '4px' }}></span>
+                                            <Users size={14} style={{ color: 'var(--text-secondary)' }} />
+                                            <span style={{ fontWeight: 500 }}>
+                                                {accountName || '-- (待确认)'}
+                                            </span>
+                                            {contactName && contactName !== accountName && (
+                                                <><span>·</span><span>{contactName}</span></>
+                                            )}
+                                        </>
+                                    );
+                                }
+
+                                if (accountName && contactName) {
+                                    // Status 1 or 3
+                                    if (isIndividual || accountName === contactName) {
+                                        return <span style={{ fontWeight: 500 }}>{accountName}</span>;
+                                    }
+                                    return (
+                                        <>
+                                            <span style={{ fontWeight: 500 }}>{accountName}</span>
+                                            <span>·</span>
+                                            <span>{contactName}</span>
+                                        </>
+                                    );
+                                } else if (accountName && !contactName && snapshotName) {
+                                    // Status 2
+                                    return (
+                                        <>
+                                            <span style={{ fontWeight: 500 }}>{accountName}</span>
+                                            <span>·</span>
+                                            <span>{snapshotName} <span style={{ color: '#F59E0B', fontSize: '0.8rem' }}>(临时)</span></span>
+                                        </>
+                                    );
+                                } else if (!accountName && !contactName && snapshotName) {
+                                    // Status 4 with snapshot
+                                    return (
+                                        <>
+                                            <span style={{ fontWeight: 500, color: '#EF4444' }}>-- (待确认)</span>
+                                            <span>·</span>
+                                            <span>{snapshotName} <span style={{ color: '#EF4444', fontSize: '0.8rem' }}>(临时)</span></span>
+                                        </>
+                                    );
+                                } else {
+                                    // Fallback (Status 4 without snapshot, or old data)
+                                    if (!accountName && !contactName) {
+                                        return <span style={{ fontWeight: 500, color: 'var(--text-tertiary)' }}>{fallbackName}</span>;
+                                    }
+                                    return <span style={{ fontWeight: 500 }}>{accountName || fallbackName}</span>;
+                                }
+                            };
+
+                            return (
+                                <>
+                                    {renderCustomerBadge()}
+                                    {/* Service Tier Badge */}
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        marginLeft: '8px',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        background: isVVIP ? 'rgba(239, 68, 68, 0.2)' : isVIP ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--glass-bg-hover)',
+                                        color: isVVIP ? '#EF4444' : isVIP ? 'var(--accent-blue)' : 'var(--text-tertiary)',
+                                        border: isVVIP ? '1px solid rgba(239, 68, 68, 0.4)' : isVIP ? '1px solid rgba(var(--accent-rgb), 0.4)' : '1px solid var(--glass-border)'
+                                    }}>
+                                        {(isVIP || isVVIP) && '👑'}{serviceTier}
+                                    </span>
+                                </>
+                            );
                         })()}
                     </div>
 

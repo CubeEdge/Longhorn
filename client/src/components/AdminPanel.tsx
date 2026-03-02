@@ -6,6 +6,7 @@ import UserManagement from './UserManagement';
 import DepartmentManagement from './DepartmentManagement';
 import AdminSettings from './Admin/AdminSettings';
 import { useLanguage } from '../i18n/useLanguage';
+import { useAuthStore } from '../store/useAuthStore';
 
 type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts';
 
@@ -17,12 +18,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useLanguage();
+    const { user } = useAuthStore();
+    const isSuperAdmin = user?.role === 'Admin' || user?.role === 'Exec';
 
     // 路由前缀根据模块类型判断
     const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
 
     // Determine active tab from URL path or stored memory
-    const pathSegment = location.pathname.split('/').pop() || 'dashboard';
+    const pathSegment = location.pathname.split('/').pop() || (isSuperAdmin ? 'dashboard' : 'settings');
 
     // Memory logic
     const [activeTab, setActiveTab] = React.useState<AdminTab>(() => {
@@ -34,12 +37,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
         // 2. Fallback: Check memory
         const storageKey = moduleType === 'service' ? 'longhorn_service_admin_tab' : 'longhorn_admin_active_tab';
         const remembered = localStorage.getItem(storageKey) as AdminTab;
-        if (remembered && ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'].includes(remembered)) {
+        if (remembered && ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'].includes(remembered) && (isSuperAdmin || remembered === 'settings')) {
             return remembered;
         }
 
         // 3. Default
-        return 'dashboard';
+        return isSuperAdmin ? 'dashboard' : 'settings';
     });
 
     React.useEffect(() => {
@@ -53,10 +56,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
 
     // Unified menu items (Removing duplicates with top tabs)
     const menuItems = [
-        { id: 'dashboard', label: t('admin.overview') || '概览', icon: LayoutDashboard },
-        { id: 'users', label: t('admin.members') || '成员管理', icon: Users },
-        { id: 'depts', label: t('admin.depts_permissions') || '权限管理', icon: ShieldCheck },
-        { id: 'settings', label: '系统设置', icon: Settings }, // Only one settings entry
+        ...(isSuperAdmin ? [
+            { id: 'dashboard', label: t('admin.overview') || '概览', icon: LayoutDashboard },
+            { id: 'users', label: t('admin.members') || '成员管理', icon: Users },
+            { id: 'depts', label: t('admin.depts_permissions') || '权限管理', icon: ShieldCheck }
+        ] : []),
+        { id: 'settings', label: t('admin.system_settings') || '系统设置', icon: Settings }, // Only one settings entry
     ];
 
     // Map internal settings tabs to 'settings' sidebar id for highlighting

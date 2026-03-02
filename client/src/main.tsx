@@ -5,12 +5,29 @@ import './index.css'
 import axios from 'axios'
 import { DebugProvider } from './components/DebugOverlay'
 
-// P2: View As functionality - Add X-View-As-User header to all requests
+// Create an axios interceptor to add auth and view-as headers
 axios.interceptors.request.use((config) => {
-  const viewAsUserId = sessionStorage.getItem('viewAsUserId');
+  const viewAsUserId = localStorage.getItem('longhorn_view_as_user');
   if (viewAsUserId) {
     config.headers['X-View-As-User'] = viewAsUserId;
   }
+
+  // Attempt to inject valid auth token from Zustand's localStorage if missing in header
+  if (!config.headers['Authorization']) {
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        const token = parsed?.state?.token;
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse auth token for interceptor', e);
+    }
+  }
+
   return config;
 });
 

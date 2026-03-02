@@ -82,13 +82,14 @@ Phase 1 由 MS 代理录入；Phase 2 自行登录。仅见私有数据。 |
     "current_node": "Enum",    // MARKET, OPS, DEALER, FINANCE (球在哪个半场)
     "assignee_id": "uuid",     // 具体持球人 (NULL = 部门池待领)
     "participants": ["uuid"],  // 协作白名单 (被@的人)
-    "priority": "Enum",        // P0_CRITICAL (紧急/R1), P1_HIGH (优先/R2), P2_NORMAL (标准/R3)
-                               // 默认值继承自 Customer.service_tier，可人工修改
-
-    "snooze_until": "Timestamp", // 挂起结束时间 (挂起期间 SLA 倒计时暂停)
+ 
+    // [NEW v1.7] 来源通道：决定信息完整度预期
+    "channel": "Enum",         // PHONE (需补录), EMAIL/PORTAL (相对完整), AI_OCR (待清洗)
 
     // [NEW] 2. SLA 动态引擎 (SLA Engine)
-    // 核心计时锚点：用于计算当前节点已停留时长
+    "priority": "Enum",        // P0_CRITICAL (紧急/R1), P1_HIGH (优先/R2), P2_NORMAL (标准/R3)
+                               // 默认值继承自 Customer.service_tier，可人工修改
+   // 核心计时锚点：用于计算当前节点已停留时长
     "node_entered_at": "Timestamp", // 进入当前 status 的时间点
                                     // 逻辑: 每次 status 变更为新节点时，自动更新为 NOW()
 
@@ -105,12 +106,22 @@ Phase 1 由 MS 代理录入；Phase 2 自行登录。仅见私有数据。 |
     // 考核统计：KPI 扣分依据
     "breach_counter": "Integer",    // 该工单历史累计超时次数 (节点切换时若已超时则 +1)
 
+    "snooze_until": "Timestamp", // 挂起结束时间 (挂起期间 SLA 倒计时暂停)
+
 
     // ==========================================
-    // 3. 客户上下文 (Context)
+    // 3. 客户上下文 (Context) - 核心修改区 v1.7
     // ==========================================
-    "account_id": "uuid",      // 必填。客户主体
-    "contact_id": "uuid",      // 必填。实际沟通人
+    
+    // [变更] 改为可空。为空代表 "散客" 或 "待清洗线索"
+    "account_id": "uuid",      // Nullable. 指向 Company/Organization
+        // [变更] 改为可空。
+    "contact_id": "uuid",      // Nullable. 指向 contacts 表的正式 ID
+        // [新增] 临时联系人快照 (关键字段)
+    // 无论是 AI 抓取的邮件签名，还是电话里听写的名字，都先存这里
+    // 格式：{ "name": "Smith", "phone": "138...", "email": "...", "role": "DIT", "source": "phone_input" }
+    "reporter_snapshot": "JSON", 
+
     "asset_id": "uuid",        // 关联 IB (RMA/SVC 必填且唯一; Inquiry 可空)
     
 
@@ -352,7 +363,51 @@ B. 豁免/退款流程 (Exception with Approval):
     * sla_due_at 根据新的优先级时长重新计算。  
     * *判定*：如果 NOW() > 新的 sla_due_at，立即将 sla_status 设为 BREACHED 并触发报警。  
   
-  
+**5.7 数据录入与清洗流程 (Data Entry & Cleaning) - [NEW v1.7]**
+本系统采用 “双层身份模型” 处理客户信息：
+
+资产拥有者 (Account): 法律主体，决定 SLA 等级和资产归属 (如: ARRI Rental)。
+
+实际报修人 (Reporter): 当前沟通者，可能是临时工或未注册员工 (如: 场务 Smith)。
+
+场景 A: 电话极速录入 (Loose Entry)
+接听: 客服接起电话，对方自称是 ARRI 的临时工 Smith。
+
+录入:
+
+Account: 搜索 "ARRI"，系统锁定 account_id = 2 (ARRI Rental)。
+
+Contact: 此时通讯录无 Smith，留空。
+
+Reporter: 手动输入 "Smith (临时)", 电话 "138..."。系统存入 reporter_snapshot。
+
+结果: 工单创建成功，SLA 按 ARRI (VIP) 计算，但联系人标记为“未归档”。
+
+场景 B: AI/OCR 智能捕获 (Smart Capture)
+输入: 客服将微信截图拖入新建页。
+
+AI 解析: 识别出 "公司: Kinefinity", "联系人: 小王", "设备: MAVO Edge"。
+
+映射:
+
+AI 模糊匹配 "Kinefinity" -> 对应 Account ID。
+
+AI 无法匹配 "小王" -> 填入 reporter_snapshot。
+
+确认: 客服点击确认生成工单。
+
+场景 C: 事后清洗 (Data Cleaning)
+触发: 客服在工单详情页看到“⚠️ 未归档联系人”警告。
+
+操作:
+
+入库: 点击 [+转正]，将 Smith 存入 ARRI 通讯录，回填 contact_id。
+
+关联: 点击 [关联]，搜索发现其实是老员工 Mike 改名了，关联到 Mike。
+
+忽略: 保持原状，结案后 Smith 仅作为历史文本存在。
+
+
 # 6. 前端与交互规范 (Frontend & UI Specifications)  
 **6.1 核心设计哲学**  
 1. **Role-First (角色优先)**：不同角色登录看到的是完全不同的界面结构，而非同一界面的不同权限。  
@@ -432,15 +487,100 @@ B. 豁免/退款流程 (Exception with Approval):
   
 **C. Detail View (工单详情页)**  
 **适用角色**：All  
-1. **Sidecar Tech Hub (侧滑知识库)**  
-    * 点击右上角 **[ 📖 ]** 按钮，右侧滑出 30% 宽度的抽屉。  
-    * 允许搜索文档，并拖拽链接到评论区。  
-2. **Contextual Popover (场景化信息卡)**  
-    * **权限控制**：  
-        * **MS/Mgr**：客户名为蓝色链接 -> 跳转完整档案。  
-        * **OP/RD**：客户名为黑色文本 -> 仅显示收货地址 (脱敏)。  
-    * **资产历史**：仅显示当前 SN 的过往维修记录，不显示客户名下其他资产。  
-  
+右侧栏 (Right Sidebar) 不再是静态信息展示，而是 数据质量控制台。根据数据完整度，分为四种状态展示。
+
+状态 1: 标准企业工单 (Corporate Standard)
+数据: Account ✅, Contact ✅
+最理想状态。
+
++--------------------------------------------------+
++--------------------------------------------------+
+|  [Logo] ARRI Rental                              |
+|         VIP 客户 | 北京 | 信用良好                 |
++--------------------------------------------------+
+|  对接人                                          |
+|  [头像] Markus Zeiler (租赁经理)                  |
+|  📞 +49 123 456 789                              |
++--------------------------------------------------+
+
+状态 2: 企业 + 临时对接人 (Corporate + Temp) - 重点场景
+数据: Account ✅ (ARRI), Contact ❌, Snapshot ✅ (Smith)
+
+场景：ARRI 的临时场务报修。需明确“他是谁”和“他代表谁”。
++--------------------------------------------------+
+|  🏢 客户信息 (临时对接)           [ 编辑 ]        |
++--------------------------------------------------+
+|  [Logo] ARRI Rental                              |
+|         VIP 客户 | 北京 | 信用良好                 |
++--------------------------------------------------+
+|  对接人 (Reporter)                               |
+|                                                  |
+|  [👻头像] Smith (临时)    [标签:电话录入]         |
+|  📞 139-0000-0000                                |
+|                                                  |
+|  ⚠️ 未归档联系人                                  |
+|  [ Icon+入库 ]  [ Icon+关联现有 ]                 | <-- 清洗入口
++--------------------------------------------------+
+
+状态 3: 个人/散客 (Individual / Freelancer)
+数据: Account ❌, Contact ✅ (或 Snapshot ✅)
+
+场景：独立摄影师。
+
++--------------------------------------------------+
+|  👤 个人客户                     [ 编辑 ]        |
++--------------------------------------------------+
+|  [头像] 李大山                                   |
+|         Freelancer | 上海                        |
++--------------------------------------------------+
+|  联系方式                                        |
+|  📞 186-xxxx-xxxx                                |
+|  ✉️ li@gmail.com                                 |
++--------------------------------------------------+
+|  [ ⬆️ 升级为企业账户 ]                            |
++--------------------------------------------------+
+状态 4: 未知/幽灵工单 (Ghost / Unregistered)
+数据: Account ❌, Contact ❌, Snapshot ✅
+
+场景：AI 抓取的邮件，或仅有一个电话号码。需强制清洗。
+
++--------------------------------------------------+
+|  ❓ 未知身份                     [ 编辑 ]        |
++--------------------------------------------------+
+|  来源: ✉️ support@kinefinity.com                 |
++--------------------------------------------------+
+|  原始信息 (Snapshot)                             |
+|  "User <123@gmail.com> via Email"                |
++--------------------------------------------------+
+|  ⚠️ 建议操作 (Action Required)                   |
+|                                                  |
+|  [ 🔍 关联到企业 ]  (如: 归入 ARRI)               |
+|  [ 👤 转为个人客户 ] (新建档案)                   |
+|  [ 🗑️ 标记为垃圾 ]                               |
++--------------------------------------------------+
+左侧基本信息区 (Info Grid) 联动逻辑
+在工单左上角的基本信息区，显示逻辑需与右侧卡片一致：
+
+客户 (Client):
+有 Account -> 显示 Account Name (链接)。
+无 Account -> 显示 -- 或 待确认 (灰色)。
+报修人 (Reporter):
+有 Contact -> 显示 Contact Name。
+无 Contact -> 显示 Snapshot.name + (临时) 后缀。
+
+交互：清洗操作流 (The Cleaning Flow)
+当用户在右侧卡片点击 [ Icon+入库 ] 时：
+弹出模态框 (Modal): 标题 "新建联系人"。
+自动填充: 将 reporter_snapshot 中的 name, phone, email 填入表单。
+锁定归属: Account 字段自动锁定为当前工单的 ARRI Rental。
+
+保存后:
+后端创建 Contact 记录。
+更新当前 Ticket 的 contact_id。
+UI 刷新，状态从“状态 2”变为“状态 1”。
+
+
+
 **6.4 管理员与测试规范 (Admin & Debugging)**  
 为了验证复杂的 RBAC 逻辑，Admin 界面需包含专门的测试工具。  
 **A. "View As" (替身/预览模式)**  

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Server, Database, Bot, RefreshCcw, Plus, Trash2, Eye, EyeOff, CheckCircle, X, AlertTriangle, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
+import { Save, RefreshCcw, Database, Server, Sparkles, AlertTriangle, CheckCircle, Trash2, Plus, Monitor, Bot, Moon, Sun, X, Eye, EyeOff, Activity } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
@@ -107,7 +107,8 @@ let cachedProviders: AIProvider[] = [];
 
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 'files' }) => {
-    const { token } = useAuthStore();
+    const { token, user } = useAuthStore();
+    const isSuperAdmin = user?.role === 'Admin' || user?.role === 'Exec';
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { theme, setTheme } = useThemeStore();
@@ -184,6 +185,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
     const handleTabChange = (tabId: string) => {
         const newTab = tabId as AdminTab;
+        if (!isSuperAdmin && newTab !== 'general') {
+            return; // Prevent non-admins from switching to protected tabs
+        }
         setActiveTab(newTab);
         // 保存到localStorage
         localStorage.setItem(getStorageKey(), newTab);
@@ -421,16 +425,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
         );
     };
 
+    // Definition of tabs showing/hiding logic based on admin status
+    const tabs = [
+        { id: 'general', label: t('admin.common_settings') || '通用设置', icon: Server },
+        ...(isSuperAdmin ? [
+            { id: 'intelligence', label: t('admin.smart_assistant') || '智能助手', icon: Sparkles },
+            { id: 'prompts', label: '协作助理配置', icon: Bot },
+            { id: 'health', label: t('admin.system_health') || '系统健康', icon: Activity },
+            { id: 'backup', label: '数据备份', icon: Database },
+            { id: 'audit', label: t('admin.audit_logs') || '审计日志', icon: Eye }
+        ] : [])
+    ];
+
+    if (!isSuperAdmin && activeTab !== 'general') {
+        setActiveTab('general');
+    }
+
     return (
         <div className="fade-in" style={{ padding: '0 20px 40px' }}>
             {/* Header / Tabs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 12 }}>
-                    {[
-                        { id: 'general', label: '通用', icon: Server },
-                        { id: 'intelligence', label: 'Bokeh 智能设置', icon: Bot },
-                        { id: 'backup', label: '备份管理', icon: Database }
-                    ].map(tab => (
+                    {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => handleTabChange(tab.id as any)}
@@ -1227,112 +1243,116 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
                                     <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
 
-                                    {/* 智能助手核心控制 */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>智能助手核心控制</div>
+                                    {isSuperAdmin && (
+                                        <>
+                                            {/* 智能助手核心控制 */}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>智能助手核心控制</div>
 
-                                    {/* AI Enabled Wrapper */}
-                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
-                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div className="setting-label">Bokeh智能 启用</div>
+                                            {/* AI Enabled Wrapper */}
+                                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
+                                                <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div className="setting-label">Bokeh智能 启用</div>
+                                                    </div>
+                                                    <Switch checked={settings.ai_enabled} onChange={v => setSettings({ ...settings, ai_enabled: v })} activeColor="#10B981" />
+                                                </div>
+                                                <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
+                                                    启用后，整个协作平台内的智能问答、工单总结、场景写作等 AI 相关功能将被激活。关闭则隐藏所有 AI 入口。
+                                                </div>
                                             </div>
-                                            <Switch checked={settings.ai_enabled} onChange={v => setSettings({ ...settings, ai_enabled: v })} activeColor="#10B981" />
-                                        </div>
-                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
-                                            启用后，整个协作平台内的智能问答、工单总结、场景写作等 AI 相关功能将被激活。关闭则隐藏所有 AI 入口。
-                                        </div>
-                                    </div>
 
-                                    {/* Data Sources Wrapper */}
-                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
-                                        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div className="setting-label">Bokeh 感知范围</div>
+                                            {/* Data Sources Wrapper */}
+                                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
+                                                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div className="setting-label">Bokeh 感知范围</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 20 }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={settings.ai_data_sources?.includes('tickets') ?? true}
+                                                                onChange={(e) => {
+                                                                    const sources = settings.ai_data_sources || [];
+                                                                    if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'tickets'] });
+                                                                    else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'tickets') });
+                                                                }}
+                                                            />
+                                                            工单历史
+                                                        </label>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={settings.ai_data_sources?.includes('knowledge') ?? true}
+                                                                onChange={(e) => {
+                                                                    const sources = settings.ai_data_sources || [];
+                                                                    if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'knowledge'] });
+                                                                    else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'knowledge') });
+                                                                }}
+                                                            />
+                                                            Kinefinity 知识库
+                                                        </label>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', fontSize: '0.9rem', color: 'var(--text-tertiary)', opacity: 0.5 }}>
+                                                            <input type="checkbox" disabled />
+                                                            实时网络搜索 (待开放)
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
+                                                    决定 Bokeh 智能助手可访问和检索的数据池。建议全选以保证 AI 能给出准确的公司上下文。
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', gap: 20 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={settings.ai_data_sources?.includes('tickets') ?? true}
-                                                        onChange={(e) => {
-                                                            const sources = settings.ai_data_sources || [];
-                                                            if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'tickets'] });
-                                                            else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'tickets') });
-                                                        }}
-                                                    />
-                                                    工单历史
-                                                </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={settings.ai_data_sources?.includes('knowledge') ?? true}
-                                                        onChange={(e) => {
-                                                            const sources = settings.ai_data_sources || [];
-                                                            if (e.target.checked) setSettings({ ...settings, ai_data_sources: [...sources, 'knowledge'] });
-                                                            else setSettings({ ...settings, ai_data_sources: sources.filter(s => s !== 'knowledge') });
-                                                        }}
-                                                    />
-                                                    Kinefinity 知识库
-                                                </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'not-allowed', fontSize: '0.9rem', color: 'var(--text-tertiary)', opacity: 0.5 }}>
-                                                    <input type="checkbox" disabled />
-                                                    实时网络搜索 (待开放)
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
-                                            决定 Bokeh 智能助手可访问和检索的数据池。建议全选以保证 AI 能给出准确的公司上下文。
-                                        </div>
-                                    </div>
 
-                                    {/* History Limit Wrapper */}
-                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
-                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div className="setting-label">知识中心搜索历史条数</div>
+                                            {/* History Limit Wrapper */}
+                                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginBottom: 16 }}>
+                                                <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div className="setting-label">知识中心搜索历史条数</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <input
+                                                            type="number"
+                                                            min={1} max={30}
+                                                            value={settings.ai_search_history_limit || 10}
+                                                            onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
+                                                            style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
+                                                    控制所有员工的全局搜索历史保留的数量 (最大 30 条)。保留过多的历史虽然方便但是可能降低终端设备加载性能。
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <input
-                                                    type="number"
-                                                    min={1} max={30}
-                                                    value={settings.ai_search_history_limit || 10}
-                                                    onChange={e => setSettings({ ...settings, ai_search_history_limit: Math.max(1, Math.min(30, parseInt(e.target.value) || 10)) })}
-                                                    style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
-                                            控制所有员工的全局搜索历史保留的数量 (最大 30 条)。保留过多的历史虽然方便但是可能降低终端设备加载性能。
-                                        </div>
-                                    </div>
 
-                                    {/* Global AI Work Mode Wrapper */}
-                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
-                                        <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div className="setting-label">工作模式 (全局策略)</div>
+                                            {/* Global AI Work Mode Wrapper */}
+                                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
+                                                <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div className="setting-label">工作模式 (全局策略)</div>
+                                                    </div>
+                                                    <Switch checked={settings.ai_work_mode ?? true} onChange={v => setSettings({ ...settings, ai_work_mode: v })} activeColor="#10B981" />
+                                                </div>
+                                                <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
+                                                    开启后，Bokeh 智能助手将进入专业协作状态。它将优先调取知识库和工单历史进行回答，且回复风格更加严谨、聚焦技术支持。
+                                                </div>
                                             </div>
-                                            <Switch checked={settings.ai_work_mode ?? true} onChange={v => setSettings({ ...settings, ai_work_mode: v })} activeColor="#10B981" />
-                                        </div>
-                                        <div style={{ background: 'var(--glass-bg-light)', padding: '12px 20px', fontSize: '0.8rem', color: 'var(--text-tertiary)', borderTop: '1px solid var(--glass-border)', lineHeight: 1.5 }}>
-                                            开启后，Bokeh 智能助手将进入专业协作状态。它将优先调取知识库和工单历史进行回答，且回复风格更加严谨、聚焦技术支持。
-                                        </div>
-                                    </div>
 
-                                    <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
+                                            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
 
-                                    {/* Debug Mode Section */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>开发与测试</div>
-                                    
-                                    <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
-                                        <div style={{ padding: '16px 20px' }}>
-                                            <div style={{ flex: 1, marginBottom: 12 }}>
-                                                <div className="setting-label">UI Debug Mode</div>
-                                                <div className="setting-desc">开启后，界面元素上会显示权限代码标签（如 [Permission: TICKET_APPROVE]），用于开发和测试时验证RBAC逻辑。</div>
+                                            {/* Debug Mode Section */}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>开发与测试</div>
+
+                                            <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
+                                                <div style={{ padding: '16px 20px' }}>
+                                                    <div style={{ flex: 1, marginBottom: 12 }}>
+                                                        <div className="setting-label">UI Debug Mode</div>
+                                                        <div className="setting-desc">开启后，界面元素上会显示权限代码标签（如 [Permission: TICKET_APPROVE]），用于开发和测试时验证RBAC逻辑。</div>
+                                                    </div>
+                                                    <DebugModeToggle />
+                                                </div>
                                             </div>
-                                            <DebugModeToggle />
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
