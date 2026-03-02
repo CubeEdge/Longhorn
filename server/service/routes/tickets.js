@@ -1208,18 +1208,20 @@ module.exports = function (db, authenticate, serviceUpload) {
     });
 
     /**
-     * POST /api/v1/tickets/:id/convert-to-individual
-     * Create individual account + contact and bind it to ghost ticket
+     * POST /api/v1/tickets/:id/convert-to-account
+     * Create account (Individual/Organization) + contact and bind it to ghost ticket
      */
-    router.post('/:id/convert-to-individual', authenticate, (req, res) => {
+    router.post('/:id/convert-to-account', authenticate, (req, res) => {
         const dbTransaction = db.transaction(() => {
             const { id } = req.params;
+            const { account_type = 'INDIVIDUAL', lifecycle_stage = 'PROSPECT', name, phone, email } = req.body;
+
             const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
             if (!ticket) {
                 throw new Error('工单不存在');
             }
             if (ticket.account_id) {
-                throw new Error('工单已被关联，无法转换为个人客户');
+                throw new Error('工单已被关联，无法重复入库');
             }
 
             let snapshot = {};
@@ -1229,16 +1231,16 @@ module.exports = function (db, authenticate, serviceUpload) {
                 } catch (e) { }
             }
 
-            const name = snapshot.name || ticket.contact_name || ticket.reporter_name || '未知访客';
-            const phone = snapshot.phone || null;
-            const email = snapshot.email || null;
+            const finalName = name || snapshot.name || ticket.contact_name || ticket.reporter_name || '未知访客';
+            const finalPhone = phone || snapshot.phone || null;
+            const finalEmail = email || snapshot.email || null;
 
-            // 1. Create Individual Account
+            // 1. Create Account
             const insertAccountSql = `
-                INSERT INTO accounts (name, account_type, status, source)
-                VALUES (?, 'Individual', 'ACTIVE', 'Manual')
+                INSERT INTO accounts (name, account_type, lifecycle_stage, status, source)
+                VALUES (?, ?, ?, 'ACTIVE', 'Manual')
             `;
-            const accountResult = db.prepare(insertAccountSql).run(name);
+            const accountResult = db.prepare(insertAccountSql).run(finalName, account_type.toUpperCase(), lifecycle_stage);
             const newAccountId = accountResult.lastInsertRowid;
 
             // 2. Create Formal Contact
@@ -1248,7 +1250,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 ) VALUES (?, ?, ?, ?, 'ACTIVE', 1)
             `;
             const contactResult = db.prepare(insertContactSql).run(
-                newAccountId, name, phone, email
+                newAccountId, finalName, finalPhone, finalEmail
             );
             const newContactId = contactResult.lastInsertRowid;
 
@@ -1262,20 +1264,27 @@ module.exports = function (db, authenticate, serviceUpload) {
             // 4. Log Activity
             db.prepare(`
                 INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
-                VALUES (?, 'system', '转化为个人客户：已建档并绑定', ?, ?, ?, 'all')
-            `).run(id, req.user.id, req.user.name, req.user.department || 'MS');
+                VALUES (?, 'system', ?, ?, ?, ?, 'all')
+            `).run(
+                id,
+                `转化为${account_type === 'ORGANIZATION' ? '机构' : '个人'}客户：已建档并绑定`,
+                req.user.id,
+                req.user.name,
+                req.user.department || 'MS'
+            );
 
-            return newContactId;
+            return { account_id: newAccountId, contact_id: newContactId };
         });
 
         try {
-            const newContactId = dbTransaction();
-            res.json({ success: true, data: { contact_id: newContactId } });
+            const result = dbTransaction();
+            res.json({ success: true, data: result });
         } catch (err) {
-            console.error('[Tickets] Convert to individual error:', err);
+            console.error('[Tickets] Convert to account error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });
+
 
     /**
      * POST /api/v1/tickets/:id/mark-spam

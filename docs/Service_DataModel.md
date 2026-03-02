@@ -99,6 +99,10 @@ accounts (账户 - 法律/商业实体)
 ├── address: TEXT -- 详细地址
 │
 ├── // 业务属性
+├── lifecycle_stage: ENUM('PROSPECT', 'ACTIVE', 'ARCHIVED') DEFAULT 'ACTIVE'
+│   -- PROSPECT: 潜在/线索客户（无关联设备）
+│   -- ACTIVE: 正式/活跃客户（默认值，表示已入库的正式业务对象）
+│   -- ARCHIVED: 归档（已流失或合并）
 ├── service_tier: ENUM('STANDARD', 'VIP', 'VVIP', 'BLACKLIST') DEFAULT 'STANDARD'
 │   -- 终端客户服务等级（适用于 ORGANIZATION/INDIVIDUAL）
 ├── dealer_level: ENUM('tier1', 'tier2', 'tier3', 'Direct') -- 经销商等级（仅 DEALER）
@@ -131,6 +135,7 @@ FOREIGN KEY (parent_dealer_id) REFERENCES accounts(id)
 - PRIMARY KEY (id)
 - UNIQUE KEY (account_number)
 - INDEX idx_account_type (account_type)
+- INDEX idx_lifecycle_stage (lifecycle_stage)
 - INDEX idx_parent_dealer (parent_dealer_id)
 - INDEX idx_email (email)
 - INDEX idx_country_province (country, province)

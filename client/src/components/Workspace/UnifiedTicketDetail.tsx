@@ -48,6 +48,7 @@ interface TicketDetail {
     created_at: string;
     updated_at: string;
     parent_ticket_number?: string;
+    resolution?: string;
     [key: string]: unknown;
 }
 
@@ -294,6 +295,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                                 </div>
                                 <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.6 }}>
                                     {ticket.problem_summary || ticket.problem_description}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Resolution */}
+                        {ticket.resolution && (
+                            <div style={{
+                                marginTop: 12, padding: 14, borderRadius: 8,
+                                background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)',
+                            }}>
+                                <div style={{ fontSize: 12, color: '#10B981', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    处理结果
+                                </div>
+                                <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                    {ticket.resolution}
                                 </div>
                             </div>
                         )}

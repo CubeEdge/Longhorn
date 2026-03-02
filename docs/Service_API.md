@@ -634,11 +634,12 @@
 
 **查询参数**：
 
-| 参数 | 类型 | 说明 |
+| parameter | type | description |
 |------|------|------|
 | page | int | 页码，默认1 |
 | page_size | int | 每页数量，默认20 |
 | account_type | string | 账户类型筛选：END_USER / CORPORATE |
+| lifecycle_stage | string | 生命周期状态：PROSPECT (潜在/线索) / ACTIVE (正式) / ARCHIVED (归档) |
 | acquisition_channel | string | 获客渠道：DIRECT / CHANNEL |
 | parent_dealer_id | string | 销售归属经销商ID，用于筛选某经销商名下客户 |
 | service_tier | string | 服务等级：STANDARD / VIP / VVIP / BLACKLIST |

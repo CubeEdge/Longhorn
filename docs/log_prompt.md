@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-03-03 01:05 (耗时: 45m)
+
+**User Prompt**:
+完善客户详情页（CustomerDetailPage）：
+1. 在前端客户卡片增加状态标签（Prospect / Active）。
+2. 在客户详情页增加“升级为正式客户”操作（针对 Prospect）。
+3. 完善“转入机构/升级为正式客户”逻辑，可在咨询工单处将访客入库为潜在客户。
+4. 引入 `lifecycle_stage`: `PROSPECT`, `ACTIVE`, `ARCHIVED` 状态模型。
+5. 自动升级：当设备关联至特定客户时，自动将其由 `PROSPECT` 升级为 `ACTIVE`。
+6. 更新所有相关文档（PRD P2, API, DataModel）。
+
+**Agent Response**:
+1. **数据库层**: 为 `accounts` 表新增 `lifecycle_stage` 字段，并预置索引。
+2. **后端逻辑**: 
+   - 实现了统一的工单转客户 API (`POST /api/v1/tickets/:id/convert-to-account`)，支持指定生命周期状态。
+   - 在 `products-admin.js` 中实装了物主关联时的自动升档逻辑（`PROSPECT` -> `ACTIVE`）。
+   - 增强了客户查询接口，支持按生命周期状态过滤。
+3. **前端 UI/UX**:
+   - `CustomerDetailPage`: 增加 "Prospect" 徽章以及根据状态显示的“更多”操作菜单（编辑、停用、删除、恢复）。
+   - `ConvertIndividualModal`: 重构转化表单，默认勾选“潜在客户”，提供类型与状态的灵活组合。
+4. **文档同步**: 完成了 PRD 5.8 章节、API 定义以及数据模型的同步更新。
+
+**Result**:
+客户生命周期管理闭环完成。实现了从“咨询->访客->潜在客户->设备关联->正式客户”的自动化与手动干预双链路。
+
+
 ## 2026-03-01 10:45 (耗时: 15m)
 
 **User Prompt**:

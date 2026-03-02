@@ -27,6 +27,7 @@ interface Customer {
     dealer_code?: string;
     dealer_level?: string;
     address?: string;
+    lifecycle_stage: 'PROSPECT' | 'ACTIVE' | 'ARCHIVED';
 }
 
 interface Contact {
@@ -158,7 +159,8 @@ const CustomerDetailPage: React.FC = () => {
                         created_at: dealer.created_at,
                         dealer_code: dealer.dealer_code,
                         dealer_level: dealer.dealer_level,
-                        address: dealer.address
+                        address: dealer.address,
+                        lifecycle_stage: dealer.lifecycle_stage || 'ACTIVE'
                     });
 
                     // Fetch contacts for this dealer
@@ -194,7 +196,8 @@ const CustomerDetailPage: React.FC = () => {
                         service_tier: account.service_tier || 'STANDARD',
                         notes: account.notes,
                         created_at: account.created_at,
-                        address: account.address
+                        address: account.address,
+                        lifecycle_stage: account.lifecycle_stage || 'ACTIVE'
                     });
 
                     // Set contacts
@@ -211,7 +214,6 @@ const CustomerDetailPage: React.FC = () => {
             }
 
             // P2: Use unified tickets API with account_id or dealer_id filter
-            // 经销商查询 dealer_id（自己提交的工单），客户查询 account_id
             const idParam = isDealer ? `dealer_id=${queryId}` : `account_id=${queryId}`;
 
             const ticketsRes = await axios.get(`/api/v1/tickets?${idParam}&page_size=100`, {
@@ -220,7 +222,7 @@ const CustomerDetailPage: React.FC = () => {
 
             // Process tickets from unified table
             const allTicketsRaw = ticketsRes.data.data || [];
-            
+
             // Filter and categorize by ticket_type
             const inquiryTickets: Ticket[] = allTicketsRaw
                 .filter((t: any) => t.ticket_type === 'inquiry')
@@ -278,30 +280,16 @@ const CustomerDetailPage: React.FC = () => {
             const uniqueDevices = new Map();
             allTickets.forEach(t => {
                 if (t.product_name && !uniqueDevices.has(t.product_name)) {
-                    // Determine product family based on product name
                     const productName = t.product_name;
-                    let productFamily = 'A'; // Default to A类
-
-                    // A类: 在售电影摄影机 (Current Cinema Cameras)
-                    if (/MAVO Edge|TERRA 4K|TERRA 6K/i.test(productName)) {
-                        productFamily = 'A';
-                    }
-                    // B类: 历史机型 (Legacy Cameras)
-                    else if (/MAVO LF|TERRA 4K.*legacy|历史机型/i.test(productName)) {
-                        productFamily = 'B';
-                    }
-                    // C类: 电子寻像器 (Viewfinders)
-                    else if (/KineMON|寻像器|Viewfinder|e-Viewfinder/i.test(productName)) {
-                        productFamily = 'C';
-                    }
-                    // D类: 通用配件 (Accessories)
-                    else if (/配件|电池|充电器|手柄|线缆|Accessory/i.test(productName)) {
-                        productFamily = 'D';
-                    }
+                    let productFamily = 'A';
+                    if (/MAVO Edge|TERRA 4K|TERRA 6K/i.test(productName)) productFamily = 'A';
+                    else if (/MAVO LF|TERRA 4K.*legacy|历史机型/i.test(productName)) productFamily = 'B';
+                    else if (/KineMON|寻像器|Viewfinder|e-Viewfinder/i.test(productName)) productFamily = 'C';
+                    else if (/配件|电池|充电器|手柄|线缆|Accessory/i.test(productName)) productFamily = 'D';
 
                     uniqueDevices.set(t.product_name, {
                         id: uniqueDevices.size + 1,
-                        serial_number: 'N/A', // Would need actual device data
+                        serial_number: 'N/A',
                         product_name: t.product_name,
                         product_family: productFamily,
                         warranty_status: '未知',
@@ -329,23 +317,14 @@ const CustomerDetailPage: React.FC = () => {
 
     const getDealerLevelLabel = (level: string | undefined) => {
         const map: Record<string, string> = {
-            'TIER1': '一级经销商',
-            'TIER2': '二级经销商',
-            'TIER3': '三级经销商',
-            'Tier1': '一级经销商',
-            'Tier2': '二级经销商',
-            'Tier3': '三级经销商',
-            'tier1': '一级经销商',
-            'tier2': '二级经销商',
-            'tier3': '三级经销商',
-            'FirstTier': '一级经销商',
-            'SecondTier': '二级经销商',
-            'ThirdTier': '三级经销商'
+            'TIER1': '一级经销商', 'TIER2': '二级经销商', 'TIER3': '三级经销商',
+            'Tier1': '一级经销商', 'Tier2': '二级经销商', 'Tier3': '三级经销商',
+            'tier1': '一级经销商', 'tier2': '二级经销商', 'tier3': '三级经销商',
+            'FirstTier': '一级经销商', 'SecondTier': '二级经销商', 'ThirdTier': '三级经销商'
         };
         return map[level || ''] || level || '标准';
     };
 
-    // 删除账户处理 - 点击显示确认弹窗
     const handleDeleteClick = () => {
         setShowMoreMenu(false);
         setDeleteHasRelatedData(false);
@@ -353,21 +332,15 @@ const CustomerDetailPage: React.FC = () => {
         setIsDeleteModalOpen(true);
     };
 
-    // 确认删除（调用 API 执行软删除）
     const handleConfirmDelete = async () => {
         setDeleteLoading(true);
         try {
             const res = await axios.delete(`/api/v1/accounts/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            if (res.data.success) {
-                // 软删除成功，返回列表
-                navigate(isDealer ? '/service/dealers' : '/service/customers');
-            }
+            if (res.data.success) navigate(isDealer ? '/service/dealers' : '/service/customers');
         } catch (err: any) {
             if (err.response?.status === 409) {
-                // 有关联数据，显示建议停用
                 setDeleteHasRelatedData(true);
                 setDeleteCounts(err.response.data.counts);
             } else {
@@ -379,17 +352,13 @@ const CustomerDetailPage: React.FC = () => {
         }
     };
 
-    // 确认停用（有关联数据时）
     const handleConfirmDeactivate = async () => {
         setDeleteLoading(true);
         try {
-            await axios.patch(`/api/v1/accounts/${id}`,
-                { is_active: false },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axios.patch(`/api/v1/accounts/${id}`, { is_active: false }, { headers: { Authorization: `Bearer ${token}` } });
             setAccountStatus('inactive');
             setIsDeleteModalOpen(false);
-            fetchCustomerDetail(); // 刷新数据
+            fetchCustomerDetail();
         } catch (err: any) {
             alert('停用失败: ' + (err.response?.data?.error?.message || err.message));
         } finally {
@@ -397,18 +366,24 @@ const CustomerDetailPage: React.FC = () => {
         }
     };
 
-    // 恢复账户
     const handleReactivate = async () => {
         setShowMoreMenu(false);
         try {
-            await axios.patch(`/api/v1/accounts/${id}`,
-                { is_active: true },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axios.patch(`/api/v1/accounts/${id}`, { is_active: true }, { headers: { Authorization: `Bearer ${token}` } });
             setAccountStatus('active');
             fetchCustomerDetail();
         } catch (err: any) {
             alert('恢复失败: ' + (err.response?.data?.error?.message || err.message));
+        }
+    };
+
+    const handleUpgradeToActive = async () => {
+        if (!window.confirm('确定要将该客户升级为正式客户吗？')) return;
+        try {
+            await axios.patch(`/api/v1/accounts/${id}`, { lifecycle_stage: 'ACTIVE' }, { headers: { Authorization: `Bearer ${token}` } });
+            fetchCustomerDetail();
+        } catch (err: any) {
+            alert('升级失败: ' + (err.response?.data?.error?.message || err.message));
         }
     };
 
@@ -473,10 +448,44 @@ const CustomerDetailPage: React.FC = () => {
                         >
                             {isDealer ? getDealerLevelLabel(customer.dealer_level) : getTierLabel(customer.service_tier)}
                         </span>
+                        {customer.lifecycle_stage === 'PROSPECT' && (
+                            <span
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: 6,
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    background: 'rgba(245, 158, 11, 0.15)',
+                                    color: '#F59E0B',
+                                    border: '1px solid rgba(245, 158, 11, 0.3)'
+                                }}
+                            >
+                                Prospect (潜在客户)
+                            </span>
+                        )}
                     </div>
 
-                    {/* More Actions Menu */}
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {customer.lifecycle_stage === 'PROSPECT' && (
+                            <button
+                                onClick={handleUpgradeToActive}
+                                style={{
+                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    borderRadius: '8px',
+                                    padding: '8px 16px',
+                                    color: '#10B981',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600
+                                }}
+                            >
+                                <RotateCcw size={16} /> 升级为正式客户
+                            </button>
+                        )}
                         <button
                             onClick={() => setShowMoreMenu(!showMoreMenu)}
                             style={{
@@ -489,13 +498,7 @@ const CustomerDetailPage: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                position: 'relative'
                             }}
                         >
                             <MoreHorizontal size={18} />
@@ -542,10 +545,10 @@ const CustomerDetailPage: React.FC = () => {
                                         }}
                                     >
                                         <Edit2 size={16} color="var(--accent-blue)" />
-                                        编辑
+                                        编辑账户资料
                                     </button>
 
-                                    {(isAdmin || user?.role === 'Lead') && (
+                                    {isAdmin && (
                                         <button
                                             onClick={handleDeleteClick}
                                             style={{
@@ -563,7 +566,7 @@ const CustomerDetailPage: React.FC = () => {
                                             }}
                                         >
                                             <Trash2 size={16} />
-                                            删除
+                                            删除账户
                                         </button>
                                     )}
 
@@ -590,7 +593,30 @@ const CustomerDetailPage: React.FC = () => {
                                         </button>
                                     )}
 
-                                    {/* 经销商停用按钮 - 仅经销商显示 */}
+                                    {/* 停用客户按钮 - 仅在客户活跃且非经销商时显示 */}
+                                    {accountStatus === 'active' && !isDealer && (
+                                        <button
+                                            onClick={() => { setShowMoreMenu(false); setIsDeleteModalOpen(true); }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 12,
+                                                width: '100%',
+                                                padding: '10px 16px',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#ff4d4f',
+                                                cursor: 'pointer',
+                                                fontSize: '0.9rem',
+                                                textAlign: 'left'
+                                            }}
+                                        >
+                                            <PowerOff size={16} />
+                                            停用客户
+                                        </button>
+                                    )}
+
+                                    {/* 停用经销商按钮 - 仅经销商显示 */}
                                     {isDealer && canManageDealerStatus && (
                                         <button
                                             onClick={() => { setShowMoreMenu(false); alert('停用经销商功能开发中'); }}

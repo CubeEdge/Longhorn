@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-03-03 01:05 - 客户生命周期模型实装与自动化升档逻辑 (v12.3.0)
+
+### Tasks Completed:
+1. **生命周期状态机模型** (`accounts` table):
+    - 数据库迁移：原子化增加 `lifecycle_stage` (ENUM: PROSPECT, ACTIVE, ARCHIVED) 字段及索引。
+    - 逻辑对齐：默认 `ACTIVE`（存量），新咨询转化默认 `PROSPECT`（增量）。
+2. **工单转化流重构** (`ConvertIndividualModal.tsx` & `tickets.js`):
+    - 统一端点：实装 `POST /api/v1/tickets/:id/convert-to-account`，支持多态账户类型与状态。
+    - UI 适配：重写转化弹窗，支持“个人/机构”及“潜在/正式”的自由组合。
+3. **自动化升档引擎** (`products-admin.js`):
+    - 监听机制：在 `POST /api/v1/products/link-account` (物主关联) 时触发，自动检测并将物主 `lifecycle_stage` 从 `PROSPECT` 升级为 `ACTIVE`。
+4. **详情页管理功能全量增强** (`CustomerDetailPage.tsx`):
+    - 状态感知：增加 "Prospect" 标签显示及相应的 `handleUpgradeToActive` 快捷操作。
+    - 菜单重构：将“更多”菜单改为响应式的 Dropdown，集成了编辑、物理删除 (Admin)、停用、恢复等四项核心管理能力。
+    - 健壮性修复：修复了联系人保存时的 SQL 并发锁定风险及多语言 ID 映射。
+5. **文档同步**:
+    - 全面更新 `Service PRD_P2.md` (5.8 章节), `Service_API.md` (账户状态过滤 & 转化 API), `Service_DataModel.md`。
+
+### Technical Output:
+- **Modified**: `client/src/components/CustomerDetailPage.tsx`, `client/src/components/Service/ConvertIndividualModal.tsx`, `server/service/routes/accounts.js`, `server/service/routes/tickets.js`, `server/service/products-admin.js`
+- **Version**: Client `12.3.0`
+
+---
+
+
 ## 2026-03-01 10:45 - Workspace 线上遗留 Bug 彻底修复与全景部署上线 (v12.2.10)
 
 ### Tasks Completed:

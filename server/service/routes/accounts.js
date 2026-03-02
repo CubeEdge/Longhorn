@@ -54,6 +54,7 @@ module.exports = function (db, authenticate) {
                 service_tier,
                 search,
                 region,
+                lifecycle_stage,
                 is_active,
                 status, // 'active', 'inactive', 'deleted'
                 sort_by = 'created_at',
@@ -76,6 +77,10 @@ module.exports = function (db, authenticate) {
             if (region) {
                 conditions.push('a.region = ?');
                 params.push(region);
+            }
+            if (lifecycle_stage) {
+                conditions.push('a.lifecycle_stage = ?');
+                params.push(lifecycle_stage);
             }
 
             // 支持状态筛选: active, inactive
@@ -123,6 +128,7 @@ module.exports = function (db, authenticate) {
                     a.country,
                     a.city,
                     a.service_tier,
+                    a.lifecycle_stage,
                     a.industry_tags,
                     a.is_active,
                     a.created_at,
@@ -203,6 +209,7 @@ module.exports = function (db, authenticate) {
                 can_repair = false,
                 repair_level,
                 parent_dealer_id,
+                lifecycle_stage = 'ACTIVE',
                 // 联系人信息 (创建账户时同时创建主要联系人)
                 primary_contact
             } = req.body;
@@ -232,10 +239,11 @@ module.exports = function (db, authenticate) {
                 INSERT INTO accounts (
                     account_number, name, account_type, email, phone,
                     country, province, city, address, service_tier,
+                    lifecycle_stage,
                     industry_tags, credit_limit, dealer_code, dealer_level,
                     region, can_repair, repair_level, parent_dealer_id,
                     is_active, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
             `).run(
                 accountNumber,
                 name,
@@ -247,6 +255,7 @@ module.exports = function (db, authenticate) {
                 city || null,
                 address || null,
                 service_tier,
+                lifecycle_stage,
                 industry_tags ? JSON.stringify(industry_tags) : null,
                 credit_limit,
                 dealer_code || null,
@@ -411,7 +420,7 @@ module.exports = function (db, authenticate) {
             // 构建更新字段
             const allowedFields = [
                 'name', 'email', 'phone', 'country', 'province', 'city', 'address',
-                'service_tier', 'industry_tags', 'credit_limit', 'dealer_code',
+                'service_tier', 'lifecycle_stage', 'industry_tags', 'credit_limit', 'dealer_code',
                 'dealer_level', 'region', 'can_repair', 'repair_level',
                 'parent_dealer_id', 'is_active', 'is_deleted', 'notes'
             ];
@@ -617,9 +626,9 @@ module.exports = function (db, authenticate) {
                 FROM tickets
                 WHERE account_id = ?
             `;
-            
+
             const queryParams = [accountId];
-            
+
             if (type) {
                 const typeMapping = {
                     'inquiry': 'inquiry',
@@ -628,11 +637,11 @@ module.exports = function (db, authenticate) {
                 };
                 ticketQuery += ` AND ticket_type = '${typeMapping[type] || type}'`;
             }
-            
+
             if (status) {
                 ticketQuery += ` AND status = '${status}'`;
             }
-            
+
             ticketQuery += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
             queryParams.push(parseInt(page_size), offset);
 

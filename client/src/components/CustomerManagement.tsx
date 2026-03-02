@@ -27,6 +27,7 @@ interface Customer {
     industry_tags?: string;
     parent_dealer_id?: number;
     created_at: string;
+    lifecycle_stage: 'PROSPECT' | 'ACTIVE' | 'ARCHIVED';
 }
 
 const STORAGE_KEY = 'longhorn_customer_management_tab';
@@ -139,6 +140,7 @@ const CustomerManagement: React.FC = () => {
                     company_name: acc.account_type === 'ORGANIZATION' ? acc.name : undefined,
                     account_type: 'Customer',
                     service_tier: acc.service_tier,
+                    lifecycle_stage: acc.lifecycle_stage || 'ACTIVE',
                     created_at: acc.created_at
                 }));
                 setCustomers(mappedCustomers);
@@ -652,7 +654,18 @@ const CustomerManagement: React.FC = () => {
                                     onClick={() => navigate(`/service/customers/${c.id}?type=${activeTab}`)}
                                 >
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{c.customer_name}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '1rem' }}>{c.customer_name}</div>
+                                            {c.lifecycle_stage === 'PROSPECT' && (
+                                                <span style={{
+                                                    fontSize: '0.65rem', padding: '1px 6px', borderRadius: 4,
+                                                    background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B',
+                                                    border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600
+                                                }}>
+                                                    Prospect
+                                                </span>
+                                            )}
+                                        </div>
                                         {c.company_name && <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{c.company_name}</div>}
                                     </td>
                                     <td style={{ padding: 16 }}>

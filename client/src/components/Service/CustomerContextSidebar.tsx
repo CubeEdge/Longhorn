@@ -342,7 +342,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     <div style={{ ...cardStyle, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                         <div style={{ ...cardTitleStyle, color: '#EF4444', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Info size={12} /> ❓ 未知身份
+                                未知身份
                             </div>
                         </div>
 
@@ -362,7 +362,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         {/* Action Required Section */}
                         <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
                             <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
-                                ⚠️ 建议操作 (Action Required)
+                                建议操作
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 <button
@@ -383,7 +383,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                         borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                     }}
                                 >
-                                    <UserPlus size={14} /> 转为个人客户
+                                    <UserPlus size={14} /> 入库新企业 / 新散客
                                 </button>
                                 <button
                                     onClick={() => setShowSpamModal(true)}

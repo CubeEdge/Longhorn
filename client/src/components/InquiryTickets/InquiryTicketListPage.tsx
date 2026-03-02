@@ -397,8 +397,8 @@ const InquiryTicketListPage: React.FC = () => {
                             // 状态 1-4 逻辑
                             const accountName = ticket.account?.name;
                             const contactName = ticket.contact?.name;
-                            const snapshotName = ticket.reporter_snapshot?.name;
-                            const fallbackName = ticket.customer_name || ticket.customer_contact || '未知访客';
+                            const snapshotName = ticket.reporter_snapshot?.name || (ticket as any).reporter_name;
+                            const fallbackName = snapshotName || ticket.customer_name || '未知访客';
                             const dealerName = ticket.dealer_name;
                             const serviceTier = ticket.account?.service_tier || 'Standard';
                             const isVIP = serviceTier === 'VIP';
@@ -586,6 +586,26 @@ const InquiryTicketListPage: React.FC = () => {
                                         onKeyDown={(e) => { if (e.key === 'Enter') { updateFilter({ keyword: localSearch }); } }}
                                         onBlur={() => { if (!localSearch) setSearchOpen(false); }}
                                     />
+                                    {localSearch && (
+                                        <button
+                                            onClick={() => {
+                                                setLocalSearch('');
+                                                updateFilter({ keyword: '' });
+                                                setSearchOpen(false);
+                                            }}
+                                            style={{
+                                                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                                                background: 'transparent', border: 'none', color: 'var(--text-secondary)',
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}

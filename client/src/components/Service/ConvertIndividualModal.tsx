@@ -26,14 +26,16 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
     const [formData, setFormData] = useState({
         name: reporterSnapshot?.name || '',
         phone: reporterSnapshot?.phone || '',
-        email: reporterSnapshot?.email || ''
+        email: reporterSnapshot?.email || '',
+        account_type: 'INDIVIDUAL',
+        lifecycle_stage: 'PROSPECT'
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await axios.post(`/api/v1/tickets/${ticketId}/convert-to-individual`, formData, {
+            const res = await axios.post(`/api/v1/tickets/${ticketId}/convert-to-account`, formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -65,15 +67,83 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>转为个人客户并入库</h3>
+                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>入库为新客户档</h3>
                     <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ padding: 20 }}>
+                    {/* 客户类型选择 */}
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6 }}>姓名 *</label>
+                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8 }}>客户类型</label>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <label style={{
+                                flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                                background: formData.account_type === 'INDIVIDUAL' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${formData.account_type === 'INDIVIDUAL' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'INDIVIDUAL' ? '#fff' : '#aaa', fontSize: 13
+                            }}>
+                                <input
+                                    type="radio" name="account_type" value="INDIVIDUAL" checked={formData.account_type === 'INDIVIDUAL'}
+                                    onChange={() => setFormData({ ...formData, account_type: 'INDIVIDUAL' })}
+                                    style={{ display: 'none' }}
+                                />
+                                个人散客
+                            </label>
+                            <label style={{
+                                flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                                background: formData.account_type === 'ORGANIZATION' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${formData.account_type === 'ORGANIZATION' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'ORGANIZATION' ? '#fff' : '#aaa', fontSize: 13
+                            }}>
+                                <input
+                                    type="radio" name="account_type" value="ORGANIZATION" checked={formData.account_type === 'ORGANIZATION'}
+                                    onChange={() => setFormData({ ...formData, account_type: 'ORGANIZATION' })}
+                                    style={{ display: 'none' }}
+                                />
+                                机构企业
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* 生命周期选择 */}
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8 }}>客户身份</label>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <label style={{
+                                flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                                background: formData.lifecycle_stage === 'PROSPECT' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${formData.lifecycle_stage === 'PROSPECT' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'PROSPECT' ? '#fff' : '#aaa', fontSize: 13
+                            }}>
+                                <input
+                                    type="radio" name="lifecycle_stage" value="PROSPECT" checked={formData.lifecycle_stage === 'PROSPECT'}
+                                    onChange={() => setFormData({ ...formData, lifecycle_stage: 'PROSPECT' })}
+                                    style={{ display: 'none' }}
+                                />
+                                潜在客户 (Prospect)
+                            </label>
+                            <label style={{
+                                flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                                background: formData.lifecycle_stage === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${formData.lifecycle_stage === 'ACTIVE' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'ACTIVE' ? '#fff' : '#aaa', fontSize: 13
+                            }}>
+                                <input
+                                    type="radio" name="lifecycle_stage" value="ACTIVE" checked={formData.lifecycle_stage === 'ACTIVE'}
+                                    onChange={() => setFormData({ ...formData, lifecycle_stage: 'ACTIVE' })}
+                                    style={{ display: 'none' }}
+                                />
+                                正式客户 (Active)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6 }}>
+                            {formData.account_type === 'ORGANIZATION' ? '机构/企业名称 *' : '姓名 *'}
+                        </label>
                         <input
                             required
                             style={{

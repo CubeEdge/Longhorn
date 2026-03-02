@@ -401,11 +401,28 @@ AI 无法匹配 "小王" -> 填入 reporter_snapshot。
 
 操作:
 
-入库: 点击 [+转正]，将 Smith 存入 ARRI 通讯录，回填 contact_id。
+5. 忽略: 保持原状，结案后 Smith 仅作为历史文本存在。
 
-关联: 点击 [关联]，搜索发现其实是老员工 Mike 改名了，关联到 Mike。
-
-忽略: 保持原状，结案后 Smith 仅作为历史文本存在。
+**5.8 客户生命周期流转 (Customer Lifecycle & Prospect) - [COMPLETED v12.3.0]**
+我们不再为“潜在客户”单设新表，而是通过 `accounts.lifecycle_stage` 来管理身份。
+* **状态定义**:
+    * `PROSPECT` (潜在/线索): 没有关联设备的客户档案。比如参加会展、致电询价的记录。
+    * `ACTIVE` (正式): 默认状态。拥有至少一台在保或出保设备的实名客户。
+    * `ARCHIVED` (归档): 逻辑删除，或者是因为重组合并而停用。
+* **数据入库 (Entry Flow)**:
+    1. **标准创建**: 数据库字段默认为 `ACTIVE`，确保直接录入的客户默认视为正式。
+    2. **工单清洗 (Capture)**: 在咨询工单详情页点击“入库”时，弹出**标准新建客户表单**（包含机构/个人选项）：
+        - **UI 默认选项**: `PROSPECT` (潜在/线索)。
+        - **可选切换**: 允许客服手动选择为 `ACTIVE`（例如：咨询时对方已经是正式客户但未建档）。
+* **自动转正机制 (Auto-Upgrade)**: 
+    系统会在触发以下任意行为时，**自动将 PROSPECT 状态升至 ACTIVE**：
+    1. 为该 `account_id` 扫码入库第一台 `Installed Base (资产)`。
+    2. 有关联该 `account_id` 的正式电商/分销订单完成。
+* **双重身份穿透 (Multiple Roles per Contact)**:
+    如果一个曾经的“个人潜客” (PROSPECT) 后来入职了“企业机构” (ORGANIZATION)：
+    * 保留其个人的潜客 Account，同时在机构 Account 下新建该人的 Contact 记录。
+    * 两个记录通过 **相同 Email** 串联。
+    * 优势：确保他以后报修的“私有设备”与“公司财产”在工单系统和归集逻辑中界限分明。
 
 
 # 6. 前端与交互规范 (Frontend & UI Specifications)  

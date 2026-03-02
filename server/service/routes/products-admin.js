@@ -252,12 +252,17 @@ module.exports = function (db, authenticate) {
                 warranty_status
             );
 
+            // Auto-upgrade account to ACTIVE if owner is provided
+            if (current_owner_id) {
+                db.prepare('UPDATE accounts SET lifecycle_stage = "ACTIVE" WHERE id = ? AND lifecycle_stage = "PROSPECT"').run(current_owner_id);
+            }
+
             const newProduct = db.prepare('SELECT * FROM products WHERE id = ?').get(result.lastInsertRowid);
 
             res.status(201).json({
                 success: true,
-                data: { 
-                    ...newProduct, 
+                data: {
+                    ...newProduct,
                     is_active: !!newProduct.is_active,
                     is_iot_device: !!newProduct.is_iot_device
                 }
@@ -341,7 +346,7 @@ module.exports = function (db, authenticate) {
             addUpdate('product_line', product_line);
             addUpdate('firmware_version', firmware_version);
             addUpdate('description', description);
-            
+
             if (is_active !== undefined) {
                 updates.push('is_active = ?');
                 params.push(is_active ? 1 : 0);
@@ -397,7 +402,7 @@ module.exports = function (db, authenticate) {
                 const current = db.prepare('SELECT warranty_start_date, warranty_months FROM products WHERE id = ?').get(productId);
                 const start = warranty_start_date !== undefined ? warranty_start_date : current.warranty_start_date;
                 const months = warranty_months !== undefined ? parseInt(warranty_months) : current.warranty_months;
-                
+
                 if (start && months) {
                     const startDate = new Date(start);
                     const endDate = new Date(startDate);
@@ -421,12 +426,17 @@ module.exports = function (db, authenticate) {
                 UPDATE products SET ${updates.join(', ')} WHERE id = ?
             `).run(...params);
 
+            // Auto-upgrade account to ACTIVE if owner is updated
+            if (current_owner_id) {
+                db.prepare('UPDATE accounts SET lifecycle_stage = "ACTIVE" WHERE id = ? AND lifecycle_stage = "PROSPECT"').run(current_owner_id);
+            }
+
             const updated = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
 
             res.json({
                 success: true,
-                data: { 
-                    ...updated, 
+                data: {
+                    ...updated,
                     is_active: !!updated.is_active,
                     is_iot_device: !!updated.is_iot_device,
                     is_activated: !!updated.is_activated
