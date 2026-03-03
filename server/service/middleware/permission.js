@@ -2,276 +2,211 @@
  * Permission Middleware (穿透式权限中间件)
  * P2 架构升级
  * 
- * 实现基于角色的权限控制和 View As 功能
+ * 核心原则：隔离与穿透 (Isolation & Passthrough)
+ * - OP/RD: 默认无权访问 CRM/IB，仅通过工单获得 JIT 穿透
+ * - MS: 全局读写
+ * - Admin/Exec: 全权限
  */
 
 /**
- * 角色权限定义
+ * 判断用户是否拥有 CRM/IB 全局访问权限
+ * Admin, Exec, MS 部门人员有全局权限
  */
-const ROLE_PERMISSIONS = {
-  Admin: {
-    canViewAll: true,
-    canViewInternal: true,
-    canViewDealer: true,
-    canEditAll: true,
-    canDelete: true,
-    canAssign: true,
-    canViewAs: true,
-    departments: ['*']
-  },
-  Employee: {
-    canViewAll: false,
-    canViewInternal: true,
-    canViewDealer: true,
-    canEditAll: false,
-    canDelete: false,
-    canAssign: true,
-    canViewAs: false,
-    departments: ['marketing', 'operation', 'rd']
-  },
-  Market: {
-    canViewAll: false,
-    canViewInternal: true,
-    canViewDealer: true,
-    canEditAll: false,
-    canDelete: false,
-    canAssign: false,
-    canViewAs: false,
-    departments: ['marketing']
-  },
-  Dealer: {
-    canViewAll: false,
-    canViewInternal: false,
-    canViewDealer: false,  // Only own dealer's data
-    canEditAll: false,
-    canDelete: false,
-    canAssign: false,
-    canViewAs: false,
-    departments: []
-  }
-};
-
-/**
- * 部门权限映射
- */
-const DEPARTMENT_PERMISSIONS = {
-  operation: {
-    canAccessOp: true,
-    canAccessMs: false,
-    canAccessRd: false,
-    ticketVisibility: ['all', 'internal', 'op_only']
-  },
-  marketing: {
-    canAccessOp: false,
-    canAccessMs: true,
-    canAccessRd: false,
-    ticketVisibility: ['all', 'internal']
-  },
-  rd: {
-    canAccessOp: true,
-    canAccessMs: true,
-    canAccessRd: true,
-    ticketVisibility: ['all', 'internal', 'op_only', 'rd_only']
-  }
-};
-
-/**
- * 创建权限检查器
- * @param {Object} user - 当前用户
- * @returns {Object} 权限检查方法集合
- */
-function createPermissionChecker(user) {
-  const rolePerms = ROLE_PERMISSIONS[user.role] || ROLE_PERMISSIONS.Employee;
-  const deptPerms = DEPARTMENT_PERMISSIONS[user.department] || {};
-  
-  // 如果是 View As 模式
-  const effectiveUser = user.viewingAs || user;
-  const effectiveRole = ROLE_PERMISSIONS[effectiveUser.role] || rolePerms;
-  
-  return {
-    /**
-     * 检查是否可以访问工单
-     */
-    canAccessTicket(ticket) {
-      // Admin 可以访问所有
-      if (rolePerms.canViewAll) return true;
-      
-      // Dealer 只能访问自己的
-      if (user.user_type === 'Dealer') {
-        return ticket.dealer_id === user.dealer_id;
-      }
-      
-      // 员工基于部门和参与者检查
-      if (ticket.participants) {
-        try {
-          const participants = JSON.parse(ticket.participants);
-          if (participants.some(p => p.user_id === user.id)) {
-            return true;
-          }
-        } catch (e) {}
-      }
-      
-      // 基于指派
-      if (ticket.assigned_to === user.id) return true;
-      if (ticket.submitted_by === user.id) return true;
-      
-      // 基于部门可见性
-      return true; // 内部员工默认可见所有内部工单
-    },
-    
-    /**
-     * 检查活动可见性
-     */
-    canViewActivity(activity) {
-      const visibility = activity.visibility || 'all';
-      
-      if (visibility === 'all') return true;
-      
-      if (user.user_type === 'Dealer') {
-        return visibility === 'all';
-      }
-      
-      if (visibility === 'internal') {
-        return effectiveRole.canViewInternal;
-      }
-      
-      if (visibility === 'op_only') {
-        return deptPerms.canAccessOp || rolePerms.canViewAll;
-      }
-      
-      if (visibility === 'rd_only') {
-        return deptPerms.canAccessRd || rolePerms.canViewAll;
-      }
-      
-      return false;
-    },
-    
-    /**
-     * 检查是否可以编辑工单
-     */
-    canEditTicket(ticket) {
-      if (rolePerms.canEditAll) return true;
-      if (ticket.assigned_to === user.id) return true;
-      if (ticket.submitted_by === user.id && ticket.status === 'open') return true;
-      return false;
-    },
-    
-    /**
-     * 检查是否可以指派工单
-     */
-    canAssignTicket(ticket) {
-      if (!rolePerms.canAssign) return false;
-      if (rolePerms.canEditAll) return true;
-      
-      // MS 只能指派给自己部门
-      if (user.department === 'marketing') {
-        return true; // MS 可以指派给任何 MS
-      }
-      
-      return user.department === 'operation' || user.department === 'rd';
-    },
-    
-    /**
-     * 检查是否可以使用 View As
-     */
-    canUseViewAs() {
-      return rolePerms.canViewAs;
-    },
-    
-    /**
-     * 获取允许的活动可见性选项
-     */
-    getAllowedVisibilities() {
-      if (rolePerms.canViewAll) {
-        return ['all', 'internal', 'op_only', 'rd_only'];
-      }
-      return deptPerms.ticketVisibility || ['all'];
-    },
-    
-    /**
-     * 过滤查询条件 - 添加权限限制
-     */
-    applyQueryFilter(baseQuery, params = []) {
-      if (rolePerms.canViewAll) {
-        return { query: baseQuery, params };
-      }
-      
-      if (user.user_type === 'Dealer') {
-        return {
-          query: `${baseQuery} AND dealer_id = ?`,
-          params: [...params, user.dealer_id]
-        };
-      }
-      
-      // 内部员工 - 可以看到所有非经销商专属的
-      return { query: baseQuery, params };
-    }
-  };
+function hasGlobalAccess(user) {
+  if (!user) return false;
+  // Admin / Exec 全权限
+  if (user.role === 'Admin' || user.role === 'Exec') return true;
+  // MS (市场部) 全局读写
+  const deptCode = user.department_code || '';
+  if (deptCode === 'MS') return true;
+  // GE (通用台面) — 平台管理员
+  if (deptCode === 'GE') return true;
+  return false;
 }
 
 /**
- * Express 中间件 - 注入权限检查器
+ * 获取用户通过工单关联可访问的 account_id 列表 (JIT 穿透)
+ * 通过 ticket_participants + tickets 表查询
  */
-function permissionMiddleware(req, res, next) {
-  if (req.user) {
-    req.permissions = createPermissionChecker(req.user);
-  }
-  next();
+function getAccessibleAccountIds(db, userId) {
+  const rows = db.prepare(`
+        SELECT DISTINCT t.account_id 
+        FROM tickets t
+        INNER JOIN ticket_participants tp ON tp.ticket_id = t.id
+        WHERE tp.user_id = ? AND t.account_id IS NOT NULL
+        UNION
+        SELECT DISTINCT t.account_id 
+        FROM tickets t
+        WHERE (t.assigned_to = ? OR t.created_by = ?) AND t.account_id IS NOT NULL
+    `).all(userId, userId, userId);
+  return rows.map(r => r.account_id);
 }
 
 /**
- * View As 中间件
- * 允许管理员以其他用户身份查看
+ * 获取用户通过工单关联可访问的 serial_number 列表 (JIT 穿透)
  */
-function viewAsMiddleware(db) {
+function getAccessibleSerialNumbers(db, userId) {
+  const rows = db.prepare(`
+        SELECT DISTINCT t.serial_number 
+        FROM tickets t
+        INNER JOIN ticket_participants tp ON tp.ticket_id = t.id
+        WHERE tp.user_id = ? AND t.serial_number IS NOT NULL AND t.serial_number != ''
+        UNION
+        SELECT DISTINCT t.serial_number 
+        FROM tickets t
+        WHERE (t.assigned_to = ? OR t.created_by = ?) AND t.serial_number IS NOT NULL AND t.serial_number != ''
+    `).all(userId, userId, userId);
+  return rows.map(r => r.serial_number);
+}
+
+/**
+ * 获取用户通过工单关联可访问的 dealer_id 列表
+ */
+function getAccessibleDealerIds(db, userId) {
+  const rows = db.prepare(`
+        SELECT DISTINCT t.dealer_id 
+        FROM tickets t
+        INNER JOIN ticket_participants tp ON tp.ticket_id = t.id
+        WHERE tp.user_id = ? AND t.dealer_id IS NOT NULL
+        UNION
+        SELECT DISTINCT t.dealer_id 
+        FROM tickets t
+        WHERE (t.assigned_to = ? OR t.created_by = ?) AND t.dealer_id IS NOT NULL
+    `).all(userId, userId, userId);
+  return rows.map(r => r.dealer_id);
+}
+
+// ============================
+// Express 中间件
+// ============================
+
+/**
+ * CRM 访问守卫 — 保护客户/经销商列表 API
+ * OP/RD 用户无法浏览全量客户列表，返回 403
+ * 但可以通过 /context/* 使用工单穿透
+ */
+function requireCrmAccess(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: '未认证' });
+  }
+  if (hasGlobalAccess(req.user)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    error: '权限不足：您所在部门无权浏览客户档案全量列表。如需查看特定客户信息，请通过关联工单访问。'
+  });
+}
+
+/**
+ * IB (Install Base / 产品库) 访问守卫
+ * OP/RD 不能浏览全量产品列表，但可搜索自己工单关联的 SN
+ */
+function requireIbAccess(db) {
   return (req, res, next) => {
-    const viewAsId = req.headers['x-view-as-user'];
-    
-    if (viewAsId && req.user) {
-      const checker = createPermissionChecker(req.user);
-      
-      if (checker.canUseViewAs()) {
-        const viewAsUser = db.prepare('SELECT * FROM users WHERE id = ?').get(viewAsId);
-        
-        if (viewAsUser) {
-          req.user.viewingAs = viewAsUser;
-          req.user.originalUser = { ...req.user };
-          req.permissions = createPermissionChecker(req.user);
-        }
-      }
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
     }
-    
+    if (hasGlobalAccess(req.user)) {
+      return next();
+    }
+    // OP/RD 可以搜索，但仅返回自己工单关联的产品
+    // 注入可访问的 SN 列表到 req 上，让 route handler 过滤
+    req.accessibleSerialNumbers = getAccessibleSerialNumbers(db, req.user.id);
+    req.isRestrictedAccess = true;
     next();
   };
 }
 
 /**
- * 权限检查装饰器 - 用于路由
- * @param {string} permission - 权限名称
+ * Context API 穿透守卫
+ * /context/by-account: OP/RD 仅能查询自己工单关联的 account
+ * /context/by-serial-number: OP/RD 仅能查询自己工单关联的 SN
  */
-function requirePermission(permission) {
+function requireContextAccess(db) {
   return (req, res, next) => {
-    if (!req.permissions) {
+    if (!req.user) {
       return res.status(401).json({ success: false, error: '未认证' });
     }
-    
-    const checkMethod = `can${permission.charAt(0).toUpperCase() + permission.slice(1)}`;
-    
-    if (typeof req.permissions[checkMethod] === 'function') {
-      if (!req.permissions[checkMethod]()) {
-        return res.status(403).json({ success: false, error: '权限不足' });
+    if (hasGlobalAccess(req.user)) {
+      return next();
+    }
+
+    const { account_id, serial_number } = req.query;
+
+    // 检查 account_id 穿透
+    if (account_id) {
+      const accessibleIds = getAccessibleAccountIds(db, req.user.id);
+      const accessibleDealerIds = getAccessibleDealerIds(db, req.user.id);
+      const allAccessible = [...accessibleIds, ...accessibleDealerIds];
+      if (!allAccessible.includes(parseInt(account_id))) {
+        return res.status(403).json({
+          success: false,
+          error: '权限不足：您没有该客户的访问权限。仅可查看与您关联工单的客户信息。'
+        });
       }
     }
-    
+
+    // 检查 serial_number 穿透
+    if (serial_number) {
+      const accessibleSNs = getAccessibleSerialNumbers(db, req.user.id);
+      if (!accessibleSNs.includes(serial_number)) {
+        return res.status(403).json({
+          success: false,
+          error: '权限不足：您没有该设备的访问权限。仅可查看与您关联工单的设备信息。'
+        });
+      }
+    }
+
+    next();
+  };
+}
+
+/**
+ * View As 中间件 (保持原有逻辑)
+ */
+function viewAsMiddleware(db) {
+  return (req, res, next) => {
+    const viewAsId = req.headers['x-view-as-user'];
+
+    if (viewAsId && req.user) {
+      if (req.user.role === 'Admin' || req.user.role === 'Exec') {
+        const viewAsUser = db.prepare(`
+                    SELECT u.*, d.name as department_name, d.code as department_code
+                    FROM users u
+                    LEFT JOIN departments d ON u.department_id = d.id
+                    WHERE u.id = ?
+                `).get(viewAsId);
+
+        if (viewAsUser) {
+          req.originalUser = { ...req.user };
+          req.user.id = viewAsUser.id;
+          req.user.username = viewAsUser.username;
+          req.user.display_name = viewAsUser.display_name;
+          req.user.role = viewAsUser.role;
+          req.user.department_id = viewAsUser.department_id;
+          req.user.department_name = viewAsUser.department_name;
+          req.user.department_code = viewAsUser.department_code;
+          req.user.user_type = viewAsUser.user_type;
+          req.user.dealer_id = viewAsUser.dealer_id;
+          req.user.region_responsible = viewAsUser.region_responsible;
+          req.user.viewingAs = viewAsUser;
+          req.user.isViewingAs = true;
+        }
+      }
+    }
+
     next();
   };
 }
 
 module.exports = {
-  ROLE_PERMISSIONS,
-  DEPARTMENT_PERMISSIONS,
-  createPermissionChecker,
-  permissionMiddleware,
-  viewAsMiddleware,
-  requirePermission
+  hasGlobalAccess,
+  getAccessibleAccountIds,
+  getAccessibleSerialNumbers,
+  getAccessibleDealerIds,
+  requireCrmAccess,
+  requireIbAccess,
+  requireContextAccess,
+  viewAsMiddleware
 };

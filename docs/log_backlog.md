@@ -8,11 +8,12 @@
 ## 进行中任务
 
 ### [SVC-P2] Service P2 架构升级 (已完成 100%)
-**Phase 2.5: 导航与集成** ✅
-- [x] 侧边栏分组重构：MANAGEMENT/WORKSPACE/OPERATIONS/KNOWLEDGE/ARCHIVES
-- [x] 角色统一：Manager→Lead, Staff→Member (数据库迁移)
-- [x] Files 入口修复：Lead 角色现在可访问 Files 模块
-- [x] 版本发布：v12.2.1 已部署至 mini 服务器
+**Phase 2.6: 高级协作与部门池** ✅
+- [x] 工作区三视图逻辑闭环 (服务端过滤)
+- [x] 侧边栏动态角标 (My Tasks/Mentioned/Team Queue)
+- [x] 部门感知的任务分配与领取逻辑 (Pick up)
+- [x] 自动参与者关联机制 (指派自动加入协作)
+- [x] 版本发布：v12.3.13 已全量部署至 mini
 **Phase 2.1: 数据基础** ✅
 - [x] 数据库迁移：020_p2_unified_tickets.sql, 021_migrate_tickets_data.js
 - [x] SLA 引擎：sla_service.js (时长矩阵/状态检测/超时计数)

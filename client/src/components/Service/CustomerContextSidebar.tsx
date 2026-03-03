@@ -45,6 +45,9 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const [showSpamModal, setShowSpamModal] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState(false);
+    const [dealerExpanded, setDealerExpanded] = useState(true);
+    const [customerExpanded, setCustomerExpanded] = useState(true);
+    const [deviceExpanded, setDeviceExpanded] = useState(true);
 
     useEffect(() => {
         fetchContext();
@@ -264,74 +267,76 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             <div style={contentStyle}>
                 {/* ===== Card 1: 经销商卡片 ===== */}
                 {(dealerId || dealerName) && (
-                    <div
-                        style={{
-                            ...cardStyle,
-                            background: 'var(--bg-sidebar)',
-                            border: '1px solid rgba(255, 215, 0, 0.15)',
-                            cursor: dealerId ? 'pointer' : 'default',
-                            transition: 'all 0.2s ease'
-                        }}
-                        onClick={() => dealerId && navigate(`/service/dealers/${dealerId}?type=Dealer`)}
-                        onMouseEnter={(e) => {
-                            if (dealerId) {
-                                e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)';
-                                e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.25)';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 215, 0, 0.06)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.15)';
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{
+                        ...cardStyle,
+                        background: 'var(--bg-sidebar)',
+                        border: '1px solid rgba(255, 215, 0, 0.15)',
+                        overflow: 'hidden',
+                    }}>
+                        <div
+                            onClick={() => setDealerExpanded(!dealerExpanded)}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                marginBottom: dealerExpanded ? '10px' : 0,
+                                cursor: 'pointer',
+                            }}
+                        >
                             <div style={{ ...cardTitleStyle, marginBottom: 0, color: 'rgba(255, 215, 0, 0.7)' }}>
                                 <Building size={12} /> 经销商
                             </div>
-                            {dealerId && <ChevronRight size={14} style={{ color: 'rgba(255, 215, 0, 0.5)' }} />}
+                            {dealerExpanded ? <ChevronDown size={14} style={{ color: 'rgba(255,215,0,0.5)' }} /> : <ChevronRight size={14} style={{ color: 'rgba(255,215,0,0.5)' }} />}
                         </div>
 
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
-                            {dealerName || '未知经销商'}
-                        </div>
+                        {dealerExpanded && (
+                            <>
+                                <div
+                                    style={{ cursor: dealerId ? 'pointer' : 'default' }}
+                                    onClick={() => dealerId && navigate(`/service/dealers/${dealerId}?type=Dealer`)}
+                                >
+                                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                                        {dealerName || '未知经销商'}
+                                    </div>
 
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                            {dealerCode && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Hash size={11} />
-                                    <span>{dealerCode}</span>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                        {dealerCode && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Hash size={11} />
+                                                <span>{dealerCode}</span>
+                                            </div>
+                                        )}
+                                        {dealerContactName && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <User size={11} />
+                                                <span>
+                                                    {dealerContactName}
+                                                    {dealerContactTitle && <span style={{ opacity: 0.7 }}> · {dealerContactTitle}</span>}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                            {dealerContactName && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <User size={11} />
-                                    <span>
-                                        {dealerContactName}
-                                        {dealerContactTitle && <span style={{ opacity: 0.7 }}> · {dealerContactTitle}</span>}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* 经销商工单统计 */}
-                        {data?.dealer_ai_profile && data.dealer_ai_profile.ticket_count > 0 && (
-                            <div style={{
-                                background: 'rgba(255, 215, 0, 0.08)',
-                                borderRadius: '8px',
-                                padding: '10px 12px',
-                                marginTop: '12px'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <Ticket size={12} style={{ color: 'rgba(255, 215, 0, 0.7)' }} />
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255, 215, 0, 0.8)', fontWeight: 600 }}>工单统计</span>
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                    总计 <span style={{ color: 'rgba(255, 215, 0, 0.9)', fontWeight: 600 }}>{data.dealer_ai_profile.ticket_count}</span>
-                                    {data.dealer_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.dealer_ai_profile.inquiry_count}</span>}
-                                    {data.dealer_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.dealer_ai_profile.rma_count}</span>}
-                                    {data.dealer_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.dealer_ai_profile.repair_count}</span>}
-                                </div>
-                            </div>
+                                {/* 经销商工单统计 */}
+                                {data?.dealer_ai_profile && data.dealer_ai_profile.ticket_count > 0 && (
+                                    <div style={{
+                                        background: 'rgba(255, 215, 0, 0.08)',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginTop: '12px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                            <Ticket size={12} style={{ color: 'rgba(255, 215, 0, 0.7)' }} />
+                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 215, 0, 0.8)', fontWeight: 600 }}>工单统计</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                            总计 <span style={{ color: 'rgba(255, 215, 0, 0.9)', fontWeight: 600 }}>{data.dealer_ai_profile.ticket_count}</span>
+                                            {data.dealer_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.dealer_ai_profile.inquiry_count}</span>}
+                                            {data.dealer_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.dealer_ai_profile.rma_count}</span>}
+                                            {data.dealer_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.dealer_ai_profile.repair_count}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -455,11 +460,17 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             e.currentTarget.style.borderColor = 'var(--glass-border)';
                         }}
                     >
-                        <div style={cardTitleStyle}>
-                            <User size={12} /> 客户信息
+                        <div
+                            onClick={(e) => { e.stopPropagation(); setCustomerExpanded(!customerExpanded); }}
+                            style={{ ...cardTitleStyle, cursor: 'pointer', justifyContent: 'space-between' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <User size={12} /> 客户信息
+                            </div>
+                            {customerExpanded ? <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />}
                         </div>
 
-                        {/* 客户名称和类型 */}
+                        {/* 客户名称和类型 - 始终显示 */}
                         <div style={{ marginBottom: '12px' }}>
                             <h3
                                 style={{
@@ -478,7 +489,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         </div>
 
                         {/* 关联工单统计 */}
-                        {data.ai_profile && data.ai_profile.ticket_count > 0 && (
+                        {customerExpanded && data.ai_profile && data.ai_profile.ticket_count > 0 && (
                             <div style={{
                                 background: 'rgba(255, 210, 0, 0.08)',
                                 borderRadius: '8px',
@@ -499,81 +510,86 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         )}
 
                         {/* 主要联系人 - 默认只显示1个，多个时可展开 */}
-                        {data.contacts && data.contacts.length > 0 && (
-                            <div style={{ marginBottom: '12px' }}>
-                                {/* 找到主要联系人 */}
-                                {(() => {
-                                    const primaryContact = data.contacts.find((c: any) => c.status === 'PRIMARY' || c.is_primary) || data.contacts[0];
-                                    const otherContacts = data.contacts.filter((c: any) => c.id !== primaryContact.id);
+                        {/* 个人客户且联系人同名时不重复显示 */}
+                        {customerExpanded && data.contacts && data.contacts.length > 0 && !(
+                            data.account.account_type?.toUpperCase() === 'INDIVIDUAL' &&
+                            data.contacts.length === 1 &&
+                            data.contacts[0].name === data.account.name
+                        ) && (
+                                <div style={{ marginBottom: '12px' }}>
+                                    {/* 找到主要联系人 */}
+                                    {(() => {
+                                        const primaryContact = data.contacts.find((c: any) => c.status === 'PRIMARY' || c.is_primary) || data.contacts[0];
+                                        const otherContacts = data.contacts.filter((c: any) => c.id !== primaryContact.id);
 
-                                    return (
-                                        <>
-                                            {/* 标题行 - 如果有多个联系人则可点击展开 */}
-                                            <div
-                                                style={{
-                                                    ...labelStyle,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'space-between',
-                                                    cursor: otherContacts.length > 0 ? 'pointer' : 'default'
-                                                }}
-                                                onClick={() => otherContacts.length > 0 && setContactsExpanded(!contactsExpanded)}
-                                            >
-                                                <span>联系人</span>
-                                                {otherContacts.length > 0 && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-tertiary)' }}>
-                                                        <span style={{ fontSize: '0.65rem' }}>
-                                                            {contactsExpanded ? '收起' : `展开其他${otherContacts.length}个`}
-                                                        </span>
-                                                        {contactsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* 主要联系人 - 始终显示，只显示姓名 */}
-                                            <div style={{ ...rowStyle, marginBottom: contactsExpanded && otherContacts.length > 0 ? '8px' : 0 }}>
-                                                <div style={iconColStyle}><User size={12} /></div>
-                                                <div style={textColStyle}>
-                                                    <div style={{ fontWeight: 500 }}>
-                                                        {primaryContact.name}
-                                                        {(primaryContact.status === 'PRIMARY' || primaryContact.is_primary) && (
-                                                            <span style={{
-                                                                fontSize: '0.65rem',
-                                                                color: 'var(--accent-blue)',
-                                                                background: 'rgba(255, 210, 0, 0.15)',
-                                                                padding: '1px 6px',
-                                                                borderRadius: '4px',
-                                                                marginLeft: '6px'
-                                                            }}>主要</span>
-                                                        )}
-                                                    </div>
+                                        return (
+                                            <>
+                                                {/* 标题行 - 如果有多个联系人则可点击展开 */}
+                                                <div
+                                                    style={{
+                                                        ...labelStyle,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        cursor: otherContacts.length > 0 ? 'pointer' : 'default'
+                                                    }}
+                                                    onClick={() => otherContacts.length > 0 && setContactsExpanded(!contactsExpanded)}
+                                                >
+                                                    <span>联系人</span>
+                                                    {otherContacts.length > 0 && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-tertiary)' }}>
+                                                            <span style={{ fontSize: '0.65rem' }}>
+                                                                {contactsExpanded ? '收起' : `展开其他${otherContacts.length}个`}
+                                                            </span>
+                                                            {contactsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
 
-                                            {/* 其他联系人 - 展开时显示，只显示姓名 */}
-                                            {contactsExpanded && otherContacts.map((contact: any, idx: number) => (
-                                                <div key={contact.id} style={{
-                                                    ...rowStyle,
-                                                    marginBottom: idx < otherContacts.length - 1 ? '8px' : 0,
-                                                    paddingTop: '8px',
-                                                    borderTop: idx === 0 ? '1px solid var(--glass-border)' : 'none'
-                                                }}>
+                                                {/* 主要联系人 - 始终显示，只显示姓名 */}
+                                                <div style={{ ...rowStyle, marginBottom: contactsExpanded && otherContacts.length > 0 ? '8px' : 0 }}>
                                                     <div style={iconColStyle}><User size={12} /></div>
                                                     <div style={textColStyle}>
                                                         <div style={{ fontWeight: 500 }}>
-                                                            {contact.name}
+                                                            {primaryContact.name}
+                                                            {(primaryContact.status === 'PRIMARY' || primaryContact.is_primary) && (
+                                                                <span style={{
+                                                                    fontSize: '0.65rem',
+                                                                    color: 'var(--accent-blue)',
+                                                                    background: 'rgba(255, 210, 0, 0.15)',
+                                                                    padding: '1px 6px',
+                                                                    borderRadius: '4px',
+                                                                    marginLeft: '6px'
+                                                                }}>主要</span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        )}
+
+                                                {/* 其他联系人 - 展开时显示，只显示姓名 */}
+                                                {contactsExpanded && otherContacts.map((contact: any, idx: number) => (
+                                                    <div key={contact.id} style={{
+                                                        ...rowStyle,
+                                                        marginBottom: idx < otherContacts.length - 1 ? '8px' : 0,
+                                                        paddingTop: '8px',
+                                                        borderTop: idx === 0 ? '1px solid var(--glass-border)' : 'none'
+                                                    }}>
+                                                        <div style={iconColStyle}><User size={12} /></div>
+                                                        <div style={textColStyle}>
+                                                            <div style={{ fontWeight: 500 }}>
+                                                                {contact.name}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                            )}
 
                         {/* 地区 */}
-                        {(data.account.city || data.account.country) && (
+                        {customerExpanded && (data.account.city || data.account.country) && (
                             <div style={rowStyle}>
                                 <div style={iconColStyle}><MapPin size={12} /></div>
                                 <div style={textColStyle}>
@@ -584,7 +600,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         )}
 
                         {/* 所属经销商 */}
-                        {data.account.parent_dealer_name && (
+                        {customerExpanded && data.account.parent_dealer_name && (
                             <div style={rowStyle}>
                                 <div style={iconColStyle}><Building size={12} /></div>
                                 <div style={textColStyle}>
@@ -619,114 +635,124 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             e.currentTarget.style.borderColor = 'var(--glass-border)';
                         }}
                     >
-                        <div style={cardTitleStyle}>
-                            <Smartphone size={12} /> 设备详情
+                        <div
+                            onClick={(e) => { e.stopPropagation(); setDeviceExpanded(!deviceExpanded); }}
+                            style={{ ...cardTitleStyle, cursor: 'pointer', justifyContent: 'space-between' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Smartphone size={12} /> 设备详情
+                            </div>
+                            {deviceExpanded ? <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />}
                         </div>
 
-                        {/* 设备型号和SN */}
-                        <div style={{ marginBottom: '12px' }}>
-                            <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
-                                {data.device.model_name}
-                            </div>
-                            <div style={{
-                                display: 'inline-block',
-                                fontFamily: 'Monaco, monospace',
-                                fontSize: '0.85rem',
-                                color: 'var(--accent-blue)',
-                                background: 'rgba(255, 210, 0, 0.1)',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                letterSpacing: '0.05em'
-                            }}>
-                                {data.device.serial_number}
-                            </div>
-                        </div>
+                        {deviceExpanded && (
+                            <>
 
-                        {/* 设备关联工单统计 */}
-                        {data.device_ai_profile && data.device_ai_profile.ticket_count > 0 && (
-                            <div style={{
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                borderRadius: '8px',
-                                padding: '10px 12px',
-                                marginBottom: '12px'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <Ticket size={12} style={{ color: 'var(--text-main)' }} />
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 600 }}>关联工单</span>
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                    总计 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.device_ai_profile.ticket_count}</span>
-                                    {data.device_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.device_ai_profile.inquiry_count}</span>}
-                                    {data.device_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.device_ai_profile.rma_count}</span>}
-                                    {data.device_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.device_ai_profile.repair_count}</span>}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 设备信息 */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                            <div>
-                                <div style={labelStyle}>固件版本</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.firmware_version || '-'}</div>
-                            </div>
-                            <div>
-                                <div style={labelStyle}>保修状态</div>
-                                <div style={{
-                                    fontSize: '0.85rem',
-                                    color: data.device.warranty_status === 'Active' ? '#10b981' : '#ef4444',
-                                    fontWeight: 600
-                                }}>
-                                    {data.device.warranty_status === 'Active' ? '有效' : data.device.warranty_status || '-'}
-                                </div>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <div style={labelStyle}>购买日期</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.purchase_date || '-'}</div>
-                            </div>
-                        </div>
-
-                        {/* 注册附件 - 可折叠 */}
-                        {data.parts_catalog && data.parts_catalog.length > 0 && (
-                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
-                                <div
-                                    onClick={() => setPartsExpanded(!partsExpanded)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        cursor: 'pointer',
-                                        marginBottom: partsExpanded ? '8px' : 0
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Package size={12} style={{ color: 'var(--text-tertiary)' }} />
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            注册附件 ({data.parts_catalog.length})
-                                        </span>
+                                {/* 设备型号和SN */}
+                                <div style={{ marginBottom: '12px' }}>
+                                    <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
+                                        {data.device.model_name}
                                     </div>
-                                    {partsExpanded ? <ChevronUp size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />}
+                                    <div style={{
+                                        display: 'inline-block',
+                                        fontFamily: 'Monaco, monospace',
+                                        fontSize: '0.85rem',
+                                        color: 'var(--accent-blue)',
+                                        background: 'rgba(255, 210, 0, 0.1)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        letterSpacing: '0.05em'
+                                    }}>
+                                        {data.device.serial_number}
+                                    </div>
                                 </div>
-                                {partsExpanded && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        {data.parts_catalog.map((part: any) => (
-                                            <div key={part.id} style={{
-                                                background: 'var(--glass-border)',
-                                                borderRadius: '6px',
-                                                padding: '8px 10px',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}>
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{part.part_name}</span>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-                                                    {part.part_number}
-                                                </span>
-                                            </div>
-                                        ))}
+
+                                {/* 设备关联工单统计 */}
+                                {data.device_ai_profile && data.device_ai_profile.ticket_count > 0 && (
+                                    <div style={{
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginBottom: '12px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                            <Ticket size={12} style={{ color: 'var(--text-main)' }} />
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 600 }}>关联工单</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                            总计 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.device_ai_profile.ticket_count}</span>
+                                            {data.device_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.device_ai_profile.inquiry_count}</span>}
+                                            {data.device_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.device_ai_profile.rma_count}</span>}
+                                            {data.device_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.device_ai_profile.repair_count}</span>}
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                        )}
+
+                                {/* 设备信息 */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                    <div>
+                                        <div style={labelStyle}>固件版本</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.firmware_version || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div style={labelStyle}>保修状态</div>
+                                        <div style={{
+                                            fontSize: '0.85rem',
+                                            color: data.device.warranty_status === 'Active' ? '#10b981' : '#ef4444',
+                                            fontWeight: 600
+                                        }}>
+                                            {data.device.warranty_status === 'Active' ? '有效' : data.device.warranty_status || '-'}
+                                        </div>
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <div style={labelStyle}>购买日期</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.purchase_date || '-'}</div>
+                                    </div>
+                                </div>
+
+                                {/* 注册附件 - 可折叠 */}
+                                {data.parts_catalog && data.parts_catalog.length > 0 && (
+                                    <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
+                                        <div
+                                            onClick={() => setPartsExpanded(!partsExpanded)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                cursor: 'pointer',
+                                                marginBottom: partsExpanded ? '8px' : 0
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Package size={12} style={{ color: 'var(--text-tertiary)' }} />
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                    注册附件 ({data.parts_catalog.length})
+                                                </span>
+                                            </div>
+                                            {partsExpanded ? <ChevronUp size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />}
+                                        </div>
+                                        {partsExpanded && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                {data.parts_catalog.map((part: any) => (
+                                                    <div key={part.id} style={{
+                                                        background: 'var(--glass-border)',
+                                                        borderRadius: '6px',
+                                                        padding: '8px 10px',
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{part.part_name}</span>
+                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
+                                                            {part.part_number}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </>)}
                     </div>
                 )}
 

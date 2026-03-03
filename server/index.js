@@ -605,8 +605,8 @@ const authenticate = (req, res, next) => {
                 // Reload user from DB to ensure latest role/department info
                 // Use both integer and float comparison for backward compatibility
                 const user = db.prepare(`
-                    SELECT id, username, role, department_id, user_type, 
-                           job_title
+                    SELECT id, username, display_name, role, department_id, department_name, user_type, 
+                           job_title, status
                     FROM users
                     WHERE id = ? OR id = CAST(? AS REAL)
                 `).get(decoded.id, decoded.id);
@@ -619,10 +619,12 @@ const authenticate = (req, res, next) => {
                 const viewAsUserId = req.headers['x-view-as-user'];
                 if (viewAsUserId && user.role === 'Admin') {
                     const targetUser = db.prepare(`
-                        SELECT id, username, role, department_id, user_type, 
-                               job_title
-                        FROM users
-                        WHERE id = ? OR id = CAST(? AS REAL)
+                        SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
+                               u.job_title, u.dealer_id, u.region_responsible,
+                               d.name as department_name, d.code as department_code
+                        FROM users u
+                        LEFT JOIN departments d ON u.department_id = d.id
+                        WHERE u.id = ? OR u.id = CAST(? AS REAL)
                     `).get(viewAsUserId, viewAsUserId);
 
                     if (targetUser) {
@@ -1163,7 +1165,7 @@ app.get('/api/thumbnail', async (req, res) => {
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const user = db.prepare(`
-        SELECT u.*, d.name as department_name 
+        SELECT u.*, d.name as department_name, d.code as department_code
         FROM users u 
         LEFT JOIN departments d ON u.department_id = d.id 
         WHERE u.username = ?
@@ -1180,6 +1182,7 @@ app.post('/api/login', (req, res) => {
             username: user.username,
             role: user.role,
             department_name: user.department_name,
+            department_code: user.department_code || null,
             job_title: user.job_title || null,
             display_name: user.display_name || user.username,
             user_type: user.user_type || 'Employee'

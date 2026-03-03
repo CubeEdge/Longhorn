@@ -205,7 +205,9 @@ module.exports = function (db, authenticate) {
 
             // P2: Sort by: 1) current user's dept first, 2) MS > OP > RD, 3) name
             const users = db.prepare(`
-                SELECT u.id, u.username as name, u.role, d.name as department, d.code as dept_code
+                SELECT u.id, COALESCE(u.display_name, u.username) as name, 
+                       u.username, u.display_name, u.role, 
+                       d.name as department, d.name as department_name, d.code as dept_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 WHERE ${conditions.join(' AND ')}

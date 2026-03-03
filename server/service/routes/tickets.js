@@ -8,13 +8,30 @@
 
 const express = require('express');
 const slaService = require('../sla_service');
+const { hasGlobalAccess } = require('../middleware/permission');
 
 module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
 
-    // ==============================
-    // Helper Functions
-    // ==============================
+    const DEPARTMENT_NODES = {
+        'MS': ['draft', 'submitted', 'ms_review', 'waiting_customer', 'ms_closing'],
+        'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_qa'],
+        'GE': ['ge_review', 'ge_closing'],
+        'RD': ['op_diagnosing', 'op_repairing']
+    };
+
+    function getDeptCode(user) {
+        if (!user || !user.department_name) return null;
+        const match = user.department_name.match(/\(([A-Z]+)\)/);
+        if (match) return match[1];
+        if (user.department_name.includes('市场')) return 'MS';
+        if (user.department_name.includes('运营')) return 'OP';
+        if (user.department_name.includes('研发')) return 'RD';
+        if (user.department_name.includes('综合')) return 'GE';
+        // Generic fallback for code-like names
+        if (/^[A-Z]{2,3}$/.test(user.department_name)) return user.department_name;
+        return null;
+    }
 
     /**
      * Generate Ticket Number based on type
@@ -161,7 +178,9 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // Timestamps
             created_at: row.created_at,
-            updated_at: row.updated_at
+            updated_at: row.updated_at,
+            participants: row.participants ? (typeof row.participants === 'string' ? JSON.parse(row.participants) : row.participants) : [],
+            snooze_until: row.snooze_until
         };
 
         if (includeDetails) {
@@ -258,7 +277,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 page = 1,
                 page_size = 20,
                 sort_by = 'created_at',
-                sort_order = 'desc'
+                sort_order = 'desc',
+                participant_id,
+                exclude_assigned_to
             } = req.query;
 
             const user = req.user;
@@ -269,6 +290,19 @@ module.exports = function (db, authenticate, serviceUpload) {
             if (user.user_type === 'Dealer') {
                 conditions.push('t.dealer_id = ?');
                 params.push(user.dealer_id);
+            } else if (!hasGlobalAccess(user)) {
+                // PRD §2.1: OP/RD see RMA tickets freely, but Inquiry/SVC via JIT only
+                conditions.push(`(
+                    t.ticket_type = 'rma'
+                    OR t.assigned_to = ?
+                    OR t.created_by = ?
+                    OR t.submitted_by = ?
+                    OR EXISTS (
+                        SELECT 1 FROM ticket_participants tp 
+                        WHERE tp.ticket_id = t.id AND tp.user_id = ?
+                    )
+                )`);
+                params.push(user.id, user.id, user.id, user.id);
             }
 
             // Filters
@@ -300,9 +334,34 @@ module.exports = function (db, authenticate, serviceUpload) {
                 conditions.push('t.dealer_id = ?');
                 params.push(dealer_id);
             }
-            if (assigned_to) {
-                conditions.push('t.assigned_to = ?');
-                params.push(assigned_to);
+            // Support 'me' as special value - resolves to req.user.id (which is view-as user when active)
+            const resolveMe = (val) => (val === 'me' ? String(req.user.id) : val);
+
+            if (assigned_to !== undefined && assigned_to !== '') {
+                const resolvedAssignedTo = resolveMe(assigned_to);
+                if (resolvedAssignedTo === '0' || resolvedAssignedTo === 'null') {
+                    const deptCode = getDeptCode(req.user);
+                    const relevantNodes = DEPARTMENT_NODES[deptCode];
+
+                    if (relevantNodes && req.user.role !== 'Admin' && req.user.role !== 'Exec') {
+                        conditions.push(`t.assigned_to IS NULL AND t.current_node IN (${relevantNodes.map(n => `'${n}'`).join(',')})`);
+                    } else {
+                        conditions.push('t.assigned_to IS NULL');
+                    }
+                } else {
+                    conditions.push('t.assigned_to = ?');
+                    params.push(resolvedAssignedTo);
+                }
+            }
+            if (participant_id) {
+                const resolvedParticipantId = resolveMe(participant_id);
+                conditions.push(`(t.participants LIKE ? OR EXISTS (SELECT 1 FROM ticket_participants tp WHERE tp.ticket_id = t.id AND tp.user_id = ?))`);
+                params.push(`%"${resolvedParticipantId}"%`, resolvedParticipantId);
+            }
+            if (exclude_assigned_to) {
+                const resolvedExclude = resolveMe(exclude_assigned_to);
+                conditions.push(`(t.assigned_to IS NULL OR t.assigned_to != ?)`);
+                params.push(resolvedExclude);
             }
             if (submitted_by) {
                 conditions.push('t.submitted_by = ?');
@@ -437,6 +496,28 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(403).json({ success: false, error: '无权访问此工单' });
             }
 
+            // PRD §2.1: Check JIT permission for internal restricted users (OP/RD)
+            if (req.user.user_type !== 'Dealer' && !hasGlobalAccess(req.user)) {
+                if (row.ticket_type === 'inquiry' || row.ticket_type === 'svc') {
+                    const userId = req.user.id;
+                    const isRelated = row.assigned_to === userId ||
+                        row.created_by === userId ||
+                        row.submitted_by === userId;
+
+                    let isParticipant = false;
+                    try {
+                        const participantCheck = db.prepare(`SELECT 1 FROM ticket_participants WHERE ticket_id = ? AND user_id = ?`).get(id, userId);
+                        isParticipant = !!participantCheck;
+                    } catch (e) {
+                        // table may not exist
+                    }
+
+                    if (!isRelated && !isParticipant) {
+                        return res.status(403).json({ success: false, error: '仅能访问分配给您或 @ 提及过您的咨询/维修工单' });
+                    }
+                }
+            }
+
             // If contact_id is null but account_id exists, fetch primary contact
             let contactInfo = {
                 contact_id: row.contact_id,
@@ -534,6 +615,35 @@ module.exports = function (db, authenticate, serviceUpload) {
                 `).all(id);
             } catch (_e) {
                 // ticket_participants table not yet created
+            }
+
+            // Technician View (OP/RD DTO desensitization)
+            // PRD §2.2: OP sees technical info only, commercial-sensitive fields hidden
+            if (!hasGlobalAccess(req.user)) {
+                // Strip payment/commercial fields
+                delete ticketData.payment_channel;
+                delete ticketData.payment_amount;
+                delete ticketData.payment_date;
+
+                // Desensitize reporter snapshot — keep name/role, hide phone/email
+                if (ticketData.reporter_snapshot) {
+                    ticketData.reporter_snapshot = {
+                        name: ticketData.reporter_snapshot.name,
+                        role: ticketData.reporter_snapshot.role,
+                        source: ticketData.reporter_snapshot.source
+                    };
+                }
+
+                // Strip account context sensitive details
+                if (accountContext) {
+                    delete accountContext.service_tier;
+                    accountContext.contacts = (accountContext.contacts || []).map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        job_title: c.job_title,
+                        is_primary: c.is_primary
+                    }));
+                }
             }
 
             res.json({
@@ -670,15 +780,18 @@ module.exports = function (db, authenticate, serviceUpload) {
             );
 
             // Create initial activity
+            const actorName = req.user.display_name || req.user.username || 'system';
+            const actorDept = req.user.department_name || req.user.department || 'MS';
             db.prepare(`
-                INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
-                VALUES (?, 'status_change', ?, ?, ?, ?, 'all')
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system_event', ?, ?, ?, ?, ?, 'all')
             `).run(
                 result.lastInsertRowid,
-                JSON.stringify({ from_node: null, to_node: initialNode }),
+                `创建了${ticket_type === 'RMA' ? 'RMA' : ''}工单 ${ticketNumber}`,
+                JSON.stringify({ event_type: 'creation', ticket_type, initial_node: initialNode, priority, assigned_to: assigned_to || null }),
                 req.user.id,
-                req.user.name,
-                req.user.department || 'MS'
+                actorName,
+                actorDept
             );
 
             res.json({
@@ -763,8 +876,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `状态变更: ${ticket.current_node} → ${updates.current_node}`,
                     JSON.stringify({ from_node: ticket.current_node, to_node: updates.current_node }),
                     req.user.id,
-                    req.user.name,
-                    req.user.department || 'MS'
+                    req.user.display_name || req.user.username,
+                    req.user.department_name || 'MS'
                 );
 
                 // Update status field
@@ -784,8 +897,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `优先级变更: ${ticket.priority} → ${updates.priority}`,
                     JSON.stringify({ from_priority: ticket.priority, to_priority: updates.priority }),
                     req.user.id,
-                    req.user.name,
-                    req.user.department || 'MS'
+                    req.user.display_name || req.user.username,
+                    req.user.department_name || 'MS'
                 );
 
                 // Recalculate SLA if priority changed
@@ -806,11 +919,27 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `指派变更`,
                     JSON.stringify({ from_user_id: ticket.assigned_to, to_user_id: updates.assigned_to }),
                     req.user.id,
-                    req.user.name,
-                    req.user.department || 'MS'
+                    req.user.display_name || req.user.username,
+                    req.user.department_name || 'MS'
                 );
-            }
 
+                // P2: Add new assignee as participant automatically
+                if (updates.assigned_to && updates.assigned_to > 0) {
+                    try {
+                        db.prepare(`
+                            INSERT OR IGNORE INTO ticket_participants (ticket_id, user_id, role, join_method, joined_at)
+                            VALUES (?, ?, 'assignee', 'auto', ?)
+                        `).run(id, updates.assigned_to, now);
+
+                        // Also update role to 'assignee' if they were already a participant
+                        db.prepare(`
+                            UPDATE ticket_participants SET role = 'assignee' WHERE ticket_id = ? AND user_id = ?
+                        `).run(id, updates.assigned_to);
+                    } catch (e) {
+                        console.error('[Tickets] Failed to add assignee as participant:', e.message);
+                    }
+                }
+            }
             if (sets.length === 0) {
                 return res.json({ success: true, message: '无更新' });
             }
@@ -944,6 +1073,59 @@ module.exports = function (db, authenticate, serviceUpload) {
             });
         } catch (err) {
             console.error('[Tickets] Convert error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * GET /api/v1/tickets/workspace/counts
+     * Get counts for Workspace views: My Tasks, Mentioned, Team Queue
+     */
+    router.get('/workspace/counts', authenticate, (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            // 1. My Tasks (Assigned to me, not closed/resolved)
+            const myTasksCount = db.prepare(`
+                SELECT COUNT(*) as count FROM tickets 
+                WHERE assigned_to = ? AND current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            `).get(userId).count;
+
+            // 2. Mentioned (In participants, not assigned_to, not closed/resolved)
+            // Use existing participant logic
+            const mentionedCount = db.prepare(`
+                SELECT COUNT(*) as count FROM tickets t
+                WHERE EXISTS (SELECT 1 FROM ticket_participants tp WHERE tp.ticket_id = t.id AND tp.user_id = ?)
+                AND (t.assigned_to IS NULL OR t.assigned_to != ?)
+                AND t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            `).get(userId, userId).count;
+
+            // 3. Team Queue (Unassigned, not closed/resolved)
+            const deptCode = getDeptCode(req.user);
+            const relevantNodes = DEPARTMENT_NODES[deptCode];
+
+            let teamQueueSql = `
+                SELECT COUNT(*) as count FROM tickets 
+                WHERE (assigned_to IS NULL OR assigned_to = 0)
+                AND current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            `;
+
+            if (relevantNodes && req.user.role !== 'Admin' && req.user.role !== 'Exec') {
+                teamQueueSql += ` AND current_node IN (${relevantNodes.map(n => `'${n}'`).join(',')})`;
+            }
+
+            const teamQueueCount = db.prepare(teamQueueSql).get().count;
+
+            res.json({
+                success: true,
+                data: {
+                    my_tasks: myTasksCount,
+                    mentioned: mentionedCount,
+                    team_queue: teamQueueCount
+                }
+            });
+        } catch (err) {
+            console.error('[Tickets] Workspace counts error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

@@ -4,18 +4,19 @@
  */
 
 const express = require('express');
+const { requireCrmAccess } = require('../middleware/permission');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     /**
      * GET /api/v1/dealers
      * List all dealers (查询accounts表中account_type='DEALER'的记录)
      */
-    router.get('/', authenticate, (req, res) => {
+    router.get('/', authenticate, requireCrmAccess, (req, res) => {
         try {
             const { region, can_repair } = req.query;
-            
+
             let conditions = ["account_type = 'DEALER'"];
             let params = [];
 
@@ -70,10 +71,10 @@ module.exports = function(db, authenticate) {
      * GET /api/v1/dealers/:id
      * Get dealer detail (查询accounts表)
      */
-    router.get('/:id', authenticate, (req, res) => {
+    router.get('/:id', authenticate, requireCrmAccess, (req, res) => {
         try {
             const dealer = db.prepare('SELECT * FROM accounts WHERE id = ? AND account_type = ?').get(req.params.id, 'DEALER');
-            
+
             if (!dealer) {
                 return res.status(404).json({
                     success: false,
@@ -128,10 +129,10 @@ module.exports = function(db, authenticate) {
      * GET /api/v1/dealers/:id/issues
      * Get issues for a specific dealer
      */
-    router.get('/:id/issues', authenticate, (req, res) => {
+    router.get('/:id/issues', authenticate, requireCrmAccess, (req, res) => {
         try {
             const { page = 1, page_size = 20, status } = req.query;
-            
+
             // Check if user has permission (must be admin/lead or the dealer themselves)
             if (req.user.user_type === 'Dealer' && req.user.dealer_id !== parseInt(req.params.id)) {
                 return res.status(403).json({

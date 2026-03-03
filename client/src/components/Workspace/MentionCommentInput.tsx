@@ -1,57 +1,100 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User as UserIcon } from 'lucide-react';
+import { Send, AtSign, Paperclip, X, Image } from 'lucide-react';
 import axios from 'axios';
+
+const INTERACTION_FREQS_KEY = 'longhorn_interaction_freqs';
+
+const getInteractionFreqs = (): Record<number, number> => {
+    try {
+        return JSON.parse(localStorage.getItem(INTERACTION_FREQS_KEY) || '{}');
+    } catch {
+        return {};
+    }
+};
+
+const trackInteraction = (userId: number) => {
+    try {
+        const freqs = getInteractionFreqs();
+        freqs[userId] = (freqs[userId] || 0) + 1;
+        localStorage.setItem(INTERACTION_FREQS_KEY, JSON.stringify(freqs));
+    } catch { }
+};
 
 interface User {
     id: number;
     name: string;
     department?: string;
+    department_name?: string;
+    role?: string;
+}
+
+interface MentionStat {
+    user_id: number;
+    mention_count: number;
+}
+
+interface AttachmentFile {
+    file: File;
+    preview?: string;
 }
 
 interface MentionCommentInputProps {
-    onSubmit: (content: string, visibility: string, mentions: number[]) => void;
+    onSubmit: (content: string, visibility: string, mentions: number[], attachments?: File[]) => void;
     loading?: boolean;
 }
+
+const FREQ_THRESHOLD = 2;
 
 export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubmit, loading }) => {
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState('all');
     const [mentions, setMentions] = useState<number[]>([]);
+    const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
 
     const [users, setUsers] = useState<User[]>([]);
+    const [mentionStats, setMentionStats] = useState<Record<number, number>>({});
     const [showMentionMenu, setShowMentionMenu] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionIndex, setMentionIndex] = useState(-1);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const mentionMenuRef = useRef<HTMLUListElement>(null);
+    const mentionMenuRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const fetchUsers = async () => {
+        const fetchData = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('/api/v1/system/users', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.data.success) {
-                    setUsers(res.data.data);
+                const [usersRes, statsRes] = await Promise.all([
+                    axios.get('/api/v1/system/users', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get('/api/v1/tickets/mention-stats', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }).catch(() => ({ data: { data: [] } }))
+                ]);
+                if (usersRes.data.success) {
+                    setUsers(usersRes.data.data);
                 }
+                const statsMap: Record<number, number> = {};
+                (statsRes.data?.data || []).forEach((s: MentionStat) => {
+                    statsMap[s.user_id] = s.mention_count;
+                });
+                setMentionStats(statsMap);
             } catch (err) {
                 console.error('[MentionInput] Failed to fetch users', err);
             }
         };
-        fetchUsers();
+        fetchData();
     }, []);
 
-    // Click outside to close mention menu
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (showMentionMenu && mentionMenuRef.current && !mentionMenuRef.current.contains(event.target as Node)) {
                 setShowMentionMenu(false);
             }
         };
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showMentionMenu]);
@@ -74,26 +117,64 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
         }
     };
 
-    const filteredUsers = showMentionMenu
-        ? users.filter(u => u.name.toLowerCase().includes(mentionQuery) || (u.department && u.department.toLowerCase().includes(mentionQuery)))
-        : [];
+    // Build grouped filtered users — use department_name (not role) for grouping
+    const buildGroupedUsers = () => {
+        const freqs = getInteractionFreqs();
+        const query = mentionQuery.toLowerCase();
+
+        const filtered = users.filter(u =>
+            u.name.toLowerCase().includes(query) ||
+            (u.department && u.department.toLowerCase().includes(query)) ||
+            (u.department_name && u.department_name.toLowerCase().includes(query))
+        ).sort((a, b) => {
+            const aScore = (mentionStats[a.id] || 0) + (freqs[a.id] || 0);
+            const bScore = (mentionStats[b.id] || 0) + (freqs[b.id] || 0);
+            if (aScore !== bScore) return bScore - aScore;
+            return a.name.localeCompare(b.name);
+        });
+
+        const frequentUsers: User[] = [];
+        const deptGroups: Record<string, User[]> = {};
+
+        filtered.forEach(u => {
+            const score = (mentionStats[u.id] || 0) + (freqs[u.id] || 0);
+            if (score >= FREQ_THRESHOLD) {
+                frequentUsers.push(u);
+            }
+            // Use department_name or department for grouping, NOT role
+            const dept = u.department_name || u.department || '其他';
+            if (!deptGroups[dept]) deptGroups[dept] = [];
+            deptGroups[dept].push(u);
+        });
+
+        const groups: { name: string; users: User[] }[] = [];
+        if (frequentUsers.length > 0) {
+            groups.push({ name: '⭐ 常用', users: frequentUsers });
+        }
+        Object.entries(deptGroups).forEach(([name, us]) => {
+            groups.push({ name, users: us });
+        });
+
+        return { groups, flatList: filtered };
+    };
+
+    const { groups: mentionGroups, flatList } = showMentionMenu ? buildGroupedUsers() : { groups: [], flatList: [] };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (showMentionMenu && filteredUsers.length > 0) {
+        if (showMentionMenu && flatList.length > 0) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev + 1) % filteredUsers.length);
+                setSelectedIndex(prev => (prev + 1) % flatList.length);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+                setSelectedIndex(prev => (prev - 1 + flatList.length) % flatList.length);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                insertMention(filteredUsers[selectedIndex]);
+                insertMention(flatList[selectedIndex]);
             } else if (e.key === 'Escape') {
                 setShowMentionMenu(false);
             }
         } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-            // Command+Enter (Mac) or Ctrl+Enter (Windows/Linux) to submit
             e.preventDefault();
             handleSubmit();
         }
@@ -101,127 +182,211 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
 
     const insertMention = (user: User) => {
         if (!textareaRef.current) return;
-
         const textBeforeAt = content.slice(0, mentionIndex);
         const textAfterCursor = content.slice(textareaRef.current.selectionStart);
-
         const newContent = `${textBeforeAt}@${user.name} ${textAfterCursor}`;
         setContent(newContent);
         setShowMentionMenu(false);
-
         if (!mentions.includes(user.id)) {
             setMentions(prev => [...prev, user.id]);
         }
+        trackInteraction(user.id);
+        setTimeout(() => { textareaRef.current?.focus(); }, 0);
+    };
 
-        setTimeout(() => {
-            textareaRef.current?.focus();
-        }, 0);
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const newAttachments: AttachmentFile[] = files.map(file => {
+            const attachment: AttachmentFile = { file };
+            if (file.type.startsWith('image/')) {
+                attachment.preview = URL.createObjectURL(file);
+            }
+            return attachment;
+        });
+        setAttachments(prev => [...prev, ...newAttachments]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeAttachment = (idx: number) => {
+        setAttachments(prev => {
+            const removed = prev[idx];
+            if (removed.preview) URL.revokeObjectURL(removed.preview);
+            return prev.filter((_, i) => i !== idx);
+        });
     };
 
     const handleSubmit = () => {
-        if (!content.trim()) return;
-
-        // Verify mapped mentions still exist in text
+        if (!content.trim() && attachments.length === 0) return;
         const finalMentions = mentions.filter(id => {
             const u = users.find(x => x.id === id);
             return u && content.includes(`@${u.name}`);
         });
-
-        onSubmit(content, visibility, finalMentions);
+        onSubmit(content, visibility, finalMentions, attachments.map(a => a.file));
         setContent('');
         setMentions([]);
+        // Clean up previews
+        attachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
+        setAttachments([]);
     };
 
     return (
-        <div style={{
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: 16,
-            background: 'rgba(30, 30, 30, 0.6)',
-            position: 'relative'
-        }}>
+        <div style={{ padding: 16, background: 'rgba(30, 30, 30, 0.6)', position: 'relative' }}>
             <textarea
                 ref={textareaRef}
                 value={content}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="添加评论... (支持 @用户 提及)"
+                placeholder="添加评论... (输入 @ 提及用户)"
                 style={{
-                    width: '100%',
-                    minHeight: 80,
-                    padding: 12,
+                    width: '100%', minHeight: 72, padding: 12,
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 14,
-                    resize: 'vertical',
-                    marginBottom: 12,
+                    borderRadius: 8, color: '#fff', fontSize: 14,
+                    resize: 'vertical', marginBottom: attachments.length > 0 ? 8 : 10,
                     outline: 'none',
                     boxShadow: showMentionMenu ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
                     transition: 'box-shadow 0.2s'
                 }}
                 onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.5)'; }}
-                onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
+                onBlur={(e) => { if (!showMentionMenu) e.target.style.boxShadow = 'none'; }}
             />
 
-            {showMentionMenu && filteredUsers.length > 0 && (
-                <ul ref={mentionMenuRef} style={{
-                    position: 'absolute',
-                    bottom: 70,
-                    left: 20,
-                    background: '#2A2A2A',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 8,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                    padding: '4px 0',
-                    margin: 0,
-                    listStyle: 'none',
-                    maxHeight: 200,
-                    overflowY: 'auto',
-                    zIndex: 100,
-                    minWidth: 200
+            {/* Attachment previews */}
+            {attachments.length > 0 && (
+                <div style={{
+                    display: 'flex', gap: 8, flexWrap: 'wrap',
+                    padding: '8px 0', marginBottom: 8,
                 }}>
-                    {filteredUsers.map((user, idx) => (
-                        <li
-                            key={user.id}
-                            onClick={() => insertMention(user)}
-                            onMouseEnter={() => setSelectedIndex(idx)}
-                            style={{
-                                padding: '8px 12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                background: idx === selectedIndex ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                                color: '#fff',
-                                fontSize: 14
-                            }}
-                        >
-                            <div style={{
-                                width: 24, height: 24, borderRadius: '50%', background: '#555',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <UserIcon size={14} color="#aaa" />
-                            </div>
-                            <span>{user.name}</span>
-                            {user.department && <span style={{ fontSize: 12, color: '#888', marginLeft: 'auto' }}>{user.department}</span>}
-                        </li>
+                    {attachments.map((att, idx) => (
+                        <div key={idx} style={{
+                            position: 'relative', borderRadius: 8, overflow: 'hidden',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'rgba(255,255,255,0.05)',
+                        }}>
+                            {att.preview ? (
+                                <img src={att.preview} alt="" style={{
+                                    width: 80, height: 80, objectFit: 'cover', display: 'block',
+                                }} />
+                            ) : (
+                                <div style={{
+                                    width: 80, height: 80, display: 'flex',
+                                    flexDirection: 'column', alignItems: 'center',
+                                    justifyContent: 'center', gap: 4,
+                                }}>
+                                    <Paperclip size={16} color="#888" />
+                                    <span style={{
+                                        fontSize: 10, color: '#888', maxWidth: 70,
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                        textAlign: 'center',
+                                    }}>{att.file.name}</span>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => removeAttachment(idx)}
+                                style={{
+                                    position: 'absolute', top: 2, right: 2,
+                                    width: 18, height: 18, borderRadius: '50%',
+                                    background: 'rgba(0,0,0,0.7)', border: 'none',
+                                    color: '#fff', cursor: 'pointer', padding: 0,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                            >
+                                <X size={10} />
+                            </button>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Grouped @mention dropdown */}
+            {showMentionMenu && flatList.length > 0 && (
+                <div ref={mentionMenuRef} style={{
+                    position: 'absolute', bottom: attachments.length > 0 ? 160 : 80,
+                    left: 16,
+                    background: '#1E1E1E',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 10,
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                    padding: '8px 0',
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                    zIndex: 100,
+                    minWidth: 260, maxWidth: 320,
+                }}>
+                    {mentionGroups.map(group => (
+                        <div key={group.name}>
+                            <div style={{
+                                fontSize: 11, fontWeight: 600, color: '#888',
+                                padding: '6px 14px 4px', letterSpacing: 0.5,
+                            }}>
+                                {group.name} ({group.users.length})
+                            </div>
+                            {group.users.map(user => {
+                                const currentFlatIdx = flatList.findIndex(u => u.id === user.id);
+                                const isSelected = currentFlatIdx === selectedIndex;
+                                const mCount = mentionStats[user.id] || 0;
+                                const localFreq = getInteractionFreqs()[user.id] || 0;
+                                const totalInteractions = mCount + localFreq;
+                                const deptLabel = user.department_name || user.department;
+
+                                return (
+                                    <div
+                                        key={`${group.name}-${user.id}`}
+                                        onClick={() => insertMention(user)}
+                                        onMouseEnter={() => setSelectedIndex(currentFlatIdx)}
+                                        style={{
+                                            padding: '7px 14px', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            background: isSelected ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                            transition: 'background 0.1s',
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 26, height: 26, borderRadius: '50%',
+                                            background: 'rgba(255,215,0,0.15)', color: '#FFD700',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 11, fontWeight: 600, flexShrink: 0,
+                                        }}>
+                                            {user.name[0]?.toUpperCase() || '?'}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                fontSize: 13, fontWeight: 500, color: '#e0e0e0',
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                            }}>
+                                                {user.name}
+                                            </div>
+                                            {deptLabel && (
+                                                <div style={{ fontSize: 11, color: '#666' }}>{deptLabel}</div>
+                                            )}
+                                        </div>
+                                        {totalInteractions > 0 && (
+                                            <span style={{
+                                                fontSize: 11, color: '#3B82F6', fontWeight: 600,
+                                                background: 'rgba(59,130,246,0.12)',
+                                                padding: '1px 6px', borderRadius: 4,
+                                                display: 'flex', alignItems: 'center', gap: 3,
+                                            }}>
+                                                <AtSign size={9} /> {totalInteractions}
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <select
                     value={visibility}
                     onChange={e => setVisibility(e.target.value)}
                     style={{
                         background: 'rgba(255,255,255,0.06)',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        color: '#ccc',
-                        fontSize: 13,
-                        outline: 'none'
+                        borderRadius: 6, padding: '6px 10px',
+                        color: '#ccc', fontSize: 12, outline: 'none'
                     }}
                 >
                     <option value="all">所有人可见</option>
@@ -229,27 +394,49 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     <option value="op_only">仅 OP</option>
                 </select>
 
+                {/* Attachment button */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.zip"
+                    style={{ display: 'none' }}
+                    onChange={handleFileSelect}
+                />
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="添加附件"
+                    style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 32, height: 32, borderRadius: 6,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'rgba(255,255,255,0.04)',
+                        color: '#888', cursor: 'pointer', padding: 0,
+                        transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#FFD700'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                >
+                    <Image size={14} />
+                </button>
+
                 <div style={{ flex: 1 }} />
 
                 <button
                     onClick={handleSubmit}
-                    disabled={loading || !content.trim()}
+                    disabled={loading || (!content.trim() && attachments.length === 0)}
                     style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '8px 16px',
-                        background: content.trim() ? '#FFD700' : 'rgba(255,255,255,0.1)',
-                        color: content.trim() ? '#000' : '#666',
-                        border: 'none',
-                        borderRadius: 6,
-                        fontSize: 14,
-                        fontWeight: 500,
-                        cursor: content.trim() ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '7px 16px',
+                        background: (content.trim() || attachments.length > 0) ? '#FFD700' : 'rgba(255,255,255,0.1)',
+                        color: (content.trim() || attachments.length > 0) ? '#000' : '#666',
+                        border: 'none', borderRadius: 6,
+                        fontSize: 13, fontWeight: 600,
+                        cursor: (content.trim() || attachments.length > 0) ? 'pointer' : 'not-allowed',
                         transition: 'background 0.2s, color 0.2s'
                     }}
                 >
-                    <Send size={14} />
+                    <Send size={13} />
                     发送
                 </button>
             </div>

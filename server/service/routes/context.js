@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { hasGlobalAccess, getAccessibleAccountIds, getAccessibleSerialNumbers } = require('../middleware/permission');
 
 module.exports = (db, authenticate) => {
 
@@ -14,6 +15,17 @@ module.exports = (db, authenticate) => {
 
             if (!customer_id && !customer_name) {
                 return res.status(400).json({ success: false, error: "Missing customer_id or customer_name" });
+            }
+
+            // 穿透授权：OP/RD 仅能查询自己工单关联的客户
+            if (!hasGlobalAccess(req.user) && customer_id) {
+                const accessibleIds = getAccessibleAccountIds(db, req.user.id);
+                if (!accessibleIds.includes(parseInt(customer_id))) {
+                    return res.status(403).json({
+                        success: false,
+                        error: '权限不足：您没有该客户的访问权限。仅可查看与您关联工单的客户信息。'
+                    });
+                }
             }
 
             let customer;
@@ -122,11 +134,34 @@ module.exports = (db, authenticate) => {
                 // dealers table may not exist yet
             }
 
+            // MS 商业视图 (Commercial View) vs OP 技术视图 (Technician View)
+            if (!hasGlobalAccess(req.user)) {
+                // Desensitize Customer Profile
+                delete customer.service_tier;
+                delete customer.industry_tags;
+                // Keep name, but mask contact details if needed (or keep them minimal)
+                // crm_level info is commercial, so hide
+                delete customer.crm_level;
+
+                // Desensitize Devices
+                relatedProducts.forEach(p => {
+                    delete p.purchase_price;
+                    delete p.invoice_number;
+                    delete p.sold_to_account_id;
+                    delete p.dealer_id;
+                });
+
+                // Desensitize History (hide price info if in summary/metadata)
+                history.forEach(h => {
+                    delete h.quote_amount;
+                });
+            }
+
             res.json({
                 success: true,
                 data: {
                     customer,
-                    dealer,
+                    dealer: hasGlobalAccess(req.user) ? dealer : null, // OP/RD doesn't see dealer details
                     devices: relatedProducts,
                     service_history: history,
                     ai_profile: aiProfile
@@ -152,6 +187,17 @@ module.exports = (db, authenticate) => {
                     success: false,
                     error: { code: 'MISSING_PARAM', message: 'account_id is required' }
                 });
+            }
+
+            // 穿透授权：OP/RD 仅能查询自己工单关联的 account
+            if (!hasGlobalAccess(req.user)) {
+                const accessibleIds = getAccessibleAccountIds(db, req.user.id);
+                if (!accessibleIds.includes(parseInt(account_id))) {
+                    return res.status(403).json({
+                        success: false,
+                        error: { code: 'FORBIDDEN', message: '权限不足：您没有该客户的访问权限' }
+                    });
+                }
             }
 
             // 1. 获取账户信息
@@ -253,6 +299,27 @@ module.exports = (db, authenticate) => {
                 notes: "Auto-generated context from service history."
             };
 
+            // Technician View Desensitization
+            if (!hasGlobalAccess(req.user)) {
+                // Mask account sensitive info
+                delete account.service_tier;
+                delete account.credit_limit;
+                delete account.payment_terms;
+
+                // Mask contacts sensitive info (hide phone/email for non-MS)
+                contacts.forEach(c => {
+                    delete c.phone;
+                    delete c.email;
+                    delete c.wechat;
+                });
+
+                // Mask device commercial info
+                devices.forEach(d => {
+                    delete d.order_id;
+                    delete d.purchase_date;
+                });
+            }
+
             res.json({
                 success: true,
                 data: {
@@ -286,6 +353,17 @@ module.exports = (db, authenticate) => {
 
             if (!serial_number) {
                 return res.status(400).json({ success: false, error: "Missing serial_number" });
+            }
+
+            // 穿透授权：OP/RD 仅能查询自己工单关联的 SN
+            if (!hasGlobalAccess(req.user)) {
+                const accessibleSNs = getAccessibleSerialNumbers(db, req.user.id);
+                if (!accessibleSNs.includes(serial_number)) {
+                    return res.status(403).json({
+                        success: false,
+                        error: '权限不足：您没有该设备的访问权限。仅可查看与您关联工单的设备信息。'
+                    });
+                }
             }
 
             // 1. Fetch Device Info
@@ -342,12 +420,22 @@ module.exports = (db, authenticate) => {
                 console.log('[Context] parts_catalog not available:', e.message);
             }
 
+            // Technician View Desensitization for Device
+            if (!hasGlobalAccess(req.user)) {
+                delete device.purchase_price;
+                delete device.sold_to_account_id;
+                delete device.dealer_id;
+                delete device.original_order_id;
+                delete device.invoice_date;
+                delete device.quote_total;
+            }
+
             res.json({
                 success: true,
                 data: {
                     device,
                     service_history: history,
-                    ownership_history: owners.map(name => ({ name, status: 'Associated' })),
+                    ownership_history: hasGlobalAccess(req.user) ? owners.map(name => ({ name, status: 'Associated' })) : [],
                     parts_catalog: parts
                 }
             });

@@ -3,12 +3,12 @@
  * P2 架构升级 - macOS26 风格
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MentionCommentInput } from './MentionCommentInput';
 import {
-  Clock, User, Tag, Package, Calendar, MessageSquare,
-  AlertTriangle, ArrowRight,
-  AtSign, Paperclip
+  Clock, User, MessageSquare,
+  ArrowRight, Plus as PlusIcon, AlertTriangle,
+  AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck
 } from 'lucide-react';
 
 // ==============================
@@ -38,7 +38,55 @@ interface Participant {
 }
 
 // ==============================
-// Activity Timeline
+// Collapsible Panel
+// ==============================
+
+interface CollapsiblePanelProps {
+  title: string;
+  icon?: React.ReactNode;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
+  title, icon, count, defaultOpen = true, children
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{
+      borderRadius: 12, marginBottom: 16,
+      background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
+      border: '1px solid rgba(255,255,255,0.06)',
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', padding: '14px 20px',
+          borderBottom: open ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: '#fff', textAlign: 'left',
+        }}
+      >
+        {icon}
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>
+        {count !== undefined && (
+          <span style={{ fontSize: 12, color: '#666', marginLeft: 'auto', marginRight: 8 }}>
+            {count}
+          </span>
+        )}
+        {open ? <ChevronDown size={14} color="#888" style={count === undefined ? { marginLeft: 'auto' } : undefined} /> : <ChevronRight size={14} color="#888" style={count === undefined ? { marginLeft: 'auto' } : undefined} />}
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+};
+
+// ==============================
+// Activity Timeline (Compact Horizontal Layout)
 // ==============================
 
 interface ActivityTimelineProps {
@@ -50,124 +98,125 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   activities,
   loading
 }) => {
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'comment': return <MessageSquare size={16} />;
-      case 'status_change': return <ArrowRight size={16} />;
-      case 'assignment': return <User size={16} />;
-      case 'mention': return <AtSign size={16} />;
-      case 'attachment': return <Paperclip size={16} />;
-      default: return <Clock size={16} />;
-    }
-  };
-
-  const getActivityColor = (type: string) => {
-    switch (type) {
-      case 'comment': return '#3B82F6';
-      case 'status_change': return '#10B981';
-      case 'assignment': return '#FFD700';
-      case 'mention': return '#8B5CF6';
-      default: return '#666';
-    }
-  };
-
   const getVisibilityBadge = (visibility: string) => {
     if (visibility === 'all') return null;
     return (
       <span style={{
         fontSize: 10,
-        padding: '2px 6px',
-        borderRadius: 4,
+        padding: '1px 5px',
+        borderRadius: 3,
         background: visibility === 'internal' ? 'rgba(255,215,0,0.2)' : 'rgba(239,68,68,0.2)',
         color: visibility === 'internal' ? '#FFD700' : '#EF4444',
-        marginLeft: 8
+        fontWeight: 600,
+        lineHeight: '16px',
       }}>
         {visibility === 'internal' ? '内部' : '仅OP'}
       </span>
     );
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'comment': return <MessageSquare size={12} />;
+      case 'status_change': return <ArrowRight size={12} />;
+      case 'creation': case 'system_event': return <PlusIcon size={12} />;
+      case 'assignment': case 'assignment_change': return <UserCheck size={12} />;
+      case 'priority_change': return <AlertTriangle size={12} />;
+      case 'mention': return <AtSign size={12} />;
+      case 'attachment': return <Paperclip size={12} />;
+      default: return <Clock size={12} />;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'comment': return '#3B82F6';
+      case 'status_change': return '#10B981';
+      case 'creation': case 'system_event': return '#22C55E';
+      case 'assignment': case 'assignment_change': return '#FFD700';
+      case 'priority_change': return '#F59E0B';
+      case 'mention': return '#8B5CF6';
+      default: return '#666';
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>加载中...</div>;
   }
 
+  // Filter out standalone 'mention' type activities (merged into comments now)
+  const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
+
   return (
-    <div style={{ padding: '16px 0' }}>
-      {activities.map((activity, index) => (
-        <div
-          key={activity.id}
-          style={{
-            display: 'flex',
-            gap: 12,
-            padding: '12px 16px',
-            position: 'relative'
-          }}
-        >
-          {/* Timeline line */}
-          {index < activities.length - 1 && (
-            <div style={{
-              position: 'absolute',
-              left: 27,
-              top: 36,
-              bottom: -12,
-              width: 2,
-              background: 'rgba(255,255,255,0.1)'
-            }} />
-          )}
+    <div style={{ padding: '8px 20px 16px' }}>
+      {filteredActivities.length === 0 ? (
+        <div style={{ padding: 16, textAlign: 'center', color: '#666', fontSize: 13 }}>暂无活动记录</div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {filteredActivities.map((activity) => {
+              const color = getTypeColor(activity.activity_type);
+              return (
+                <tr
+                  key={activity.id}
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  {/* Time column */}
+                  <td style={{
+                    padding: '10px 12px 10px 0',
+                    fontSize: 12, color: '#555',
+                    whiteSpace: 'nowrap', verticalAlign: 'top',
+                    width: 110,
+                  }}>
+                    {formatFullDateTime(activity.created_at)}
+                  </td>
 
-          {/* Icon */}
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            background: `${getActivityColor(activity.activity_type)}20`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: getActivityColor(activity.activity_type),
-            flexShrink: 0,
-            zIndex: 1
-          }}>
-            {getActivityIcon(activity.activity_type)}
-          </div>
+                  {/* Actor column */}
+                  <td style={{
+                    padding: '10px 12px 10px 0',
+                    verticalAlign: 'top',
+                    width: 90,
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                      <span style={{ color, display: 'flex', alignItems: 'center' }}>
+                        {getTypeIcon(activity.activity_type)}
+                      </span>
+                      <span style={{
+                        fontSize: 13, fontWeight: 600, color: '#ccc',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: 70,
+                      }}>
+                        {activity.actor?.name || '系统'}
+                      </span>
+                    </div>
+                  </td>
 
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: 4
-            }}>
-              <span style={{
-                fontWeight: 500,
-                color: '#fff',
-                fontSize: 14
-              }}>
-                {activity.actor?.name || '系统'}
-              </span>
-              {getVisibilityBadge(activity.visibility)}
-              <span style={{
-                marginLeft: 'auto',
-                fontSize: 12,
-                color: '#666'
-              }}>
-                {formatTime(activity.created_at)}
-              </span>
-            </div>
-
-            <div
-              style={{
-                color: '#aaa',
-                fontSize: 14,
-                lineHeight: 1.5
-              }}
-              dangerouslySetInnerHTML={{
-                __html: activity.content_html || activity.content
-              }}
-            />
-          </div>
-        </div>
-      ))}
+                  {/* Content column */}
+                  <td style={{
+                    padding: '10px 0',
+                    verticalAlign: 'top',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                      {getVisibilityBadge(activity.visibility)}
+                      <div
+                        style={{
+                          color: '#aaa', fontSize: 13, lineHeight: 1.5,
+                          flex: 1, wordBreak: 'break-word',
+                        }}
+                        dangerouslySetInnerHTML={{
+                          __html: activity.content_html || activity.content || ''
+                        }}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };
@@ -194,88 +243,80 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
   assignee
 }) => {
   const getRoleBadge = (role: string) => {
-    const colors: Record<string, string> = {
-      owner: '#FFD700',
-      assignee: '#10B981',
-      mentioned: '#3B82F6',
-      follower: '#666'
+    const roles: Record<string, { color: string; label: string }> = {
+      owner: { color: '#FFD700', label: '创建者' },
+      assignee: { color: '#10B981', label: '处理人' },
+      mentioned: { color: '#3B82F6', label: '协作中' },
+      follower: { color: '#8B5CF6', label: '关注者' }
     };
-    const labels: Record<string, string> = {
-      owner: '创建者',
-      assignee: '处理人',
-      mentioned: '被@',
-      follower: '关注者'
-    };
-
+    const r = roles[role] || { color: '#888', label: role };
     return (
       <span style={{
         fontSize: 10,
         padding: '2px 6px',
         borderRadius: 4,
-        background: `${colors[role]}20`,
-        color: colors[role]
+        background: `${r.color}20`,
+        color: r.color,
+        fontWeight: 600,
       }}>
-        {labels[role]}
+        {r.label}
       </span>
     );
   };
 
-  const allParticipants = [
-    ...(owner ? [{ user_id: owner.id, name: owner.name, role: 'owner' as const, added_at: '' }] : []),
-    ...(assignee && assignee.id !== owner?.id
-      ? [{ user_id: assignee.id, name: assignee.name, role: 'assignee' as const, added_at: '' }]
-      : []),
-    ...participants.filter(p => p.user_id !== owner?.id && p.user_id !== assignee?.id)
-  ];
+  const allParticipants: { id: number; name: string; role: string }[] = [];
+
+  if (owner) allParticipants.push({ id: owner.id, name: owner.name, role: 'owner' });
+  if (assignee && (!owner || assignee.id !== owner.id)) {
+    allParticipants.push({ id: assignee.id, name: assignee.name, role: 'assignee' });
+  }
+
+  if (participants && participants.length > 0) {
+    participants.forEach(p => {
+      if (!allParticipants.some(x => x.id === p.user_id)) {
+        allParticipants.push({
+          id: p.user_id,
+          name: p.name || `User #${p.user_id}`,
+          role: p.role
+        });
+      }
+    });
+  }
 
   return (
-    <div style={{
-      padding: 16,
-      borderBottom: '1px solid rgba(255,255,255,0.08)'
-    }}>
+    <div style={{ padding: '12px 16px' }}>
       <div style={{
-        fontSize: 12,
-        color: '#888',
+        fontSize: 14, fontWeight: 600, color: '#fff',
+        display: 'flex', alignItems: 'center', gap: 8,
         marginBottom: 12,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6
       }}>
-        <User size={14} />
-        参与者 ({allParticipants.length})
+        <User size={16} color="#FFD700" />
+        协作成员
+        <span style={{ color: '#666', fontWeight: 400, fontSize: 13 }}>({allParticipants.length})</span>
       </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {allParticipants.map(p => (
-          <div
-            key={p.user_id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 8px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 6
-            }}
-          >
+          <div key={p.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '6px 8px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.03)',
+          }}>
             <div style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              background: 'rgba(255,215,0,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 11,
-              color: '#FFD700'
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(255,215,0,0.15)', color: '#FFD700',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 500,
             }}>
-              {(p.name || '?')[0]}
+              {p.name[0]?.toUpperCase() || '?'}
             </div>
-            <span style={{ fontSize: 13, color: '#ccc' }}>{p.name}</span>
+            <span style={{ fontSize: 13, color: '#ddd', fontWeight: 500 }}>{p.name}</span>
             {getRoleBadge(p.role)}
           </div>
         ))}
       </div>
+      {allParticipants.length === 0 && (
+        <div style={{ fontSize: 12, color: '#666', textAlign: 'center', padding: 12 }}>暂无</div>
+      )}
     </div>
   );
 };
@@ -305,78 +346,38 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
     switch (p) {
       case 'P0': return '#EF4444';
       case 'P1': return '#FFD700';
-      default: return '#3B82F6';
+      case 'P2': return '#3B82F6';
+      default: return '#9CA3AF';
     }
   };
 
-  const infoItems = [
-    { icon: Package, label: '产品', value: ticket.product_name },
-    { icon: Tag, label: '序列号', value: ticket.serial_number },
-    { icon: User, label: '客户', value: ticket.account_name },
-    { icon: Calendar, label: '创建时间', value: formatDate(ticket.created_at) }
-  ];
-
   return (
     <div style={{
+      background: 'rgba(30, 30, 30, 0.5)',
+      backdropFilter: 'blur(12px)',
+      borderRadius: 12,
+      border: '1px solid rgba(255,255,255,0.06)',
       padding: 16,
-      borderBottom: '1px solid rgba(255,255,255,0.08)'
+      marginBottom: 16,
     }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 16
-      }}>
-        <span style={{
-          fontSize: 16,
-          fontWeight: 600,
-          color: '#fff'
-        }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#fff' }}>
           {ticket.ticket_number}
         </span>
         <span style={{
-          padding: '2px 8px',
-          borderRadius: 4,
-          background: `${getPriorityColor(ticket.priority)}20`,
+          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+          background: `${getPriorityColor(ticket.priority)}15`,
           color: getPriorityColor(ticket.priority),
-          fontSize: 12,
-          fontWeight: 500
         }}>
           {ticket.priority}
         </span>
-        {ticket.sla_status === 'warning' && (
-          <AlertTriangle size={16} color="#FFD700" />
-        )}
-        {ticket.sla_status === 'breached' && (
-          <AlertTriangle size={16} color="#EF4444" />
-        )}
-        {ticket.is_warranty && (
-          <span style={{
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: 'rgba(16,185,129,0.2)',
-            color: '#10B981',
-            fontSize: 12
-          }}>
-            保修内
-          </span>
-        )}
       </div>
 
-      {/* Info Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12
-      }}>
-        {infoItems.map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <item.icon size={14} color="#666" />
-            <span style={{ fontSize: 12, color: '#888' }}>{item.label}:</span>
-            <span style={{ fontSize: 13, color: '#ccc' }}>{item.value || '-'}</span>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+        <div style={{ color: '#888' }}>客户: <span style={{ color: '#ccc' }}>{ticket.account_name || '-'}</span></div>
+        <div style={{ color: '#888' }}>产品: <span style={{ color: '#ccc' }}>{ticket.product_name || '-'}</span></div>
+        <div style={{ color: '#888' }}>SN: <span style={{ color: '#ccc' }}>{ticket.serial_number || '-'}</span></div>
+        <div style={{ color: '#888' }}>创建: <span style={{ color: '#ccc' }}>{formatDate(ticket.created_at)}</span></div>
       </div>
     </div>
   );
@@ -386,32 +387,33 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
 // Utilities
 // ==============================
 
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
 
-  if (diffMins < 1) return '刚刚';
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-
-  return date.toLocaleString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('zh-CN');
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}/${m}/${day} ${h}:${min}`;
+}
+
+function formatFullDateTime(dateStr: string): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${m}-${day} ${h}:${min}`;
 }
 
 export default {
   ActivityTimeline,
   CommentInput,
   ParticipantsPanel,
-  TicketInfoCard
+  TicketInfoCard,
+  CollapsiblePanel
 };

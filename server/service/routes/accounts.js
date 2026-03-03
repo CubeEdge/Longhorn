@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const { requireCrmAccess, hasGlobalAccess, getAccessibleAccountIds } = require('../middleware/permission');
 
 module.exports = function (db, authenticate) {
     const router = express.Router();
@@ -47,7 +48,7 @@ module.exports = function (db, authenticate) {
      * - region: 地区筛选
      * - page, page_size: 分页
      */
-    router.get('/', authenticate, (req, res) => {
+    router.get('/', authenticate, requireCrmAccess, (req, res) => {
         try {
             const {
                 account_type,
@@ -188,7 +189,7 @@ module.exports = function (db, authenticate) {
      * POST /api/v1/accounts
      * 创建新账户
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, requireCrmAccess, (req, res) => {
         try {
             const {
                 name,
@@ -314,6 +315,17 @@ module.exports = function (db, authenticate) {
     router.get('/:id', authenticate, (req, res) => {
         try {
             const accountId = req.params.id;
+
+            // 穿透授权：OP/RD 仅能访问自己工单关联的 account
+            if (!hasGlobalAccess(req.user)) {
+                const accessibleIds = getAccessibleAccountIds(db, req.user.id);
+                if (!accessibleIds.includes(parseInt(accountId))) {
+                    return res.status(403).json({
+                        success: false,
+                        error: { code: 'FORBIDDEN', message: '权限不足：您没有该客户的访问权限' }
+                    });
+                }
+            }
 
             // 获取账户信息
             const account = db.prepare(`
@@ -678,7 +690,7 @@ module.exports = function (db, authenticate) {
      * 停用经销商
      * 权限: Admin 或市场部 Lead
      */
-    router.post('/:id/deactivate', authenticate, (req, res) => {
+    router.post('/:id/deactivate', authenticate, requireCrmAccess, (req, res) => {
         try {
             const { id } = req.params;
             const { reason, transfer_type, successor_account_id, notes } = req.body;

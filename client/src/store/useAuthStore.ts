@@ -5,6 +5,7 @@ interface User {
     username: string;
     role: 'Admin' | 'Exec' | 'Lead' | 'Member' | 'Dealer';
     department_name?: string;
+    department_code?: string;
     user_type?: 'Internal' | 'Employee' | 'Dealer' | 'Customer';
     job_title?: string;
     display_name?: string;

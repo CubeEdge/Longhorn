@@ -143,6 +143,11 @@ const WorkspacePage: React.FC = () => {
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Reset selected ticket when switching views (e.g., clicking sidebar "协作" or "部门池")
+  useEffect(() => {
+    setSelectedTicket(null);
+  }, [currentView]);
+
   // Fetch tickets
   useEffect(() => {
     fetchTickets();
@@ -200,13 +205,16 @@ const WorkspacePage: React.FC = () => {
       const urlAssignee = searchParams.get('assignee');
 
       if (currentView === 'my-tasks') {
-        // Assigned to me, not closed
-        params.assigned_to = String((user as any)?.id || '');
+        // Use 'me' so the backend resolves to view-as user when active
+        params.assigned_to = 'me';
       } else if (currentView === 'team-queue') {
         // Unassigned or specific assignee from URL
         params.assigned_to = urlAssignee || '0';
+      } else if (currentView === 'mentioned') {
+        // Participant but not the owner - use 'me' for server-side resolution
+        params.participant_id = 'me';
+        params.exclude_assigned_to = 'me';
       }
-      // For 'mentioned', we fetch all and filter client-side
 
       const res = await axios.get('/api/v1/tickets', {
         headers: { Authorization: `Bearer ${token}` },
@@ -218,29 +226,9 @@ const WorkspacePage: React.FC = () => {
         participants: t.participants || []
       }));
 
-      // Filter out closed tickets for my-tasks
-      if (currentView === 'my-tasks') {
-        data = data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted'].includes(t.current_node));
-      }
-
-      // For mentioned: filter where user is in participants but not assigned_to
-      if (currentView === 'mentioned') {
-        const myId = (user as any)?.id;
-        data = data.filter(t => {
-          const parts = Array.isArray(t.participants) ? t.participants : [];
-          return parts.includes(myId) && t.assigned_to !== myId;
-        });
-      }
-
-      // For team-queue: filter unassigned (assigned_to is null) or specific assignee
-      if (currentView === 'team-queue') {
-        data = data.filter(t => {
-          if (urlAssignee === 'all') return true;
-          return urlAssignee ? String(t.assigned_to) === urlAssignee : !t.assigned_to;
-        });
-
-        data = data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
-      }
+      // Filter out completed/closed nodes for all views in Workspace
+      // workspace is for execution, not historical record
+      data = data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
 
       // Load snooze state from tickets
       const snoozed = new Set<number>();

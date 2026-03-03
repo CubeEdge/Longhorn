@@ -1,6 +1,6 @@
-# Longhorn Service OS - 核心业务架构设计 (v1.6)  
-**版本**: 1.6 (Master Integration)  
-**更新**: 整合数据隔离、穿透授权、混合保修、单表多态、代理模式及协作机制。  
+# Longhorn Service OS - 核心业务架构设计 (v1.7)  
+**版本**: 1.7 (Audit & Visibility Update)  
+**更新**: 整合数据隔离、穿透授权、修正/删除审计、单表多态及协作机制。  
 **目标**: 构建一个以“责任明确、数据安全、面向未来”为核心的售后服务体系。  
   
 # 1. 角色与职责 (Roles & Responsibilities)  
@@ -33,6 +33,10 @@ Phase 1 由 MS 代理录入；Phase 2 自行登录。仅见私有数据。 |
 * **按需穿透 (Just-in-Time Access)**:  
     * **逻辑**: 权限跟随工单流动。OP/RD 只有在成为某工单的 Assignee (负责人) 或 Participant (参与者) 时，系统才临时发放该工单关联资产 (Asset) 的**只读令牌**。  
     * **范围**: 仅限当前工单关联的那**唯一一条**资产数据，不可横向遍历其他资产。  
+* **工单可见性分级 (Ticket Visibility by Type)**:  
+    * **RMA 返厂工单**: OP/RD **自由可见**。OP 是 RMA 流程的核心参与方（§5.2 乒乓协作模型），需要在 My Tasks / Team Queue 中查看和领取 RMA 工单。侧边栏菜单对 OP/RD **可见**。  
+    * **Inquiry 咨询工单**: OP/RD **仅 JIT 可见**。MS 始终持有（§5.1），OP/RD 仅通过 @Mention 进入。侧边栏菜单入口对 OP/RD **隐藏**，通过 Mentioned 列表访问。  
+    * **SVC 经销商维修**: OP/RD **仅 JIT 可见**。MS 作为接口（§5.3），OP/RD 仅作为幕后支持。侧边栏菜单入口对 OP/RD **隐藏**，通过 Mentioned 列表访问。  
 **2.2 视图分级 (View Scoping)**  
 即使用户获得了访问权限，系统也会根据角色返回不同的数据视图 (DTO)：  
 * **MS 商业视图 (Commercial View)**:  
@@ -159,7 +163,15 @@ Phase 1 由 MS 代理录入；Phase 2 自行登录。仅见私有数据。 |
     "dealer_id": "uuid",       // 归属经销商 (权限隔离关键字段)
     "proxy_mode": "Boolean",   // 是否由 MS 代填
     "reporter_name": "String", // 经销商侧技师 (e.g., "Mike @ ProAV")
-    "related_so_id": "uuid"    // 关联补货单 (Tier 2)
+    "related_so_id": "uuid",    // 关联补货单 (Tier 2)
+
+    // ==========================================
+    // 7. 审计与删除 (Audit & Deletion) - [NEW v1.7]
+    // ==========================================
+    "is_deleted": "Boolean",   // 默认 0. 墓碑化删除标记
+    "deleted_at": "Timestamp",
+    "deleted_by": "uuid",
+    "delete_reason": "String"
   }
 }
 
@@ -439,14 +451,16 @@ AI 无法匹配 "小王" -> 填入 reporter_snapshot。
 | --- | --- | --- | --- | --- |
 | MANAGEMENT(管理指挥塔) | 📊 Team Overview(Manager 默认首页) | Chart | ManagerExec | 红点：当有待审批 (Pending Approval) 或 SLA 预警时亮起。这是经理的“早报”和“控制台”。 |
 | WORKSPACE(个人执行区) | 🔴 My Tasks(员工 默认首页) | Checkbox | All | 红底数字 (如 3)。表示阻断性任务，必须清零。即使是经理，作为 Player 也要处理这里的任务。 |
-|  | 🔔 Mentioned | Bell | All | 蓝底数字 (如 5)。表示协作请求。 |
+|  | 🔔 Mentioned | Bell | All | 蓝底数字 (如 5)。表示协作请求。**OP/RD 进入 Inquiry/SVC 工单的唯一入口。** |
 |  | 📥 Team Queue | Inbox | All | 灰底数字。部门公共池。 |
-| OPERATIONS(业务查询) | 📂 All Tickets | Folder | All | 包含 Inquiry, RMA, SVC 的全量历史检索入口。支持全局搜索 (Cmd+K)。 |
+| OPERATIONS(业务查询) | ❓ 咨询工单 (Inquiry) | HelpCircle | MS, Mgr, Exec | (OP/RD 隐藏) OP/RD 通过 Mentioned 列表进入。全量咨询工单检索入口。 |
+|  | 📦 RMA返厂 (RMA) | ClipboardList | All | OP 核心业务入口。乒乓协作模型主战场，支持 Team Queue 领取。 |
+|  | 🔧 经销商维修 (SVC) | Wrench | MS, Mgr, Exec | (OP/RD 隐藏) OP/RD 通过 Mentioned 列表进入。全量 SVC 工单检索入口。 |
 | KNOWLEDGE | 📖 Tech Hub | Book | All | 知识库。支持侧滑调用。 |
 | ARCHIVES(静态档案) | 🏢 渠道 (Dealers) | Building | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。 |
 |  | 👥 客户 (Customers) | Users | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。 |
-|  | 📦 资产 (Assets) | Box | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。 |
-|  | 🛠️ 配件 (Parts) | Tool | All | 库存与BOM查询。 |
+|  | 📦 资产 (Assets) | Box | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询及产品物料管理。 |
+|  | 🛠️ 配件 (Parts) | Tool | MS, Mgr, Exec | (OP/RD 隐藏) 库存与BOM查询。经销商管理，OP/RD 无需直接访问。 |
 
 
 
@@ -614,3 +628,31 @@ UI 刷新，状态从“状态 2”变为“状态 1”。
 * **表现**：  
     * 在 审批 按钮旁显示微型标签：[Permission: TICKET_APPROVE]。  
     * 在 客户电话 字段旁显示：[Mask: OP_VIEW]。  
+  
+# 7. 修正与删除机制 (Correction & Deletion Mechanism) - [NEW v1.7]
+本系统在满足“允许纠错”需求的同时，建立了严格的审计闭环，防止数据造假。
+
+**7.1 审计化修正 (Audited Correction)**
+*   **对比逻辑**：后端在处理 `PATCH /tickets/:id` 请求时，会自动对比核心字段的新旧值。
+*   **强制记录与理由**：修改下列清单中的字段时，系统**强制要求**填写修正理由，并自动生成一条 `field_updated` 类型的时间轴活动，确保修改过程对所有参与人员清晰可见。
+*   **强制审计字段清单 (Audit Field Whitelist)**：
+    *   **设备标识 (Identity)**: `serial_number` (序列号), `product_id` (产品型号)。
+    *   **主体归属 (Ownership)**: `account_id` (关联公司), `contact_id` (联系人), `dealer_id` (经销商)。
+    *   **内容与诊断 (Content)**: `problem_summary` (问题简述), `problem_description` (详细描述), `repair_content` (维修内容)。
+    *   **经济责任 (Financial)**: `is_warranty` (保修判定), `payment_amount` (金额)。
+    *   **时效契约 (SLA)**: `priority` (优先级), `sla_due_at` (SLA死线)。
+    *   **原始证据 (Proof)**: `reporter_snapshot` (报修人快照数据)。
+*   **时间轴展示逻辑**：
+    *   格式：`[操作人]` 修改了 `[字段名称]`：从 `"[旧值]"` 变更为 `"[新值]"`。理由：`[修正理由]`。
+    *   效果：通过“对比高亮”形式呈现，防止历史被静默篡改。
+*   **阶梯式锁定 (Phase-based Locking)**：
+    *   **活跃期 (Active)**：`draft`, `submitted` 阶段。工单创建者或当前处理人可自由修正错误。
+    *   **终结期 (Finalized)**：`resolved`, `closed` 阶段。普通用户禁止修改任何原始报修信息。仅 `Admin` 可开启“特权修正”，且强制要求填写修正理由。
+
+**7.2 墓碑化软删除 (Soft Deletion / Tombstone)**
+*   **物理保留**：严禁物理执行 `DELETE FROM tickets`。
+*   **逻辑删除 API**：提供 `DELETE /api/v1/tickets/:id` 接口。
+*   **权限与条件约束**：
+    *   **普通员工**：仅允许删除自己创建且处于 `draft` 或 `submitted` 状态的工单（用于清理错误的录入或测试数据）。
+    *   **管理员 (Admin)**：允许删除任何工单。
+*   **强制理由**：所有删除动作必须附带 `delete_reason`。数据虽然从 UI 消失，但在数据库中永久保留 `is_deleted = 1` 状态及删除上下文。

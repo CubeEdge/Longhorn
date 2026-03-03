@@ -28,6 +28,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useAuthStore } from '../../store/useAuthStore';
 
 // Navigation section type
 interface NavItem {
@@ -52,6 +53,15 @@ const ServiceNavigation: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
+  const { user } = useAuthStore();
+
+  // 穿透授权：判断用户是否有 CRM 全局访问权限
+  const hasCrmAccess = (() => {
+    if (!user) return true; // 未知角色默认显示
+    if (user.role === 'Admin' || user.role === 'Exec') return true;
+    const deptCode = (user as any).department_code || '';
+    return deptCode === 'MS' || deptCode === 'GE';
+  })();
 
   // Load expanded state from localStorage
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
@@ -77,9 +87,14 @@ const ServiceNavigation: React.FC = () => {
       id: 'workbench',
       title: '工作台',
       items: [
-        { id: 'inquiry', label: t('sidebar.inquiry_tickets') || '咨询工单', icon: MessageSquare, path: '/service/inquiry-tickets' },
+        // Inquiry/SVC: OP/RD 隐藏 (PRD §2.1 工单可见性分级)，通过 Mentioned 列表进入
+        ...(hasCrmAccess ? [
+          { id: 'inquiry', label: t('sidebar.inquiry_tickets') || '咨询工单', icon: MessageSquare, path: '/service/inquiry-tickets' },
+        ] : []),
         { id: 'rma', label: t('sidebar.rma_tickets') || 'RMA返厂单', icon: ClipboardList, path: '/service/rma-tickets' },
-        { id: 'dealer-repairs', label: t('sidebar.dealer_repairs') || '经销商维修单', icon: Wrench, path: '/service/dealer-repairs' },
+        ...(hasCrmAccess ? [
+          { id: 'dealer-repairs', label: t('sidebar.dealer_repairs') || '经销商维修单', icon: Wrench, path: '/service/dealer-repairs' },
+        ] : []),
       ],
       defaultExpanded: true
     },
@@ -87,10 +102,13 @@ const ServiceNavigation: React.FC = () => {
       id: 'archives',
       title: '档案和基础信息',
       items: [
-        { id: 'dealers', label: t('sidebar.archives_dealers') || '渠道和经销商', icon: Building, path: '/service/dealers' },
-        { id: 'customers', label: t('sidebar.archives_customers') || '客户档案', icon: Users, path: '/service/customers' },
-        { id: 'products', label: t('sidebar.archives_assets') || '产品管理', icon: Box, path: '/service/products' },
-        { id: 'inventory', label: t('sidebar.parts_inventory') || '配件库存', icon: Package, path: '/service/inventory' },
+        // 档案和基础信息仅对 MS/Admin/Exec 可见 (OP/RD 隐藏)
+        ...(hasCrmAccess ? [
+          { id: 'dealers', label: t('sidebar.archives_dealers') || '渠道和经销商', icon: Building, path: '/service/dealers' },
+          { id: 'customers', label: t('sidebar.archives_customers') || '客户档案', icon: Users, path: '/service/customers' },
+          { id: 'products', label: t('sidebar.archives_assets') || '产品管理', icon: Box, path: '/service/products' },
+          { id: 'inventory', label: t('sidebar.parts_inventory') || '配件库存', icon: Package, path: '/service/inventory' },
+        ] : []),
       ],
       defaultExpanded: true
     },

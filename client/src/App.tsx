@@ -26,7 +26,8 @@ import {
   Bell,
   Inbox,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Eye
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -76,10 +77,9 @@ import { NotificationBell, NotificationCenter } from './components/Notifications
 import { useRouteMemoryStore } from './store/useRouteMemoryStore';
 import { useListStateStore } from './store/useListStateStore';
 import { ViewAsIndicator, ViewAsSelector, useViewAs } from './components/Workspace/ViewAsComponents';
-import { Eye } from 'lucide-react';
+import { useViewAsStore } from './store/useViewAsStore';
 import { DebugInfoPanel } from './components/DebugOverlay';
 
-// Main Layout Component for authenticated users
 // Main Layout Component for authenticated users
 const MainLayout: React.FC<{ user: any }> = ({ user }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -88,7 +88,6 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
 
   // P2: View As functionality
   const {
-    canUseViewAs,
     viewingAs,
     isOpen: isViewAsOpen,
     setIsOpen: setViewAsOpen,
@@ -116,6 +115,8 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
 
       {/* Sidebar - Always rendered (logic inside handles content) */}
       <Sidebar
+        user={user}
+        viewingAs={viewingAs}
         role={viewingAs?.role || user.role}
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -127,9 +128,6 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
           user={viewingAs || user}
           onMenuClick={() => setSidebarOpen(true)}
           currentModule={currentModule}
-          canUseViewAs={canUseViewAs}
-          onViewAsClick={() => setViewAsOpen(true)}
-          isViewingAs={!!viewingAs}
         />
 
         {/* Content Area - All modules support scrolling */}
@@ -146,7 +144,6 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
       <BokehContainer />
       <NotificationCenter />
 
-      {/* P2: View As Components */}
       <ViewAsSelector
         isOpen={isViewAsOpen}
         onClose={() => setViewAsOpen(false)}
@@ -325,7 +322,14 @@ const DeptRedirect: React.FC = () => {
 
 const SIDEBAR_EXPANDED_KEY = 'longhorn_sidebar_expanded';
 
-const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, currentModule: ModuleType }> = ({ role, isOpen, onClose, currentModule }) => {
+const Sidebar: React.FC<{
+  user: any,
+  viewingAs?: any,
+  role: string,
+  isOpen: boolean,
+  onClose: () => void,
+  currentModule: ModuleType
+}> = ({ user, viewingAs, role, isOpen, onClose, currentModule }) => {
   const location = useLocation();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
@@ -355,6 +359,29 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
   React.useEffect(() => {
     saveRoute(location.pathname + location.search);
   }, [location.pathname, location.search, saveRoute]);
+
+  const [workspaceCounts, setWorkspaceCounts] = React.useState<any>({ my_tasks: 0, mentioned: 0, team_queue: 0 });
+
+  React.useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const res = await axios.get('/api/v1/tickets/workspace/counts', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data.success) {
+          setWorkspaceCounts(res.data.data);
+        }
+      } catch (err) {
+        console.error('[Sidebar] Failed to fetch workspace counts:', err);
+      }
+    };
+    if (token && currentModule === 'service') {
+      fetchCounts();
+      // Polling every 60s
+      const timer = setInterval(fetchCounts, 60000);
+      return () => clearInterval(timer);
+    }
+  }, [token, currentModule]);
 
   React.useEffect(() => {
     const fetchDepts = async () => {
@@ -405,6 +432,15 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
     return name;
   };
 
+  // P2: Data visibility logic for navigation
+  const actingRole = viewingAs?.role || role;
+  const actingDeptCode = viewingAs?.department_code || user.department_code;
+
+  // CRM/Full Archive Access: Admin, Exec OR internal staff from MS/GE departments
+  const hasCrmAccess = actingRole === 'Admin' || actingRole === 'Exec' ||
+    (actingRole === 'Lead' && actingDeptCode === 'MS') ||
+    (actingRole === 'Member' && (actingDeptCode === 'MS' || actingDeptCode === 'GE'));
+
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} `}>
       <div className="sidebar-brand">
@@ -434,14 +470,17 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
                 <Link to={getRoute('/service/workspace')} className={`sidebar-item ${location.pathname === '/service/workspace' ? 'active' : ''}`} onClick={onClose}>
                   <CheckSquare size={18} />
                   <span>{t('sidebar.my_tasks')}</span>
+                  {workspaceCounts.my_tasks > 0 && <span className="sidebar-badge">{workspaceCounts.my_tasks}</span>}
                 </Link>
                 <Link to={getRoute('/service/mentioned')} className={`sidebar-item ${location.pathname === '/service/mentioned' ? 'active' : ''}`} onClick={onClose}>
                   <Bell size={18} />
                   <span>{t('sidebar.mentioned')}</span>
+                  {workspaceCounts.mentioned > 0 && <span className="sidebar-badge badge-blue">{workspaceCounts.mentioned}</span>}
                 </Link>
                 <Link to={getRoute('/service/team-queue')} className={`sidebar-item ${location.pathname === '/service/team-queue' ? 'active' : ''}`} onClick={onClose}>
                   <Inbox size={18} />
                   <span>{t('sidebar.team_queue')}</span>
+                  {workspaceCounts.team_queue > 0 && <span className="sidebar-badge badge-orange">{workspaceCounts.team_queue}</span>}
                 </Link>
               </>
             )}
@@ -468,27 +507,36 @@ const Sidebar: React.FC<{ role: string, isOpen: boolean, onClose: () => void, cu
             </div>
             {expandedSections.operations !== false && (
               <>
-                <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
-                  <MessageCircleQuestion size={18} />
-                  <span>{t('sidebar.inquiry_tickets')}</span>
-                </Link>
+                {/* Inquiry visible to Global access users (MS, etc) */}
+                {hasCrmAccess && (
+                  <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
+                    <MessageCircleQuestion size={18} />
+                    <span>{t('sidebar.inquiry_tickets')}</span>
+                  </Link>
+                )}
                 <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
                   <ClipboardList size={18} />
                   <span>{t('sidebar.rma_tickets')}</span>
                 </Link>
-                <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
-                  <Wrench size={18} />
-                  <span>{t('sidebar.dealer_repairs')}</span>
-                </Link>
-                <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
-                  <Package size={18} />
-                  <span>{t('sidebar.parts_inventory')}</span>
-                </Link>
+                {/* SVC visible to Global access users (MS, etc) */}
+                {hasCrmAccess && (
+                  <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
+                    <Wrench size={18} />
+                    <span>{t('sidebar.dealer_repairs')}</span>
+                  </Link>
+                )}
+                {/* Inventory visible to Global access users (MS, etc) */}
+                {hasCrmAccess && (
+                  <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
+                    <Package size={18} />
+                    <span>{t('sidebar.parts_inventory')}</span>
+                  </Link>
+                )}
               </>
             )}
 
-            {/* ARCHIVES section (档案和基础信息) - collapsible, Role-based visibility */}
-            {(role === 'Admin' || role === 'Exec' || role === 'Lead' || role === 'Member') && (
+            {/* ARCHIVES section (档案和基础信息) - collapsible, Role-based visibility (OP/RD 隐藏) */}
+            {hasCrmAccess && (
               <>
                 <div className="sidebar-section-title" onClick={() => toggleSection('archives')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>{t('sidebar.section_archives')}</span>
@@ -919,17 +967,15 @@ const ServiceTopBarStats: React.FC = () => {
 const TopBar: React.FC<{
   user: any,
   onMenuClick: () => void,
-  currentModule: ModuleType,
-  canUseViewAs?: boolean,
-  onViewAsClick?: () => void,
-  isViewingAs?: boolean
-}> = ({ user, onMenuClick, currentModule, canUseViewAs, onViewAsClick, isViewingAs }) => {
+  currentModule: ModuleType
+}> = ({ user, onMenuClick, currentModule }) => {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { language: currentLanguage, setLanguage, t } = useLanguage();
+  const { viewingAs } = useViewAs();
 
   // Fetch server version on mount
   React.useEffect(() => {
@@ -984,36 +1030,6 @@ const TopBar: React.FC<{
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* P2: View As Button - Admin Only */}
-        {canUseViewAs && !isViewingAs && (
-          <button
-            onClick={onViewAsClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              background: 'rgba(255, 215, 0, 0.15)',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
-              borderRadius: '8px',
-              color: '#FFD700',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 215, 0, 0.25)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)';
-            }}
-          >
-            <Eye size={16} />
-            <span className="hidden-mobile">预览视角</span>
-          </button>
-        )}
-
         {/* Notification Bell - Service Module only */}
         {currentModule === 'service' && <NotificationBell />}
 
@@ -1185,6 +1201,37 @@ const TopBar: React.FC<{
                 <User size={16} />
                 {t('sidebar.personal')}
               </button>
+
+              {/* P2: View As - Admin Only or when already Viewing As */}
+              {(user.role === 'Admin' || !!viewingAs) && (
+                <button
+                  onClick={() => {
+                    useViewAsStore.getState().setSelectorOpen(true);
+                    setShowDropdown(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'rgba(255,255,255,0.9)',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Eye size={16} color="#FFD700" />
+                  预览视角
+                </button>
+              )}
 
               {/* Dashboard Entry */}
               <button

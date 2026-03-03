@@ -21,8 +21,8 @@ module.exports = function (db, authenticate) {
     function parseMentions(content) {
         if (!content) return [];
 
-        // Match @[name](user_id) or @username patterns
-        const mentionRegex = /@\[([^\]]+)\]\((\d+)\)|@(\w+)/g;
+        // Match @[name](user_id) or @username patterns (supports Chinese characters)
+        const mentionRegex = /@\[([^\]]+)\]\((\d+)\)|@([\w\u4e00-\u9fff]+)/g;
         const mentions = [];
         let match;
 
@@ -31,8 +31,10 @@ module.exports = function (db, authenticate) {
                 // @[name](user_id) format
                 mentions.push({ user_id: parseInt(match[2]), name: match[1] });
             } else if (match[3]) {
-                // @username format - need to look up user
-                const user = db.prepare('SELECT id, name FROM users WHERE name LIKE ?').get(`%${match[3]}%`);
+                // @username format - look up by username or display_name
+                const user = db.prepare(
+                    'SELECT id, COALESCE(display_name, username) as name FROM users WHERE username = ? OR display_name = ?'
+                ).get(match[3], match[3]);
                 if (user) {
                     mentions.push({ user_id: user.id, name: user.name });
                 }
@@ -97,7 +99,7 @@ module.exports = function (db, authenticate) {
     function updateMentionStats(actorId, mentionedUserIds) {
         if (!actorId || !mentionedUserIds?.length) return;
         const now = new Date().toISOString();
-        
+
         for (const mentionedId of mentionedUserIds) {
             if (mentionedId === actorId) continue;
             try {
@@ -107,7 +109,7 @@ module.exports = function (db, authenticate) {
                     SET mention_count = mention_count + 1, last_mention_at = ?
                     WHERE user_id = ? AND mentioned_user_id = ?
                 `).run(now, actorId, mentionedId);
-                
+
                 // If no row updated, insert
                 if (result.changes === 0) {
                     db.prepare(`
@@ -135,7 +137,7 @@ module.exports = function (db, authenticate) {
             visibility: row.visibility,
             actor: row.actor_id ? {
                 id: row.actor_id,
-                name: row.actor_name,
+                name: row.resolved_actor_name || row.actor_name || null,
                 role: row.actor_role
             } : null,
             is_edited: !!row.is_edited,
@@ -196,11 +198,14 @@ module.exports = function (db, authenticate) {
             // Count
             const total = db.prepare(`SELECT COUNT(*) as count FROM ticket_activities WHERE ${whereClause}`).get(...params).count;
 
-            // Get activities
+            // Get activities - JOIN users to resolve actor names
             const sql = `
-                SELECT * FROM ticket_activities
-                WHERE ${whereClause}
-                ORDER BY created_at DESC
+                SELECT ta.*, 
+                       COALESCE(u.display_name, u.username) as resolved_actor_name
+                FROM ticket_activities ta
+                LEFT JOIN users u ON ta.actor_id = u.id
+                WHERE ${whereClause.replace(/ticket_id/g, 'ta.ticket_id').replace(/visibility/g, 'ta.visibility').replace(/activity_type/g, 'ta.activity_type')}
+                ORDER BY ta.created_at DESC
                 LIMIT ? OFFSET ?
             `;
 
@@ -290,7 +295,7 @@ module.exports = function (db, authenticate) {
                 metadata ? JSON.stringify(metadata) : null,
                 finalVisibility,
                 user.id,
-                user.name,
+                user.display_name || user.username,
                 actorRole,
                 now
             );
@@ -324,20 +329,12 @@ module.exports = function (db, authenticate) {
                 // Update mention stats for user sorting
                 updateMentionStats(user.id, parsedMentions.map(m => m.user_id));
 
-                // Record mention activity
+                // Store mention info in the comment's metadata (no separate mention activity)
                 db.prepare(`
-                    INSERT INTO ticket_activities (
-                        ticket_id, activity_type, content, metadata,
-                        visibility, actor_id, actor_name, actor_role, created_at
-                    ) VALUES (?, 'mention', ?, ?, 'internal', ?, ?, ?, ?)
+                    UPDATE ticket_activities SET metadata = ? WHERE id = ?
                 `).run(
-                    ticketId,
-                    `提及了 ${parsedMentions.map(m => m.name).join(', ')}`,
                     JSON.stringify({ mentioned_users: parsedMentions }),
-                    user.id,
-                    user.name,
-                    actorRole,
-                    now
+                    activityId
                 );
             }
 

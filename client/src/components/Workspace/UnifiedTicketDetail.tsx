@@ -3,8 +3,8 @@
  * PRD P2 Section 6.3.C - Detail View
  * 左主右辅双栏布局，macOS26 风格
  *
- * 左栏 (70%): 基本信息 → 节点进度条(RMA/SVC) → Activity 时间轴 → 评论框
- * 右栏 (30%): 客户 Card → 设备 Card
+ * 左栏 (70%): 基本信息(可折叠) → 节点进度条(RMA/SVC) → Activity 时间轴(可折叠) → 评论框
+ * 右栏 (30%): 协作者 → 客户上下文
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,7 +13,8 @@ import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import NodeProgressBar from './NodeProgressBar';
-import { ActivityTimeline, CommentInput } from './TicketDetailComponents';
+import { ActivityTimeline, CollapsiblePanel } from './TicketDetailComponents';
+import { MentionCommentInput } from './MentionCommentInput';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
 
@@ -74,6 +75,18 @@ const statusLabels: Record<string, { zh: string; en: string; color: string }> = 
     closed: { zh: '已关闭', en: 'Closed', color: '#666' },
 };
 
+// Format date to minutes precision
+function formatDateMinute(dateStr: string): string {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}/${m}/${day} ${h}:${min}`;
+}
+
 // ==============================
 // Main Component
 // ==============================
@@ -110,21 +123,6 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
 
     useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-    // Debug: Log ticket data when it changes
-    useEffect(() => {
-        if (ticket) {
-            console.log('[UnifiedDetail] Ticket data:', {
-                id: ticket.id,
-                ticket_number: ticket.ticket_number,
-                account_id: ticket.account_id,
-                serial_number: ticket.serial_number,
-                dealer_id: ticket.dealer_id,
-                account_name: ticket.account_name,
-                product_name: ticket.product_name
-            });
-        }
-    }, [ticket]);
-
     const handleAddComment = async (content: string, visibility: string, mentions: number[] = []) => {
         try {
             await axios.post(`/api/v1/tickets/${ticketId}/activities`, {
@@ -133,12 +131,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                 visibility,
                 mentions
             }, { headers: { Authorization: `Bearer ${token}` } });
-            // 只刷新活动列表，不重新获取整个工单详情
-            const activitiesRes = await axios.get(`/api/v1/tickets/${ticketId}/activities`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Refresh activities and participants
+            const [activitiesRes, detailRes] = await Promise.all([
+                axios.get(`/api/v1/tickets/${ticketId}/activities`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`/api/v1/tickets/${ticketId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ]);
             if (activitiesRes.data.success) {
                 setActivities(activitiesRes.data.data || []);
+            }
+            if (detailRes.data.success) {
+                setParticipants(detailRes.data.participants || []);
             }
         } catch (err) {
             console.error('[UnifiedDetail] Failed to add comment', err);
@@ -253,67 +259,69 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                 {/* ====== LEFT COLUMN (Main) ====== */}
                 <div style={{ flex: '1 1 70%', minWidth: 0 }}>
 
-                    {/* Basic Info Card */}
-                    <div style={{
-                        padding: 20, borderRadius: 12, marginBottom: 16,
-                        background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                            <InfoRow icon={Calendar} label={t('ticket.created_at') || '创建时间'}
-                                value={new Date(ticket.created_at).toLocaleString('zh-CN')} />
-                            <InfoRow icon={User} label={t('ticket.assignee') || '指派给'}
-                                value={ticket.assigned_name || '-'} />
-                            <InfoRow icon={Package} label={t('ticket.product') || '产品'}
-                                value={ticket.product_name || '-'} />
-                            <InfoRow icon={Tag} label={t('ticket.serial') || '序列号'}
-                                value={ticket.serial_number || '-'} />
-                            <InfoRow icon={Building} label={t('ticket.customer') || '客户'}
-                                value={ticket.account_name || '-- (待确认)'} />
-                            <InfoRow icon={User} label={t('ticket.reporter') || '报修人'}
-                                value={ticket.contact_name ? ticket.contact_name : (ticket.reporter_snapshot?.name || ticket.reporter_name ? `${ticket.reporter_snapshot?.name || ticket.reporter_name} (临时)` : '-')} />
-                            <InfoRow icon={MessageSquare} label={t('ticket.submitted_by') || '提交者'}
-                                value={ticket.submitted_name || '-'} />
-                            {ticket.dealer_name && (
-                                <InfoRow icon={Store} label={t('ticket.dealer') || '经销商'}
-                                    value={`${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}`} />
+                    {/* Basic Info Card - Collapsible */}
+                    <CollapsiblePanel
+                        title={t('ticket.basic_info') || '基本信息'}
+                        icon={<Tag size={14} color="#FFD700" />}
+                        defaultOpen={true}
+                    >
+                        <div style={{ padding: '12px 20px 16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <InfoRow icon={Calendar} label={t('ticket.created_at') || '创建时间'}
+                                    value={formatDateMinute(ticket.created_at)} />
+                                <InfoRow icon={User} label={t('ticket.assignee') || '指派给'}
+                                    value={ticket.assigned_name || '-'} />
+                                <InfoRow icon={Package} label={t('ticket.product') || '产品型号'}
+                                    value={ticket.product_name || '-'} />
+                                <InfoRow icon={Tag} label={t('ticket.serial') || '序列号'}
+                                    value={ticket.serial_number || '-'} />
+                                <InfoRow icon={Building} label={t('ticket.customer') || '客户'}
+                                    value={ticket.account_name || '-- (待确认)'} />
+                                <InfoRow icon={User} label={t('ticket.reporter') || '报告人'}
+                                    value={ticket.contact_name ? ticket.contact_name : (ticket.reporter_snapshot?.name || ticket.reporter_name ? `${ticket.reporter_snapshot?.name || ticket.reporter_name}` : '-')} />
+                                <InfoRow icon={MessageSquare} label={t('ticket.submitted_by') || '提交者'}
+                                    value={ticket.submitted_name || '-'} />
+                                {ticket.dealer_name && (
+                                    <InfoRow icon={Store} label={t('ticket.dealer') || '经销商'}
+                                        value={`${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}`} />
+                                )}
+                                {ticket.parent_ticket_number && (
+                                    <InfoRow icon={ExternalLink} label={t('ticket.parent') || '关联工单'}
+                                        value={ticket.parent_ticket_number} />
+                                )}
+                            </div>
+
+                            {/* Problem summary */}
+                            {(ticket.problem_summary || ticket.problem_description) && (
+                                <div style={{
+                                    marginTop: 14, padding: 12, borderRadius: 8,
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                                }}>
+                                    <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
+                                        {t('ticket.problem_desc') || '问题描述'}
+                                    </div>
+                                    <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6 }}>
+                                        {ticket.problem_summary || ticket.problem_description}
+                                    </div>
+                                </div>
                             )}
-                            {ticket.parent_ticket_number && (
-                                <InfoRow icon={ExternalLink} label={t('ticket.parent') || '关联工单'}
-                                    value={ticket.parent_ticket_number} />
+
+                            {/* Resolution */}
+                            {ticket.resolution && (
+                                <div style={{
+                                    marginTop: 10, padding: 12, borderRadius: 8,
+                                    background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)',
+                                }}>
+                                    <div style={{ fontSize: 11, color: '#10B981', marginBottom: 4 }}>
+                                        处理结果
+                                    </div>
+                                    <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                        {ticket.resolution}
+                                    </div>
+                                </div>
                             )}
                         </div>
-
-                        {/* Problem summary */}
-                        {(ticket.problem_summary || ticket.problem_description) && (
-                            <div style={{
-                                marginTop: 16, padding: 14, borderRadius: 8,
-                                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
-                            }}>
-                                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
-                                    {t('ticket.problem_desc') || '问题描述'}
-                                </div>
-                                <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.6 }}>
-                                    {ticket.problem_summary || ticket.problem_description}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Resolution */}
-                        {ticket.resolution && (
-                            <div style={{
-                                marginTop: 12, padding: 14, borderRadius: 8,
-                                background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)',
-                            }}>
-                                <div style={{ fontSize: 12, color: '#10B981', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    处理结果
-                                </div>
-                                <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                    {ticket.resolution}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Node Progress Bar (RMA / SVC only) */}
                     {isRmaOrSvc && (
@@ -323,39 +331,24 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                         />
                     )}
 
-                    {/* Activity Timeline */}
-                    <div style={{
-                        borderRadius: 12, marginBottom: 16,
-                        background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                            display: 'flex', alignItems: 'center', gap: 8,
-                        }}>
-                            <Clock size={16} color="#FFD700" />
-                            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
-                                {t('ticket.activity_timeline') || '活动时间轴'}
-                            </span>
-                            <span style={{ fontSize: 12, color: '#666', marginLeft: 'auto' }}>
-                                {activities.length} {lang === 'zh' ? '条记录' : 'entries'}
-                            </span>
-                        </div>
-
-                        <div style={{ padding: '0 20px 16px' }}>
-                            <ActivityTimeline activities={activities} loading={false} />
-                        </div>
-                    </div>
+                    {/* Activity Timeline - Collapsible */}
+                    <CollapsiblePanel
+                        title={t('ticket.activity_timeline') || '活动时间轴'}
+                        icon={<Clock size={14} color="#FFD700" />}
+                        count={activities.filter(a => a.activity_type !== 'mention').length}
+                        defaultOpen={true}
+                    >
+                        <ActivityTimeline activities={activities} loading={false} />
+                    </CollapsiblePanel>
 
                     {/* Comment Input */}
                     <div style={{
                         borderRadius: 12,
                         background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
                         border: '1px solid rgba(255,255,255,0.06)',
-                        padding: 16,
+                        overflow: 'hidden',
                     }}>
-                        <CommentInput onSubmit={handleAddComment} />
+                        <MentionCommentInput onSubmit={handleAddComment} />
                     </div>
                 </div>
 
@@ -395,8 +388,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
 
 const InfoRow: React.FC<{ icon: any; label: string; value: string }> = ({ icon: Icon, label, value }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Icon size={14} color="#666" />
-        <span style={{ fontSize: 12, color: '#888', minWidth: 56 }}>{label}:</span>
+        <Icon size={13} color="#666" />
+        <span style={{ fontSize: 12, color: '#888', minWidth: 50 }}>{label}:</span>
         <span style={{ fontSize: 13, color: '#ccc', fontWeight: 500 }}>{value}</span>
     </div>
 );

@@ -8,7 +8,9 @@ import AdminSettings from './Admin/AdminSettings';
 import { useLanguage } from '../i18n/useLanguage';
 import { useAuthStore } from '../store/useAuthStore';
 
-type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts';
+import { useViewAsStore } from '../store/useViewAsStore';
+
+type AdminTab = 'dashboard' | 'users' | 'depts' | 'settings' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts' | 'view-as';
 
 interface AdminPanelProps {
     moduleType?: 'service' | 'files';
@@ -110,6 +112,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
                                         const savedSubTab = localStorage.getItem(settingsStorageKey);
                                         const subRoute = (savedSubTab === 'general' || !savedSubTab) ? 'settings' : savedSubTab;
                                         navigate(`${routePrefix}/${subRoute}`);
+                                    } else if (item.id === 'view-as') {
+                                        useViewAsStore.getState().setSelectorOpen(true);
                                     } else {
                                         navigate(`${routePrefix}/${item.id}`);
                                     }
