@@ -48,22 +48,43 @@
 
 ## 1. 核心实体
 
-### 1.1 产品 (products)
+### 1.1 产品 (products) - 已安装资产 (Installed Base)
 
 ```sql
-products (产品)
+products (产品资产)
 ├── id: SERIAL PRIMARY KEY
-├── name: VARCHAR(255) NOT NULL -- 产品名称
-├── model: VARCHAR(100) -- 型号
-├── category: ENUM('camera', 'viewfinder', 'accessory', 'cable') -- 分类
-├── series: VARCHAR(50) -- 系列 (Edge/MM2/Terra/Eagle)
-├── current_firmware_version: VARCHAR(20) -- 当前固件版本
+├── model_name: VARCHAR(255) NOT NULL -- 产品型号 (如 C181, MAVO Edge 8K)
+├── internal_name: VARCHAR(255) -- 内部代号
+├── serial_number: VARCHAR(100) UNIQUE -- 序列号 (符合 SNSKU.md 规范)
+│   -- 摄影机: [简写][代数]_[规格][填充批次][顺序号] (如 ME_107649)
+│   -- 附件: [简写][代数]_[规格][批次][顺序号] (如 KB3_101001)
+├── product_sku: VARCHAR(100) -- 商品 SKU (如 A010-001-01)
 ├── product_family: ENUM('A', 'B', 'C', 'D') -- 产品族群
 │   -- A: 在售电影机, B: 历史机型, C: 电子寻像器, D: 通用配件
-├── is_active: BOOLEAN DEFAULT true -- 是否在售
+├── product_line: VARCHAR(100) -- 产品线 (Camera, EVF, Accessory)
+├── product_type: VARCHAR(50) -- 设备类型 (CAMERA, ACCESSORY, etc.)
+├── firmware_version: VARCHAR(20) -- 固件版本
+├── description: TEXT -- 设备描述
+├── is_active: BOOLEAN DEFAULT true -- 是否在保/活跃
+│
+├── // 归属与状态
+├── current_owner_id: INT -- 当前物主账号 (Account ID)
+├── sales_channel: VARCHAR(50) -- 销售渠道 (DIRECT/DEALER)
+├── registration_date: DATE -- 注册日期
+├── sales_invoice_date: DATE -- 发票日期
+│
+├── // 保修相关
+├── warranty_start_date: DATE -- 保修起算
+├── warranty_months: INT DEFAULT 24 -- 保修时长 (月)
+├── warranty_end_date: DATE -- 保修截止
+├── warranty_status: ENUM('ACTIVE', 'EXPIRED', 'VOID') -- 保修状态
+│
+├── // 系统字段
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
+
+FOREIGN KEY (current_owner_id) REFERENCES accounts(id)
 
 **索引**：
 - PRIMARY KEY (id)

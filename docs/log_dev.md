@@ -4,6 +4,65 @@
 
 ---
 
+## 2026-03-03 14:45 - 全局资产序列号 (SN) 标准化与数据完整性修正 (v1.7.15)
+
+### Tasks Completed:
+1. **远程服务器 SN 标准化重构** (`longhorn.db`):
+    - 严格遵循 `docs/SNSKU.md` 定义的序列号规则，对远程数据库中 26 件已安装产品 (Installed Base) 的 SN 进行了批量映射与修正。
+    - **摄影机规则实装**: 采用 `[简称][代数]_[批次+填充][顺序号]` (如 `ME_107649`)。
+    - **附件规则实装**: 对寻像器 (`KVF_1`/`KVF_2`)、电池 (`KB2_2`/`KB3_1`)、扩展背板等进行了格式对齐。
+    - **分类修正**: 将 `PCB_008` (MC Board 8K) 正确归类为 `MAVO Edge 8K` 摄影机机身，并分配标准 SN `ME_109833`。
+2. **多表级联同步 (Global Data Integrity)**:
+    - 为确保历史业务追溯不断层，同步更新了 `tickets` (归一工单)、`issues` (基础问题单) 以及 `ticket_search_index` 中的所有 SN 引用。
+    - **清理后缀变体**: 识别并清除了历史记录中手动添加的 `-002` 等非标 SN 后缀，统一指向标准化后的基础序列号。
+3. **数据校验**:
+    - 完成了远程环境的数据一致性核查，确认 `current_owner_id` 与各工单中的 `account_id` 100% 同步且 SN 引用闭环。
+
+### Technical Output:
+- **Modified**: 远程数据库 `products`, `tickets`, `issues`, `ticket_search_index`
+- **Reference**: `docs/SNSKU.md`, `/tmp/fix_remote_sn_unified.sql`
+- **Version**: Database `v1.7.15` (Installed Base Refactored)
+
+---
+
+## 2026-03-03 01:25 - 工作区深度协作与部门池功能全量实装 (v12.3.13)
+
+### Tasks Completed:
+1. **工作区三视图逻辑闭环** (`WorkspacePage.tsx` & `tickets.js`):
+    - **协作 (Mentioned)**: 基于 `ticket_participants` 实现服务端过滤，自动收录用户被提及但未指派的协作任务。
+    - **团队队列 (Team Queue)**: 实装“部门池”过滤。基于用户部门 (OP/MS) 自动匹配对应的任务阶段节点，实现“只看部门职责内、未指派”的任务流。
+    - **任务领取 (Pick up)**: 优化领取逻辑，支持一键领取并自动转入“我的任务”及参与者列表。
+2. **侧边栏通知系统增强** (`App.tsx` & `tickets.js`):
+    - **实时计数**: 新增 `GET /api/v1/tickets/workspace/counts` 端点，聚合计算三视图待办数。
+    - **动态角标**: 侧边栏实装 macOS 风格的高级角标。配色方案：我的任务 (黄)、协作 (蓝)、团队队列 (橙)。
+    - **心跳机制**: 前端每 60 秒自动同步计数，确保护持最新状态。
+3. **协作自动化机制**:
+    - **指派即参与**: 后端拦截 `PATCH /api/v1/tickets/:id` 指派操作，自动将新负责人增入 `ticket_participants` 协作表。
+    - **参与者侧边栏**: 在归一工单详情页集成 `ParticipantsSidebar.tsx`，支持手动邀请同事与协作管理。
+4. **UI/UX 细节深度抛光**:
+    - **列表显示对齐**: 修正咨询工单列表页，优先显示“报告人”而非联系人，全局视觉统一。
+    - **搜索增强**: 增加搜索框动态关闭按钮。
+    - **客户卡片净化**: 移除了未知身份前的问号，以及建议操作前的警告图标和多余文本。
+    - **详情字段补全**: 在 `UnifiedTicketDetail.tsx` 中增加了“处理结果 (Resolution)”的展示。
+5. **数据清洗与修复**:
+    - 自动化脚本实装：批量修复了 30 条存量咨询工单的 Account ID 缺失问题。
+
+### Technical Output:
+- **Modified**: `client/src/App.tsx`, `client/src/components/Service/WorkspacePage.tsx`, `client/src/components/InquiryTickets/InquiryTicketListPage.tsx`, `server/service/routes/tickets.js`, `client/src/index.css`
+- **Version**: Client `12.3.13`, Server `1.7.10`
+
+---
+
+
+### 2026-03-03 (工作区协作与部门池功能上线)
+- **完成工作区核心逻辑**:
+    - **协作视图 (Mentioned)**: 实现关联参与者表的服务端精准过滤。
+    - **部门池视图 (Team Queue)**: 实装跨部门职责过滤（OP/MS 分流）。
+    - **动态计数角标**: 侧边栏增加实时心跳计数，支持三色分类。
+    - **协作自动化**: 指派操作自动触发参与者关联，确保协作链条完整。
+    - **UI 标准化**: 修正咨询工单显示、客户卡片去噪、详情页字段补全。
+    - **数据修复**: 批量注氧，修复了 30 条缺失 Account ID 的历史记录。
+
 ## 2026-03-03 01:05 - 客户生命周期模型实装与自动化升档逻辑 (v12.3.0)
 
 ### Tasks Completed:
@@ -74,6 +133,14 @@
 ---
 
 ## 2026-03-01 00:15 - 侧栏重构 + WorkspacePage 三视图 (v12.2.2)
+
+### [SVC-P2] Service P2 架构升级 (已完成 100%)
+**Phase 2.6: 高级协作与部门池** ✅
+- [x] 工作区三视图逻辑闭环 (服务端过滤)
+- [x] 侧边栏动态角标 (My Tasks/Mentioned/Team Queue)
+- [x] 部门感知的任务分配与领取逻辑 (Pick up)
+- [x] 自动参与者关联机制 (指派自动加入协作)
+- [x] 版本发布：v12.3.13 已全量部署至 mini
 
 ### Tasks Completed:
 1. **侧栏分组重构** (`App.tsx`):
