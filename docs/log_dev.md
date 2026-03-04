@@ -1,6 +1,13 @@
 # 开发会话日志 (Development Session Log)
 
 **概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
+## [2026-03-04] Bugfix: SQL Missing Column (d.code)
+### Backend
+- Changed `d.code` references to `d.name as dept_code` (or `department_code`) globally in SQL queries across `tickets.js`, `index.js`, `system.js`, and `permission.js`.
+- Solved the issue where View As functionality (or fetching MS department queue) would crash with 500 error due to `no such column: d.code`.
+### Infrastructure
+- Deployed backend to `mini` via fast sync. Incremented client/server package versions.
+
 
 ---
 

@@ -1,4 +1,9 @@
 # Prompt Log
+## [2026-03-04] Fix Dashboard Discrepancy & d.code SQL Bug
+- Discovered that many SQL queries in backend were referencing `d.code` incorrectly (the `departments` table only has `id` and `name`).
+- Replaced `d.code` with `d.name as department_code` in `index.js`, `tickets.js`, `system.js`, and `permission.js`.
+- Deployed fix to prevent 500 server errors when using View As (Bishan) and accessing Team Queue (Cathy).
+
 
 ---
 
