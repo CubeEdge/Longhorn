@@ -205,7 +205,7 @@ const InquiryTicketCreatePage: React.FC = () => {
             });
 
             if (res.data.success) {
-                navigate(`/service/inquiry-tickets/${res.data.data.id}`);
+                navigate(`/service/tickets/${res.data.data.id}`);
             }
         } catch (err: any) {
             console.error('Failed to create inquiry ticket:', err);

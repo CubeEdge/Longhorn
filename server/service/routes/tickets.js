@@ -13,6 +13,42 @@ const { hasGlobalAccess } = require('../middleware/permission');
 module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
 
+    // PRD §7.1 - 强制审计字段清单 (Audit Field Whitelist)
+    const AUDIT_FIELDS = [
+        // 设备标识 (Identity)
+        'serial_number', 'product_id',
+        // 主体归属 (Ownership)
+        'account_id', 'contact_id', 'dealer_id',
+        // 内容与诊断 (Content)
+        'problem_summary', 'problem_description', 'repair_content',
+        // 经济责任 (Financial)
+        'is_warranty', 'payment_amount',
+        // 时效契约 (SLA)
+        'priority', 'sla_due_at',
+        // 原始证据 (Proof)
+        'reporter_snapshot'
+    ];
+
+    // PRD §7.1 - 终结期节点 (禁止普通用户修改)
+    const FINALIZED_NODES = ['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'];
+
+    // 字段名称映射 (用于时间轴显示)
+    const FIELD_LABELS = {
+        serial_number: '序列号',
+        product_id: '产品型号',
+        account_id: '关联公司',
+        contact_id: '联系人',
+        dealer_id: '经销商',
+        problem_summary: '问题简述',
+        problem_description: '详细描述',
+        repair_content: '维修内容',
+        is_warranty: '保修判定',
+        payment_amount: '金额',
+        priority: '优先级',
+        sla_due_at: 'SLA死线',
+        reporter_snapshot: '报修人快照'
+    };
+
     const DEPARTMENT_NODES = {
         'MS': ['draft', 'submitted', 'ms_review', 'waiting_customer', 'ms_closing'],
         'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_qa'],
@@ -279,17 +315,38 @@ module.exports = function (db, authenticate, serviceUpload) {
                 sort_by = 'created_at',
                 sort_order = 'desc',
                 participant_id,
-                exclude_assigned_to
+                exclude_assigned_to,
+                dept_collab
             } = req.query;
 
             const user = req.user;
             let conditions = [];
             let params = [];
 
+            // PRD §7.2: 默认排除已删除工单
+            conditions.push('(t.is_deleted IS NULL OR t.is_deleted = 0)');
+
             // Role-based filtering
+            // dept_collab: 按部门协作查询时，用部门级 EXISTS 替代个人权限过滤
             if (user.user_type === 'Dealer') {
                 conditions.push('t.dealer_id = ?');
                 params.push(user.dealer_id);
+            } else if (dept_collab) {
+                // 部门协作查询：校验用户只能查自己部门，Admin/Exec 可查任意部门
+                const userDeptCode = user.department_code || getDeptCode(user);
+                if (!['Admin', 'Exec'].includes(user.role) && dept_collab !== userDeptCode) {
+                    return res.status(403).json({ success: false, error: '无权查看其他部门的协作工单' });
+                }
+                // 查询该部门成员被 @mention 的工单（替代个人权限过滤）
+                conditions.push(`EXISTS (
+                    SELECT 1 FROM ticket_participants tp
+                    JOIN users u2 ON tp.user_id = u2.id
+                    JOIN departments d2 ON u2.department_id = d2.id
+                    WHERE tp.ticket_id = t.id
+                    AND tp.role = 'mentioned'
+                    AND d2.code = ?
+                )`);
+                params.push(dept_collab);
             } else if (!hasGlobalAccess(user)) {
                 // PRD §2.1: OP/RD see RMA tickets freely, but Inquiry/SVC via JIT only
                 conditions.push(`(
@@ -491,6 +548,16 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(404).json({ success: false, error: '工单不存在' });
             }
 
+            // PRD §7.2: 检查工单是否已被软删除
+            if (row.is_deleted === 1) {
+                return res.status(410).json({ 
+                    success: false, 
+                    error: '工单已被删除',
+                    deleted_at: row.deleted_at,
+                    delete_reason: row.delete_reason
+                });
+            }
+
             // Check permission for dealers
             if (req.user.user_type === 'Dealer' && row.dealer_id !== req.user.dealer_id) {
                 return res.status(403).json({ success: false, error: '无权访问此工单' });
@@ -591,10 +658,22 @@ module.exports = function (db, authenticate, serviceUpload) {
                 };
             }
 
-            // 3. Activities (倒序)
-            const activities = db.prepare(`
-                SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC
+            // 3. Activities (倒序) - JOIN users 获取实际姓名
+            const rawActivities = db.prepare(`
+                SELECT ta.*,
+                       COALESCE(u.display_name, u.username) as resolved_actor_name
+                FROM ticket_activities ta
+                LEFT JOIN users u ON ta.actor_id = u.id
+                WHERE ta.ticket_id = ? ORDER BY ta.created_at DESC
             `).all(id);
+            const activities = rawActivities.map(a => ({
+                ...a,
+                actor: a.actor_id ? {
+                    id: a.actor_id,
+                    name: a.resolved_actor_name || a.actor_name || null,
+                    role: a.actor_role
+                } : null
+            }));
 
             // 4. Participants with role info
             let participants = [];
@@ -812,12 +891,13 @@ module.exports = function (db, authenticate, serviceUpload) {
 
     /**
      * PATCH /api/v1/tickets/:id
-     * Update ticket
+     * Update ticket with PRD §7.1 Audited Correction
      */
     router.patch('/:id', authenticate, (req, res) => {
         try {
             const { id } = req.params;
             const updates = req.body;
+            const { change_reason } = updates; // 修正理由
 
             // Get current ticket
             const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
@@ -825,9 +905,50 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(404).json({ success: false, error: '工单不存在' });
             }
 
+            // PRD §7.2: Check if ticket is soft-deleted
+            if (ticket.is_deleted === 1) {
+                return res.status(410).json({ success: false, error: '工单已被删除' });
+            }
+
             // Check permission
             if (req.user.user_type === 'Dealer' && ticket.dealer_id !== req.user.dealer_id) {
                 return res.status(403).json({ success: false, error: '无权修改此工单' });
+            }
+
+            // PRD §7.1 - 阶梯式锁定检查
+            const isFinalized = FINALIZED_NODES.includes(ticket.current_node);
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+
+            // 检测是否修改了审计字段
+            const auditFieldsToChange = AUDIT_FIELDS.filter(field => {
+                if (updates[field] === undefined) return false;
+                const oldVal = ticket[field];
+                const newVal = updates[field];
+                // 值比较 (处理 JSON 字段)
+                if (field === 'reporter_snapshot') {
+                    const oldStr = typeof oldVal === 'string' ? oldVal : JSON.stringify(oldVal);
+                    const newStr = typeof newVal === 'string' ? newVal : JSON.stringify(newVal);
+                    return oldStr !== newStr;
+                }
+                return String(oldVal || '') !== String(newVal || '');
+            });
+
+            // 如果修改了审计字段，强制要求填写修正理由
+            if (auditFieldsToChange.length > 0 && !change_reason) {
+                return res.status(400).json({
+                    success: false,
+                    error: '修改核心字段需要填写修正理由',
+                    audit_fields: auditFieldsToChange.map(f => FIELD_LABELS[f] || f)
+                });
+            }
+
+            // 终结期锁定：普通用户禁止修改审计字段
+            if (isFinalized && !isAdmin && auditFieldsToChange.length > 0) {
+                return res.status(403).json({
+                    success: false,
+                    error: '工单已终结，仅管理员可修改核心字段',
+                    finalized_at: ticket.current_node
+                });
             }
 
             const now = new Date().toISOString();
@@ -862,6 +983,70 @@ module.exports = function (db, authenticate, serviceUpload) {
                 }
             }
 
+            // PRD §7.1 - 记录审计字段变更到时间轴
+            const actorName = req.user.display_name || req.user.username;
+            const actorDept = req.user.department_name || 'MS';
+
+            for (const field of auditFieldsToChange) {
+                const oldVal = ticket[field];
+                let newVal = updates[field];
+                
+                // 格式化显示值
+                let oldDisplay = oldVal;
+                let newDisplay = newVal;
+                
+                if (field === 'reporter_snapshot') {
+                    oldDisplay = oldVal ? '(快照数据)' : '(空)';
+                    newDisplay = newVal ? '(快照数据)' : '(空)';
+                } else if (field === 'is_warranty') {
+                    oldDisplay = oldVal === 1 ? '在保' : '过保';
+                    newDisplay = newVal === 1 ? '在保' : '过保';
+                } else if (field === 'payment_amount') {
+                    oldDisplay = oldVal ? `¥${oldVal}` : '¥0';
+                    newDisplay = newVal ? `¥${newVal}` : '¥0';
+                }
+
+                const fieldLabel = FIELD_LABELS[field] || field;
+                const content = `修改了 [${fieldLabel}]：从 "${oldDisplay || '(空)'}" 变更为 "${newDisplay || '(空)'}"。理由：${change_reason}`;
+
+                // 写入时间轴活动
+                db.prepare(`
+                    INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                    VALUES (?, 'field_update', ?, ?, ?, ?, ?, 'all')
+                `).run(
+                    id,
+                    content,
+                    JSON.stringify({
+                        field_name: field,
+                        field_label: fieldLabel,
+                        old_value: oldVal,
+                        new_value: newVal,
+                        change_reason: change_reason
+                    }),
+                    req.user.id,
+                    actorName,
+                    actorDept
+                );
+
+                // 写入详细审计日志
+                try {
+                    db.prepare(`
+                        INSERT INTO ticket_field_audit_log (ticket_id, field_name, old_value, new_value, change_reason, changed_by, changed_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `).run(
+                        id,
+                        field,
+                        JSON.stringify(oldVal),
+                        JSON.stringify(newVal),
+                        change_reason,
+                        req.user.id,
+                        now
+                    );
+                } catch (e) {
+                    console.error('[Tickets] Audit log write error:', e.message);
+                }
+            }
+
             // Handle node change specially (update SLA)
             if (updates.current_node && updates.current_node !== ticket.current_node) {
                 const priority = updates.priority || ticket.priority;
@@ -876,8 +1061,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `状态变更: ${ticket.current_node} → ${updates.current_node}`,
                     JSON.stringify({ from_node: ticket.current_node, to_node: updates.current_node }),
                     req.user.id,
-                    req.user.display_name || req.user.username,
-                    req.user.department_name || 'MS'
+                    actorName,
+                    actorDept
                 );
 
                 // Update status field
@@ -887,8 +1072,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 params.push(now);
             }
 
-            // Handle priority change
-            if (updates.priority && updates.priority !== ticket.priority) {
+            // Handle priority change (if not already in audit fields)
+            if (updates.priority && updates.priority !== ticket.priority && !auditFieldsToChange.includes('priority')) {
                 db.prepare(`
                     INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
                     VALUES (?, 'priority_change', ?, ?, ?, ?, ?, 'all')
@@ -897,8 +1082,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `优先级变更: ${ticket.priority} → ${updates.priority}`,
                     JSON.stringify({ from_priority: ticket.priority, to_priority: updates.priority }),
                     req.user.id,
-                    req.user.display_name || req.user.username,
-                    req.user.department_name || 'MS'
+                    actorName,
+                    actorDept
                 );
 
                 // Recalculate SLA if priority changed
@@ -919,8 +1104,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                     `指派变更`,
                     JSON.stringify({ from_user_id: ticket.assigned_to, to_user_id: updates.assigned_to }),
                     req.user.id,
-                    req.user.display_name || req.user.username,
-                    req.user.department_name || 'MS'
+                    actorName,
+                    actorDept
                 );
 
                 // P2: Add new assignee as participant automatically
@@ -950,9 +1135,114 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             db.prepare(`UPDATE tickets SET ${sets.join(', ')} WHERE id = ?`).run(...params);
 
-            res.json({ success: true, message: '更新成功' });
+            res.json({ 
+                success: true, 
+                message: '更新成功',
+                audited_fields: auditFieldsToChange.length > 0 ? auditFieldsToChange : undefined
+            });
         } catch (err) {
             console.error('[Tickets] Update error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * DELETE /api/v1/tickets/:id
+     * Soft delete ticket (PRD §7.2 墓碑化软删除)
+     */
+    router.delete('/:id', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { delete_reason } = req.body;
+
+            // 强制要求删除理由
+            if (!delete_reason || delete_reason.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: '删除工单必须提供删除理由'
+                });
+            }
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            // 已删除的工单不能重复删除
+            if (ticket.is_deleted === 1) {
+                return res.status(410).json({ success: false, error: '工单已被删除' });
+            }
+
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+            const isOwner = ticket.created_by === req.user.id;
+            const isDraftOrSubmitted = ['draft', 'submitted'].includes(ticket.current_node);
+
+            // PRD §7.2 权限检查
+            // 普通员工：仅允许删除自己创建且处于 draft 或 submitted 状态的工单
+            // 管理员：允许删除任何工单
+            if (!isAdmin) {
+                if (!isOwner) {
+                    return res.status(403).json({
+                        success: false,
+                        error: '仅允许删除自己创建的工单'
+                    });
+                }
+                if (!isDraftOrSubmitted) {
+                    return res.status(403).json({
+                        success: false,
+                        error: '仅允许删除草稿或已提交状态的工单',
+                        current_node: ticket.current_node
+                    });
+                }
+            }
+
+            const now = new Date().toISOString();
+
+            // 执行软删除
+            db.prepare(`
+                UPDATE tickets SET 
+                    is_deleted = 1,
+                    deleted_at = ?,
+                    deleted_by = ?,
+                    delete_reason = ?,
+                    updated_at = ?
+                WHERE id = ?
+            `).run(now, req.user.id, delete_reason.trim(), now, id);
+
+            // 记录删除活动到时间轴
+            const actorName = req.user.display_name || req.user.username;
+            const actorDept = req.user.department_name || 'MS';
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system_event', ?, ?, ?, ?, ?, 'internal')
+            `).run(
+                id,
+                `工单已删除。理由：${delete_reason.trim()}`,
+                JSON.stringify({
+                    event_type: 'soft_delete',
+                    delete_reason: delete_reason.trim(),
+                    deleted_by: req.user.id,
+                    deleted_at: now,
+                    is_admin_action: isAdmin
+                }),
+                req.user.id,
+                actorName,
+                actorDept
+            );
+
+            console.log(`[Tickets] Soft deleted ticket ${ticket.ticket_number} by ${actorName}, reason: ${delete_reason.trim()}`);
+
+            res.json({
+                success: true,
+                message: '工单已删除',
+                data: {
+                    ticket_number: ticket.ticket_number,
+                    deleted_at: now,
+                    deleted_by: req.user.id
+                }
+            });
+        } catch (err) {
+            console.error('[Tickets] Delete error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

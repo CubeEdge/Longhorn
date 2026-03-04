@@ -337,7 +337,7 @@ const DealerRepairListPage: React.FC = () => {
 
     const RepairCard = ({ repair }: { repair: DealerRepair }) => (
         <div
-            onClick={() => navigate(`/service/dealer-repairs/${repair.id}`)}
+            onClick={() => navigate(`/service/tickets/${repair.id}`)}
             style={{
                 background: 'var(--bg-card)', borderRadius: '12px', padding: '18px',
                 border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',

@@ -603,12 +603,14 @@ const authenticate = (req, res, next) => {
 
             try {
                 // Reload user from DB to ensure latest role/department info
-                // Use both integer and float comparison for backward compatibility
+                // P2: Include department_code for permission checks
                 const user = db.prepare(`
-                    SELECT id, username, display_name, role, department_id, department_name, user_type, 
-                           job_title, status
-                    FROM users
-                    WHERE id = ? OR id = CAST(? AS REAL)
+                    SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
+                           u.job_title, u.status, u.dealer_id, u.region_responsible,
+                           d.name as department_name, d.code as department_code
+                    FROM users u
+                    LEFT JOIN departments d ON u.department_id = d.id
+                    WHERE u.id = ? OR u.id = CAST(? AS REAL)
                 `).get(decoded.id, decoded.id);
 
                 if (!user) {
@@ -1503,9 +1505,12 @@ app.get('/api/admin/users', authenticate, (req, res) => {
     if (req.user.role !== 'Admin' && req.user.role !== 'Lead') return res.status(403).json({ error: 'Forbidden' });
 
     let query = `
-        SELECT u.id, u.username, u.role, u.department_id, u.created_at, d.name as department_name 
+        SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.created_at, 
+               u.dealer_id, dl.name as dealer_name,
+               d.name as department_name, d.code as dept_code
         FROM users u 
         LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN dealers dl ON u.dealer_id = dl.id
     `;
     let params = [];
 

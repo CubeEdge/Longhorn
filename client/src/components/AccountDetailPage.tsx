@@ -420,7 +420,7 @@ const AccountDetailPage: React.FC = () => {
                   <div
                     key={ticket.id}
                     className="p-4 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/service/${ticket.type === 'inquiry' ? 'inquiry-tickets' : ticket.type === 'rma' ? 'rma-tickets' : 'dealer-repairs'}/${ticket.id}`)}
+                    onClick={() => navigate(`/service/tickets/${ticket.id}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div>

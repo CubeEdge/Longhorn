@@ -8,7 +8,8 @@ import { MentionCommentInput } from './MentionCommentInput';
 import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
-  AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck
+  AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
+  Edit3, Trash2
 } from 'lucide-react';
 
 // ==============================
@@ -86,6 +87,112 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
 };
 
 // ==============================
+// Field Update Content (审计化修正高亮显示)
+// PRD §7.1 - 对比高亮形式呈现字段变更
+// ==============================
+
+interface FieldUpdateMetadata {
+  field_name?: string;
+  field_label?: string;
+  old_value?: unknown;
+  new_value?: unknown;
+  change_reason?: string;
+}
+
+interface FieldUpdateContentProps {
+  content: string;
+  metadata: FieldUpdateMetadata;
+}
+
+const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => {
+  const formatValue = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '(空)';
+    if (typeof value === 'boolean') return value ? '是' : '否';
+    if (typeof value === 'object') return '(数据对象)';
+    return String(value);
+  };
+
+  return (
+    <div style={{ flex: 1, fontSize: 13 }}>
+      {/* 字段标签 */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 6, 
+        marginBottom: 6 
+      }}>
+        <span style={{ color: '#aaa' }}>修改了</span>
+        <span style={{ 
+          color: '#FFD700', 
+          fontWeight: 600,
+          padding: '2px 6px',
+          background: 'rgba(255,215,0,0.1)',
+          borderRadius: 4
+        }}>
+          {metadata.field_label || metadata.field_name || '字段'}
+        </span>
+      </div>
+
+      {/* 对比高亮显示 */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 8,
+        marginBottom: 6
+      }}>
+        {/* 旧值 - 红色删除线 */}
+        <span style={{
+          padding: '3px 8px',
+          background: 'rgba(239,68,68,0.1)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: 4,
+          color: '#EF4444',
+          textDecoration: 'line-through',
+          fontSize: 12,
+          maxWidth: 150,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {formatValue(metadata.old_value)}
+        </span>
+
+        <ArrowRight size={12} color="#666" />
+
+        {/* 新值 - 绿色高亮 */}
+        <span style={{
+          padding: '3px 8px',
+          background: 'rgba(16,185,129,0.1)',
+          border: '1px solid rgba(16,185,129,0.2)',
+          borderRadius: 4,
+          color: '#10B981',
+          fontWeight: 500,
+          fontSize: 12,
+          maxWidth: 150,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {formatValue(metadata.new_value)}
+        </span>
+      </div>
+
+      {/* 修正理由 */}
+      {metadata.change_reason && (
+        <div style={{
+          fontSize: 12,
+          color: '#888',
+          fontStyle: 'italic',
+          paddingLeft: 2
+        }}>
+          理由: {metadata.change_reason}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==============================
 // Activity Timeline (Compact Horizontal Layout)
 // ==============================
 
@@ -124,6 +231,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'priority_change': return <AlertTriangle size={12} />;
       case 'mention': return <AtSign size={12} />;
       case 'attachment': return <Paperclip size={12} />;
+      case 'field_update': return <Edit3 size={12} />;  // PRD §7.1 审计化修正
+      case 'soft_delete': return <Trash2 size={12} />;  // PRD §7.2 软删除
       default: return <Clock size={12} />;
     }
   };
@@ -136,6 +245,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'assignment': case 'assignment_change': return '#FFD700';
       case 'priority_change': return '#F59E0B';
       case 'mention': return '#8B5CF6';
+      case 'field_update': return '#FFD700';  // Kine Yellow - 审计修正
+      case 'soft_delete': return '#EF4444';   // Kine Red - 删除操作
       default: return '#666';
     }
   };
@@ -200,15 +311,30 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                   }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                       {getVisibilityBadge(activity.visibility)}
-                      <div
-                        style={{
-                          color: '#aaa', fontSize: 13, lineHeight: 1.5,
-                          flex: 1, wordBreak: 'break-word',
-                        }}
-                        dangerouslySetInnerHTML={{
-                          __html: activity.content_html || activity.content || ''
-                        }}
-                      />
+                      
+                      {/* PRD §7.1: field_update 类型使用特殊高亮渲染 */}
+                      {activity.activity_type === 'field_update' && activity.metadata ? (
+                        <FieldUpdateContent
+                          content={activity.content || ''}
+                          metadata={activity.metadata as {
+                            field_name?: string;
+                            field_label?: string;
+                            old_value?: unknown;
+                            new_value?: unknown;
+                            change_reason?: string;
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            color: '#aaa', fontSize: 13, lineHeight: 1.5,
+                            flex: 1, wordBreak: 'break-word',
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: activity.content_html || activity.content || ''
+                          }}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -97,7 +97,7 @@ const RMATicketCreatePage: React.FC = () => {
             });
 
             if (res.data.success) {
-                navigate(`/service/rma-tickets/${res.data.data.id}`);
+                navigate(`/service/tickets/${res.data.data.id}`);
             }
         } catch (err: any) {
             console.error('Failed to create RMA ticket:', err);

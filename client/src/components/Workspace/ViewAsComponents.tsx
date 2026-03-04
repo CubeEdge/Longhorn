@@ -12,6 +12,7 @@ interface UserOption {
   name: string;
   role: string;
   department?: string;
+  department_code?: string;  // P2: For CRM access check
   dealer_name?: string;
 }
 
@@ -354,6 +355,7 @@ export const useViewAs = () => {
           name: u.display_name || u.username,
           role: u.role,
           department: u.department_name,
+          department_code: u.dept_code,  // P2: For CRM access check
           dealer_name: u.dealer_name
         }));
         setAvailableUsers(mappedUsers);

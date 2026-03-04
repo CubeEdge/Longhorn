@@ -1,7 +1,7 @@
 /**
  * WorkspacePage (个人执行台)
  * PRD P2 Section 6.3.B - The Workspace
- * 三视图架构: My Tasks / Mentioned / Team Queue
+ * 三视图架构: My Tasks / Mentioned / Team Hub
  * 适用角色: All (员工的主战场，主管的副战场)
  */
 
@@ -9,12 +9,13 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom';
 import {
   Star, Loader2, Search, MoreHorizontal,
-  Flame, Hand, MessageSquare, Clock, CheckSquare
+  Flame, Hand, MessageSquare, Clock, CheckSquare, Users, Package, Wrench, Truck, AlertCircle
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useConfirm } from '../../store/useConfirm';
+import { useViewAs } from '../Workspace/ViewAsComponents';
 // TicketDetailComponents now used via UnifiedTicketDetail
 import UnifiedTicketDetail from '../Workspace/UnifiedTicketDetail';
 
@@ -53,7 +54,7 @@ interface Ticket {
   last_mention?: { actor_name: string; content: string };
 }
 
-type WorkspaceView = 'my-tasks' | 'mentioned' | 'team-queue';
+type WorkspaceView = 'my-tasks' | 'mentioned' | 'team-hub';
 
 // Star storage key
 const STAR_STORAGE_KEY = 'longhorn_workspace_stars';
@@ -62,7 +63,7 @@ const STAR_STORAGE_KEY = 'longhorn_workspace_stars';
 const VIEW_STATE_KEYS: Record<WorkspaceView, string> = {
   'my-tasks': 'longhorn_workspace_my_tasks_state',
   'mentioned': 'longhorn_workspace_mentioned_state',
-  'team-queue': 'longhorn_workspace_team_queue_state'
+  'team-hub': 'longhorn_workspace_team_hub_state'
 };
 
 interface ViewState {
@@ -109,25 +110,92 @@ function saveViewState(view: WorkspaceView, state: Omit<ViewState, 'timestamp'>)
 }
 
 // ==============================
+// Team Hub Department Tabs Configuration
+// PRD v1.7 - ABC方案
+// ==============================
+
+interface DeptTabConfig {
+  key: string;
+  label: { zh: string; en: string };
+  icon: React.ReactNode;
+  filter: (t: Ticket) => boolean;
+  isCollabTab?: boolean; // 是否是协作 Tab，需要独立请求 dept_collab 接口
+}
+
+const DEPT_TABS: Record<string, DeptTabConfig[]> = {
+  // A. OP (运营): 全量活跃RMA + 部门协作工单
+  OP: [
+    { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+    { key: 'receiving', label: { zh: '待收货', en: 'Receiving' }, icon: <Package size={14} />, filter: t => t.current_node === 'op_receiving' },
+    { key: 'diagnosing', label: { zh: '待检测', en: 'Diagnosing' }, icon: <AlertCircle size={14} />, filter: t => t.current_node === 'op_diagnosing' },
+    { key: 'repairing', label: { zh: '待维修', en: 'Repairing' }, icon: <Wrench size={14} />, filter: t => t.current_node === 'op_repairing' },
+    { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: t => t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
+    { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
+  ],
+  // B. RD (研发): 完全由部门@Mention驱动
+  RD: [
+    { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+    { key: 'pending', label: { zh: '需技术建议', en: 'Need Advice' }, icon: <AlertCircle size={14} />, filter: t => t.current_node === 'rd_consulting' },
+    { key: 'provided', label: { zh: '已提供方案', en: 'Advice Provided' }, icon: <CheckSquare size={14} />, filter: t => t.current_node === 'rd_resolved' },
+  ],
+  // C. GE (通用台面/管理层): 全量工单 + 部门协作
+  GE: [
+    { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: t => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
+    { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
+  ],
+  // D. MS (市场): 全量活跃工单
+  MS: [
+    { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+    { key: 'inquiry', label: { zh: '活跃咨询', en: 'Active Inquiries' }, icon: <MessageSquare size={14} />, filter: t => t.ticket_type === 'inquiry' },
+    { key: 'rma', label: { zh: '返修协调', en: 'RMA Coord' }, icon: <Package size={14} />, filter: t => t.ticket_type === 'rma' },
+    { key: 'svc', label: { zh: '代理维修', en: 'Dealer Repairs' }, icon: <Wrench size={14} />, filter: t => t.ticket_type === 'svc' },
+    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: t => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
+  ],
+  // Default for other departments
+  DEFAULT: [
+    { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+  ]
+};
+
+// ==============================
 // Main Component
 // ==============================
 
 const WorkspacePage: React.FC = () => {
   const { token, user } = useAuthStore();
   const location = useLocation();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const lang = language === 'zh' || language === 'ja' ? 'zh' : 'en';
+
+  // P2: View As support - use viewingAs user's department if active
+  const { viewingAs } = useViewAs();
+  const actingDeptCode = viewingAs?.department_code || (user as any)?.department_code;
+
+  // User's department for Team Hub tab config
+  const userDept = actingDeptCode?.toUpperCase() || 'DEFAULT';
+  const deptTabs = DEPT_TABS[userDept] || DEPT_TABS.DEFAULT;
 
   // Determine current view from route
   const currentView: WorkspaceView = useMemo(() => {
     if (location.pathname.includes('/mentioned')) return 'mentioned';
-    if (location.pathname.includes('/team-queue')) return 'team-queue';
+    if (location.pathname.includes('/team-hub')) return 'team-hub';
     return 'my-tasks';
   }, [location.pathname]);
+
+  // Team Hub active tab
+  const [activeTab, setActiveTab] = useState('all');
 
   // Load saved state for current view
   const savedState = useMemo(() => loadViewState(currentView), [currentView]);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [collabTickets, setCollabTickets] = useState<Ticket[]>([]); // 协作 Tab 独立列表
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(savedState?.searchQuery || '');
   // Star: { ticketId: timestamp } for sorting by star time
@@ -195,7 +263,7 @@ const WorkspacePage: React.FC = () => {
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {
+      const baseParams: Record<string, string> = {
         page_size: '200',
         sort_by: 'sla_due_at',
         sort_order: 'ASC'
@@ -204,43 +272,69 @@ const WorkspacePage: React.FC = () => {
       const searchParams = new URLSearchParams(location.search);
       const urlAssignee = searchParams.get('assignee');
 
+      const filterClosed = (data: any[]) =>
+        data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
+
+      const fetchList = async (params: Record<string, string>) => {
+        const res = await axios.get('/api/v1/tickets', {
+          headers: { Authorization: `Bearer ${token}` },
+          params
+        });
+        return filterClosed((res.data.data || []).map((t: any) => ({ ...t, participants: t.participants || [] })));
+      };
+
       if (currentView === 'my-tasks') {
-        // Use 'me' so the backend resolves to view-as user when active
-        params.assigned_to = 'me';
-      } else if (currentView === 'team-queue') {
-        // Unassigned or specific assignee from URL
-        params.assigned_to = urlAssignee || '0';
+        const data = await fetchList({ ...baseParams, assigned_to: 'me' });
+        setTickets(data);
+        setCollabTickets([]);
+      } else if (currentView === 'team-hub') {
+        if (urlAssignee) {
+          // URL override
+          const data = await fetchList({ ...baseParams, assigned_to: urlAssignee });
+          setTickets(data);
+          setCollabTickets([]);
+        } else if (userDept === 'OP') {
+          // OP: 主列表(RMA) + 协作列表(dept_collab) 并行加载
+          const [rmaData, collabData] = await Promise.all([
+            fetchList({ ...baseParams, ticket_type: 'rma' }),
+            fetchList({ ...baseParams, dept_collab: 'OP' })
+          ]);
+          setTickets(rmaData);
+          setCollabTickets(collabData);
+        } else if (userDept === 'GE') {
+          // GE: 主列表(全量) + 协作列表(dept_collab) 并行加载
+          const [allData, collabData] = await Promise.all([
+            fetchList({ ...baseParams }),
+            fetchList({ ...baseParams, dept_collab: 'GE' })
+          ]);
+          setTickets(allData);
+          setCollabTickets(collabData);
+        } else if (userDept === 'RD') {
+          // RD: 整个列表由部门@Mention驱动
+          const data = await fetchList({ ...baseParams, dept_collab: 'RD' });
+          setTickets(data);
+          setCollabTickets([]);
+        } else {
+          // MS/DEFAULT: 全量工单
+          const data = await fetchList({ ...baseParams });
+          setTickets(data);
+          setCollabTickets([]);
+        }
       } else if (currentView === 'mentioned') {
-        // Participant but not the owner - use 'me' for server-side resolution
-        params.participant_id = 'me';
-        params.exclude_assigned_to = 'me';
+        const data = await fetchList({ ...baseParams, participant_id: 'me', exclude_assigned_to: 'me' });
+        setTickets(data);
+        setCollabTickets([]);
       }
 
-      const res = await axios.get('/api/v1/tickets', {
-        headers: { Authorization: `Bearer ${token}` },
-        params
-      });
-
-      let data: Ticket[] = (res.data.data || []).map((t: any) => ({
-        ...t,
-        participants: t.participants || []
-      }));
-
-      // Filter out completed/closed nodes for all views in Workspace
-      // workspace is for execution, not historical record
-      data = data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
-
-      // Load snooze state from tickets
+      // Load snooze state
       const snoozed = new Set<number>();
       const now = Date.now();
-      data.forEach(t => {
+      [...tickets, ...collabTickets].forEach(t => {
         if (t.snooze_until && new Date(t.snooze_until).getTime() > now) {
           snoozed.add(t.id);
         }
       });
       setSnoozedIds(snoozed);
-
-      setTickets(data);
     } catch (err) {
       console.error('[Workspace] Failed to fetch tickets:', err);
     } finally {
@@ -254,9 +348,21 @@ const WorkspacePage: React.FC = () => {
     const urlSlaStatus = searchParams.get('sla_status');
     const urlNode = searchParams.get('node');
 
-    let result = tickets.filter(t => {
+    // 协作 Tab 激活时用独立的 collabTickets
+    const activeTabConfig = deptTabs.find(tab => tab.key === activeTab);
+    const isCollabActive = currentView === 'team-hub' && activeTabConfig?.isCollabTab;
+    const sourceTickets = isCollabActive ? collabTickets : tickets;
+
+    let result = sourceTickets.filter(t => {
       // Hide snoozed (except P0 - Critical can't be snoozed)
       if (snoozedIds.has(t.id) && t.priority !== 'P0') return false;
+
+      // Team Hub Tab Filter
+      if (currentView === 'team-hub' && activeTab !== 'all') {
+        const tabConfig = deptTabs.find(tab => tab.key === activeTab);
+        // isCollabTab: 数据已由后端 dept_collab 接口过滤，前端不再重复过滤
+        if (tabConfig && !tabConfig.isCollabTab && !tabConfig.filter(t)) return false;
+      }
 
       // URL Filters
       if (urlSlaStatus) {
@@ -308,7 +414,7 @@ const WorkspacePage: React.FC = () => {
     });
 
     return result;
-  }, [tickets, searchQuery, starredMap, snoozedIds, location.search]);
+  }, [tickets, collabTickets, searchQuery, starredMap, snoozedIds, location.search, currentView, activeTab, deptTabs]);
 
   // Toggle star
   const toggleStar = useCallback((id: number) => {
@@ -441,15 +547,15 @@ const WorkspacePage: React.FC = () => {
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
               {currentView === 'my-tasks' && <CheckSquare size={28} color="#3B82F6" />}
               {currentView === 'mentioned' && <MessageSquare size={28} color="#8B5CF6" />}
-              {currentView === 'team-queue' && <Loader2 size={28} color="#F59E0B" />}
+              {currentView === 'team-hub' && <Users size={28} color="#F59E0B" />}
               {currentView === 'my-tasks' && t('workspace.page_title')}
               {currentView === 'mentioned' && (t('sidebar.service_mentioned', { defaultValue: '协作' }) || '协作')}
-              {currentView === 'team-queue' && (t('sidebar.service_team_queue', { defaultValue: '部门池' }) || '部门池')}
+              {currentView === 'team-hub' && (t('sidebar.team_hub') || '部门工单')}
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
               {currentView === 'my-tasks' && t('workspace.page_subtitle')}
               {currentView === 'mentioned' && t('workspace.mentioned_subtitle', { defaultValue: '提及您的工单和内部协作任务' })}
-              {currentView === 'team-queue' && t('workspace.team_queue_subtitle', { defaultValue: '待领取的部门公共池任务' })}
+              {currentView === 'team-hub' && t('workspace.team_hub_subtitle', { defaultValue: '部门的职责中心与协同雷达站' })}
             </p>
           </div>
 
@@ -483,6 +589,64 @@ const WorkspacePage: React.FC = () => {
               {sortedTickets.length} {t('workspace.items_count')}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Team Hub Topbar Dashboard - 仅部门工单页面显示 */}
+      {currentView === 'team-hub' && !selectedTicket && (
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          padding: '0 20px 16px',
+          overflowX: 'auto',
+          flexWrap: 'wrap'
+        }}>
+          {deptTabs.map(tab => {
+            // 协作 Tab 数字独立统计，其他 Tab 基于主列表
+            const count = tab.isCollabTab ? collabTickets.length : tickets.filter(tab.filter).length;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  border: 'none',
+                  background: isActive ? '#FFD700' : 'rgba(255,255,255,0.08)',
+                  color: isActive ? '#000' : 'var(--text-secondary)',
+                  fontWeight: isActive ? 600 : 400,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                }}
+              >
+                {tab.icon}
+                <span>{tab.label[lang]}</span>
+                <span style={{
+                  background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  minWidth: 24,
+                  textAlign: 'center'
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -650,8 +814,28 @@ const WorkspacePage: React.FC = () => {
                               <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusInfo.color, display: 'inline-block' }} />
                               {statusInfo.label}
                             </span>
-                            {ticket.assigned_name && (
+                            {ticket.assigned_name ? (
                               <span style={{ color: 'var(--text-tertiary)' }}>· {ticket.assigned_name}</span>
+                            ) : currentView === 'team-hub' && (
+                              <button
+                                onClick={e => { e.stopPropagation(); pickUpTicket(ticket.id); }}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
+                                  borderRadius: 12, border: '1px solid #FFD700', background: 'rgba(255,215,0,0.1)',
+                                  color: '#FFD700', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                                  marginLeft: 4
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = '#FFD700';
+                                  e.currentTarget.style.color = '#000';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                                  e.currentTarget.style.color = '#FFD700';
+                                }}
+                              >
+                                <Hand size={12} /> {t('workspace.claim', { defaultValue: '认领' })}
+                              </button>
                             )}
                           </div>
                           {(ticket.sla_status === 'WARNING' || ticket.sla_status === 'warning' ||
@@ -678,28 +862,28 @@ const WorkspacePage: React.FC = () => {
                         </div>
 
                         <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          {currentView === 'team-queue' && (
+                          {currentView === 'team-hub' && !ticket.assigned_to && (
                             <button
                               onClick={e => { e.stopPropagation(); pickUpTicket(ticket.id); }}
                               style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                borderRadius: 6, border: '1px solid var(--accent-blue)', background: 'transparent',
-                                color: 'var(--accent-blue)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                                borderRadius: 6, border: '1px solid #FFD700', background: 'transparent',
+                                color: '#FFD700', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
                                 transition: 'all 0.15s'
                               }}
                               onMouseEnter={e => {
-                                e.currentTarget.style.background = 'var(--accent-blue)';
+                                e.currentTarget.style.background = '#FFD700';
                                 e.currentTarget.style.color = '#000';
                               }}
                               onMouseLeave={e => {
                                 e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = 'var(--accent-blue)';
+                                e.currentTarget.style.color = '#FFD700';
                               }}
                             >
-                              <Hand size={14} /> {t('workspace.pick_up', { defaultValue: '拾取' })}
+                              <Hand size={14} /> {t('workspace.claim', { defaultValue: '认领' })}
                             </button>
                           )}
-                          {ticket.priority !== 'P0' && currentView !== 'team-queue' && (
+                          {ticket.priority !== 'P0' && currentView !== 'team-hub' && (
                             <button
                               onClick={e => handleSnoozeClick(e, ticket)}
                               className="workspace-snooze-btn"

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useViewAs } from '../Workspace/ViewAsComponents';
 
 // Navigation section type
 interface NavItem {
@@ -54,13 +55,20 @@ const ServiceNavigation: React.FC = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const { user } = useAuthStore();
+  
+  // P2: View As support - use actingUser for permission checks
+  const { viewingAs } = useViewAs();
+  const actingUser = viewingAs || user;
+  const actingRole = actingUser?.role;
+  const actingDeptCode = viewingAs?.department_code || (user as any)?.department_code;
 
   // 穿透授权：判断用户是否有 CRM 全局访问权限
   const hasCrmAccess = (() => {
-    if (!user) return true; // 未知角色默认显示
-    if (user.role === 'Admin' || user.role === 'Exec') return true;
-    const deptCode = (user as any).department_code || '';
-    return deptCode === 'MS' || deptCode === 'GE';
+    if (!actingUser) return true; // 未知角色默认显示
+    if (actingRole === 'Admin' || actingRole === 'Exec') return true;
+    // MS/GE departments have full CRM access
+    if (actingDeptCode === 'MS' || actingDeptCode === 'GE') return true;
+    return false;
   })();
 
   // Load expanded state from localStorage

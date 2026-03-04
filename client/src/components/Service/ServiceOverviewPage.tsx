@@ -183,7 +183,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={approvalCount}
           icon={CheckCircle}
           color="#10B981"
-          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all&node=ms_review,ge_review')}
+          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all&node=ms_review,ge_review')}
         />
 
         {/* Risks Card */}
@@ -193,7 +193,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={riskTickets.length}
           icon={AlertTriangle}
           color="#EF4444"
-          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all&sla_status=warning,breached')}
+          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all&sla_status=warning,breached')}
           alert={riskTickets.length > 0}
         />
 
@@ -204,7 +204,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={stats?.total_open || 0}
           icon={Clock}
           color="#3B82F6"
-          onClick={() => navigate('/service/workspace?view=team-queue&assignee=all')}
+          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all')}
         />
 
         {/* Closed Today */}
@@ -243,7 +243,7 @@ const ServiceOverviewPage: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {riskTickets.map(ticket => (
-                <RiskTicketRow key={ticket.id} ticket={ticket} onClick={() => navigate(`/service/inquiry-tickets/${ticket.id}`)} />
+                <RiskTicketRow key={ticket.id} ticket={ticket} onClick={() => navigate(`/service/tickets/${ticket.id}`)} />
               ))}
             </div>
           )}
@@ -397,7 +397,7 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
 
   return (
     <div
-      onClick={() => navigate(`/service/workspace?view=team-queue&assignee=${member.id}`)}
+      onClick={() => navigate(`/service/workspace?view=team-hub&assignee=${member.id}`)}
       style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0', transition: 'opacity 0.2s' }}
       onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
       onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}

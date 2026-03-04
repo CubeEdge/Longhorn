@@ -24,7 +24,6 @@ import {
   Package,
   CheckSquare,
   Bell,
-  Inbox,
   ChevronDown,
   ChevronRight,
   Eye
@@ -46,9 +45,10 @@ import Dashboard from './components/Dashboard';
 import DepartmentDashboard from './components/DepartmentDashboard';
 import { DailyWordBadge } from './components/DailyWord';
 // import { ContextPanel } from './components/ServiceRecords';
-import { InquiryTicketListPage, InquiryTicketCreatePage, InquiryTicketDetailPage } from './components/InquiryTickets';
-import { RMATicketListPage, RMATicketCreatePage, RMATicketDetailPage } from './components/RMATickets';
-import { DealerRepairListPage, DealerRepairCreatePage, DealerRepairDetailPage } from './components/DealerRepairs';
+import { InquiryTicketListPage, InquiryTicketCreatePage } from './components/InquiryTickets';
+import { RMATicketListPage, RMATicketCreatePage } from './components/RMATickets';
+import { DealerRepairListPage, DealerRepairCreatePage } from './components/DealerRepairs';
+import UnifiedTicketDetailPage from './components/Service/UnifiedTicketDetailPage';
 import { DealerInventoryListPage, RestockOrderListPage, RestockOrderDetailPage, RestockOrderCreatePage } from './components/DealerInventory';
 import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
@@ -187,12 +187,14 @@ const App: React.FC = () => {
           {/* P2: Workspace (个人执行台) */}
           <Route path="/service/workspace" element={<WorkspacePage />} />
           <Route path="/service/mentioned" element={<WorkspacePage />} />
-          <Route path="/service/team-queue" element={<WorkspacePage />} />
+          <Route path="/service/team-hub" element={<WorkspacePage />} />
+
+          {/* 统一工单详情页 - 所有类型工单共用 */}
+          <Route path="/service/tickets/:id" element={<UnifiedTicketDetailPage />} />
 
           {/* Inquiry Tickets (咨询工单) - Layer 1 */}
           <Route path="/service/inquiry-tickets" element={<InquiryTicketListPage />} />
           <Route path="/service/inquiry-tickets/new" element={<InquiryTicketCreatePage />} />
-          <Route path="/service/inquiry-tickets/:id" element={<InquiryTicketDetailPage />} />
           <Route path="/inquiry-tickets" element={<Navigate to="/service/inquiry-tickets" replace />} />
           <Route path="/inquiry-tickets/*" element={<Navigate to="/service/inquiry-tickets" replace />} />
 
@@ -202,14 +204,12 @@ const App: React.FC = () => {
           {/* RMA Tickets (RMA返厂单) - Layer 2 */}
           <Route path="/service/rma-tickets" element={<RMATicketListPage />} />
           <Route path="/service/rma-tickets/new" element={<RMATicketCreatePage />} />
-          <Route path="/service/rma-tickets/:id" element={<RMATicketDetailPage />} />
           <Route path="/rma-tickets" element={<Navigate to="/service/rma-tickets" replace />} />
           <Route path="/rma-tickets/*" element={<Navigate to="/service/rma-tickets" replace />} />
 
           {/* Dealer Repairs (经销商维修单) - Layer 3 */}
           <Route path="/service/dealer-repairs" element={<DealerRepairListPage />} />
           <Route path="/service/dealer-repairs/new" element={<DealerRepairCreatePage />} />
-          <Route path="/service/dealer-repairs/:id" element={<DealerRepairDetailPage />} />
           <Route path="/dealer-repairs" element={<Navigate to="/service/dealer-repairs" replace />} />
           <Route path="/dealer-repairs/*" element={<Navigate to="/service/dealer-repairs" replace />} />
 
@@ -477,9 +477,9 @@ const Sidebar: React.FC<{
                   <span>{t('sidebar.mentioned')}</span>
                   {workspaceCounts.mentioned > 0 && <span className="sidebar-badge badge-blue">{workspaceCounts.mentioned}</span>}
                 </Link>
-                <Link to={getRoute('/service/team-queue')} className={`sidebar-item ${location.pathname === '/service/team-queue' ? 'active' : ''}`} onClick={onClose}>
-                  <Inbox size={18} />
-                  <span>{t('sidebar.team_queue')}</span>
+                <Link to={getRoute('/service/team-hub')} className={`sidebar-item ${location.pathname === '/service/team-hub' ? 'active' : ''}`} onClick={onClose}>
+                  <Users size={18} />
+                  <span>{t('sidebar.team_hub', { defaultValue: '部门工单' })}</span>
                   {workspaceCounts.team_queue > 0 && <span className="sidebar-badge badge-orange">{workspaceCounts.team_queue}</span>}
                 </Link>
               </>
