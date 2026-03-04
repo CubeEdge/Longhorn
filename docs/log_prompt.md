@@ -1,4 +1,22 @@
 # Prompt Log
+
+## 2026-03-04 18:38 (耗时: 10m)
+**User Prompt**: 继续修复 Cathy 生产环境 Tab 缺失和权限问题。
+**Agent Response**: 发现 /api/login 和 /api/admin/users 接口也未执行标准化映射。已在这些接口中应用 normalizeDeptCode，确保前端拿到的 user.department_code 始终为短代码。部署 v12.3.35。
+
+---
+
+## 2026-03-04 18:33 (耗时: 32m)
+
+**User Prompt**: 
+Cathy 登录生产环境后，概览页面全零，工单中心 Dashboard Tab 消失，且没有 CRM 访问权限。
+
+**Agent Response**:
+1. 分析发现生产服务器 `mini` 的 `departments` 表使用中文名（如“市场部”），而代码逻辑硬编码了短代码（如“MS”），导致权限检查全部失效。
+2. 在 `server/index.js`, `server/service/middleware/permission.js`, `server/service/routes/tickets.js` 中引入 `normalizeDeptCode` 辅助函数，将中文名映射为标准化短代码。
+3. 增加版本号至 `12.3.34`，执行全量构建并部署至生产服务器。
+4. 修复生产环境 user id 为 53 (SherryFin) 的角色为 `Exec`。
+
 ## [2026-03-04] Fix Dashboard Discrepancy & d.code SQL Bug
 - Discovered that many SQL queries in backend were referencing `d.code` incorrectly (the `departments` table only has `id` and `name`).
 - Replaced `d.code` with `d.name as department_code` in `index.js`, `tickets.js`, `system.js`, and `permission.js`.

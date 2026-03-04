@@ -1,5 +1,28 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-04] 深度修复生产环境部门代码标准化 (v12.3.35)
+### Backend
+- 更新 `/api/login` 和 `/api/admin/users` 接口，应用 `normalizeDeptCode` 函数。
+- 确保前端在登录时存入 Store 的对象即包含标准的 `MS`/`OP` 等代码，而非中文名，从而彻底解决 UI 逻辑失效问题。
+### Infrastructure
+- 升级版本至 `12.3.35`。
+
+## [2026-03-04] 修复生产环境部门名称不一致问题 (Normalization)
+
+### Backend
+- 引入 `normalizeDeptCode` (部门代码标准化函数)，支持生产环境数据库中的中文名称（如“市场部”、“生产运营部”）映射到内部逻辑代码（MS, OP）。
+- 更新 `index.js` 的鉴权中间件、`permission.js` 的穿透权限中间件、以及 `tickets.js` 的 `getDeptCode` 逻辑，确保 `department_code` 始终为标准化短代码。
+- 直接在生产环境执行 SQL，修正 `SherryFin` 用户角色为 `Exec`。
+
+### UI/UX
+- 修复了因为部门代码失效（返回 null）导致前端 `DEPT_TABS` 回退到 `DEFAULT` 从而隐藏 Dashboard 标签的 Bug。
+- 修复了由于 `hasCrmAccess` 检查失效导致 OP/RD 成员（包括 Cathy 等分配到 OP ID 的用户）无法看到客户/档案菜单的问题。
+
+### Infrastructure
+- 客户端版本升级至 `12.3.34`，服务端版本升级至 `1.7.28`。
+- 执行 `npm run build` 和 `./scripts/deploy.sh`。
+
+
 **概述**: 本文档记录每次开发会话的内容、投入的“Prompt轮数/精力”以及具体的技术产出。
 ## [2026-03-04] Bugfix: SQL Missing Column (d.code)
 ### Backend
