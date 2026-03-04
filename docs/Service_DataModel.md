@@ -1,8 +1,13 @@
 # Service 数据模型设计
 
-**版本**: 0.9.1 (P2 Integration)
-**最后更新**: 2026-03-01
+**版本**: 0.9.2 (Audit & Visibility Integration)
+**最后更新**: 2026-03-03
 
+> **v0.9.2 更新 (审计与删除)**：
+> - 新增工单审计字段：`is_deleted`, `deleted_at`, `deleted_by`, `delete_reason`
+> - 完善 `ticket_activities`：明确 `field_update` 类型必须包含 `reason` (修正理由)
+> - 细化强制审计字段清单：SN, Account, Warranty, Repair Content 等
+>
 > **v0.9.1 更新 (文件权限优化)**：
 > - 重命名表：`permissions` → `file_permissions`（避免语义混淆）
 > - 新增 `path_hash` 字段：MD5 哈希值，用于快速路径查询
@@ -466,6 +471,12 @@ tickets (统一工单表 - 单表多态设计)
 ├── reopened_from_id: INT -- 重新打开来源工单ID
 ├── external_link: TEXT -- 外部工单链接
 │
+├── // ===== 审计与删除 (P2 v1.7 新增) =====
+├── is_deleted: BOOLEAN DEFAULT false -- 是否逻辑删除 (墓碑模式)
+├── deleted_at: TIMESTAMP -- 删除时间
+├── deleted_by: INT -- 删除执行人
+├── delete_reason: TEXT -- 删除理由 (必填)
+│
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
@@ -560,7 +571,7 @@ ticket_activities (工单活动时间轴)
 │   -- attachment: {file_id, file_name, file_type, file_size}
 │   -- priority_change: {from_priority, to_priority}
 │   -- assignment_change: {from_user_id, to_user_id}
-│   -- field_update: {field_name, old_value, new_value}
+│   -- field_update: {field_name, old_value, new_value, reason}
 │
 ├── // 可见性控制
 ├── visibility: ENUM('all', 'internal', 'technician') DEFAULT 'all'

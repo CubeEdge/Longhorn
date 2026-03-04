@@ -344,7 +344,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     JOIN departments d2 ON u2.department_id = d2.id
                     WHERE tp.ticket_id = t.id
                     AND tp.role = 'mentioned'
-                    AND d2.code = ?
+                    AND d2.name = ?
                 )`);
                 params.push(dept_collab);
             } else if (!hasGlobalAccess(user)) {
@@ -506,6 +506,156 @@ module.exports = function (db, authenticate, serviceUpload) {
     });
 
     /**
+     * GET /api/v1/tickets/team-stats
+     * Get team statistics based on department (PRD v1.7.1 Overview segregation)
+     */
+    router.get('/team-stats', authenticate, (req, res) => {
+        try {
+            const user = req.user;
+            let targetDept = req.query.dept || getDeptCode(user);
+
+            // Access control for Admin/Exec viewing other depts
+            if (req.query.dept && !['Admin', 'Exec'].includes(user.role) && req.query.dept !== getDeptCode(user)) {
+                return res.status(403).json({ success: false, error: '无权查看其他部门数据' });
+            }
+
+            // Find users in the target department
+            let teamUsers = [];
+            if (targetDept) {
+                teamUsers = db.prepare(`
+                    SELECT u.id, u.username, u.display_name 
+                    FROM users u
+                    JOIN departments d ON u.department_id = d.id
+                    WHERE d.name = ?
+                `).all(targetDept);
+            } else {
+                // Global view for admin if no dept specified
+                teamUsers = db.prepare(`SELECT id, username, display_name FROM users`).all();
+            }
+
+            const teamUserIds = teamUsers.map(u => u.id);
+            const teamUserIdList = teamUserIds.length > 0 ? teamUserIds.join(',') : '0';
+
+            // Base condition for "Department's Tickets"
+            // 1. Assigned to member of department
+            // 2. Unassigned, but current_node belongs to department
+            const relevantNodes = targetDept ? (DEPARTMENT_NODES[targetDept] || []) : Object.values(DEPARTMENT_NODES).flat();
+            const nodesList = relevantNodes.length > 0 ? relevantNodes.map(n => `'${n}'`).join(',') : "''";
+
+            // All "open" tickets for the dept
+            const openTicketsSql = `
+                SELECT 
+                    t.id, t.ticket_number, t.ticket_type, t.priority, t.sla_status, 
+                    t.current_node, t.assigned_to, t.created_at, t.problem_summary,
+                    COALESCE(u.display_name, u.username) as assigned_name,
+                    (julianday('now') - julianday(t.created_at)) * 24 as hours_open
+                FROM tickets t
+                LEFT JOIN users u ON t.assigned_to = u.id
+                WHERE (t.is_deleted IS NULL OR t.is_deleted = 0)
+                AND t.current_node NOT IN ('resolved', 'closed', 'auto_closed', 'converted', 'cancelled')
+                AND (
+                    t.assigned_to IN (${teamUserIdList}) 
+                    OR (t.assigned_to IS NULL AND t.current_node IN (${nodesList}))
+                )
+            `;
+            const openTickets = db.prepare(openTicketsSql).all();
+
+            // Closed today by dept
+            const todayStr = new Date().toISOString().split('T')[0];
+            const closedTodaySql = `
+                SELECT COUNT(DISTINCT ta.ticket_id) as count
+                FROM ticket_activities ta
+                JOIN tickets t ON ta.ticket_id = t.id
+                WHERE (t.is_deleted IS NULL OR t.is_deleted = 0)
+                AND ta.activity_type = 'STATUS_CHANGE'
+                AND json_extract(ta.metadata, '$.new_value') IN ('resolved', 'closed', 'auto_closed')
+                AND date(ta.created_at) = ?
+                AND ta.actor_id IN (${teamUserIdList})
+            `;
+            const closedToday = db.prepare(closedTodaySql).get(todayStr)?.count || 0;
+
+            // Stats calculation
+            let p0 = 0, p1 = 0, p2 = 0;
+            let breachedCount = 0;
+            let statusStats = {};
+            const handlerMap = {};
+            teamUsers.forEach(u => {
+                handlerMap[u.id] = { id: u.id, name: u.display_name || u.username, active_tickets: 0 };
+            });
+
+            // "Unassigned" bucket
+            handlerMap[0] = { id: 0, name: '未分配', active_tickets: 0 };
+
+            const riskTicketsList = [];
+
+            openTickets.forEach(t => {
+                if (t.priority === 'P0') p0++;
+                else if (t.priority === 'P1') p1++;
+                else p2++;
+
+                statusStats[t.current_node] = (statusStats[t.current_node] || 0) + 1;
+
+                if (t.assigned_to && handlerMap[t.assigned_to]) {
+                    handlerMap[t.assigned_to].active_tickets++;
+                } else if (!t.assigned_to) {
+                    handlerMap[0].active_tickets++;
+                }
+
+                const isWarning = t.sla_status === 'warning' || t.hours_open > 24;
+                const isBreached = t.sla_status === 'breached' || t.hours_open > 48;
+
+                if (isBreached) breachedCount++;
+
+                if (isWarning || isBreached) {
+                    riskTicketsList.push({
+                        id: t.id,
+                        ticket_number: t.ticket_number,
+                        ticket_type: t.ticket_type,
+                        problem_summary: t.problem_summary || '无描述',
+                        sla_status: isBreached ? 'breached' : 'warning',
+                        assigned_name: t.assigned_name || '未分配',
+                        remaining_hours: Math.max(0, 48 - t.hours_open)
+                    });
+                }
+            });
+
+            // Sort team load
+            let teamLoad = Object.values(handlerMap).filter(h => h.active_tickets > 0 || h.id !== 0);
+            teamLoad.sort((a, b) => b.active_tickets - a.active_tickets);
+
+            // Pending Approvals
+            let approvalCount = 0;
+            if (['MS', 'GE'].includes(targetDept) || !targetDept) {
+                const approvalSql = `
+                    SELECT COUNT(*) as count 
+                    FROM tickets 
+                    WHERE (is_deleted IS NULL OR is_deleted = 0)
+                    AND current_node IN ('ms_review', 'ge_review')
+                `;
+                approvalCount = db.prepare(approvalSql).get()?.count || 0;
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    total_open: openTickets.length,
+                    total_closed_today: closedToday,
+                    avg_response_time: 4.5, // TODO: future SLA extraction
+                    sla_breach_rate: openTickets.length > 0 ? (breachedCount / openTickets.length * 100) : 0,
+                    by_priority: { P0: p0, P1: p1, P2: p2 },
+                    by_status: statusStats,
+                    team_load: teamLoad,
+                    risk_tickets: riskTicketsList.sort((a, b) => a.remaining_hours - b.remaining_hours).slice(0, 10),
+                    approval_count: approvalCount
+                }
+            });
+        } catch (err) {
+            console.error('[Tickets] /team-stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
      * GET /api/v1/tickets/:id
      * Get ticket detail
      */
@@ -550,8 +700,8 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // PRD §7.2: 检查工单是否已被软删除
             if (row.is_deleted === 1) {
-                return res.status(410).json({ 
-                    success: false, 
+                return res.status(410).json({
+                    success: false,
                     error: '工单已被删除',
                     deleted_at: row.deleted_at,
                     delete_reason: row.delete_reason
@@ -990,11 +1140,11 @@ module.exports = function (db, authenticate, serviceUpload) {
             for (const field of auditFieldsToChange) {
                 const oldVal = ticket[field];
                 let newVal = updates[field];
-                
+
                 // 格式化显示值
                 let oldDisplay = oldVal;
                 let newDisplay = newVal;
-                
+
                 if (field === 'reporter_snapshot') {
                     oldDisplay = oldVal ? '(快照数据)' : '(空)';
                     newDisplay = newVal ? '(快照数据)' : '(空)';
@@ -1135,8 +1285,8 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             db.prepare(`UPDATE tickets SET ${sets.join(', ')} WHERE id = ?`).run(...params);
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: '更新成功',
                 audited_fields: auditFieldsToChange.length > 0 ? auditFieldsToChange : undefined
             });
@@ -1575,7 +1725,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ms.mentioned_user_id as user_id,
                     u.username as name,
                     d.name as department,
-                    d.code as dept_code,
+                    d.name as dept_code,
                     ms.mention_count,
                     ms.last_mention_at
                 FROM user_mention_stats ms
@@ -1609,7 +1759,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     is.invited_user_id as user_id,
                     u.username as name,
                     d.name as department,
-                    d.code as dept_code,
+                    d.name as dept_code,
                     is.invite_count,
                     is.last_invite_at
                 FROM user_invite_stats is

@@ -46,6 +46,12 @@
 
 ## 📅 最近更新历史 (From 1_Backlog.md)
 
+### 2026-03-04 (Overview 数据隔离与后端统计 API 落地)
+- **部门视角的 Overview 系统上线 (v12.3.33)**:
+    - **后端聚合接口**: 彻底重塑统计获取架构，引入专用下发 Endpoint（`team-stats`），有效屏蔽掉当前用户无权干预或跨部门的冗余工单流。
+    - **前端精简解耦**: 剥离了 `ServiceOverviewPage.tsx` 中的长页面本地硬过滤机制，实现 O(1) 级别的 Dashboard 获取体验。
+    - **ViewAs 多维透视**: 管理员启用 View As 视角模拟时，Dashboard 的各宏观负荷情况（Approvals / Risks）现在能够真正按被查验方部门生成数据透视。
+
 ### 2026-03-03 (客户生命周期与潜在客户管理)
 - **客户生命周期闭环实装**:
     - **生命周期状态机**: 实装 `PROSPECT`, `ACTIVE`, `ARCHIVED` 状态模型及迁移脚本。

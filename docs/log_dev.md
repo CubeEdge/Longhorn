@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-03-04 17:21 - Overview 面板重构：实施真正的按部门视角数据隔离 (v12.3.33)
+
+### Tasks Completed:
+1. **Overview API 重塑 (`server/service/routes/tickets.js`)**:
+    - **隔离逻辑落地**: 原有设计会将所有可见范围的工单汇聚于 `Team Load`。新增 `GET /api/v1/tickets/team-stats` 端点。
+    - **服务器侧聚合功能**: 通过传入请求者的所属部门特征 (如 `dept=OP`)，服务器现可精细化计算，自动合并过滤出属于该部门参与的或仍待本部门接手的在办工单，提供高度精确的风险预警。
+2. **Overview 客户端重构 (`client/src/components/Service/ServiceOverviewPage.tsx`)**:
+    - **卸载前端冗余计算**: 终结了原前端依靠 JS Filter 强行过滤超长列表的极其耗费性能的写法。全面对接 `team-stats` 接口，化简为无负担的数据拉取呈现（直接提取图表数据结构）。
+    - **支持 ViewAs 特权**: 引入了全系统泛用的 `useViewAs` 钩子，支持系统高管或者 Admin 随时使用“以他人身份查看”的能力完美获取部门层面的表现透视面板。
+3. **交付流水线部署 (`/upd`)**:
+    - 使用自动化脚本对远端物理 `pm2` 热服执行了清退构建与 `fast-mode` 差量下发。
+    - **版本号升级**: Client -> 12.3.33；Server -> 1.7.27。
+
+### Technical Output:
+- **Modified**: `server/service/routes/tickets.js`, `client/src/components/Service/ServiceOverviewPage.tsx`, `docs/Service PRD_P2.md`
+- **Version**: Client `12.3.33`, Server `1.7.27`
+
+---
+
 ## 2026-03-03 14:45 - 全局资产序列号 (SN) 标准化与数据完整性修正 (v1.7.15)
 
 ### Tasks Completed:

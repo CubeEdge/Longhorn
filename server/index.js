@@ -607,7 +607,7 @@ const authenticate = (req, res, next) => {
                 const user = db.prepare(`
                     SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
                            u.job_title, u.status, u.dealer_id, u.region_responsible,
-                           d.name as department_name, d.code as department_code
+                           d.name as department_name, d.name as department_code
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     WHERE u.id = ? OR u.id = CAST(? AS REAL)
@@ -623,7 +623,7 @@ const authenticate = (req, res, next) => {
                     const targetUser = db.prepare(`
                         SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
                                u.job_title, u.dealer_id, u.region_responsible,
-                               d.name as department_name, d.code as department_code
+                               d.name as department_name, d.name as department_code
                         FROM users u
                         LEFT JOIN departments d ON u.department_id = d.id
                         WHERE u.id = ? OR u.id = CAST(? AS REAL)
@@ -1167,7 +1167,7 @@ app.get('/api/thumbnail', async (req, res) => {
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const user = db.prepare(`
-        SELECT u.*, d.name as department_name, d.code as department_code
+        SELECT u.*, d.name as department_name, d.name as department_code
         FROM users u 
         LEFT JOIN departments d ON u.department_id = d.id 
         WHERE u.username = ?
@@ -1507,7 +1507,7 @@ app.get('/api/admin/users', authenticate, (req, res) => {
     let query = `
         SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.created_at, 
                u.dealer_id, dl.name as dealer_name,
-               d.name as department_name, d.code as dept_code
+               d.name as department_name, d.name as dept_code
         FROM users u 
         LEFT JOIN departments d ON u.department_id = d.id
         LEFT JOIN dealers dl ON u.dealer_id = dl.id

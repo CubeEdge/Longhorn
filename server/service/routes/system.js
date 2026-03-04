@@ -196,7 +196,7 @@ module.exports = function (db, authenticate) {
 
             // P2: Get current user's department code for sorting
             const currentUser = db.prepare(`
-                SELECT d.code as dept_code 
+                SELECT d.name as dept_code 
                 FROM users u 
                 LEFT JOIN departments d ON u.department_id = d.id 
                 WHERE u.id = ?
@@ -207,16 +207,16 @@ module.exports = function (db, authenticate) {
             const users = db.prepare(`
                 SELECT u.id, COALESCE(u.display_name, u.username) as name, 
                        u.username, u.display_name, u.role, 
-                       d.name as department, d.name as department_name, d.code as dept_code
+                       d.name as department, d.name as department_name, d.name as dept_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 WHERE ${conditions.join(' AND ')}
                 ORDER BY 
                     CASE 
-                        WHEN d.code = ? THEN 0  -- Current user's dept first
-                        WHEN d.code = 'MS' THEN 1
-                        WHEN d.code = 'OP' THEN 2
-                        WHEN d.code = 'RD' THEN 3
+                        WHEN d.name = ? THEN 0  -- Current user's dept first
+                        WHEN d.name = 'MS' THEN 1
+                        WHEN d.name = 'OP' THEN 2
+                        WHEN d.name = 'RD' THEN 3
                         ELSE 4
                     END,
                     u.username

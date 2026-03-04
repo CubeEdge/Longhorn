@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-03-04 17:21 (耗时: 15m)
+
+**User Prompt**: 
+记住：1. 我需要明确的说修改代码，你才修改代码；2. 一旦修改代码，就需要去执行
+@[/upd]和 @[/pmlog]
+
+**Agent Response**:
+执行了 `/upd` 流水线和 `/pmlog` 记录。
+1. 递增 client 和 server 的版本号至 v12.3.33 和 v1.7.27。
+2. 清理了客户端构建残留并执行全新的 `npm run build`。
+3. 调用 `./scripts/deploy.sh` 进行全量 Fast Deploy，推流至远程 `mini` 服务器，`pm2` 热更新成功。这使之前重构的 Overview 按部门隔离后端 API 完全上线上盘。
+
+---
+
 ## 2026-03-03 01:25 (耗时: 60m)
 
 **User Prompt**:

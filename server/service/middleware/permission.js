@@ -172,7 +172,7 @@ function viewAsMiddleware(db) {
     if (viewAsId && req.user) {
       if (req.user.role === 'Admin' || req.user.role === 'Exec') {
         const viewAsUser = db.prepare(`
-                    SELECT u.*, d.name as department_name, d.code as department_code
+                    SELECT u.*, d.name as department_name, d.name as department_code
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     WHERE u.id = ?

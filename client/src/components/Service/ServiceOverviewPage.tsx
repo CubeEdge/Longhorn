@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useViewAs } from '../Workspace/ViewAsComponents';
 
 interface DashboardStats {
   total_open: number;
@@ -43,9 +44,10 @@ interface RiskTicket {
 }
 
 const ServiceOverviewPage: React.FC = () => {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { viewingAs } = useViewAs();
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -55,83 +57,33 @@ const ServiceOverviewPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [viewingAs]); // Re-fetch if view-as identity changes
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch all tickets from UPGRADED P2 tickets API for holistic analysis
-      const ticketsRes = await axios.get('/api/v1/tickets?page_size=500', {
-        headers: { Authorization: `Bearer ${token}` }
+      const targetDept = viewingAs?.department_code || (user as any)?.department_code || '';
+      const params = targetDept ? { dept: targetDept } : {};
+
+      const res = await axios.get('/api/v1/tickets/team-stats', {
+        headers: { Authorization: `Bearer ${token}` },
+        params
       });
 
-      const tickets = ticketsRes.data.data || [];
-
-      // Calculate stats
-      const now = Date.now();
-      const today = new Date().toDateString();
-
-      const openTickets = tickets.filter((t: any) => !['Resolved', 'AutoClosed', 'Closed'].includes(t.status));
-      const closedToday = tickets.filter((t: any) =>
-        ['Resolved', 'AutoClosed'].includes(t.status) &&
-        new Date(t.resolved_at || t.updated_at).toDateString() === today
-      );
-
-      // Risk tickets (SLA warning/breached)
-      const risks = openTickets.filter((t: any) => {
-        const hours = (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60);
-        return hours > 24;
-      }).map((t: any) => ({
-        id: t.id,
-        ticket_number: t.ticket_number,
-        ticket_type: t.ticket_type || 'ticket',
-        problem_summary: t.problem_summary || '无描述',
-        sla_status: (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60) > 48 ? 'breached' : 'warning',
-        assigned_name: t.assigned_name || '未分配',
-        remaining_hours: Math.max(0, 48 - (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60))
-      }));
-
-      // Team load analysis with P2 fields
-      const handlerMap = new Map<string, { name: string; tickets: any[] }>();
-      openTickets.forEach((t: any) => {
-        const name = t.assigned_name || '未分配';
-        if (!handlerMap.has(name)) {
-          handlerMap.set(name, { name, tickets: [] });
-        }
-        handlerMap.get(name)!.tickets.push(t);
-      });
-
-      const teamData = Array.from(handlerMap.values()).map(h => ({
-        id: h.tickets[0]?.assigned_to || 0,
-        name: h.name,
-        active_tickets: h.tickets.length,
-        avg_resolution_hours: 24,
-        sla_compliance: h.tickets.filter((t: any) => {
-          const hours = (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60);
-          return hours <= 48;
-        }).length / h.tickets.length * 100
-      })).sort((a, b) => b.active_tickets - a.active_tickets);
-
-      // Calculate breach rate
-      const breachedCount = openTickets.filter((t: any) => {
-        const hours = (now - new Date(t.created_at).getTime()) / (1000 * 60 * 60);
-        return hours > 48;
-      }).length;
+      const data = res.data.data;
 
       setStats({
-        total_open: openTickets.length,
-        total_closed_today: closedToday.length,
-        avg_response_time: 4.5,
-        sla_breach_rate: openTickets.length > 0 ? (breachedCount / openTickets.length * 100) : 0,
-        by_priority: { P0: 0, P1: 2, P2: openTickets.length - 2 },
-        by_status: {}
+        total_open: data.total_open,
+        total_closed_today: data.total_closed_today,
+        avg_response_time: data.avg_response_time,
+        sla_breach_rate: data.sla_breach_rate,
+        by_priority: data.by_priority,
+        by_status: data.by_status
       });
 
-      setRiskTickets(risks.slice(0, 5));
-      setTeamLoad(teamData.slice(0, 6));
-      // Retrieve actual waiting approvals count, bypassing fake rng
-      const approvals = tickets.filter((t: any) => t.current_node === 'ms_review' || t.current_node === 'ge_review').length;
-      setApprovalCount(approvals);
+      setRiskTickets(data.risk_tickets.slice(0, 5));
+      setTeamLoad(data.team_load.slice(0, 6));
+      setApprovalCount(data.approval_count);
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
     } finally {
