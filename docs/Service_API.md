@@ -4064,19 +4064,36 @@
 
 **PATCH** `/api/v1/tickets/{id}`
 
+- **权限**: 内部员工、经销商（仅限自己关联的工单）
+- **阶梯式风险控制**: 
+  - 修改核心字段（SN、产品ID、保修判定等）时必须带上 `change_reason`。
+  - 对于已终结节点（Completed/Rejected）的工单，非管理员角色禁止修改核心字段。
+
 ```json
+// Request - 普通更新 (含审计理由)
+{
+  "problem_description": "更新了详细的问题路径描述...",
+  "change_reason": "补充实测细节",
+  "is_modal_edit": true  // 标记是否为全局编辑模态框触发
+}
+
 // Request - 更新节点 (状态流转)
 {
   "current_node": "op_qa",
   "comment": "维修完成，转 QA 检查"
 }
 
-// Request - 更新优先级
+// Request - 更新核心数据 (触发审计)
 {
-  "priority": "P0",
-  "comment": "客户要求紧急处理"
+  "serial_number": "ME_107655",
+  "product_id": 1,
+  "change_reason": "录入时看错序列号，已核实实机",
+  "is_modal_edit": true
 }
 ```
+
+**Response**:
+Success (200 OK) or Validation Error (400 if reason missing).
 
 ### 22.4 设置贪睡模式
 

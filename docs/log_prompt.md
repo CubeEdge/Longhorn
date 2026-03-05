@@ -1,5 +1,20 @@
 # Prompt Log
 
+## 2026-03-05 13:45 (耗时: 15m)
+
+**User Prompt**:
+1. 图2，空到空的修改？不需要提示吧；
+2. 提交的时候，出现错误。
+@[/upd]@[/finalize_task]
+
+**Agent Response**:
+1. **深度对比优化**: 修复了 `UnifiedTicketDetail.tsx` 的 Diff 对比逻辑。引入数据标准化，将 `null`, `undefined`, `''` 视为同一含义，消除了无意义的“空到空”变更提示。
+2. **后端健壮性增强**: 
+   - 修复了 `PATCH /api/v1/tickets/:id` 在 SQLite 下无法绑定布尔值（如 `is_warranty`）的缺陷。
+   - 修复了由于变量更名（`auditFieldsToChange` -> `coreFieldsChanged`）导致的未定义变量引用报错。
+3. **交付与归档**: 执行 `/upd` 高级流水线（v12.3.44/v1.7.36），并同步更新了全量 API、PRD、DataModel 技术文档。
+
+---
 ## 2026-03-05 12:06 (耗时: 5m)
 
 **User Prompt**:

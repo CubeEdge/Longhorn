@@ -593,11 +593,30 @@ FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
 FOREIGN KEY (actor_id) REFERENCES users(id)
 ```
 
-**视图分级说明**：
-- **Commercial View (MS)**：显示 `visibility = 'all'` 的活动，用于与客户/经销商沟通
-- **Technician View (OP/RD)**：显示 `visibility IN ('all', 'internal', 'technician')` 的活动，包含技术细节
+### 2.3 工单核心审计日志 (ticket_field_audit_log) [NEW v1.7.35]
+
+> **设计说明**：专门记录受严格风险控制的核心字段（序列号、保修判定、产品ID等）的修改全记录，用于安全审计。
+
+```sql
+ticket_field_audit_log (审计日志)
+├── id: SERIAL PRIMARY KEY
+├── ticket_id: INT NOT NULL -- 关联工单
+├── field_name: VARCHAR(50) -- 变更字段名
+├── old_value: TEXT -- 序列化前的旧值
+├── new_value: TEXT -- 序列化前的新值
+├── change_reason: TEXT NOT NULL -- 修正理由 (必填)
+├── changed_by: INT -- 修改人
+└── changed_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+FOREIGN KEY (changed_by) REFERENCES users(id)
+```
 
 **索引**：
+- INDEX `idx_audit_ticket` (`ticket_id`)
+- INDEX `idx_audit_time` (`changed_at`)
+
+### 2.4 工单评论与沟通 (issue_comments) [已弃用]
 - PRIMARY KEY (id)
 - INDEX idx_ticket (ticket_id)
 - INDEX idx_activity_type (activity_type)

@@ -397,7 +397,7 @@ AI 无法匹配 "小王" -> 填入 reporter_snapshot。
 
 5. 忽略: 保持原状，结案后 Smith 仅作为历史文本存在。
 
-**5.8 客户生命周期流转 (Customer Lifecycle & Prospect) - [COMPLETED v12.3.0]**
+**5.8 客户生命周期流转 (Customer Lifecycle & Prospect) [COMPLETED v12.3.0]**
 我们不再为“潜在客户”单设新表，而是通过 `accounts.lifecycle_stage` 来管理身份。
 * **状态定义**:
     * `PROSPECT` (潜在/线索): 没有关联设备的客户档案。比如参加会展、致电询价的记录。
@@ -637,42 +637,15 @@ UI 刷新，状态从“状态 2”变为“状态 1”。
     * 在 审批 按钮旁显示微型标签：[Permission: TICKET_APPROVE]。  
     * 在 客户电话 字段旁显示：[Mask: OP_VIEW]。  
   
-# 7. 修正与删除机制 (Correction & Deletion Mechanism) - [NEW v1.7]
+# 7. 修正与删除机制 (Correction & Deletion Mechanism) [COMPLETED v12.3.44]
 本系统在满足“允许纠错”需求的同时，建立了严格的审计闭环，防止数据造假。
 
-**7.1 审计化修正 (Audited Correction)**
-*   **对比逻辑**：后端在处理 `PATCH /tickets/:id` 请求时，会自动对比核心字段的新旧值。
-*   **强制记录与理由**：修改下列清单中的字段时，系统**强制要求**填写修正理由，并自动生成一条 `field_updated` 类型的时间轴活动，确保修改过程对所有参与人员清晰可见。
-*   **强制审计字段清单 (Audit Field Whitelist)**：
-    *   **设备标识 (Identity)**: `serial_number` (序列号), `product_id` (产品型号)。
-    *   **主体归属 (Ownership)**: `account_id` (关联公司), `contact_id` (联系人), `dealer_id` (经销商)。
-    *   **内容与诊断 (Content)**: `problem_summary` (问题简述), `problem_description` (详细描述), `repair_content` (维修内容)。
-    *   **经济责任 (Financial)**: `is_warranty` (保修判定), `payment_amount` (金额)。
-    *   **时效契约 (SLA)**: `priority` (优先级), `sla_due_at` (SLA死线)。
-    *   **原始证据 (Proof)**: `reporter_snapshot` (报修人快照数据)。
-*   **时间轴展示逻辑**：
-    *   格式：`[操作人]` 修改了 `[字段名称]`：从 `"[旧值]"` 变更为 `"[新值]"`。理由：`[修正理由]`。
-    *   效果：通过“对比高亮”形式呈现，防止历史被静默篡改。
-*   **阶梯式风险控制模型 (Tiered Risk Control)**：
-    *   **原则**：效率与风控平衡（事前放权管控 + 事后严格审计 + 管理角色提权）。
-    *   **普通处理人 (处理效率优先)**：
-        *   **范围**：仅在活跃阶段 (`draft`, `submitted`, `in_progress` 等) 允许自由编辑。
-        *   **审计**：修改核心字段必须强制填写 `change_reason`，形成公开时间轴记录。
-        *   **锁定**：进入终结/审核态 (`ms_closing`, `resolved`, `closed`, `cancelled` 等) 后，对该角色全量置灰只读，禁止修改/删除。
-    *   **管理特权 (市场部负责人 MS Lead / Admin)**：
-        *   **特权**：**只有市场部负责人 (MS Lead)** 或系统管理员 (Admin) 拥有此特权。无视工单当前生命周期状态，甚至已结案或已取消的工单，仍可随时通过侧边抽屉强制修正或废弃。
-        *   **审计**：其所有操作同样会被高亮留痕。
-*   **前端交互 UI**：详情页右上角 `[ 编辑 ]` 触发侧边抽屉 (Side Drawer)；触发敏感字段改动时，动态展开黄底 `change_reason` 强制输入框。
+**7.1 审计化修正 (Audited Correction) [COMPLETED v12.3.44]**
+*   **对比逻辑**：后端在处理 `PATCH /tickets/:id` 请求时，会自动对比核心字段的新旧值。强制识别空值（null, undefined, ""）为等效。
+*   **强制记录与理由**：修改下列清单中的字段时，系统**强制要求**填写修正理由。前端弹出带 5 秒倒计时的审计模态框，强制用户核对变更 Diff 并提供理由。
+*   **审计日志**：变更理由将同步记录到 `ticket_activities` 时间轴，显式展示新旧值对比。
 
-**7.2 墓碑化软删除 (Soft Deletion / Tombstone)**
-*   **物理保留**：严禁物理执行 `DELETE FROM tickets`。
-*   **逻辑删除 API**：提供 `DELETE /api/v1/tickets/:id` 接口。
-*   **权限与条件约束**：
-    *   **普通员工**：仅允许删除自己创建且处于 `draft` 或 `submitted` 状态的工单（用于清理错误的录入或测试数据）。
-    *   **市场部负责人 (MS Lead) / Admin**：具备最高软删权限，可删除任何阶段工单。
-*   **回收站与恢复 (Recycle Bin)**：
-    *   **入口**：Workspace (工作空间) -> Team Hub (部门池) -> **[ 🗑️ 回收站 ]** Tab（仅对具备删除权限的人员可见）。
-    *   **功能**：显示所有 `is_deleted = 1` 的工单。点击进入详情后，提供 `[ ♻️ 恢复工单 ]` 按钮，点击并填写理由后将 `is_deleted` 重置为 0。
-*   **强制理由与 UI 交互**：
-    *   **入口**：详情页右上角 `[...]` 更多菜单的红字选项 `[ 废弃/删除工单 ]`。
-    *   **风控交互**：屏幕中央弹出红色危险边框警告框。所有删除动作必须附带 `delete_reason`。必须经过 **强制 10 秒安全倒计时** 解锁确认按钮，且手动输入大于五字符的理由才允许提交。数据状态变更为 `is_deleted = 1`。
+**7.2 墓碑化软删除 (Soft Deletion / Tombstone) [COMPLETED v12.3.44]**
+*   **逻辑实现**：使用 `is_deleted` 标记，配合 `deleted_at`, `deleted_by`, `delete_reason`。
+*   **特殊权限**：市场部负责人 (MS Lead) 具备跨生命周期阶段强制删除任何工单的特权。
+*   **回收站**：作为独立按钮存放在 Team Hub 页面统计区域。支持一键恢复（Restore）。

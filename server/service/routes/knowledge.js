@@ -1856,7 +1856,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             helpful_count: article.helpful_count,
             not_helpful_count: article.not_helpful_count,
             source_type: article.source_type,
-            author: article.author_name,
+            author_name: article.author_name,
             published_at: article.published_at,
             created_at: article.created_at
         };
@@ -1899,6 +1899,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
             source_type: article.source_type,
             source_reference: article.source_reference,
             source_url: article.source_url,
+            author_name: article.author_name,
             author: { id: article.created_by, name: article.author_name },
             updated_by: article.updated_by ? { id: article.updated_by, name: article.updated_by_name } : null,
             published_at: article.published_at,

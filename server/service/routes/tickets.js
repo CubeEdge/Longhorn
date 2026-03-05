@@ -1101,7 +1101,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                 'external_link'
             ];
 
-            // 1. 检测所有变更的字段
+            // 1. 检测所有变更的字段 (normalize null/undefined/'' as equivalent)
+            const normalize = v => (v === null || v === undefined || v === '') ? '' : v;
             const allChangedFields = allowedFields.filter(field => {
                 if (updates[field] === undefined) return false;
                 const oldVal = ticket[field];
@@ -1111,7 +1112,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     const newStr = typeof newVal === 'string' ? newVal : JSON.stringify(newVal);
                     return oldStr !== newStr;
                 }
-                return String(oldVal || '') !== String(newVal || '');
+                return String(normalize(oldVal)) !== String(normalize(newVal));
             });
 
             // 2. 梳理核心审计字段变更
@@ -1154,7 +1155,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                     if (field === 'reporter_snapshot') {
                         params.push(updates[field] ? JSON.stringify(updates[field]) : null);
                     } else {
-                        params.push(updates[field]);
+                        // SQLite3 cannot bind booleans; convert to integer
+                        let val = updates[field];
+                        if (typeof val === 'boolean') val = val ? 1 : 0;
+                        params.push(val);
                     }
                 }
             }
@@ -1249,7 +1253,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
 
             // Handle priority change (if not already in audit fields)
-            if (updates.priority && updates.priority !== ticket.priority && !auditFieldsToChange.includes('priority')) {
+            if (updates.priority && updates.priority !== ticket.priority && !coreFieldsChanged.includes('priority')) {
                 db.prepare(`
                     INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
                     VALUES (?, 'priority_change', ?, ?, ?, ?, ?, 'all')
@@ -1314,7 +1318,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             res.json({
                 success: true,
                 message: '更新成功',
-                audited_fields: auditFieldsToChange.length > 0 ? auditFieldsToChange : undefined
+                audited_fields: coreFieldsChanged.length > 0 ? coreFieldsChanged : undefined
             });
         } catch (err) {
             console.error('[Tickets] Update error:', err);

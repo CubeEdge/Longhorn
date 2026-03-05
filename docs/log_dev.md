@@ -1,5 +1,16 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-05] 审计模型健壮性优化与全量文档归档 (v12.3.44)
+### Backend
+- 修复 `tickets.js` 中的 `PATCH` 逻辑：自动转换 Boolean 为 Integer 以适配 SQLite3 绑定规则。
+- 修正变量引用：`auditFieldsToChange` -> `coreFieldsChanged`。
+- 增强变更检测：引入 `normalize` 函数处理 Null/String 混用场景。
+### Frontend
+- 更新 `UnifiedTicketDetail.tsx`：实现属性标准化判定，拦截 `(空) -> (空)` 的假阳性 Diff。
+### Documentation
+- 同步更新 `Service_API.md`, `Service_PRD.md`, `Service_DataModel.md`。
+### Infrastructure
+- 版本发布：Client `12.3.44`, Server `1.7.36`。完成全量物理构建与 PM2 热重载。
 ## [2026-03-05] 交付构建与远程部署修复 (v12.3.42)
 ### Frontend
 - 排查出 `client/src/components/KinefinityWiki.tsx` 存在两个未消费的变量引入 `ThumbsUp, ThumbsDown` 触发了 TSLint 的强校验规则而无法编译。

@@ -132,8 +132,8 @@
 **SLA 计算逻辑**：
 - **初始化**：创建工单时，优先级默认等于客户 `service_tier` 对应的等级
 - **计时重置**：当状态变更时，`node_entered_at` 更新为 `NOW()`，重新计算 `sla_due_at`
-- **SLA 状态**：`normal` (正常) / `warning` (剩余<25%) / `breached` (已超时)
-- **统计字段**：`breach_counter` 累计超时次数
+- **SLA 状态**：`normal` (正常) / `warning` (剩余<25%) / `breached` (已超时) [COMPLETED v12.3.0]
+- **统计字段**：`breach_counter` 累计超时次数 [COMPLETED v12.3.0]
 
 **Loaner Gear（备机）触发逻辑**：
 - **触发条件**：VVIP/机构客户 + P1优先维修（预估3个工作日）

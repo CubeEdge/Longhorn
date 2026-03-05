@@ -168,33 +168,39 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
     const getChangedDiff = () => {
         if (!ticket) return [];
         const diffs: { field: string, label: string, oldVal: string, newVal: string, isRisk: boolean }[] = [];
+        // Normalize: treat null, undefined, '' as equivalent empty
+        const normalize = (v: any) => (v === null || v === undefined || v === '') ? '' : v;
         Object.keys(editForm).forEach(key => {
             const oldVal = ticket[key as keyof TicketDetail];
             const newVal = editForm[key as keyof TicketDetail];
-            if (oldVal !== newVal && newVal !== undefined) {
-                let dOld = String(oldVal || '(空)');
-                let dNew = String(newVal || '(空)');
-                if (key === 'is_warranty') {
-                    dOld = oldVal === true ? '保修内' : oldVal === false ? '过保' : '(空)';
-                    dNew = newVal === true ? '保修内' : newVal === false ? '过保' : '(空)';
-                }
-                if (key === 'product_id') {
-                    dOld = ticket.product_name || dOld;
-                    dNew = products.find(p => p.id === newVal)?.name || dNew;
-                }
-                let snippetOld = dOld;
-                let snippetNew = dNew;
-                if (dOld.length > 20) snippetOld = dOld.substring(0, 20) + '...';
-                if (dNew.length > 20) snippetNew = dNew.substring(0, 20) + '...';
+            if (newVal === undefined) return;
+            // Skip if both normalize to the same value (prevents 空→空)
+            if (normalize(oldVal) === normalize(newVal)) return;
+            // Also skip if stringified values are the same (handles type coercion like number vs string)
+            if (String(normalize(oldVal)) === String(normalize(newVal))) return;
 
-                diffs.push({
-                    field: key,
-                    label: FIELD_LABELS[key] || key,
-                    oldVal: snippetOld,
-                    newVal: snippetNew,
-                    isRisk: ['serial_number', 'product_id'].includes(key) // 核心数据
-                });
+            let dOld = String(oldVal ?? '') || '(空)';
+            let dNew = String(newVal ?? '') || '(空)';
+            if (key === 'is_warranty') {
+                dOld = oldVal === true || oldVal === 1 ? '保修内' : oldVal === false || oldVal === 0 ? '过保' : '(空)';
+                dNew = newVal === true || (newVal as any) === 1 ? '保修内' : newVal === false || (newVal as any) === 0 ? '过保' : '(空)';
             }
+            if (key === 'product_id') {
+                dOld = ticket.product_name || dOld;
+                dNew = products.find(p => p.id === newVal)?.name || dNew;
+            }
+            let snippetOld = dOld;
+            let snippetNew = dNew;
+            if (dOld.length > 20) snippetOld = dOld.substring(0, 20) + '...';
+            if (dNew.length > 20) snippetNew = dNew.substring(0, 20) + '...';
+
+            diffs.push({
+                field: key,
+                label: FIELD_LABELS[key] || key,
+                oldVal: snippetOld,
+                newVal: snippetNew,
+                isRisk: ['serial_number', 'product_id'].includes(key)
+            });
         });
         return diffs;
     };
