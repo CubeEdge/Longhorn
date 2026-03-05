@@ -1,6 +1,6 @@
-**版本**: 12.3.0 (Audit & Visibility Update)
+**版本**: 12.3.1 (UI Refinement & Unified Drawers)
 **状态**: 已验证
-**最后更新**: 2026-03-03 (Deployed v12.3.0)
+**最后更新**: 2026-03-05 (Deployed v12.3.1)
 
 > 本文档定义系统的用户角色、典型使用场景和端到端操作流程。
 > PRD和API设计将基于本文档进行调整。

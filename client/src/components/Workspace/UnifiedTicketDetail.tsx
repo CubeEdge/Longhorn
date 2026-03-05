@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip } from 'lucide-react';
+import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip, ShieldAlert } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -606,10 +606,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                         <div style={{ fontSize: 11, color: '#888', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <FileText size={12} />
-                                            {t('ticket.problem_desc') || '问题描述'}
-                                            {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && <span style={{ color: '#FFD700', marginLeft: 4 }}>· 点击查看全文</span>}
+                                            {t('ticket.problem_summary') || '问题概要'}
+                                            {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
+                                                <span style={{ color: '#FFD700', marginLeft: 4 }}>· 已折叠部分</span>
+                                            )}
                                         </div>
-                                        <ExternalLink size={14} color="#888" />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#888', fontSize: 11 }}>
+                                            <span>更多详情和附件</span>
+                                            <ExternalLink size={13} />
+                                        </div>
                                     </div>
                                     <div style={{
                                         fontSize: 13, color: '#ddd', lineHeight: 1.6,
@@ -703,85 +708,94 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                     zIndex: 200, display: 'flex', flexDirection: 'column',
                     boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                        <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>编辑工单信息</h3>
-                        <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <ShieldAlert size={18} color="#FFD700" />
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>编辑工单信息</h3>
+                                <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
                             <X size={20} />
                         </button>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                         {/* ---- 分组 1: 时效与状态 ---- */}
-                        <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: -8 }}>时效与状态</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>优先级 (Priority)</label>
-                                <select
-                                    value={editForm.priority as string || ''}
-                                    onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
-                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
-                                >
-                                    <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>状态 (Status)</label>
-                                <select
-                                    value={editForm.status as string || ''}
-                                    onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
-                                >
-                                    {Object.keys(statusLabels).map(k => <option key={k} value={k}>{statusLabels[k].zh}</option>)}
-                                </select>
+                        <div>
+                            <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>时效与状态</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>优先级</label>
+                                    <select
+                                        value={editForm.priority as string || ''}
+                                        onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                    >
+                                        <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>状态</label>
+                                    <select
+                                        value={editForm.status as string || ''}
+                                        onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                    >
+                                        {Object.keys(statusLabels).map(k => <option key={k} value={k}>{statusLabels[k].zh}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         {/* ---- 分组 2: 内容与诊断 ---- */}
-                        <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: -8 }}>内容与诊断</div>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述 (Summary)</label>
-                            <input
-                                value={editForm.problem_summary as string || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述 (Description)</label>
-                            <textarea
-                                value={editForm.problem_description as string || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80 }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>处理结果 / 记录 (Resolution)</label>
-                            <textarea
-                                value={editForm.resolution as string || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, resolution: e.target.value }))}
-                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80 }}
-                            />
+                            <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>内容与诊断</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
+                                    <input
+                                        value={editForm.problem_summary as string || ''}
+                                        onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
+                                    <textarea
+                                        value={editForm.problem_description as string || ''}
+                                        onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* ---- 分组 3: 设备标识 (RMA/SVC 特有) ---- */}
                         {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
-                            <>
-                                <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: -8 }}>设备标识</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>序列号 (S/N)</label>
+                            <div>
+                                <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>核心资产标识</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                            <ShieldAlert size={12} /> 序列号 (S/N)
+                                        </label>
                                         <input
                                             value={editForm.serial_number as string || ''}
                                             onChange={e => setEditForm(prev => ({ ...prev, serial_number: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
+                                            style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
                                         />
+                                        <p style={{ margin: '6px 0 0', fontSize: 10, color: '#777' }}>警告：修改此项将影响设备服务记录与审计体系</p>
                                     </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>产品型号 (Product)</label>
+                                    <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                            <Package size={12} /> 产品型号
+                                        </label>
                                         <select
                                             value={editForm.product_id as number || ''}
                                             onChange={e => setEditForm(prev => ({ ...prev, product_id: e.target.value ? Number(e.target.value) : undefined }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
+                                            style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
                                         >
                                             <option value="">{ticket.product_name || '选择型号...'}</option>
                                             {products.map(p => (
@@ -790,58 +804,61 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                                         </select>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
 
                         {/* ---- 分组 4: 核心判定 (RMA/SVC 特有) ---- */}
                         {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
-                            <>
-                                <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8, marginBottom: -8 }}>核心判定</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>保修判定 (Warranty)</label>
-                                        <select
-                                            value={editForm.is_warranty !== undefined ? String(editForm.is_warranty) : (ticket.is_warranty !== undefined ? String(ticket.is_warranty) : '')}
-                                            onChange={e => setEditForm(prev => ({ ...prev, is_warranty: e.target.value === 'true' ? true : e.target.value === 'false' ? false : undefined }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
-                                        >
-                                            <option value="">未判定</option>
-                                            <option value="true">保修期内 (Warranty)</option>
-                                            <option value="false">保修期外 (Non-Warranty)</option>
-                                        </select>
+                            <div style={{ paddingBottom: 20 }}>
+                                <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>服务判定</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>保修判定</label>
+                                            <select
+                                                value={editForm.is_warranty !== undefined ? String(editForm.is_warranty) : (ticket.is_warranty !== undefined ? String(ticket.is_warranty) : '')}
+                                                onChange={e => setEditForm(prev => ({ ...prev, is_warranty: e.target.value === 'true' ? true : e.target.value === 'false' ? false : undefined }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                            >
+                                                <option value="">未判定</option>
+                                                <option value="true">在保</option>
+                                                <option value="false">过保</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>金额 (¥)</label>
+                                            <input
+                                                type="number"
+                                                value={editForm.payment_amount as number || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, payment_amount: e.target.value ? Number(e.target.value) : undefined }))}
+                                                placeholder="0.00"
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>金额 (Amount)</label>
-                                        <input
-                                            type="number"
-                                            value={editForm.payment_amount as number || ''}
-                                            onChange={e => setEditForm(prev => ({ ...prev, payment_amount: e.target.value ? Number(e.target.value) : undefined }))}
-                                            placeholder="0.00"
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
+                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>维修内容</label>
+                                        <textarea
+                                            value={editForm.repair_content as string || ''}
+                                            onChange={e => setEditForm(prev => ({ ...prev, repair_content: e.target.value }))}
+                                            placeholder="更换零件、固件升级、压力测试等细节..."
+                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>维修内容 (Repair Content)</label>
-                                    <textarea
-                                        value={editForm.repair_content as string || ''}
-                                        onChange={e => setEditForm(prev => ({ ...prev, repair_content: e.target.value }))}
-                                        placeholder="零件更换、调整项目等..."
-                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 60 }}
-                                    />
-                                </div>
-                            </>
+                            </div>
                         )}
+                    </div>
 
-                        <div style={{ padding: 20, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 12 }}>
-                            <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer' }}>取消</button>
-                            <button
-                                onClick={handlePreSave}
-                                style={{ flex: 1, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                            >
-                                <Save size={16} /> 保存变更
-                            </button>
-                        </div>
+                    {/* STICKY FOOTER */}
+                    <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(30,30,30,0.8)', backdropFilter: 'blur(10px)', display: 'flex', gap: 12 }}>
+                        <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
+                        <button
+                            onClick={handlePreSave}
+                            style={{ flex: 1.5, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
+                        >
+                            <Save size={16} /> 保存变更
+                        </button>
                     </div>
                 </div>
             )}
@@ -927,60 +944,59 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
             {/* ====== Details Drawer ====== */}
             {isDescriptionDrawerOpen && (
                 <div style={{
-                    position: 'fixed', top: 0, right: 0, bottom: 0, width: 600, zIndex: 300,
+                    position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, zIndex: 300,
                     background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
                     borderLeft: '1px solid rgba(255,255,255,0.1)',
                     boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
                     display: 'flex', flexDirection: 'column',
                     animation: 'drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}>
-                    <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <FileText size={20} color="#FFD700" />
+                    <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={16} color="#FFD700" />
                             </div>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 18, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
-                                <p style={{ margin: 0, fontSize: 13, color: '#888', marginTop: 4 }}>{ticket.ticket_number}</p>
+                                <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
+                                <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>{ticket.ticket_number}</p>
                             </div>
                         </div>
-                        <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 8 }}>
+                        <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
                             <X size={20} />
                         </button>
                     </div>
-                    <div style={{ padding: 32, flex: 1, overflowY: 'auto' }}>
+                    <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
                         {ticket.problem_summary && (
-                            <div style={{ marginBottom: 32 }}>
-                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>摘要 (Summary)</h4>
-                                <div style={{ fontSize: 15, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            <div style={{ marginBottom: 24 }}>
+                                <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>摘要</h4>
+                                <div style={{ fontSize: 14, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                     {ticket.problem_summary}
                                 </div>
                             </div>
                         )}
                         {ticket.problem_description && (
-                            <div style={{ marginBottom: 32 }}>
-                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>详细描述 (Description)</h4>
-                                <div style={{ fontSize: 15, color: '#ccc', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                            <div style={{ marginBottom: 24 }}>
+                                <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>详细描述</h4>
+                                <div style={{ fontSize: 14, color: '#ccc', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                     {ticket.problem_description}
                                 </div>
                             </div>
                         )}
                         {ticket.resolution && (
-                            <div style={{ marginBottom: 32 }}>
-                                <h4 style={{ fontSize: 13, color: '#10B981', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>处理记录 (Resolution)</h4>
-                                <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 16, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
+                            <div style={{ marginBottom: 24 }}>
+                                <h4 style={{ fontSize: 12, color: '#10B981', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>处理记录</h4>
+                                <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 12, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
                                     {ticket.resolution}
                                 </div>
                             </div>
                         )}
-                        {/* 附件占位 (待后续对接真实Attachments表) */}
                         {Number(ticket.attachments_count || 0) > 0 && (
                             <div>
-                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>附件文件</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div style={{ padding: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, opacity: 0.5 }}>
-                                        <Paperclip size={16} color="#888" />
-                                        <span style={{ fontSize: 13, color: '#ddd' }}>[已上传 {Number(ticket.attachments_count)} 个附件]</span>
+                                <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>附件文件</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                                    <div style={{ padding: 10, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, opacity: 0.6 }}>
+                                        <Paperclip size={14} color="#888" />
+                                        <span style={{ fontSize: 12, color: '#ddd' }}>已上传 {Number(ticket.attachments_count)} 个附件</span>
                                     </div>
                                 </div>
                             </div>

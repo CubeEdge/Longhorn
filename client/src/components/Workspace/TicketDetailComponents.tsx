@@ -108,86 +108,33 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined || value === '') return '(空)';
     if (typeof value === 'boolean') return value ? '是' : '否';
-    if (typeof value === 'object') return '(数据对象)';
-    return String(value);
+    if (typeof value === 'object') return '(对象)';
+    const s = String(value);
+    return s.length > 20 ? s.substring(0, 20) + '...' : s;
   };
 
   return (
-    <div style={{ flex: 1, fontSize: 13 }}>
-      {/* 字段标签 */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 6, 
-        marginBottom: 6 
-      }}>
-        <span style={{ color: '#aaa' }}>修改了</span>
-        <span style={{ 
-          color: '#FFD700', 
-          fontWeight: 600,
-          padding: '2px 6px',
-          background: 'rgba(255,215,0,0.1)',
-          borderRadius: 4
-        }}>
-          {metadata.field_label || metadata.field_name || '字段'}
+    <div style={{ flex: 1, fontSize: 13, lineHeight: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px' }}>
+        <span style={{ color: '#888' }}>修改了</span>
+        <span style={{ color: '#FFD700', fontWeight: 600 }}>
+          [{metadata.field_label || metadata.field_name || '字段'}]
         </span>
-      </div>
-
-      {/* 对比高亮显示 */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 8,
-        marginBottom: 6
-      }}>
-        {/* 旧值 - 红色删除线 */}
-        <span style={{
-          padding: '3px 8px',
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid rgba(239,68,68,0.2)',
-          borderRadius: 4,
-          color: '#EF4444',
-          textDecoration: 'line-through',
-          fontSize: 12,
-          maxWidth: 150,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}>
-          {formatValue(metadata.old_value)}
-        </span>
-
-        <ArrowRight size={12} color="#666" />
-
-        {/* 新值 - 绿色高亮 */}
-        <span style={{
-          padding: '3px 8px',
-          background: 'rgba(16,185,129,0.1)',
-          border: '1px solid rgba(16,185,129,0.2)',
-          borderRadius: 4,
-          color: '#10B981',
-          fontWeight: 500,
-          fontSize: 12,
-          maxWidth: 150,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}>
-          {formatValue(metadata.new_value)}
-        </span>
-      </div>
-
-      {/* 修正理由 */}
-      {metadata.change_reason && (
-        <div style={{
-          fontSize: 12,
-          color: '#888',
-          fontStyle: 'italic',
-          paddingLeft: 2
-        }}>
-          理由: {metadata.change_reason}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ccc' }}>
+          <span style={{ color: '#EF4444', textDecoration: 'line-through', fontSize: 12 }}>
+            {formatValue(metadata.old_value)}
+          </span>
+          <ArrowRight size={10} color="#666" />
+          <span style={{ color: '#10B981', fontWeight: 500, fontSize: 12 }}>
+            {formatValue(metadata.new_value)}
+          </span>
         </div>
-      )}
+        {metadata.change_reason && (
+          <span style={{ fontSize: 12, color: '#666', fontStyle: 'italic' }}>
+            ({metadata.change_reason})
+          </span>
+        )}
+      </div>
     </div>
   );
 };
@@ -311,7 +258,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                   }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                       {getVisibilityBadge(activity.visibility)}
-                      
+
                       {/* PRD §7.1: field_update 类型使用特殊高亮渲染 */}
                       {activity.activity_type === 'field_update' && activity.metadata ? (
                         <FieldUpdateContent
