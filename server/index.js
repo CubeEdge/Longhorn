@@ -591,6 +591,27 @@ function logHex(str, label) {
     console.log(`[HEX] ${label}: "${str}" -> ${Buffer.from(str).toString('hex')}`);
 }
 
+/**
+ * Normalize department name to short code (MS/OP/RD/GE)
+ * Handles both short codes and Chinese full names from production DB
+ */
+function normalizeDeptCode(name) {
+    if (!name) return null;
+    // Already a short code (e.g. 'MS', 'OP', 'RD', 'GE')
+    if (/^[A-Z]{2,3}$/.test(name)) return name;
+    // Chinese full name mapping
+    const map = {
+        '市场部': 'MS',
+        '生产运营部': 'OP',
+        '运营部': 'OP',
+        '研发部': 'RD',
+        '通用台面': 'GE',
+        '综合部': 'GE',
+        '管理层': 'GE'
+    };
+    return map[name] || name;
+}
+
 // Authentication Middleware
 const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -617,6 +638,8 @@ const authenticate = (req, res, next) => {
                     return res.sendStatus(401);
                 }
 
+                user.department_code = normalizeDeptCode(user.department_code);
+
                 // P2: View As functionality - Admin can impersonate other users
                 const viewAsUserId = req.headers['x-view-as-user'];
                 if (viewAsUserId && user.role === 'Admin') {
@@ -630,6 +653,7 @@ const authenticate = (req, res, next) => {
                     `).get(viewAsUserId, viewAsUserId);
 
                     if (targetUser) {
+                        targetUser.department_code = normalizeDeptCode(targetUser.department_code);
                         // Store original admin info for logging
                         targetUser._originalAdmin = {
                             id: user.id,
@@ -1184,7 +1208,7 @@ app.post('/api/login', (req, res) => {
             username: user.username,
             role: user.role,
             department_name: user.department_name,
-            department_code: user.department_code || null,
+            department_code: normalizeDeptCode(user.department_code),
             job_title: user.job_title || null,
             display_name: user.display_name || user.username,
             user_type: user.user_type || 'Employee'
@@ -1534,6 +1558,8 @@ app.get('/api/admin/users', authenticate, (req, res) => {
 
         return {
             ...user,
+            dept_code: normalizeDeptCode(user.dept_code),
+            department_code: normalizeDeptCode(user.dept_code),
             file_count: stats.count || 0,
             total_size: stats.total_size || 0
         };

@@ -57,15 +57,22 @@ module.exports = function (db, authenticate, serviceUpload) {
     };
 
     function getDeptCode(user) {
-        if (!user || !user.department_name) return null;
-        const match = user.department_name.match(/\(([A-Z]+)\)/);
-        if (match) return match[1];
-        if (user.department_name.includes('市场')) return 'MS';
-        if (user.department_name.includes('运营')) return 'OP';
-        if (user.department_name.includes('研发')) return 'RD';
-        if (user.department_name.includes('综合')) return 'GE';
-        // Generic fallback for code-like names
-        if (/^[A-Z]{2,3}$/.test(user.department_name)) return user.department_name;
+        if (!user) return null;
+        // First priority: already normalized department_code
+        if (user.department_code && /^[A-Z]{2,3}$/.test(user.department_code)) return user.department_code;
+        // Chinese full name mapping (production DB stores Chinese names)
+        const chineseMap = {
+            '市场部': 'MS', '生产运营部': 'OP', '运营部': 'OP',
+            '研发部': 'RD', '通用台面': 'GE', '综合部': 'GE', '管理层': 'GE'
+        };
+        if (user.department_code && chineseMap[user.department_code]) return chineseMap[user.department_code];
+        if (user.department_name && chineseMap[user.department_name]) return chineseMap[user.department_name];
+        // Legacy: parse from parentheses format e.g. "Market (MS)"
+        if (user.department_name) {
+            const match = user.department_name.match(/\(([A-Z]+)\)/);
+            if (match) return match[1];
+            if (/^[A-Z]{2,3}$/.test(user.department_name)) return user.department_name;
+        }
         return null;
     }
 
@@ -323,8 +330,14 @@ module.exports = function (db, authenticate, serviceUpload) {
             let conditions = [];
             let params = [];
 
-            // PRD §7.2: 默认排除已删除工单
-            conditions.push('(t.is_deleted IS NULL OR t.is_deleted = 0)');
+            const { is_deleted: showDeleted } = req.query;
+
+            // PRD §7.2: 默认排除已删除工单，除非明确指定
+            if (showDeleted === '1') {
+                conditions.push('t.is_deleted = 1');
+            } else {
+                conditions.push('(t.is_deleted IS NULL OR t.is_deleted = 0)');
+            }
 
             // Role-based filtering
             // dept_collab: 按部门协作查询时，用部门级 EXISTS 替代个人权限过滤
@@ -1067,7 +1080,9 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // PRD §7.1 - 阶梯式锁定检查
             const isFinalized = FINALIZED_NODES.includes(ticket.current_node);
-            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+            const deptCode = getDeptCode(req.user);
+            const isMsLead = deptCode === 'MS' && req.user.role === 'Lead';
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec' || isMsLead;
 
             // 检测是否修改了审计字段
             const auditFieldsToChange = AUDIT_FIELDS.filter(field => {
@@ -1323,7 +1338,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(410).json({ success: false, error: '工单已被删除' });
             }
 
-            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+            const deptCode = getDeptCode(req.user);
+            const isMsLead = deptCode === 'MS' && req.user.role === 'Lead';
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec' || isMsLead;
             const isOwner = ticket.created_by === req.user.id;
             const isDraftOrSubmitted = ['draft', 'submitted'].includes(ticket.current_node);
 
@@ -1393,6 +1410,55 @@ module.exports = function (db, authenticate, serviceUpload) {
             });
         } catch (err) {
             console.error('[Tickets] Delete error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/restore
+     * Restore a soft-deleted ticket
+     */
+    router.post('/:id/restore', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { restore_reason } = req.body;
+
+            if (!restore_reason || restore_reason.trim().length === 0) {
+                return res.status(400).json({ success: false, error: '恢复工单必须提供理由' });
+            }
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) return res.status(404).json({ success: false, error: '工单不存在' });
+            if (ticket.is_deleted !== 1) return res.status(400).json({ success: false, error: '工单未被删除' });
+
+            const deptCode = getDeptCode(req.user);
+            const isMsLead = deptCode === 'MS' && req.user.role === 'Lead';
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec' || isMsLead;
+
+            if (!isAdmin) {
+                return res.status(403).json({ success: false, error: '仅管理员或市场部负责人可恢复工单' });
+            }
+
+            db.prepare(`
+                UPDATE tickets SET 
+                    is_deleted = 0, 
+                    deleted_at = NULL, 
+                    deleted_by = NULL, 
+                    delete_reason = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(id);
+
+            const actorName = req.user.display_name || req.user.username;
+            const actorDept = req.user.department_name || 'MS';
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system_event', ?, ?, ?, ?, 'internal')
+            `).run(id, `工单已从回收站恢复。理由：${restore_reason.trim()}`, req.user.id, actorName, actorDept);
+
+            res.json({ success: true, message: '工单已恢复' });
+        } catch (err) {
+            console.error('[Tickets] Restore error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });
@@ -1523,7 +1589,8 @@ module.exports = function (db, authenticate, serviceUpload) {
      */
     router.get('/workspace/counts', authenticate, (req, res) => {
         try {
-            const userId = req.user.id;
+            const user = req.user;
+            const userId = user.id;
 
             // 1. My Tasks (Assigned to me, not closed/resolved)
             const myTasksCount = db.prepare(`
@@ -1540,28 +1607,47 @@ module.exports = function (db, authenticate, serviceUpload) {
                 AND t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
             `).get(userId, userId).count;
 
-            // 3. Team Queue (Unassigned, not closed/resolved)
-            const deptCode = getDeptCode(req.user);
-            const relevantNodes = DEPARTMENT_NODES[deptCode];
-
-            let teamQueueSql = `
-                SELECT COUNT(*) as count FROM tickets 
-                WHERE (assigned_to IS NULL OR assigned_to = 0)
-                AND current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            // 3. Team Hub (All active tickets visible to this user)
+            let teamSql = `
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN (assigned_to IS NULL OR assigned_to = 0) THEN 1 ELSE 0 END) as unassigned
+                FROM tickets t
+                WHERE t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+                AND (t.is_deleted IS NULL OR t.is_deleted = 0)
             `;
 
-            if (relevantNodes && req.user.role !== 'Admin' && req.user.role !== 'Exec') {
-                teamQueueSql += ` AND current_node IN (${relevantNodes.map(n => `'${n}'`).join(',')})`;
+            let teamParams = [];
+            if (user.user_type === 'Dealer') {
+                teamSql += ' AND t.dealer_id = ?';
+                teamParams.push(user.dealer_id);
+            } else if (!hasGlobalAccess(user)) {
+                // OP/RD: Only see RMA or tickets they are part of
+                teamSql += ` AND (
+                    t.ticket_type = 'rma'
+                    OR t.assigned_to = ?
+                    OR t.created_by = ?
+                    OR t.submitted_by = ?
+                    OR EXISTS (
+                        SELECT 1 FROM ticket_participants tp 
+                        WHERE tp.ticket_id = t.id AND tp.user_id = ?
+                    )
+                )`;
+                teamParams.push(userId, userId, userId, userId);
             }
 
-            const teamQueueCount = db.prepare(teamQueueSql).get().count;
+            const teamStats = db.prepare(teamSql).get(...teamParams);
+            const teamTotalCount = teamStats ? teamStats.total : 0;
+            const teamUnassignedCount = teamStats ? (teamStats.unassigned || 0) : 0;
 
             res.json({
                 success: true,
                 data: {
                     my_tasks: myTasksCount,
                     mentioned: mentionedCount,
-                    team_queue: teamQueueCount
+                    team_queue: teamUnassignedCount, // Backwards compatibility
+                    team_hub_total: teamTotalCount,
+                    team_hub_unclaimed: teamUnassignedCount
                 }
             });
         } catch (err) {

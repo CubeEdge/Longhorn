@@ -1,5 +1,18 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-05] 交付流水线部署 (v12.3.38)
+### Infrastructure
+- 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.38 / `server` v1.7.31。
+- 物理清理并重新构建前端资产，同步至远程服务器 `mini`。
+- 执行 `pm2 reload longhorn` 确保生产环境代码更新。
+
+## [2026-03-04] 上下文同步与版本更新部署 (v12.3.37)
+### Infrastructure
+- 执行了 `/context` 工作流，完成了对项目环境、生产域名 (`opware.kinefinity.com`) 及 SSH 运维规范 (`OPS.md`) 的深度同步。
+- 遵循版本管理规范，递增 `client` 版本至 `12.3.37`，`server` 版本至 `1.7.30`。
+- 执行了 `/upd` 交付流水线：通过 `npm run build` 验证前端构建，并使用 `./scripts/deploy.sh` (Fast Mode) 完成了远程服务器 `mini` 的全量部署。
+- 重载了远程 `pm2` 进程，确保最新版本号及环境配置全量上线。
+
 ## [2026-03-04] 深度修复生产环境部门代码标准化 (v12.3.35)
 ### Backend
 - 更新 `/api/login` 和 `/api/admin/users` 接口，应用 `normalizeDeptCode` 函数。

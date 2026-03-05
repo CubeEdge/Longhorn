@@ -812,7 +812,7 @@ knowledge_articles (知识库条目)
 ├── visibility: ENUM('Public', 'Dealer', 'Internal', 'Department') DEFAULT 'Internal' -- 可见性
 │
 ├── // 导入溯源
-├── source_type: ENUM('Manual', 'PDF', 'DOCX', 'URL', 'Text') DEFAULT 'Manual' -- 数据来源
+├── source_type: ENUM('Manual', 'PDF', 'DOCX', 'URL', 'Text', 'System Document') DEFAULT 'Manual' -- 数据来源
 ├── source_reference: VARCHAR(255) -- 原始文件名或引用链接
 ├── source_url: VARCHAR(500) -- 导入的原始 URL (仅 URL 导入)
 ├── batch_id: VARCHAR(50) -- 批量导入批次ID

@@ -433,7 +433,7 @@ export const translations = {
         'common.cancel': '取消',
         'common.confirm': '确定',
         'common.submitting': '提交中...',
-        
+
         // Audit Modal (PRD §7.1)
         'audit.modal.title': '审计化修正',
         'audit.modal.finalized_warning': '工单已终结，此为特权修正',
@@ -443,7 +443,7 @@ export const translations = {
         'audit.modal.reason_hint': '此修改将被记录到工单时间轴，确保修改过程透明可追溯',
         'audit.modal.submit': '确认修改',
         'audit.modal.submit_privileged': '特权修正',
-        
+
         // Delete Modal (PRD §7.2)
         'delete.modal.title': '删除工单',
         'delete.modal.warning_title': '此操作不可撤销',
@@ -454,7 +454,7 @@ export const translations = {
         'delete.modal.reason_placeholder': '请说明删除此工单的原因...',
         'delete.modal.confirm_label': '请输入工单号确认删除',
         'delete.modal.confirm_button': '确认删除',
-        
+
         'common.back': '返回',
         'common.current_path': '当前路径：',
 
@@ -797,6 +797,8 @@ export const translations = {
         'sidebar.team_queue': '部门池',
         'sidebar.team_hub': '部门工单',
         'sidebar.tech_hub': '知识中心',
+        'workspace.claim_confirm_title': '确认认领',
+        'workspace.claim_confirm_msg': '确实要认领此工单吗？',
         'workspace.search_tickets': '搜索工单...',
         'workspace.items_count': '项',
         'workspace.no_tickets': '暂无工单',
@@ -1838,7 +1840,7 @@ export const translations = {
         'common.cancel': 'Cancel',
         'common.confirm': 'Confirm',
         'common.submitting': 'Submitting...',
-        
+
         // Audit Modal (PRD §7.1)
         'audit.modal.title': 'Audited Correction',
         'audit.modal.finalized_warning': 'Ticket finalized. Privileged correction required.',
@@ -1848,7 +1850,7 @@ export const translations = {
         'audit.modal.reason_hint': 'This modification will be recorded in the ticket timeline for transparency',
         'audit.modal.submit': 'Confirm Changes',
         'audit.modal.submit_privileged': 'Privileged Correction',
-        
+
         // Delete Modal (PRD §7.2)
         'delete.modal.title': 'Delete Ticket',
         'delete.modal.warning_title': 'This action cannot be undone',
@@ -1859,7 +1861,7 @@ export const translations = {
         'delete.modal.reason_placeholder': 'Please explain why you are deleting this ticket...',
         'delete.modal.confirm_label': 'Type ticket number to confirm',
         'delete.modal.confirm_button': 'Confirm Delete',
-        
+
         'common.confirm_delete': 'Confirm Delete',
         'common.deleting': 'Deleting...',
         'common.actions': 'Actions',
@@ -2299,6 +2301,8 @@ export const translations = {
         'sidebar.team_queue': 'Team Queue',
         'sidebar.team_hub': 'Team Hub',
         'sidebar.tech_hub': 'Knowledge Center',
+        'workspace.claim_confirm_title': 'Claim Confirmation',
+        'workspace.claim_confirm_msg': 'Are you sure you want to claim this ticket?',
         'workspace.search_tickets': 'Search tickets...',
         'workspace.items_count': 'items',
         'workspace.no_tickets': 'No tickets',

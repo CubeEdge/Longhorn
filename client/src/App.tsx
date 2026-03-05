@@ -480,7 +480,12 @@ const Sidebar: React.FC<{
                 <Link to={getRoute('/service/team-hub')} className={`sidebar-item ${location.pathname === '/service/team-hub' ? 'active' : ''}`} onClick={onClose}>
                   <Users size={18} />
                   <span>{t('sidebar.team_hub', { defaultValue: '部门工单' })}</span>
-                  {workspaceCounts.team_queue > 0 && <span className="sidebar-badge badge-orange">{workspaceCounts.team_queue}</span>}
+                  {workspaceCounts.team_hub_total !== undefined && (
+                    <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                      <span className="sidebar-badge" style={{ background: 'rgba(255, 215, 0, 0.15)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.5)', marginLeft: 0 }} title="所有工单">{workspaceCounts.team_hub_total}</span>
+                      {workspaceCounts.team_hub_unclaimed > 0 && <span className="sidebar-badge" style={{ marginLeft: 0 }} title="待认领">{workspaceCounts.team_hub_unclaimed}</span>}
+                    </div>
+                  )}
                 </Link>
               </>
             )}
@@ -1016,11 +1021,14 @@ const TopBar: React.FC<{
         )}
 
         {/* SERVICE MODULE: Stats Only (Nav is in Sidebar) */}
-        {currentModule === 'service' && (
-          <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center' }}>
-            <ServiceTopBarStats />
-          </div>
-        )}
+        {currentModule === 'service' &&
+          !location.pathname.startsWith('/service/inquiry-tickets') &&
+          !location.pathname.startsWith('/service/rma-tickets') &&
+          !location.pathname.startsWith('/service/dealer-repairs') && (
+            <div className="hidden-mobile" style={{ display: 'flex', alignItems: 'center' }}>
+              <ServiceTopBarStats />
+            </div>
+          )}
 
       </div>
 

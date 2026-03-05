@@ -9,7 +9,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom';
 import {
   Star, Loader2, Search, MoreHorizontal,
-  Flame, Hand, MessageSquare, Clock, CheckSquare, Users, Package, Wrench, Truck, AlertCircle
+  Flame, Hand, MessageSquare, Clock, CheckSquare, Users, Package, Wrench, Truck, AlertCircle, Trash2
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -126,40 +126,40 @@ const DEPT_TABS: Record<string, DeptTabConfig[]> = {
   // A. OP (运营): 全量活跃RMA + 部门协作工单
   OP: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
-    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
-    { key: 'receiving', label: { zh: '待收货', en: 'Receiving' }, icon: <Package size={14} />, filter: t => t.current_node === 'op_receiving' },
-    { key: 'diagnosing', label: { zh: '待检测', en: 'Diagnosing' }, icon: <AlertCircle size={14} />, filter: t => t.current_node === 'op_diagnosing' },
-    { key: 'repairing', label: { zh: '待维修', en: 'Repairing' }, icon: <Wrench size={14} />, filter: t => t.current_node === 'op_repairing' },
-    { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: t => t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
+    { key: 'receiving', label: { zh: '待收货', en: 'Receiving' }, icon: <Package size={14} />, filter: (t: Ticket) => t.current_node === 'op_receiving' },
+    { key: 'diagnosing', label: { zh: '待检测', en: 'Diagnosing' }, icon: <AlertCircle size={14} />, filter: (t: Ticket) => t.current_node === 'op_diagnosing' },
+    { key: 'repairing', label: { zh: '待维修', en: 'Repairing' }, icon: <Wrench size={14} />, filter: (t: Ticket) => t.current_node === 'op_repairing' },
+    { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: (t: Ticket) => t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
     { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
   ],
   // B. RD (研发): 完全由部门@Mention驱动
   RD: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
-    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
-    { key: 'pending', label: { zh: '需技术建议', en: 'Need Advice' }, icon: <AlertCircle size={14} />, filter: t => t.current_node === 'rd_consulting' },
-    { key: 'provided', label: { zh: '已提供方案', en: 'Advice Provided' }, icon: <CheckSquare size={14} />, filter: t => t.current_node === 'rd_resolved' },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
+    { key: 'pending', label: { zh: '需技术建议', en: 'Need Advice' }, icon: <AlertCircle size={14} />, filter: (t: Ticket) => t.current_node === 'rd_consulting' },
+    { key: 'provided', label: { zh: '已提供方案', en: 'Advice Provided' }, icon: <CheckSquare size={14} />, filter: (t: Ticket) => t.current_node === 'rd_resolved' },
   ],
   // C. GE (通用台面/管理层): 全量工单 + 部门协作
   GE: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
-    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
-    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: t => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
+    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: (t: Ticket) => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
     { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
   ],
   // D. MS (市场): 全量活跃工单
   MS: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
-    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
-    { key: 'inquiry', label: { zh: '活跃咨询', en: 'Active Inquiries' }, icon: <MessageSquare size={14} />, filter: t => t.ticket_type === 'inquiry' },
-    { key: 'rma', label: { zh: '返修协调', en: 'RMA Coord' }, icon: <Package size={14} />, filter: t => t.ticket_type === 'rma' },
-    { key: 'svc', label: { zh: '代理维修', en: 'Dealer Repairs' }, icon: <Wrench size={14} />, filter: t => t.ticket_type === 'svc' },
-    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: t => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
+    { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: (t: Ticket) => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
+    { key: 'inquiry', label: { zh: '咨询工单', en: 'Inquiry' }, icon: null, filter: (t: Ticket) => t.ticket_type === 'inquiry' },
+    { key: 'rma', label: { zh: 'RMA 工单', en: 'RMA' }, icon: null, filter: (t: Ticket) => t.ticket_type === 'rma' },
+    { key: 'svc', label: { zh: 'SVC 工单', en: 'SVC' }, icon: null, filter: (t: Ticket) => t.ticket_type === 'svc' },
   ],
   // Default for other departments
   DEFAULT: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
-    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: t => !t.assigned_to },
+    { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
   ]
 };
 
@@ -203,6 +203,7 @@ const WorkspacePage: React.FC = () => {
   const [snoozedIds, setSnoozedIds] = useState<Set<number>>(new Set());
   // Context menu
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; ticketId: number } | null>(null);
+  const [isTrashMenuOpen, setTrashMenuOpen] = useState(false);
 
   // Detail view state - restore from saved state
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -219,7 +220,7 @@ const WorkspacePage: React.FC = () => {
   // Fetch tickets
   useEffect(() => {
     fetchTickets();
-  }, [currentView, location.search]);
+  }, [currentView, location.search, activeTab]);
 
   // Restore selected ticket after tickets load
   useEffect(() => {
@@ -260,6 +261,18 @@ const WorkspacePage: React.FC = () => {
     };
   }, [currentView, searchQuery, selectedTicket]);
 
+  // Load snoozed memory externally so we don't have to redefine inside fetch
+  const setupSnoozedIds = (allTickets: Ticket[]) => {
+    const snoozed = new Set<number>();
+    const now = Date.now();
+    allTickets.forEach(t => {
+      if (t.snooze_until && new Date(t.snooze_until).getTime() > now) {
+        snoozed.add(t.id);
+      }
+    });
+    setSnoozedIds(snoozed);
+  };
+
   const fetchTickets = async () => {
     setLoading(true);
     try {
@@ -272,10 +285,17 @@ const WorkspacePage: React.FC = () => {
       const searchParams = new URLSearchParams(location.search);
       const urlAssignee = searchParams.get('assignee');
 
-      const filterClosed = (data: any[]) =>
-        data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
+      const filterClosed = (data: any[]) => {
+        // Recycle bin shows deleted tickets only
+        if (activeTab === 'trash') return data;
+        return data.filter(t => !['closed', 'cancelled', 'auto_closed', 'converted', 'resolved'].includes(t.current_node));
+      };
 
       const fetchList = async (params: Record<string, string>) => {
+        // If trash tab, request is_deleted=1
+        if (activeTab === 'trash') {
+          params.is_deleted = '1';
+        }
         const res = await axios.get('/api/v1/tickets', {
           headers: { Authorization: `Bearer ${token}` },
           params
@@ -283,16 +303,21 @@ const WorkspacePage: React.FC = () => {
         return filterClosed((res.data.data || []).map((t: any) => ({ ...t, participants: t.participants || [] })));
       };
 
+      let dataToSnooze: any[] = [];
+      let collabDataToSnooze: any[] = [];
+
       if (currentView === 'my-tasks') {
         const data = await fetchList({ ...baseParams, assigned_to: 'me' });
         setTickets(data);
         setCollabTickets([]);
+        dataToSnooze = data;
       } else if (currentView === 'team-hub') {
         if (urlAssignee) {
           // URL override
           const data = await fetchList({ ...baseParams, assigned_to: urlAssignee });
           setTickets(data);
           setCollabTickets([]);
+          dataToSnooze = data;
         } else if (userDept === 'OP') {
           // OP: 主列表(RMA) + 协作列表(dept_collab) 并行加载
           const [rmaData, collabData] = await Promise.all([
@@ -301,6 +326,8 @@ const WorkspacePage: React.FC = () => {
           ]);
           setTickets(rmaData);
           setCollabTickets(collabData);
+          dataToSnooze = rmaData;
+          collabDataToSnooze = collabData;
         } else if (userDept === 'GE') {
           // GE: 主列表(全量) + 协作列表(dept_collab) 并行加载
           const [allData, collabData] = await Promise.all([
@@ -309,38 +336,42 @@ const WorkspacePage: React.FC = () => {
           ]);
           setTickets(allData);
           setCollabTickets(collabData);
+          dataToSnooze = allData;
+          collabDataToSnooze = collabData;
         } else if (userDept === 'RD') {
           // RD: 整个列表由部门@Mention驱动
           const data = await fetchList({ ...baseParams, dept_collab: 'RD' });
           setTickets(data);
           setCollabTickets([]);
+          dataToSnooze = data;
         } else {
           // MS/DEFAULT: 全量工单
           const data = await fetchList({ ...baseParams });
           setTickets(data);
           setCollabTickets([]);
+          dataToSnooze = data;
         }
       } else if (currentView === 'mentioned') {
         const data = await fetchList({ ...baseParams, participant_id: 'me', exclude_assigned_to: 'me' });
         setTickets(data);
         setCollabTickets([]);
+        dataToSnooze = data;
       }
 
       // Load snooze state
-      const snoozed = new Set<number>();
-      const now = Date.now();
-      [...tickets, ...collabTickets].forEach(t => {
-        if (t.snooze_until && new Date(t.snooze_until).getTime() > now) {
-          snoozed.add(t.id);
-        }
-      });
-      setSnoozedIds(snoozed);
+      setupSnoozedIds([...dataToSnooze, ...collabDataToSnooze]);
+
     } catch (err) {
       console.error('[Workspace] Failed to fetch tickets:', err);
+      // Ensure we clear loading if it errors to avoid perpetual loading screen
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTickets();
+  }, [currentView, location.search, userDept]);
 
   // Hybrid sort (PRD Section 6.3.B)
   const sortedTickets = useMemo(() => {
@@ -451,18 +482,27 @@ const WorkspacePage: React.FC = () => {
 
   // Pick up (Team Queue)
   const pickUpTicket = useCallback(async (id: number) => {
+    const confirmed = await confirm.confirm(
+      t('workspace.claim_confirm_msg', { defaultValue: '确实要认领此工单吗？' }),
+      t('workspace.claim_confirm_title', { defaultValue: '确认认领' }),
+      t('common.confirm') || '确认',
+      t('common.cancel') || '取消'
+    );
+    if (!confirmed) return;
+
     try {
       await axios.patch(`/api/v1/tickets/${id}`, {
         assigned_to: (user as any)?.id
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Remove from list
+      // Remove from list or refresh
       setTickets(prev => prev.filter(t => t.id !== id));
+      setCollabTickets(prev => prev.filter(t => t.id !== id));
     } catch (err) {
       console.error('[Workspace] Pick up failed:', err);
     }
-  }, [token, user]);
+  }, [token, user, confirm, t]);
 
   // Handle Snooze click with confirm dialog
   const handleSnoozeClick = async (e: React.MouseEvent, ticket: Ticket) => {
@@ -499,17 +539,25 @@ const WorkspacePage: React.FC = () => {
     return () => window.removeEventListener('click', handler);
   }, []);
 
-  // SLA remaining calculation
   const getSlaRemaining = (sla_due_at: string | null): { text: string; color: string } => {
     if (!sla_due_at) return { text: '-', color: '#666' };
     const remaining = new Date(sla_due_at).getTime() - Date.now();
     const hours = Math.round(remaining / (1000 * 60 * 60));
 
-    if (hours < 0) return { text: `${hours}h`, color: '#EF4444' };
-    if (hours < 4) return { text: `${hours}h`, color: '#EF4444' };
-    if (hours < 24) return { text: `${hours}h`, color: '#F59E0B' };
-    const days = Math.round(hours / 24);
-    return { text: `${days}d`, color: '#10B981' };
+    // Chinese formatting logic for SLA
+    const isZh = ['zh', 'ja'].includes(language);
+
+    if (hours < 0) {
+      const absHours = Math.abs(hours);
+      const d = Math.floor(absHours / 24);
+      const h = absHours % 24;
+      const valText = d > 0 ? `${d}${isZh ? '天' : 'd'} ${h}${isZh ? '小时' : 'h'}` : `${h}${isZh ? '小时' : 'h'}`;
+      return { text: `${isZh ? '已逾期' : 'Overdue'} ${valText}`, color: '#EF4444' };
+    }
+    const d = Math.floor(hours / 24);
+    const h = hours % 24;
+    const valText = d > 0 ? `${d}${isZh ? '天' : 'd'} ${h}${isZh ? '小时' : 'h'}` : `${h}${isZh ? '小时' : 'h'}`;
+    return { text: `${isZh ? '还剩' : 'Remaining'} ${valText}`, color: hours < 4 ? '#EF4444' : (hours < 24 ? '#F59E0B' : '#10B981') };
   };
 
   // Get status display
@@ -544,18 +592,18 @@ const WorkspacePage: React.FC = () => {
       {!selectedTicket && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px 20px 20px' }}>
           <div>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
-              {currentView === 'my-tasks' && <CheckSquare size={28} color="#3B82F6" />}
-              {currentView === 'mentioned' && <MessageSquare size={28} color="#8B5CF6" />}
-              {currentView === 'team-hub' && <Users size={28} color="#F59E0B" />}
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0, color: 'inherit' }}>
+              {currentView === 'my-tasks' && <CheckSquare size={28} color="#FFD700" />}
+              {currentView === 'mentioned' && <MessageSquare size={28} color="#3B82F6" />}
+              {currentView === 'team-hub' && <Users size={28} color="#F97316" />}
               {currentView === 'my-tasks' && t('workspace.page_title')}
-              {currentView === 'mentioned' && (t('sidebar.service_mentioned', { defaultValue: '协作' }) || '协作')}
+              {currentView === 'mentioned' && (t('sidebar.mentioned') || '协作')}
               {currentView === 'team-hub' && (t('sidebar.team_hub') || '部门工单')}
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
               {currentView === 'my-tasks' && t('workspace.page_subtitle')}
               {currentView === 'mentioned' && t('workspace.mentioned_subtitle', { defaultValue: '提及您的工单和内部协作任务' })}
-              {currentView === 'team-hub' && t('workspace.team_hub_subtitle', { defaultValue: '部门的职责中心与协同雷达站' })}
+              {currentView === 'team-hub' && (activeTab === 'trash' ? '查看已删除的工单' : '部门内所有未关闭的活跃工单和协助工单')}
             </p>
           </div>
 
@@ -585,9 +633,50 @@ const WorkspacePage: React.FC = () => {
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--glass-border)'}
               />
             </div>
-            <span style={{ color: 'var(--text-tertiary)', fontSize: 13, marginLeft: 16, whiteSpace: 'nowrap' }}>
-              {sortedTickets.length} {t('workspace.items_count')}
-            </span>
+            {/* Trash Menu Component - macOS Style極簡三點 */}
+            {currentView === 'team-hub' && (() => {
+              const actingRole = viewingAs?.role || user?.role;
+              const actingDept = userDept;
+              const canAccessTrash = actingRole === 'Admin' || actingRole === 'Exec' || (actingDept === 'MS' && actingRole === 'Lead');
+              return canAccessTrash;
+            })() && (
+                <div style={{ position: 'relative', marginLeft: 16 }}>
+                  <button
+                    id="trash-menu-trigger"
+                    onClick={() => setTrashMenuOpen(!isTrashMenuOpen)}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--glass-border)',
+                      background: activeTab === 'trash' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-card)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      color: activeTab === 'trash' ? '#EF4444' : 'var(--text-secondary)',
+                      boxShadow: '0 2px 8px var(--glass-shadow)',
+                      outline: 'none'
+                    }}
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                  {isTrashMenuOpen && (
+                    <div style={{
+                      position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 100,
+                      background: 'var(--bg-popover)', border: '1px solid var(--glass-border)',
+                      borderRadius: 8, padding: '4px', minWidth: 160, boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+                    }}>
+                      <button
+                        onClick={() => { setActiveTab(activeTab === 'trash' ? 'all' : 'trash'); setTrashMenuOpen(false); }}
+                        style={{
+                          width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent',
+                          color: 'var(--text-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Trash2 size={14} color="#EF4444" />
+                        <span>{activeTab === 'trash' ? '返回工单池' : '查看已删除的工单'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       )}
@@ -601,356 +690,318 @@ const WorkspacePage: React.FC = () => {
           overflowX: 'auto',
           flexWrap: 'wrap'
         }}>
-          {deptTabs.map(tab => {
-            // 协作 Tab 数字独立统计，其他 Tab 基于主列表
-            const count = tab.isCollabTab ? collabTickets.length : tickets.filter(tab.filter).length;
+          {deptTabs.map((tab) => {
             const isActive = activeTab === tab.key;
+            // PRD: 视觉间隔线，区分状态与分类
+            const showDivider = tab.key === 'inquiry';
             return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 14px',
-                  borderRadius: 20,
-                  border: 'none',
-                  background: isActive ? '#FFD700' : 'rgba(255,255,255,0.08)',
-                  color: isActive ? '#000' : 'var(--text-secondary)',
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                }}
-              >
-                {tab.icon}
-                <span>{tab.label[lang]}</span>
-                <span style={{
-                  background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  minWidth: 24,
-                  textAlign: 'center'
-                }}>
-                  {count}
-                </span>
-              </button>
+              <React.Fragment key={tab.key}>
+                {showDivider && (
+                  <div style={{ width: 1, height: 20, background: 'var(--glass-border)', margin: '0 8px', alignSelf: 'center' }} />
+                )}
+                <button
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    borderRadius: 20,
+
+                    background: isActive ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.08)',
+                    color: isActive ? '#FFD700' : 'var(--text-secondary)',
+                    border: isActive ? '1px solid rgba(255, 215, 0, 0.3)' : '1px solid transparent',
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                >
+                  {tab.icon}
+                  <span>{tab.label[lang]}</span>
+                  <span style={{
+                    background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    minWidth: 24,
+                    textAlign: 'center'
+                  }}>
+                    {tab.isCollabTab ? collabTickets.length : tickets.filter(tab.filter).length}
+                  </span>
+                </button>
+              </React.Fragment>
             );
           })}
         </div>
-      )}
+      )
+      }
 
       {/* Main Content Area */}
-      {selectedTicket ? (
-        <div style={{ padding: '0 24px 24px', flex: 1, overflow: 'auto' }}>
-          <UnifiedTicketDetail
-            ticketId={selectedTicket.id}
-            onBack={() => setSelectedTicket(null)}
-          />
-        </div>
-      ) : (
-        <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-              <Loader2 className="animate-spin" size={24} style={{ color: 'var(--text-tertiary)' }} />
-            </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                  <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '70px', textAlign: 'center' }}>Star/Lock</th>
-                  <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '140px' }}>ID</th>
-                  <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem' }}>{t('workspace.title')}</th>
-                  <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '220px' }}>{t('workspace.status')}</th>
-                  <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '150px', textAlign: 'right' }}>{t('workspace.sla_timer')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
-                      {t('workspace.no_tickets')}
-                    </td>
+      {
+        selectedTicket ? (
+          <div style={{ padding: '0 24px 24px', flex: 1, overflow: 'auto' }}>
+            <UnifiedTicketDetail
+              ticketId={selectedTicket.id}
+              onBack={() => setSelectedTicket(null)}
+            />
+          </div>
+        ) : (
+          <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                <Loader2 className="animate-spin" size={24} style={{ color: 'var(--text-tertiary)' }} />
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '70px', textAlign: 'center' }}>Star/Lock</th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '140px' }}>ID</th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem' }}>{t('workspace.title')}</th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '220px' }}>{t('workspace.status')}</th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '150px', textAlign: 'right' }}>{t('workspace.sla_timer')}</th>
                   </tr>
-                ) : sortedTickets.map(ticket => {
-                  const isCritical = ticket.priority === 'P0' || ticket.sla_status === 'BREACHED' || ticket.sla_status === 'breached';
-                  const isStarred = !!starredMap[ticket.id];
-                  const sla = getSlaRemaining(ticket.sla_due_at);
-                  const statusInfo = getStatusDisplay(ticket.current_node);
-
-                  return (
-                    <tr
-                      key={`${ticket.ticket_type}-${ticket.id}`}
-                      onClick={() => handleTicketClick(ticket)}
-                      onContextMenu={(e) => handleContextMenu(e, ticket.id)}
-                      className="workspace-ticket-row row-hover"
-                      style={{
-                        borderBottom: '1px solid var(--glass-border)',
-                        cursor: 'pointer',
-                        background: isCritical ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {/* Left: Star/Lock Icon */}
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        {isCritical ? (
-                          <Flame size={18} style={{ color: '#EF4444', margin: '0 auto' }} />
-                        ) : (
-                          <button
-                            onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
-                            className="workspace-star-btn"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 2,
-                              cursor: 'pointer',
-                              color: isStarred ? '#FFD700' : 'var(--text-tertiary)',
-                              opacity: isStarred ? 1 : 0,
-                              transition: 'opacity 0.15s',
-                              display: 'block',
-                              margin: '0 auto'
-                            }}
-                          >
-                            <Star size={16} fill={isStarred ? '#FFD700' : 'none'} />
-                          </button>
-                        )}
+                </thead>
+                <tbody>
+                  {sortedTickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
+                        {t('workspace.no_tickets')}
                       </td>
+                    </tr>
+                  ) : sortedTickets.map(ticket => {
+                    const isCritical = ticket.priority === 'P0' || ticket.sla_status === 'BREACHED' || ticket.sla_status === 'breached';
+                    const isStarred = !!starredMap[ticket.id];
+                    const sla = getSlaRemaining(ticket.sla_due_at);
+                    const statusInfo = getStatusDisplay(ticket.current_node);
 
-                      {/* ID */}
-                      <td style={{ padding: '16px' }}>
-                        <span style={{
-                          fontSize: '1.05rem',
-                          fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {ticket.ticket_number}
-                        </span>
-                      </td>
-
-                      {/* Title & Subtitle */}
-                      <td style={{ padding: '16px', maxWidth: '300px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: priorityColors[ticket.priority] || '#3B82F6',
-                            background: `${priorityColors[ticket.priority] || '#3B82F6'}15`,
-                            padding: '2px 8px',
-                            borderRadius: 6
-                          }}>
-                            {ticket.priority}
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
-                          <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            {ticket.account_name || ticket.contact_name || ticket.reporter_name || '-'}
-                            {ticket.product_name && <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>· {ticket.product_name}</span>}
-                          </span>
-                          {ticket.account?.service_tier && ['VIP', 'VVIP'].includes(ticket.account.service_tier) && (
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              padding: '2px 6px',
-                              borderRadius: '10px',
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              background: ticket.account.service_tier === 'VVIP' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(var(--accent-rgb), 0.2)',
-                              color: ticket.account.service_tier === 'VVIP' ? '#EF4444' : 'var(--accent-blue)',
-                              border: ticket.account.service_tier === 'VVIP' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(var(--accent-rgb), 0.4)'
-                            }}>
-                              👑 {ticket.account.service_tier}
-                            </span>
+                    return (
+                      <tr
+                        key={`${ticket.ticket_type}-${ticket.id}`}
+                        onClick={() => handleTicketClick(ticket)}
+                        onContextMenu={(e) => handleContextMenu(e, ticket.id)}
+                        className="workspace-ticket-row row-hover"
+                        style={{
+                          borderBottom: '1px solid var(--glass-border)',
+                          cursor: 'pointer',
+                          background: isCritical ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {/* Left: Star/Lock Icon */}
+                        <td style={{ padding: '16px', textAlign: 'center' }}>
+                          {isCritical ? (
+                            <Flame size={18} style={{ color: '#EF4444', margin: '0 auto' }} />
+                          ) : (
+                            <button
+                              onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
+                              className="workspace-star-btn"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 2,
+                                cursor: 'pointer',
+                                color: isStarred ? '#FFD700' : 'var(--text-tertiary)',
+                                opacity: isStarred ? 1 : 0,
+                                transition: 'opacity 0.15s',
+                                display: 'block',
+                                margin: '0 auto'
+                              }}
+                            >
+                              <Star size={16} fill={isStarred ? '#FFD700' : 'none'} />
+                            </button>
                           )}
-                        </div>
+                        </td>
 
-                        <div style={{
-                          fontSize: '0.95rem',
-                          color: 'var(--text-primary)',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          <span style={{ color: 'var(--text-tertiary)', marginRight: 6 }}>
-                            {ticket.ticket_type === 'INQUIRY' || ticket.ticket_type === 'inquiry' ? '[Troubleshooting]' :
-                              ticket.ticket_type === 'RMA' || ticket.ticket_type === 'rma' ? '[RMA]' :
-                                ticket.ticket_type === 'SVC' || ticket.ticket_type === 'svc' ? '[Repair]' : ''}
-                          </span>
-                          {ticket.problem_summary || ticket.problem_description || '-'}
-                        </div>
-
-                        {currentView === 'mentioned' && ticket.last_mention && (
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
-                            fontSize: '0.85rem', color: 'var(--accent-blue)'
+                        {/* ID */}
+                        <td style={{ padding: '16px' }}>
+                          <span style={{
+                            fontSize: '1.05rem',
+                            fontWeight: 700,
+                            color: 'var(--text-primary)',
+                            whiteSpace: 'nowrap'
                           }}>
-                            <MessageSquare size={14} />
-                            <span style={{ fontWeight: 600 }}>{ticket.last_mention.actor_name}:</span>
-                            <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              "{ticket.last_mention.content}"
+                            {ticket.ticket_number}
+                          </span>
+                        </td>
+
+                        {/* Title & Subtitle */}
+                        <td style={{ padding: '16px', maxWidth: '300px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: priorityColors[ticket.priority] || '#3B82F6',
+                              background: `${priorityColors[ticket.priority] || '#3B82F6'}15`,
+                              padding: '2px 8px',
+                              borderRadius: 6
+                            }}>
+                              {ticket.priority}
                             </span>
                           </div>
-                        )}
-                      </td>
 
-                      {/* Status */}
-                      <td style={{ padding: '16px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: statusInfo.color, fontWeight: 500 }}>
-                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusInfo.color, display: 'inline-block' }} />
-                              {statusInfo.label}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
+                            <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              {ticket.account_name || ticket.contact_name || ticket.reporter_name || '-'}
+                              {ticket.product_name && <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>· {ticket.product_name}</span>}
                             </span>
-                            {ticket.assigned_name ? (
-                              <span style={{ color: 'var(--text-tertiary)' }}>· {ticket.assigned_name}</span>
-                            ) : currentView === 'team-hub' && (
+                            {ticket.account?.service_tier && ['VIP', 'VVIP'].includes(ticket.account.service_tier) && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                padding: '2px 6px',
+                                borderRadius: '10px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                background: ticket.account.service_tier === 'VVIP' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(var(--accent-rgb), 0.2)',
+                                color: ticket.account.service_tier === 'VVIP' ? '#EF4444' : 'var(--accent-blue)',
+                                border: ticket.account.service_tier === 'VVIP' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(var(--accent-rgb), 0.4)'
+                              }}>
+                                👑 {ticket.account.service_tier}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{
+                            fontSize: '0.95rem',
+                            color: 'var(--text-primary)',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            <span style={{ color: 'var(--text-tertiary)', marginRight: 6 }}>
+                              {ticket.ticket_type === 'INQUIRY' || ticket.ticket_type === 'inquiry' ? '[Troubleshooting]' :
+                                ticket.ticket_type === 'RMA' || ticket.ticket_type === 'rma' ? '[RMA]' :
+                                  ticket.ticket_type === 'SVC' || ticket.ticket_type === 'svc' ? '[Repair]' : ''}
+                            </span>
+                            {ticket.problem_summary || ticket.problem_description || '-'}
+                          </div>
+
+                          {currentView === 'mentioned' && ticket.last_mention && (
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
+                              fontSize: '0.85rem', color: 'var(--accent-blue)'
+                            }}>
+                              <MessageSquare size={14} />
+                              <span style={{ fontWeight: 600 }}>{ticket.last_mention.actor_name}:</span>
+                              <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                "{ticket.last_mention.content}"
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: statusInfo.color, fontWeight: 500 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusInfo.color, display: 'inline-block' }} />
+                                {statusInfo.label}
+                              </span>
+                              {ticket.assigned_name && <span style={{ color: 'var(--text-tertiary)' }}>· {ticket.assigned_name}</span>}
+                            </div>
+                            {(ticket.sla_status === 'WARNING' || ticket.sla_status === 'warning' ||
+                              ticket.sla_status === 'BREACHED' || ticket.sla_status === 'breached') && (
+                                <div style={{ display: 'inline-block' }}>
+                                  <span style={{
+                                    fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                                    background: `${sla.color}15`, color: sla.color, fontWeight: 600
+                                  }}>
+                                    {ticket.sla_status?.toUpperCase() === 'BREACHED' ? t('workspace.sla_breached', { defaultValue: 'SLA 违约' }) : t('workspace.sla_warning', { defaultValue: 'SLA 预警' })}
+                                  </span>
+                                </div>
+                              )}
+                          </div>
+                        </td>
+
+                        {/* SLA Timer & Actions */}
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.85rem', color: sla.color, fontWeight: 500 }}>
+                            {sla.text}
+                          </div>
+
+                          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            {currentView === 'team-hub' && !ticket.assigned_to && (
                               <button
                                 onClick={e => { e.stopPropagation(); pickUpTicket(ticket.id); }}
                                 style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px',
-                                  borderRadius: 12, border: '1px solid #FFD700', background: 'rgba(255,215,0,0.1)',
-                                  color: '#FFD700', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
-                                  marginLeft: 4
+                                  display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                                  borderRadius: 6, border: '1px solid #FFD700', background: 'transparent',
+                                  color: '#FFD700', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                                  transition: 'all 0.15s'
                                 }}
                                 onMouseEnter={e => {
                                   e.currentTarget.style.background = '#FFD700';
                                   e.currentTarget.style.color = '#000';
                                 }}
                                 onMouseLeave={e => {
-                                  e.currentTarget.style.background = 'rgba(255,215,0,0.1)';
+                                  e.currentTarget.style.background = 'transparent';
                                   e.currentTarget.style.color = '#FFD700';
                                 }}
                               >
-                                <Hand size={12} /> {t('workspace.claim', { defaultValue: '认领' })}
+                                <Hand size={14} /> {t('workspace.claim', { defaultValue: '认领' })}
+                              </button>
+                            )}
+                            {ticket.priority !== 'P0' && currentView !== 'team-hub' && (
+                              <button
+                                onClick={e => handleSnoozeClick(e, ticket)}
+                                className="workspace-snooze-btn"
+                                style={{
+                                  background: 'none', border: 'none', padding: 6, cursor: 'pointer',
+                                  color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s',
+                                  borderRadius: 6
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                title={t('workspace.snooze_tomorrow')}
+                              >
+                                <MoreHorizontal size={18} />
                               </button>
                             )}
                           </div>
-                          {(ticket.sla_status === 'WARNING' || ticket.sla_status === 'warning' ||
-                            ticket.sla_status === 'BREACHED' || ticket.sla_status === 'breached') && (
-                              <div style={{ display: 'inline-block' }}>
-                                <span style={{
-                                  fontSize: 11, padding: '2px 8px', borderRadius: 4,
-                                  background: `${sla.color}15`, color: sla.color, fontWeight: 600
-                                }}>
-                                  {ticket.sla_status?.toUpperCase() === 'BREACHED' ? t('workspace.sla_breached', { defaultValue: 'SLA 违约' }) : t('workspace.sla_warning', { defaultValue: 'SLA 预警' })}
-                                </span>
-                              </div>
-                            )}
-                        </div>
-                      </td>
-
-                      {/* SLA Timer & Actions */}
-                      <td style={{ padding: '16px', textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: sla.color, fontFamily: 'monospace' }}>
-                          {sla.text}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                          {t('workspace.remaining', { defaultValue: '剩余时间' })}
-                        </div>
-
-                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          {currentView === 'team-hub' && !ticket.assigned_to && (
-                            <button
-                              onClick={e => { e.stopPropagation(); pickUpTicket(ticket.id); }}
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                borderRadius: 6, border: '1px solid #FFD700', background: 'transparent',
-                                color: '#FFD700', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                                transition: 'all 0.15s'
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.background = '#FFD700';
-                                e.currentTarget.style.color = '#000';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = '#FFD700';
-                              }}
-                            >
-                              <Hand size={14} /> {t('workspace.claim', { defaultValue: '认领' })}
-                            </button>
-                          )}
-                          {ticket.priority !== 'P0' && currentView !== 'team-hub' && (
-                            <button
-                              onClick={e => handleSnoozeClick(e, ticket)}
-                              className="workspace-snooze-btn"
-                              style={{
-                                background: 'none', border: 'none', padding: 6, cursor: 'pointer',
-                                color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s',
-                                borderRadius: 6
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                              title={t('workspace.snooze_tomorrow')}
-                            >
-                              <MoreHorizontal size={18} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )
+      }
 
       {/* Context Menu */}
-      {contextMenu && (
-        <div
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--glass-border)',
-            borderRadius: 8,
-            padding: 4,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-            zIndex: 9999,
-            minWidth: 160
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            onClick={() => toggleStar(contextMenu.ticketId)}
+      {
+        contextMenu && (
+          <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              width: '100%',
-              padding: '8px 12px',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-main)',
-              cursor: 'pointer',
-              borderRadius: 6,
-              fontSize: 13
+              position: 'fixed',
+              top: contextMenu.y,
+              left: contextMenu.x,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 8,
+              padding: 4,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              zIndex: 9999,
+              minWidth: 160
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            onClick={e => e.stopPropagation()}
           >
-            <Star size={14} style={{ color: '#FFD700' }} />
-            {starredMap[contextMenu.ticketId] ? t('workspace.unstar') : t('workspace.starred')}
-          </button>
-          {tickets.find(t => t.id === contextMenu.ticketId)?.priority !== 'P0' && (
             <button
-              onClick={() => snoozeTicket(contextMenu.ticketId)}
+              onClick={() => toggleStar(contextMenu.ticketId)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -967,12 +1018,35 @@ const WorkspacePage: React.FC = () => {
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <Clock size={14} />
-              {t('workspace.snooze_tomorrow')}
+              <Star size={14} style={{ color: '#FFD700' }} />
+              {starredMap[contextMenu.ticketId] ? t('workspace.unstar') : t('workspace.starred')}
             </button>
-          )}
-        </div>
-      )}
+            {tickets.find(t => t.id === contextMenu.ticketId)?.priority !== 'P0' && (
+              <button
+                onClick={() => snoozeTicket(contextMenu.ticketId)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  borderRadius: 6,
+                  fontSize: 13
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <Clock size={14} />
+                {t('workspace.snooze_tomorrow')}
+              </button>
+            )}
+          </div>
+        )
+      }
 
       {/* Drawer Overlay Removed */}
 
@@ -994,7 +1068,7 @@ const WorkspacePage: React.FC = () => {
           to { opacity: 1; }
         }
       `}</style>
-    </div>
+    </div >
   );
 };
 

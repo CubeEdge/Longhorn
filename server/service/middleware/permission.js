@@ -9,6 +9,25 @@
  */
 
 /**
+ * Normalize department name to short code (MS/OP/RD/GE)
+ * Handles both short codes and Chinese full names from production DB
+ */
+function normalizeDeptCode(name) {
+  if (!name) return '';
+  if (/^[A-Z]{2,3}$/.test(name)) return name;
+  const map = {
+    '市场部': 'MS',
+    '生产运营部': 'OP',
+    '运营部': 'OP',
+    '研发部': 'RD',
+    '通用台面': 'GE',
+    '综合部': 'GE',
+    '管理层': 'GE'
+  };
+  return map[name] || name;
+}
+
+/**
  * 判断用户是否拥有 CRM/IB 全局访问权限
  * Admin, Exec, MS 部门人员有全局权限
  */
@@ -17,7 +36,7 @@ function hasGlobalAccess(user) {
   // Admin / Exec 全权限
   if (user.role === 'Admin' || user.role === 'Exec') return true;
   // MS (市场部) 全局读写
-  const deptCode = user.department_code || '';
+  const deptCode = normalizeDeptCode(user.department_code || '');
   if (deptCode === 'MS') return true;
   // GE (通用台面) — 平台管理员
   if (deptCode === 'GE') return true;
@@ -186,7 +205,7 @@ function viewAsMiddleware(db) {
           req.user.role = viewAsUser.role;
           req.user.department_id = viewAsUser.department_id;
           req.user.department_name = viewAsUser.department_name;
-          req.user.department_code = viewAsUser.department_code;
+          req.user.department_code = normalizeDeptCode(viewAsUser.department_code);
           req.user.user_type = viewAsUser.user_type;
           req.user.dealer_id = viewAsUser.dealer_id;
           req.user.region_responsible = viewAsUser.region_responsible;

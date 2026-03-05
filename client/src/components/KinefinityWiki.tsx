@@ -1812,7 +1812,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <span
                                                     onClick={() => isClickable && handleBreadcrumbClick(index)}
                                                     style={{
-                                                        color: isLast  ? 'var(--text-main)' : 'var(--text-secondary)',
+                                                        color: isLast ? 'var(--text-main)' : 'var(--text-secondary)',
                                                         cursor: isClickable ? 'pointer' : 'default',
                                                         fontWeight: isLast ? 700 : 400,
                                                         fontSize: isLast ? '1.25rem' : '0.9rem',
@@ -1918,7 +1918,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: viewMode === 'published' ? 'var(--glass-bg-hover)' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'published'  ? 'var(--text-main)' : 'var(--text-secondary)',
+                                                    color: viewMode === 'published' ? 'var(--text-main)' : 'var(--text-secondary)',
                                                     fontSize: '12px',
                                                     cursor: 'pointer',
                                                     display: 'flex',
@@ -1935,7 +1935,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: viewMode === 'draft' ? '#10B981' : 'transparent',
                                                     border: 'none',
                                                     borderRadius: '6px',
-                                                    color: viewMode === 'draft'  ? 'var(--text-main)' : 'var(--text-secondary)',
+                                                    color: viewMode === 'draft' ? 'var(--text-main)' : 'var(--text-secondary)',
                                                     fontSize: '12px',
                                                     fontWeight: viewMode === 'draft' ? 600 : 400,
                                                     cursor: 'pointer',
@@ -2027,12 +2027,42 @@ ${contextTickets.map((ticket: any) => {
                                 </div>
                             )}
 
-                            {/* Article Content */}
+                            {/* Article Content - Now supports Markdown and HTML via ReactMarkdown */}
                             <div className="markdown-content" style={{
                                 fontSize: '15px',
                                 lineHeight: '1.8',
                                 color: 'var(--text-secondary)'
-                            }} dangerouslySetInnerHTML={{ __html: getDisplayContent() || '' }} />
+                            }}>
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeRaw]}
+                                    components={{
+                                        h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.4em', margin: '20px 0 10px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '5px', color: 'var(--text-main)' }} {...props} />,
+                                        h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.2em', margin: '18px 0 8px 0', color: 'var(--text-main)' }} {...props} />,
+                                        h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', margin: '16px 0 6px 0', color: 'var(--text-main)' }} {...props} />,
+                                        strong: ({ node, ...props }) => <strong style={{ color: 'var(--text-main)', fontWeight: 600 }} {...props} />,
+                                        b: ({ node, ...props }) => <b style={{ color: 'var(--text-main)', fontWeight: 600 }} {...props} />,
+                                        ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '12px 0' }} {...props} />,
+                                        li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
+                                        p: ({ node, ...props }) => <p style={{ marginBottom: '14px' }} {...props} />,
+                                        // Handle internal and external links
+                                        a: ({ node, ...props }) => {
+                                            const isExternal = props.href?.startsWith('http');
+                                            return (
+                                                <a {...props}
+                                                    target={isExternal ? "_blank" : "_self"}
+                                                    rel={isExternal ? "noopener noreferrer" : ""}
+                                                    style={{ color: 'var(--accent-blue)', textDecoration: 'none', borderBottom: '1px dashed rgba(var(--accent-rgb), 0.4)', transition: 'all 0.2s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.borderBottomColor = 'var(--accent-blue)'}
+                                                    onMouseLeave={e => e.currentTarget.style.borderBottomColor = 'rgba(var(--accent-rgb), 0.4)'}
+                                                />
+                                            );
+                                        }
+                                    }}
+                                >
+                                    {getDisplayContent() || ''}
+                                </ReactMarkdown>
+                            </div>
 
                             {/* Feedback Section */}
                             <div style={{
@@ -2057,7 +2087,13 @@ ${contextTickets.map((ticket: any) => {
                                         {selectedArticle.source_type && (
                                             <div style={{ marginBottom: '4px' }}>
                                                 <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.source.type_prefix')}</span>
-                                                <span style={{ color: 'var(--text-secondary)' }}>{selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') : selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') : selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') : t('wiki.source.type.manual')}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>
+                                                    {selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') :
+                                                        selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') :
+                                                            selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') :
+                                                                selectedArticle.source_type?.toLowerCase() === 'system document' ? '系统文档' :
+                                                                    t('wiki.source.type.manual')}
+                                                </span>
                                             </div>
                                         )}
                                         {selectedArticle.source_reference && (
@@ -2076,7 +2112,7 @@ ${contextTickets.map((ticket: any) => {
                                     </div>
                                 )}
 
-                                {selectedArticle.source_type?.toLowerCase() !== 'docx' && (
+                                {(!selectedArticle.source_type || !['docx', 'pdf', 'system document'].includes(selectedArticle.source_type?.toLowerCase())) && (
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                                             {t('wiki.feedback.title')}
@@ -2475,7 +2511,7 @@ ${contextTickets.map((ticket: any) => {
                                                         background: showAdminMenu ? 'rgba(var(--accent-rgb),0.1)' : 'var(--glass-bg-hover)',
                                                         border: `1px solid ${showAdminMenu ? 'rgba(var(--accent-rgb),0.3)' : 'var(--glass-bg-hover)'}`,
                                                         borderRadius: '6px',
-                                                        color: showAdminMenu  ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                                                        color: showAdminMenu ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                         fontSize: '12px',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -2678,7 +2714,7 @@ ${contextTickets.map((ticket: any) => {
                                                 background: isSelected ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                                                 border: `1px solid ${isSelected ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
-                                                color: isSelected  ? 'var(--text-main)' : 'var(--text-secondary)',
+                                                color: isSelected ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 fontSize: '14px',
                                                 fontWeight: isSelected ? 600 : 400,
                                                 cursor: 'pointer',
@@ -2710,7 +2746,7 @@ ${contextTickets.map((ticket: any) => {
                                                     background: isSelected ? 'rgba(var(--accent-rgb),0.2)' : 'var(--glass-bg-hover)',
                                                     borderRadius: '10px',
                                                     fontSize: '12px',
-                                                    color: isSelected  ? 'var(--accent-blue)' : 'var(--text-secondary)'
+                                                    color: isSelected ? 'var(--accent-blue)' : 'var(--text-secondary)'
                                                 }}>
                                                     {count}
                                                 </span>
@@ -2741,7 +2777,7 @@ ${contextTickets.map((ticket: any) => {
                                                 background: selectedProductLine === null ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
                                                 border: `1px solid ${selectedProductLine === null ? 'rgba(var(--accent-rgb),0.4)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '10px',
-                                                color: selectedProductLine === null  ? 'var(--text-main)' : 'var(--text-secondary)',
+                                                color: selectedProductLine === null ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 fontSize: '14px',
                                                 fontWeight: selectedProductLine === null ? 600 : 400,
                                                 cursor: 'pointer',
@@ -2832,7 +2868,7 @@ ${contextTickets.map((ticket: any) => {
                                                                 padding: '10px 12px',
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: hItem.query === activeSearchQuery  ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                                                                color: hItem.query === activeSearchQuery ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                                 fontSize: '13px',
                                                                 cursor: 'pointer',
                                                                 textAlign: 'left',
@@ -4317,7 +4353,7 @@ ${contextTickets.map((ticket: any) => {
                                                 <div style={{
                                                     width: '16px',
                                                     height: '16px',
-                                                    border: `2px solid ${isAllFilteredSelected  ? 'var(--accent-blue)' : 'var(--text-secondary)'}`,
+                                                    border: `2px solid ${isAllFilteredSelected ? 'var(--accent-blue)' : 'var(--text-secondary)'}`,
                                                     borderRadius: '4px',
                                                     background: isAllFilteredSelected ? 'rgba(var(--accent-rgb),0.2)' : 'transparent',
                                                     display: 'flex',
@@ -4926,7 +4962,7 @@ ${contextTickets.map((ticket: any) => {
                                                                             {displayNum}
                                                                         </span>
                                                                     )}
-                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle  ? 'var(--accent-blue)' : 'var(--text-secondary)', flex: 1 }}>{cleanTitle}</span>
+                                                                    <span style={{ fontSize: '15px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : 'var(--text-secondary)', flex: 1 }}>{cleanTitle}</span>
                                                                     {isCurrentArticle && <span style={{ fontSize: '12px', color: 'var(--accent-blue)', padding: '4px 10px', background: 'rgba(var(--accent-rgb),0.1)', borderRadius: '10px' }}>{t('wiki.status.current')}</span>}
                                                                 </div>
                                                             );
@@ -5028,7 +5064,7 @@ ${contextTickets.map((ticket: any) => {
                                                                                     onMouseEnter={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'var(--glass-bg-light)'; }}
                                                                                     onMouseLeave={(e) => { if (!isCurrentArticle) e.currentTarget.style.background = 'transparent'; }}
                                                                                 >
-                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle  ? 'var(--accent-blue)' : 'var(--text-secondary)', fontSize: '12px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.15)' : 'var(--glass-bg-hover)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                                                    <span style={{ minWidth: '36px', textAlign: 'center', color: isCurrentArticle ? 'var(--accent-blue)' : 'var(--text-secondary)', fontSize: '12px', background: isCurrentArticle ? 'rgba(var(--accent-rgb),0.15)' : 'var(--glass-bg-hover)', padding: '3px 8px', borderRadius: '6px' }}>
                                                                                         {displayNum}
                                                                                     </span>
                                                                                     <span style={{ fontSize: '14px', fontWeight: isCurrentArticle ? 600 : 400, color: isCurrentArticle ? 'var(--accent-blue)' : '#bbb', flex: 1 }}>{secTitle}</span>
