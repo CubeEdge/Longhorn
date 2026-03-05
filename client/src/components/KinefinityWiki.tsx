@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useConfirm } from '../store/useConfirm';
 import { useBokehContext } from '../store/useBokehContext';
 import { useLanguage } from '../i18n/useLanguage';
-import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, ThumbsUp, ThumbsDown, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, History } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronLeft, ChevronUp, Search, BookOpen, List, X, Eye, EyeOff, Layers, Edit3, FileText, Check, Trash2, Settings, Upload, Loader2, History } from 'lucide-react';
 import { SynonymManager } from './Knowledge/SynonymManager';
 import KnowledgeGenerator from './KnowledgeGenerator';
 import ReactMarkdown from 'react-markdown';
@@ -15,6 +15,58 @@ import WikiEditorModal from './Knowledge/WikiEditorModal';
 import KnowledgeAuditLog from './KnowledgeAuditLog';
 import { useWikiStore } from '../store/useWikiStore';
 import { useToast } from '../store/useToast';
+import mermaid from 'mermaid';
+
+// Initialize Mermaid
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    securityLevel: 'loose',
+    fontFamily: 'Inter, system-ui, sans-serif',
+});
+
+// Mermaid component for rendering charts
+const Mermaid: React.FC<{ chart: string }> = ({ chart }) => {
+    const ref = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (ref.current && chart) {
+            // New mermaid version uses run()
+            try {
+                ref.current.removeAttribute('data-processed');
+                mermaid.contentLoaded();
+                // Ensure it's rendered after ref is available
+                setTimeout(() => {
+                    if (ref.current) {
+                        mermaid.init(undefined, ref.current);
+                    }
+                }, 100);
+            } catch (err) {
+                console.error('Mermaid init error:', err);
+            }
+        }
+    }, [chart]);
+
+    return (
+        <div
+            key={chart}
+            className="mermaid"
+            ref={ref}
+            style={{
+                display: 'flex',
+                justifyContent: 'center',
+                margin: '24px 0',
+                background: 'rgba(0,0,0,0.15)',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '1px solid var(--glass-border)',
+                minHeight: '100px'
+            }}
+        >
+            {chart}
+        </div>
+    );
+};
 
 // Types
 // Legacy components missing after version upgrade, inline replacements
@@ -69,6 +121,8 @@ interface KnowledgeArticle {
     created_at: string;
     helpful_count: number;
     not_helpful_count: number;
+    author_name?: string;
+    updated_at?: string;
     permissions?: {
         can_edit: boolean;
     };
@@ -2045,6 +2099,28 @@ ${contextTickets.map((ticket: any) => {
                                         ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '12px 0' }} {...props} />,
                                         li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
                                         p: ({ node, ...props }) => <p style={{ marginBottom: '14px' }} {...props} />,
+                                        // Support Mermaid in code blocks
+                                        code: ({ node, inline, className, children, ...props }: any) => {
+                                            const match = /language-(\w+)/.exec(className || '');
+                                            const lang = match ? match[1] : '';
+                                            const content = String(children).replace(/\n$/, '');
+
+                                            if (!inline && lang === 'mermaid') {
+                                                return <Mermaid chart={content} />;
+                                            }
+
+                                            return inline ? (
+                                                <code className={className} style={{ background: 'var(--glass-bg-hover)', padding: '2px 4px', borderRadius: '4px', fontSize: '0.9em' }} {...props}>
+                                                    {children}
+                                                </code>
+                                            ) : (
+                                                <pre style={{ background: 'var(--glass-bg-hover)', padding: '16px', borderRadius: '8px', overflowX: 'auto', marginBottom: '16px' }}>
+                                                    <code className={className} {...props}>
+                                                        {children}
+                                                    </code>
+                                                </pre>
+                                            );
+                                        },
                                         // Handle internal and external links
                                         a: ({ node, ...props }) => {
                                             const isExternal = props.href?.startsWith('http');
@@ -2064,113 +2140,69 @@ ${contextTickets.map((ticket: any) => {
                                 </ReactMarkdown>
                             </div>
 
-                            {/* Feedback Section */}
                             <div style={{
                                 marginTop: '48px',
                                 paddingTop: '32px',
                                 borderTop: '1px solid var(--glass-border)'
                             }}>
                                 {/* 知识来源 */}
-                                {(selectedArticle.source_type || selectedArticle.source_reference) && (
-                                    <div style={{
-                                        background: 'var(--glass-bg-light)',
-                                        border: '1px solid var(--glass-border)',
-                                        borderRadius: '12px',
-                                        padding: '16px 20px',
-                                        marginBottom: '32px',
-                                        fontSize: '13px',
-                                        color: 'var(--text-secondary)'
-                                    }}>
-                                        <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '8px' }}>
-                                            {t('wiki.source.title')}
-                                        </div>
-                                        {selectedArticle.source_type && (
-                                            <div style={{ marginBottom: '4px' }}>
-                                                <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.source.type_prefix')}</span>
-                                                <span style={{ color: 'var(--text-secondary)' }}>
-                                                    {selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') :
-                                                        selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') :
-                                                            selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') :
-                                                                selectedArticle.source_type?.toLowerCase() === 'system document' ? '系统文档' :
+                                <div style={{
+                                    background: 'var(--glass-bg-light)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '12px',
+                                    padding: '16px 20px',
+                                    marginBottom: '32px',
+                                    fontSize: '13px',
+                                    color: 'var(--text-secondary)'
+                                }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '8px' }}>
+                                        {t('wiki.source.title')}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <div>
+                                            <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>{t('wiki.source.type_prefix')}</span>
+                                            <span style={{ color: 'var(--text-main)' }}>
+                                                {selectedArticle.source_type?.toLowerCase() === 'docx' ? t('wiki.source.type.docx') :
+                                                    selectedArticle.source_type?.toLowerCase() === 'pdf' ? t('wiki.source.type.pdf') :
+                                                        selectedArticle.source_type?.toLowerCase() === 'url' ? t('wiki.source.type.url') :
+                                                            selectedArticle.source_type?.toLowerCase() === 'system document' ? '系统文档' :
+                                                                selectedArticle.source_type?.toLowerCase() === 'text' ? '官方维护 (Source Traceable)' :
                                                                     t('wiki.source.type.manual')}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {selectedArticle.source_reference && (
+                                            </span>
+                                        </div>
+                                        {selectedArticle.author_name && (
                                             <div>
-                                                <span style={{ color: 'var(--text-secondary)' }}>{t('wiki.source.doc_prefix')}</span>
-                                                <span style={{ color: 'var(--text-secondary)' }}>{selectedArticle.source_reference}</span>
+                                                <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>提交人：</span>
+                                                <span style={{ color: 'var(--text-main)' }}>{selectedArticle.author_name}</span>
                                             </div>
                                         )}
-                                        {selectedArticle.source_url && (
-                                            <div style={{ marginTop: '4px' }}>
-                                                <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontSize: '12px' }}>
-                                                    {t('wiki.source.view_original')}
-                                                </a>
+                                        {selectedArticle.created_at && (
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>制单日期：</span>
+                                                <span style={{ color: 'var(--text-main)' }}>{new Date(selectedArticle.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                        )}
+                                        {selectedArticle.updated_at && (
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>更新日期：</span>
+                                                <span style={{ color: 'var(--text-main)' }}>{new Date(selectedArticle.updated_at).toLocaleDateString()}</span>
                                             </div>
                                         )}
                                     </div>
-                                )}
-
-                                {(!selectedArticle.source_type || !['docx', 'pdf', 'system document'].includes(selectedArticle.source_type?.toLowerCase())) && (
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                                            {t('wiki.feedback.title')}
+                                    {selectedArticle.source_reference && (
+                                        <div style={{ marginTop: '4px' }}>
+                                            <span style={{ color: 'var(--text-secondary)', marginRight: '8px' }}>{t('wiki.source.doc_prefix')}</span>
+                                            <span style={{ color: 'var(--text-main)' }}>{selectedArticle.source_reference}</span>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                                            <button style={{
-                                                padding: '10px 24px',
-                                                background: 'var(--glass-bg-hover)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '10px',
-                                                color: 'var(--text-main)',
-                                                cursor: 'pointer',
-                                                fontSize: '13px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                            }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(16,185,129,0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
-                                                }}
-                                            >
-                                                <ThumbsUp size={16} />
-                                                <span>{t('wiki.feedback.helpful', { count: selectedArticle.helpful_count })}</span>
-                                            </button>
-                                            <button style={{
-                                                padding: '10px 24px',
-                                                background: 'var(--glass-bg-hover)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: '10px',
-                                                color: 'var(--text-main)',
-                                                cursor: 'pointer',
-                                                fontSize: '13px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                                            }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(239,68,68,0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                                                    e.currentTarget.style.borderColor = 'var(--glass-bg-hover)';
-                                                }}
-                                            >
-                                                <ThumbsDown size={16} />
-                                                <span>{t('wiki.feedback.not_helpful', { count: selectedArticle.not_helpful_count })}</span>
-                                            </button>
+                                    )}
+                                    {selectedArticle.source_url && (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <a href={selectedArticle.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none', fontSize: '12px' }}>
+                                                {t('wiki.source.view_original')}
+                                            </a>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ) : showChapterView && chapterView ? (

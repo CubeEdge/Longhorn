@@ -1,5 +1,28 @@
 # Prompt Log
 
+## 2026-03-05 12:06 (耗时: 5m)
+
+**User Prompt**:
+修改知识库文章底部的元数据，取消所有的赞/踩反馈区。修复知识库文章编辑权限（仅Exec, 市场部Lead，或发布者自己可编辑）。
+
+**Agent Response**:
+1. **Wiki前端重构**: 在 `KinefinityWiki.tsx` 中移除了底部的 `ThumbsUp/ThumbsDown` 评价区域，使得所有的 Knowledge Articles 现在只保留纯粹的元数据（来源、类型、提交人、发布与更新日期），移除了多余的 Lucide 图标依赖。
+2. **后端权限修复**: `knowledge.js` 的 `canEditArticle` 函数经过重新梳理。除系统层级的 `Admin` / `Exec` 之外，现在仅具有 `Lead` 角色并且部门为 `MS`（市场部）的管理员或该文章的作者（`created_by === user.id`）才有编辑权限，彻底封堵了其他部门 Lead 越权修改的技术口子。
+3. **数据一致性修复**: 更新了全量 `GENERIC` 类型文章的数据库 `source_type = 'Text'` ，以对齐显示逻辑。
+4. **编译与部署**: 完成 `client` 构建并通过 `$ ./scripts/deploy.sh` 进行全量一键无感发布至生产节点。
+
+---
+## 2026-03-05 12:01 (耗时: 5m)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.42`，`server` 版本至 `1.7.35`。
+2. **构建与错误修复**: 移除了 `KinefinityWiki.tsx` 中未使用的引入图标（`ThumbsUp, ThumbsDown`），通过了 TypeScript 的强校验规则。
+3. **部署发布**: 成功执行了全新的 `npm run build`，依靠 `./scripts/deploy.sh` (Fast) 向 `mini` 服务端进行热更新重载上线。
+
+---
 ## 2026-03-05 01:00 (耗时: 45m)
 
 **User Prompt**:

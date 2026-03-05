@@ -1823,7 +1823,7 @@ module.exports = function (db, authenticate, multerInstance, aiService) {
 
     function canEditArticle(user, article) {
         if (user.role === 'Admin' || user.role === 'Exec') return true;
-        if (user.role === 'Lead') return true;
+        if (user.role === 'Lead' && user.department_code === 'MS') return true;
         return article.created_by === user.id;
     }
 

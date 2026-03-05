@@ -1,7 +1,7 @@
 {
   "name": "client",
   "private": true,
-  "version": "12.3.41",
+  "version": "12.3.42",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,6 +30,7 @@
     "framer-motion": "^12.23.26",
     "i18next": "^25.7.4",
     "lucide-react": "^0.562.0",
+    "mermaid": "^11.12.3",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

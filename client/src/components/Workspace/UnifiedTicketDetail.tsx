@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save } from 'lucide-react';
+import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -137,18 +137,66 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
     const isGlobalAdmin = actingUser.role === 'Admin' || actingUser.role === 'Exec';
     const hasPrivilege = isGlobalAdmin || isMsLead;
 
-    const AUDIT_WHITELIST = [
-        'serial_number', 'product_id', 'account_id', 'contact_id',
-        'dealer_id', 'problem_summary', 'problem_description',
-        'repair_content', 'is_warranty', 'payment_amount',
-        'priority', 'sla_due_at', 'status'
-    ];
+    const [products, setProducts] = useState<any[]>([]);
+    const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+    const [auditDiffs, setAuditDiffs] = useState<any[]>([]);
+    const [auditCountdown, setAuditCountdown] = useState(0);
+    const [isDescriptionDrawerOpen, setIsDescriptionDrawerOpen] = useState(false);
 
-    const hasCoreFieldChanges = () => {
-        if (!ticket) return false;
-        return AUDIT_WHITELIST.some(field =>
-            editForm[field] !== undefined && editForm[field] !== ticket[field]
-        );
+    // Fetch products when editing starts
+    useEffect(() => {
+        if (isEditing && products.length === 0) {
+            axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } })
+                .then(res => { if (res.data.success) setProducts(res.data.data); })
+                .catch(err => console.error(err));
+        }
+    }, [isEditing, token, products.length]);
+
+    const FIELD_LABELS: Record<string, string> = {
+        serial_number: '序列号',
+        product_id: '产品型号',
+        priority: '优先级',
+        status: '状态',
+        problem_summary: '问题简述',
+        problem_description: '详细描述',
+        repair_content: '维修内容',
+        payment_amount: '金额',
+        is_warranty: '保修判定',
+        resolution: '处理记录'
+    };
+
+    const getChangedDiff = () => {
+        if (!ticket) return [];
+        const diffs: { field: string, label: string, oldVal: string, newVal: string, isRisk: boolean }[] = [];
+        Object.keys(editForm).forEach(key => {
+            const oldVal = ticket[key as keyof TicketDetail];
+            const newVal = editForm[key as keyof TicketDetail];
+            if (oldVal !== newVal && newVal !== undefined) {
+                let dOld = String(oldVal || '(空)');
+                let dNew = String(newVal || '(空)');
+                if (key === 'is_warranty') {
+                    dOld = oldVal === true ? '保修内' : oldVal === false ? '过保' : '(空)';
+                    dNew = newVal === true ? '保修内' : newVal === false ? '过保' : '(空)';
+                }
+                if (key === 'product_id') {
+                    dOld = ticket.product_name || dOld;
+                    dNew = products.find(p => p.id === newVal)?.name || dNew;
+                }
+                let snippetOld = dOld;
+                let snippetNew = dNew;
+                if (dOld.length > 20) snippetOld = dOld.substring(0, 20) + '...';
+                if (dNew.length > 20) snippetNew = dNew.substring(0, 20) + '...';
+
+                diffs.push({
+                    field: key,
+                    label: FIELD_LABELS[key] || key,
+                    oldVal: snippetOld,
+                    newVal: snippetNew,
+                    isRisk: ['serial_number', 'product_id'].includes(key) // 核心数据
+                });
+            }
+        });
+        return diffs;
     };
 
     // 编辑按钮渲染 helper
@@ -167,9 +215,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                         serial_number: ticket.serial_number,
                         repair_content: ticket.repair_content,
                         payment_amount: ticket.payment_amount,
-                        is_warranty: ticket.is_warranty
+                        is_warranty: ticket.is_warranty,
+                        product_id: ticket.product_id as number
                     });
-                    setChangeReason('');
                     setIsEditing(true);
                 }}
                 style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
@@ -227,6 +275,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
         return () => clearInterval(timer);
     }, [isDeleteModalOpen, deleteCountdown]);
 
+    useEffect(() => {
+        let timer: any;
+        if (isAuditModalOpen && auditCountdown > 0) {
+            timer = setInterval(() => setAuditCountdown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [isAuditModalOpen, auditCountdown]);
+
     const fetchDetail = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -276,15 +332,29 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
         }
     };
 
+    const handlePreSave = () => {
+        const diffs = getChangedDiff();
+        if (diffs.length === 0) {
+            setIsEditing(false); // No changes made
+            return;
+        }
+        setAuditDiffs(diffs);
+        setChangeReason('');
+        setAuditCountdown(5);
+        setIsAuditModalOpen(true);
+    };
+
     const handleSaveEdit = async () => {
-        if (hasCoreFieldChanges() && !changeReason.trim()) return;
+        if (!changeReason.trim()) return;
         setIsSaving(true);
         try {
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 ...editForm,
-                change_reason: changeReason.trim() ? changeReason.trim() : undefined
+                change_reason: changeReason.trim(),
+                is_modal_edit: true
             }, { headers: { Authorization: `Bearer ${token}` } });
             setIsEditing(false);
+            setIsAuditModalOpen(false);
             setChangeReason('');
             fetchDetail();
         } catch (err: any) {
@@ -519,13 +589,26 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                             {/* Problem summary */}
                             {(ticket.problem_summary || ticket.problem_description) && (
                                 <div style={{
-                                    marginTop: 14, padding: 12, borderRadius: 8,
+                                    marginTop: 14, padding: '14px 16px', borderRadius: 8,
                                     background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
-                                }}>
-                                    <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
-                                        {t('ticket.problem_desc') || '问题描述'}
+                                    cursor: 'pointer', transition: 'background 0.2s', position: 'relative'
+                                }}
+                                    onClick={() => setIsDescriptionDrawerOpen(true)}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <div style={{ fontSize: 11, color: '#888', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <FileText size={12} />
+                                            {t('ticket.problem_desc') || '问题描述'}
+                                            {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && <span style={{ color: '#FFD700', marginLeft: 4 }}>· 点击查看全文</span>}
+                                        </div>
+                                        <ExternalLink size={14} color="#888" />
                                     </div>
-                                    <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6 }}>
+                                    <div style={{
+                                        fontSize: 13, color: '#ddd', lineHeight: 1.6,
+                                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                                    }}>
                                         {ticket.problem_summary || ticket.problem_description}
                                     </div>
                                 </div>
@@ -689,12 +772,16 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>产品型号 (Product)</label>
-                                        <input
-                                            value={editForm.product_name as string || ticket.product_name || ''}
-                                            disabled
-                                            title="产品型号需通过序列号关联修改"
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(255,255,255,0.05)', color: '#666', borderRadius: 6 }}
-                                        />
+                                        <select
+                                            value={editForm.product_id as number || ''}
+                                            onChange={e => setEditForm(prev => ({ ...prev, product_id: e.target.value ? Number(e.target.value) : undefined }))}
+                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6 }}
+                                        >
+                                            <option value="">{ticket.product_name || '选择型号...'}</option>
+                                            {products.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </>
@@ -740,30 +827,158 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack }) => {
                             </>
                         )}
 
-                        {/* ---- 审计理由区域 ---- */}
-                        {hasCoreFieldChanges() && (
-                            <div style={{ marginTop: 12, padding: 16, background: 'rgba(255,215,0,0.1)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.3)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#FFD700', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
-                                    <AlertTriangle size={14} /> 核心字段已修改，必须填写理由
+                        <div style={{ padding: 20, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 12 }}>
+                            <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer' }}>取消</button>
+                            <button
+                                onClick={handlePreSave}
+                                style={{ flex: 1, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                            >
+                                <Save size={16} /> 保存变更
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ====== Audit Barrier Modal ====== */}
+            {isAuditModalOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{
+                        width: 500, background: '#1c1c1e', borderRadius: 16,
+                        border: '1px solid #FFD700', overflow: 'hidden',
+                        boxShadow: '0 20px 40px rgba(255, 215, 0, 0.15)',
+                        animation: 'modalIn 0.2s ease-out'
+                    }}>
+                        <div style={{ padding: 24, textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                <AlertTriangle size={24} color="#FFD700" />
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>核心数据变更声明</h3>
+                            <p style={{ margin: 0, fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
+                                您正在修改受审计的数据字段。<br />此操作将永久记录在工单时间轴中，请仔细核对以下变更：
+                            </p>
+                        </div>
+                        <div style={{ padding: 24, maxHeight: 300, overflowY: 'auto', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {auditDiffs.map((diff, index) => (
+                                    <div key={index} style={{
+                                        display: 'grid', gridTemplateColumns: 'minmax(80px, max-content) 1fr', gap: 12,
+                                        padding: 12, borderRadius: 8,
+                                        background: diff.isRisk ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.03)',
+                                        border: diff.isRisk ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(255,255,255,0.05)'
+                                    }}>
+                                        <div style={{ fontSize: 13, color: diff.isRisk ? '#EF4444' : '#888', fontWeight: diff.isRisk ? 600 : 400, display: 'flex', flexDirection: 'column' }}>
+                                            {diff.label}
+                                            {diff.isRisk && <span style={{ fontSize: 10, marginTop: 4, letterSpacing: 0.5 }}>高级别审计项</span>}
+                                        </div>
+                                        <div style={{ fontSize: 13, color: '#ddd', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ textDecoration: 'line-through', color: '#666' }}>{diff.oldVal}</span>
+                                            <span style={{ color: '#888' }}>➔</span>
+                                            <span style={{ color: diff.isRisk ? '#FFD700' : '#10B981', fontWeight: 500 }}>{diff.newVal}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>强制录入修正理由（必填）</label>
+                            <textarea
+                                value={changeReason}
+                                onChange={e => setChangeReason(e.target.value)}
+                                placeholder="例如：前期录入错误看错型号、客户凭证证明在保..."
+                                style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 8, minHeight: 80, fontSize: 13, resize: 'none' }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <button
+                                onClick={() => setIsAuditModalOpen(false)}
+                                style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: '#888', fontSize: 14, cursor: 'pointer' }}
+                            >
+                                返回修改
+                            </button>
+                            <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={auditCountdown > 0 || !changeReason.trim() || isSaving}
+                                style={{
+                                    flex: 1, padding: 16, background: 'transparent', border: 'none',
+                                    color: (auditCountdown > 0 || !changeReason.trim()) ? '#666' : '#FFD700',
+                                    fontSize: 14, fontWeight: 600,
+                                    cursor: (auditCountdown > 0 || !changeReason.trim()) ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                {auditCountdown > 0 ? `确认并提交 (${auditCountdown}s)` : '确认并提交'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ====== Details Drawer ====== */}
+            {isDescriptionDrawerOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, right: 0, bottom: 0, width: 600, zIndex: 300,
+                    background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
+                    borderLeft: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
+                    display: 'flex', flexDirection: 'column',
+                    animation: 'drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}>
+                    <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={20} color="#FFD700" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 18, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
+                                <p style={{ margin: 0, fontSize: 13, color: '#888', marginTop: 4 }}>{ticket.ticket_number}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 8 }}>
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div style={{ padding: 32, flex: 1, overflowY: 'auto' }}>
+                        {ticket.problem_summary && (
+                            <div style={{ marginBottom: 32 }}>
+                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>摘要 (Summary)</h4>
+                                <div style={{ fontSize: 15, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                    {ticket.problem_summary}
                                 </div>
-                                <textarea
-                                    value={changeReason}
-                                    onChange={e => setChangeReason(e.target.value)}
-                                    placeholder="请输入修改理由..."
-                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,215,0,0.2)', color: '#fff', borderRadius: 6, minHeight: 60, fontSize: 13 }}
-                                />
                             </div>
                         )}
-                    </div>
-                    <div style={{ padding: 20, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 12 }}>
-                        <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer' }}>取消</button>
-                        <button
-                            onClick={handleSaveEdit}
-                            disabled={hasCoreFieldChanges() && !changeReason.trim() || isSaving}
-                            style={{ flex: 1, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: (hasCoreFieldChanges() && !changeReason.trim()) ? 'not-allowed' : 'pointer', opacity: (hasCoreFieldChanges() && !changeReason.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                        >
-                            <Save size={16} /> 保存
-                        </button>
+                        {ticket.problem_description && (
+                            <div style={{ marginBottom: 32 }}>
+                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>详细描述 (Description)</h4>
+                                <div style={{ fontSize: 15, color: '#ccc', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                                    {ticket.problem_description}
+                                </div>
+                            </div>
+                        )}
+                        {ticket.resolution && (
+                            <div style={{ marginBottom: 32 }}>
+                                <h4 style={{ fontSize: 13, color: '#10B981', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>处理记录 (Resolution)</h4>
+                                <div style={{ fontSize: 14, color: '#ddd', lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 16, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
+                                    {ticket.resolution}
+                                </div>
+                            </div>
+                        )}
+                        {/* 附件占位 (待后续对接真实Attachments表) */}
+                        {Number(ticket.attachments_count || 0) > 0 && (
+                            <div>
+                                <h4 style={{ fontSize: 13, color: '#888', marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>附件文件</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div style={{ padding: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, opacity: 0.5 }}>
+                                        <Paperclip size={16} color="#888" />
+                                        <span style={{ fontSize: 13, color: '#ddd' }}>[已上传 {Number(ticket.attachments_count)} 个附件]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

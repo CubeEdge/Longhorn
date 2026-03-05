@@ -1,5 +1,12 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-05] 交付构建与远程部署修复 (v12.3.42)
+### Frontend
+- 排查出 `client/src/components/KinefinityWiki.tsx` 存在两个未消费的变量引入 `ThumbsUp, ThumbsDown` 触发了 TSLint 的强校验规则而无法编译。
+- 主动删去未消费引入，并确立代码构建可靠。
+### Infrastructure
+- 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.42 / `server` v1.7.35。
+- 采用 Rsync Fast-mode 分布至生产环境 `mini`，同时触发 PM2 热更新。
 ## [2026-03-05] 交付流水线部署 (v12.3.38)
 ### Infrastructure
 - 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.38 / `server` v1.7.31。

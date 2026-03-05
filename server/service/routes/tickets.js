@@ -1084,39 +1084,6 @@ module.exports = function (db, authenticate, serviceUpload) {
             const isMsLead = deptCode === 'MS' && req.user.role === 'Lead';
             const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec' || isMsLead;
 
-            // 检测是否修改了审计字段
-            const auditFieldsToChange = AUDIT_FIELDS.filter(field => {
-                if (updates[field] === undefined) return false;
-                const oldVal = ticket[field];
-                const newVal = updates[field];
-                // 值比较 (处理 JSON 字段)
-                if (field === 'reporter_snapshot') {
-                    const oldStr = typeof oldVal === 'string' ? oldVal : JSON.stringify(oldVal);
-                    const newStr = typeof newVal === 'string' ? newVal : JSON.stringify(newVal);
-                    return oldStr !== newStr;
-                }
-                return String(oldVal || '') !== String(newVal || '');
-            });
-
-            // 如果修改了审计字段，强制要求填写修正理由
-            if (auditFieldsToChange.length > 0 && !change_reason) {
-                return res.status(400).json({
-                    success: false,
-                    error: '修改核心字段需要填写修正理由',
-                    audit_fields: auditFieldsToChange.map(f => FIELD_LABELS[f] || f)
-                });
-            }
-
-            // 终结期锁定：普通用户禁止修改审计字段
-            if (isFinalized && !isAdmin && auditFieldsToChange.length > 0) {
-                return res.status(403).json({
-                    success: false,
-                    error: '工单已终结，仅管理员可修改核心字段',
-                    finalized_at: ticket.current_node
-                });
-            }
-
-            const now = new Date().toISOString();
             const allowedFields = [
                 'priority', 'current_node',
                 // Snapshot & Account
@@ -1124,7 +1091,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 'account_id', 'contact_id', 'dealer_id', 'reporter_name', 'reporter_type', 'region',
                 'product_id', 'serial_number', 'firmware_version', 'hardware_version',
                 'issue_type', 'issue_category', 'issue_subcategory', 'severity',
-                'service_type', 'channel', 'problem_summary', 'communication_log',
+                'service_type', 'problem_summary', 'communication_log',
                 'problem_description', 'solution_for_customer', 'is_warranty',
                 'repair_content', 'problem_analysis', 'resolution',
                 'assigned_to',
@@ -1134,6 +1101,50 @@ module.exports = function (db, authenticate, serviceUpload) {
                 'external_link'
             ];
 
+            // 1. 检测所有变更的字段
+            const allChangedFields = allowedFields.filter(field => {
+                if (updates[field] === undefined) return false;
+                const oldVal = ticket[field];
+                const newVal = updates[field];
+                if (field === 'reporter_snapshot') {
+                    const oldStr = typeof oldVal === 'string' ? oldVal : JSON.stringify(oldVal);
+                    const newStr = typeof newVal === 'string' ? newVal : JSON.stringify(newVal);
+                    return oldStr !== newStr;
+                }
+                return String(oldVal || '') !== String(newVal || '');
+            });
+
+            // 2. 梳理核心审计字段变更
+            const coreFieldsChanged = allChangedFields.filter(f => AUDIT_FIELDS.includes(f));
+
+            // 3. 决定记录到 Timeline (field_update) 的字段范围
+            // 如果是 Modal 全局编辑，则记录所有变动（剔除专门有 log 的状态、处理人、Snooze 等）；否则只记录核心字段
+            const fieldsToLog = updates.is_modal_edit
+                ? allChangedFields.filter(f => !['current_node', 'assigned_to', 'priority', 'snooze_until'].includes(f))
+                : coreFieldsChanged;
+
+            // 如果触发了高斯模糊全局编辑，或只改了核心字段，必须有理由
+            if (fieldsToLog.length > 0 && !change_reason && updates.is_modal_edit) {
+                return res.status(400).json({ success: false, error: '修改工单内容需要填写修正理由' });
+            }
+            if (coreFieldsChanged.length > 0 && !change_reason) {
+                return res.status(400).json({
+                    success: false,
+                    error: '修改核心字段需要填写修正理由',
+                    audit_fields: coreFieldsChanged.map(f => FIELD_LABELS[f] || f)
+                });
+            }
+
+            // 终结期锁定：普通用户禁止修改核心字段
+            if (isFinalized && !isAdmin && coreFieldsChanged.length > 0) {
+                return res.status(403).json({
+                    success: false,
+                    error: '工单已终结，仅管理员可修改核心字段',
+                    finalized_at: ticket.current_node
+                });
+            }
+
+            const now = new Date().toISOString();
             const sets = [];
             const params = [];
 
@@ -1148,11 +1159,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 }
             }
 
-            // PRD §7.1 - 记录审计字段变更到时间轴
+            // PRD §7.1 - 记录字段变更到时间轴及审计日记表
             const actorName = req.user.display_name || req.user.username;
             const actorDept = req.user.department_name || 'MS';
 
-            for (const field of auditFieldsToChange) {
+            for (const field of fieldsToLog) {
                 const oldVal = ticket[field];
                 let newVal = updates[field];
 
