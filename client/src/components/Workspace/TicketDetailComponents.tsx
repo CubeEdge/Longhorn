@@ -9,8 +9,10 @@ import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
   AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
-  Edit3, Trash2
+  Edit3, Trash2, X, Wrench
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../../store/useAuthStore';
 
 // ==============================
 // Types
@@ -28,6 +30,14 @@ interface Activity {
     name: string;
     role?: string;
   } | null;
+  attachments?: Array<{
+    id: number;
+    file_name: string;
+    file_size: number;
+    file_type: string;
+    file_url: string;
+    thumbnail_url?: string | null;
+  }>;
   created_at: string;
 }
 
@@ -60,7 +70,7 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
       borderRadius: 12, marginBottom: 16,
       background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
       border: '1px solid rgba(255,255,255,0.06)',
-      overflow: 'hidden',
+      // Remove overflow: hidden to prevent clipping of absolute children like AssigneeSelector or @mentions
     }}>
       <button
         onClick={() => setOpen(!open)}
@@ -91,7 +101,7 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
 // PRD §7.1 - 对比高亮形式呈现字段变更
 // ==============================
 
-interface FieldUpdateMetadata {
+export interface FieldUpdateMetadata {
   field_name?: string;
   field_label?: string;
   old_value?: unknown;
@@ -108,33 +118,52 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined || value === '') return '(空)';
     if (typeof value === 'boolean') return value ? '是' : '否';
-    if (typeof value === 'object') return '(对象)';
+    if (typeof value === 'object') return '(内容)';
     const s = String(value);
-    return s.length > 20 ? s.substring(0, 20) + '...' : s;
+    return s.length > 30 ? s.substring(0, 30) + '...' : s;
   };
 
+  const fieldLabel = metadata.field_label || metadata.field_name || '未知字段';
+
   return (
-    <div style={{ flex: 1, fontSize: 13, lineHeight: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px' }}>
-        <span style={{ color: '#888' }}>修改了</span>
-        <span style={{ color: '#FFD700', fontWeight: 600 }}>
-          [{metadata.field_label || metadata.field_name || '字段'}]
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px' }}>
+      <span style={{ color: '#888' }}>修改了</span>
+      <span style={{ color: '#FFD700', fontWeight: 600, background: 'rgba(255,215,0,0.1)', padding: '0 4px', borderRadius: '4px' }}>
+        {fieldLabel}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ccc' }}>
+        <span style={{ color: '#EF4444', textDecoration: 'line-through', fontSize: 12, opacity: 0.7 }}>
+          {formatValue(metadata.old_value)}
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ccc' }}>
-          <span style={{ color: '#EF4444', textDecoration: 'line-through', fontSize: 12 }}>
-            {formatValue(metadata.old_value)}
-          </span>
-          <ArrowRight size={10} color="#666" />
-          <span style={{ color: '#10B981', fontWeight: 500, fontSize: 12 }}>
-            {formatValue(metadata.new_value)}
-          </span>
-        </div>
-        {metadata.change_reason && (
-          <span style={{ fontSize: 12, color: '#666', fontStyle: 'italic' }}>
-            ({metadata.change_reason})
-          </span>
-        )}
+        <ArrowRight size={10} color="#666" />
+        <span style={{ color: '#10B981', fontWeight: 500, fontSize: 12 }}>
+          {formatValue(metadata.new_value)}
+        </span>
       </div>
+      {metadata.change_reason && (
+        <span style={{ fontSize: 12, color: '#666', fontStyle: 'italic', marginLeft: 4 }}>
+          [{metadata.change_reason}]
+        </span>
+      )}
+    </div>
+  );
+};
+
+const DiagnosticReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
+      <span style={{ color: '#10B981', fontWeight: 600 }}>提交了详细诊断报告</span>
+      <span style={{ color: '#666', fontSize: 12 }}>
+        [故障判定: {metadata.diagnosis?.substring(0, 20)}{metadata.diagnosis?.length > 20 ? '...' : ''}]
+      </span>
+      <span style={{
+        fontSize: 10, padding: '1px 6px', borderRadius: 4,
+        background: metadata.is_warranty ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+        color: metadata.is_warranty ? '#10B981' : '#F59E0B',
+        border: `1px solid ${metadata.is_warranty ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`
+      }}>
+        {metadata.is_warranty ? '保修免费' : '付费/拒保'}
+      </span>
     </div>
   );
 };
@@ -146,12 +175,100 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
 interface ActivityTimelineProps {
   activities: Activity[];
   loading?: boolean;
+  onActivityClick?: (activity: Activity) => void;
 }
+
+// ==============================
+// Image Lightbox
+// ==============================
+
+interface MediaLightboxProps {
+  url: string | null;
+  type?: 'image' | 'video' | null;
+  onClose: () => void;
+}
+
+export const MediaLightbox: React.FC<MediaLightboxProps> = ({ url, type = 'image', onClose }) => {
+  React.useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <AnimatePresence>
+      {url && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)',
+            zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out', padding: 20
+          }}
+        >
+          {type === 'video' ? (
+            <video
+              src={url}
+              controls
+              autoPlay
+              style={{
+                maxWidth: '90%', maxHeight: '90%', borderRadius: 12,
+                boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                objectFit: 'contain'
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <motion.img
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              src={url}
+              style={{
+                maxWidth: '100%', maxHeight: '100%', borderRadius: 12,
+                boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                objectFit: 'contain'
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+          )}
+
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 30, right: 30,
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '50%', width: 44, height: 44,
+              color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s',
+              zIndex: 2001
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+          >
+            <X size={20} />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   activities,
-  loading
+  loading,
+  onActivityClick
 }) => {
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
   const getVisibilityBadge = (visibility: string) => {
     if (visibility === 'all') return null;
     return (
@@ -178,8 +295,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'priority_change': return <AlertTriangle size={12} />;
       case 'mention': return <AtSign size={12} />;
       case 'attachment': return <Paperclip size={12} />;
-      case 'field_update': return <Edit3 size={12} />;  // PRD §7.1 审计化修正
-      case 'soft_delete': return <Trash2 size={12} />;  // PRD §7.2 软删除
+      case 'field_update': return <Edit3 size={12} />;
+      case 'diagnostic_report': return <Wrench size={12} />;
+      case 'soft_delete': return <Trash2 size={12} />;
       default: return <Clock size={12} />;
     }
   };
@@ -192,8 +310,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'assignment': case 'assignment_change': return '#FFD700';
       case 'priority_change': return '#F59E0B';
       case 'mention': return '#8B5CF6';
-      case 'field_update': return '#FFD700';  // Kine Yellow - 审计修正
-      case 'soft_delete': return '#EF4444';   // Kine Red - 删除操作
+      case 'field_update': return '#FFD700';
+      case 'diagnostic_report': return '#10B981';
+      case 'soft_delete': return '#EF4444';
       default: return '#666';
     }
   };
@@ -206,90 +325,86 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
 
   return (
-    <div style={{ padding: '8px 20px 16px' }}>
+    <div style={{ padding: '8px 4px 16px' }}>
       {filteredActivities.length === 0 ? (
         <div style={{ padding: 16, textAlign: 'center', color: '#666', fontSize: 13 }}>暂无活动记录</div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {filteredActivities.map((activity) => {
-              const color = getTypeColor(activity.activity_type);
-              return (
-                <tr
-                  key={activity.id}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                >
-                  {/* Time column */}
-                  <td style={{
-                    padding: '10px 12px 10px 0',
-                    fontSize: 12, color: '#555',
-                    whiteSpace: 'nowrap', verticalAlign: 'top',
-                    width: 110,
-                  }}>
-                    {formatFullDateTime(activity.created_at)}
-                  </td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {filteredActivities.map((activity) => {
+            const color = getTypeColor(activity.activity_type);
+            const isFieldUpdate = activity.activity_type === 'field_update';
+            const actorName = activity.actor?.name || '系统';
+            const timeStr = formatFullDateTime(activity.created_at).split(' ')[1]; // HH:mm
 
-                  {/* Actor column */}
-                  <td style={{
-                    padding: '10px 12px 10px 0',
-                    verticalAlign: 'top',
-                    width: 90,
-                  }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                    }}>
-                      <span style={{ color, display: 'flex', alignItems: 'center' }}>
-                        {getTypeIcon(activity.activity_type)}
-                      </span>
-                      <span style={{
-                        fontSize: 13, fontWeight: 600, color: '#ccc',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        maxWidth: 70,
-                      }}>
-                        {activity.actor?.name || '系统'}
-                      </span>
-                    </div>
-                  </td>
+            return (
+              <div
+                key={activity.id}
+                onClick={() => onActivityClick && onActivityClick(activity)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  transition: 'background 0.2s',
+                  borderLeft: isFieldUpdate ? `2px solid ${color}44` : 'none',
+                  cursor: onActivityClick ? 'pointer' : 'default'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* Meta: Time & Icon */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
+                  <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '40px' }}>
+                    {timeStr}
+                  </span>
+                  <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+                    {getTypeIcon(activity.activity_type)}
+                  </span>
+                </div>
 
-                  {/* Content column */}
-                  <td style={{
-                    padding: '10px 0',
-                    verticalAlign: 'top',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                {/* Main Body */}
+                <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                    <span style={{ fontWeight: 600, color: '#999', flexShrink: 0 }}>{actorName}</span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
                       {getVisibilityBadge(activity.visibility)}
 
-                      {/* PRD §7.1: field_update 类型使用特殊高亮渲染 */}
                       {activity.activity_type === 'field_update' && activity.metadata ? (
                         <FieldUpdateContent
                           content={activity.content || ''}
-                          metadata={activity.metadata as {
-                            field_name?: string;
-                            field_label?: string;
-                            old_value?: unknown;
-                            new_value?: unknown;
-                            change_reason?: string;
-                          }}
+                          metadata={activity.metadata as FieldUpdateMetadata}
                         />
+                      ) : activity.activity_type === 'diagnostic_report' && activity.metadata ? (
+                        <DiagnosticReportContent metadata={activity.metadata as any} />
                       ) : (
                         <div
-                          style={{
-                            color: '#aaa', fontSize: 13, lineHeight: 1.5,
-                            flex: 1, wordBreak: 'break-word',
-                          }}
+                          style={{ color: '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                           dangerouslySetInnerHTML={{
-                            __html: activity.content_html || activity.content || ''
+                            __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
                           }}
                         />
                       )}
+
+                      {/* Attachments Icon Indicator */}
+                      {activity.attachments && activity.attachments.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
+                          <Paperclip size={12} color="#666" />
+                          <span style={{ fontSize: '11px', color: '#555' }}>{activity.attachments.length}</span>
+                        </div>
+                      )}
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+
+                  {/* Attachment Links have been moved to the Detail Drawer */}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+      <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
     </div>
   );
 };
@@ -464,7 +579,9 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-';
-  const d = new Date(dateStr);
+  // Ensure SQLite datetime string is parsed as UTC
+  const safeStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+  const d = new Date(safeStr.endsWith('Z') || safeStr.includes('+') ? safeStr : safeStr + 'Z');
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -475,13 +592,181 @@ function formatDate(dateStr: string): string {
 
 function formatFullDateTime(dateStr: string): string {
   if (!dateStr) return '-';
-  const d = new Date(dateStr);
+  // Ensure SQLite datetime string is parsed as UTC
+  const safeStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+  // Add 'Z' if no timezone info, but be careful not to double-add
+  const finalStr = (safeStr.endsWith('Z') || safeStr.includes('+')) ? safeStr : safeStr + 'Z';
+
+  const d = new Date(finalStr);
+  if (isNaN(d.getTime())) return dateStr;
+
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
-  return `${m}-${day} ${h}:${min}`;
+
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const isThisYear = d.getFullYear() === now.getFullYear();
+
+  if (isToday) return `${h}:${min}`;
+  if (isThisYear) return `${m}-${day} ${h}:${min}`;
+  return `${d.getFullYear().toString().slice(-2)}-${m}-${day} ${h}:${min}`;
 }
+
+
+// ==============================
+// Activity Detail Drawer
+// ==============================
+
+export interface ActivityDetailDrawerProps {
+  activity: Activity | null;
+  onClose: () => void;
+}
+
+export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
+  activity,
+  onClose
+}) => {
+  const { token } = useAuthStore();
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
+
+  if (!activity) return null;
+
+  return (
+    <>
+      <div style={{
+        position: 'fixed',
+        top: 0, right: 0, bottom: 0, width: 400,
+        background: 'rgba(30,30,30,0.95)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
+        borderLeft: '1px solid rgba(255,255,255,0.1)',
+        zIndex: 1000,
+        display: 'flex', flexDirection: 'column',
+        transform: 'translateX(0)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>详情</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* User Info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFD700', fontWeight: 600, fontSize: 14 }}>
+              {activity.actor?.name?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{activity.actor?.name || 'System'}</div>
+              <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
+            </div>
+          </div>
+
+          {/* Text Content */}
+          {activity.content && (
+            <div style={{
+              fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
+              background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
+            }} dangerouslySetInnerHTML={{ __html: activity.content_html || activity.content.replace(/\n/g, '<br/>') }} />
+          )}
+
+          {/* Field Updates (if any) */}
+          {activity.activity_type.endsWith('_change') && activity.metadata && (
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+              <FieldUpdateContent content={activity.content} metadata={activity.metadata as unknown as FieldUpdateMetadata} />
+            </div>
+          )}
+
+          {/* Attachments Grid */}
+          {activity.attachments && activity.attachments.length > 0 && (
+            <div>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#888', fontWeight: 600 }}>附件 ({activity.attachments.length})</h4>
+              <div style={{
+                display: 'grid',
+                // If 1 attachment, full width. If 2, 2 columns. If more, auto-fill.
+                gridTemplateColumns: activity.attachments.length === 1 ? '1fr' : (activity.attachments.length === 2 ? '1fr 1fr' : 'repeat(auto-fill, minmax(100px, 1fr))'),
+                gap: 8,
+                alignItems: 'start'
+              }}>
+                {activity.attachments.map((att) => {
+                  const isImage = att.file_type?.startsWith('image/');
+                  const isVideo = att.file_type?.startsWith('video/');
+                  const mediaUrl = att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
+                  const thumbUrl = (att.thumbnail_url || att.file_url) + (token ? `?token=${token}` : '');
+
+                  return (
+                    <div key={att.id}
+                      onClick={() => (isImage || isVideo) ? setLightboxMedia({ url: mediaUrl, type: isVideo ? 'video' : 'image' }) : window.open(mediaUrl)}
+                      style={{
+                        aspectRatio: activity.attachments!.length === 1 ? 'auto' : '1',
+                        width: '100%',
+                        background: '#111',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {isImage ? (
+                        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                          <img
+                            src={thumbUrl}
+                            alt={att.file_name}
+                            key={`${att.id}-${activity.id}`}
+                            onLoad={(e) => (e.currentTarget.style.opacity = '1')}
+                            style={{
+                              width: '100%', height: '100%', objectFit: activity.attachments!.length === 1 ? 'contain' : 'cover',
+                              opacity: 0, transition: 'opacity 0.3s'
+                            }}
+                          />
+                          {/* Inner soft glow if it's the only image */}
+                          {activity.attachments!.length === 1 && (
+                            <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 40px rgba(0,0,0,0.5)', pointerEvents: 'none' }} />
+                          )}
+                        </div>
+                      ) : isVideo ? (
+                        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                          {att.thumbnail_url ? (
+                            <img src={thumbUrl} alt={att.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
+                              <Clock size={24} style={{ animation: 'spin 2s linear infinite' }} />
+                            </div>
+                          )}
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: 12, textAlign: 'center' }}>
+                          <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
+                          <div style={{ fontSize: 10, color: '#888', wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.file_name}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
+    </>
+  );
+};
 
 export default {
   ActivityTimeline,

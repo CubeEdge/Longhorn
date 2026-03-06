@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Loader2, Wrench, List, Layers, ChevronDown, ChevronUp, Clock, AlertCircle, CheckCircle, Package, HelpCircle, Users } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Wrench, List, Layers, ChevronDown, ChevronUp, Clock, AlertCircle, CheckCircle, Package, HelpCircle, Users } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
-import { useTicketStore } from '../../store/useTicketStore';
 import { useCachedTickets } from '../../hooks/useCachedTickets';
 import { useListStateStore } from '../../store/useListStateStore';
 import { KineSelect } from '../UI/KineSelect';
@@ -122,7 +121,6 @@ const DealerRepairListPage: React.FC = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const openModal = useTicketStore(state => state.openModal);
 
     // List state store for persisting view preferences
     const {
@@ -498,32 +496,6 @@ const DealerRepairListPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={() => openModal('DealerRepair')}
-                        className="btn"
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
-                            padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                            background: 'rgba(var(--accent-rgb), 0.1)',
-                            border: '1px solid rgba(var(--accent-rgb), 0.5)',
-                            color: 'var(--accent-blue)',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.2)';
-                            e.currentTarget.style.borderColor = 'var(--accent-blue)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.5)';
-                        }}
-                    >
-                        <Plus size={16} />
-                        {t('dealer_repair.title')}
-                    </button>
                 </div>
             </div>
 

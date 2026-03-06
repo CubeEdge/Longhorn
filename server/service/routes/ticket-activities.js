@@ -6,8 +6,11 @@
  */
 
 const express = require('express');
+const path = require('path');
+const fs = require('fs-extra');
+const sharp = require('sharp');
 
-module.exports = function (db, authenticate) {
+module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
 
     // ==============================
@@ -210,7 +213,25 @@ module.exports = function (db, authenticate) {
             `;
 
             const rows = db.prepare(sql).all(...params, parseInt(page_size), offset);
-            const data = rows.map(formatActivity);
+
+            // Enrich with attachments
+            const data = rows.map(row => {
+                const activity = formatActivity(row);
+                const attachments = db.prepare(`
+                    SELECT id, file_name, file_size, file_type, uploaded_at
+                    FROM ticket_attachments
+                    WHERE activity_id = ?
+                `).all(row.id);
+
+                if (attachments.length > 0) {
+                    activity.attachments = attachments.map(att => ({
+                        ...att,
+                        file_url: `/api/v1/system/attachments/${att.id}/download`,
+                        thumbnail_url: att.file_type?.startsWith('image/') ? `/api/v1/system/attachments/${att.id}/thumbnail` : null
+                    }));
+                }
+                return activity;
+            });
 
             res.json({
                 success: true,
@@ -232,10 +253,13 @@ module.exports = function (db, authenticate) {
      * POST /api/v1/tickets/:ticketId/activities
      * Add activity (comment/note)
      */
-    router.post('/:ticketId/activities', authenticate, (req, res) => {
+    router.post('/:ticketId/activities', authenticate, serviceUpload.array('attachments', 10), (req, res) => {
         try {
             const { ticketId } = req.params;
-            const {
+            const user = req.user;
+
+            // Extract from body (FormData or JSON)
+            let {
                 activity_type = 'comment',
                 content,
                 content_html,
@@ -243,10 +267,17 @@ module.exports = function (db, authenticate) {
                 metadata,
                 mentions = []
             } = req.body;
-            const user = req.user;
 
-            if (!content && activity_type === 'comment') {
-                return res.status(400).json({ success: false, error: '内容不能为空' });
+            // metadata and mentions may be JSON strings if sent via FormData
+            if (typeof metadata === 'string') {
+                try { metadata = JSON.parse(metadata); } catch (e) { metadata = null; }
+            }
+            if (typeof mentions === 'string') {
+                try { mentions = JSON.parse(mentions); } catch (e) { mentions = []; }
+            }
+
+            if (!content && activity_type === 'comment' && (!req.files || req.files.length === 0)) {
+                return res.status(400).json({ success: false, error: '内容不能为空且无附件' });
             }
 
             // Check ticket
@@ -290,7 +321,7 @@ module.exports = function (db, authenticate) {
             `).run(
                 ticketId,
                 activity_type,
-                content,
+                content || (req.files?.length > 0 ? "上传了附件" : ""),
                 content_html,
                 metadata ? JSON.stringify(metadata) : null,
                 finalVisibility,
@@ -302,47 +333,141 @@ module.exports = function (db, authenticate) {
 
             const activityId = result.lastInsertRowid;
 
-            // Handle @mentions (either from text or explicit array)
-            let parsedMentions = parseMentions(content);
+            // Save attachments if any
+            const attachments = [];
+            if (req.files && req.files.length > 0) {
+                // OPS Reference: Tickets/{Type}/{TicketNumber}/
+                const typeMap = { 'rma': 'RMA', 'inquiry': 'Inquiry', 'svc': 'Inquiry', 'dealer_repair': 'DealerRepair' };
+                const typeDir = typeMap[ticket.ticket_type.toLowerCase()] || 'Other';
+                const ticketNumber = ticket.ticket_number || `T${ticketId}`;
 
-            // If explicit mentions array provided (preferred), use it to complement text mentions
-            if (Array.isArray(mentions) && mentions.length > 0) {
-                for (const userId of mentions) {
-                    if (!parsedMentions.some(m => m.user_id === parseInt(userId))) {
-                        const mUser = db.prepare('SELECT id, username as name FROM users WHERE id = ?').get(userId);
-                        if (mUser) {
-                            parsedMentions.push({ user_id: mUser.id, name: mUser.name });
+                // Base Dir Calculation (Consistent with server/index.js)
+                const SERVICE_BASE_DIR = (process.platform === 'darwin' && !__dirname.includes('KineCore'))
+                    ? '/Volumes/fileserver/Service'
+                    : path.join(__dirname, '../../data/Service');
+
+                const finalTargetDir = path.join(SERVICE_BASE_DIR, 'Tickets', typeDir, ticketNumber);
+                fs.ensureDirSync(finalTargetDir);
+
+                req.files.forEach(file => {
+                    const finalPath = path.join(finalTargetDir, file.filename);
+                    try {
+                        // Move from Temp to Final
+                        fs.moveSync(file.path, finalPath, { overwrite: true });
+
+                        // In DB we store the path relative to SERVICE_BASE_DIR
+                        const dbPath = `Tickets/${typeDir}/${ticketNumber}/${file.filename}`;
+
+                        const insertFile = db.prepare(`
+                            INSERT INTO ticket_attachments (
+                                ticket_id, activity_id, file_name, file_path, 
+                                file_size, file_type, uploaded_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `).run(
+                            ticketId,
+                            activityId,
+                            file.originalname,
+                            dbPath,
+                            file.size,
+                            file.mimetype,
+                            user.id
+                        );
+
+                        // Fire-and-forget background thumbnail generation
+                        if (file.mimetype.startsWith('image/')) {
+                            const thumbDir = path.resolve(__dirname, '../../data/.thumbnails');
+                            fs.ensureDirSync(thumbDir);
+                            const thumbFilename = String(dbPath).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.jpg';
+                            const thumbPath = path.join(thumbDir, thumbFilename);
+                            sharp(finalPath)
+                                .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+                                .jpeg({ quality: 80 })
+                                .toFile(thumbPath)
+                                .catch(err => console.error('[Activities] Background Thumbnail Error:', err));
                         }
+
+                        attachments.push({
+                            id: insertFile.lastInsertRowid,
+                            file_name: file.originalname,
+                            file_size: file.size,
+                            file_type: file.mimetype,
+                            file_url: `/api/v1/system/attachments/${insertFile.lastInsertRowid}/download`,
+                            thumbnail_url: file.mimetype.startsWith('image/') ? `/api/v1/system/attachments/${insertFile.lastInsertRowid}/thumbnail` : null
+                        });
+                    } catch (moveErr) {
+                        console.error('[Activities] File Move Error:', moveErr);
                     }
+                });
+
+                // Update activity type if it was just an attachment upload
+                if (!content && activity_type === 'comment') {
+                    db.prepare('UPDATE ticket_activities SET activity_type = ? WHERE id = ?').run('attachment', activityId);
                 }
             }
 
-            if (parsedMentions.length > 0) {
-                // Create mention notifications
-                createMentionNotifications(ticketId, ticket.ticket_number, parsedMentions, user.id, user.name, activityId);
+            // Ensure mentions are actual members (not just @text)
+            const resolvedMentions = parseMentions(content);
+            const allMentionedIds = Array.from(new Set([
+                ...(Array.isArray(mentions) ? mentions.map(m => parseInt(m)) : []), // Ensure mentions from body are parsed as int
+                ...resolvedMentions.map(m => m.user_id)
+            ]));
 
-                // Add mentioned users as participants
-                for (const mention of parsedMentions) {
-                    addParticipant(ticketId, mention.user_id, 'mentioned', user.id, 'mention');
+            // Fetch full mention objects for notifications if needed, or just pass IDs
+            const fullMentionObjects = [];
+            for (const userId of allMentionedIds) {
+                const mUser = db.prepare('SELECT id, username as name FROM users WHERE id = ?').get(userId);
+                if (mUser) {
+                    fullMentionObjects.push({ user_id: mUser.id, name: mUser.name });
                 }
+            }
+
+            if (fullMentionObjects.length > 0) {
+                // Notify mentioned users
+                createMentionNotifications(ticketId, ticket.ticket_number, fullMentionObjects, user.id, user.display_name || user.username, activityId);
+
+                // Add participants
+                fullMentionObjects.forEach(mention => {
+                    addParticipant(ticketId, mention.user_id, 'mentioned', user.id, 'mention');
+                });
 
                 // Update mention stats for user sorting
-                updateMentionStats(user.id, parsedMentions.map(m => m.user_id));
+                updateMentionStats(user.id, fullMentionObjects.map(m => m.user_id));
 
-                // Store mention info in the comment's metadata (no separate mention activity)
+                // Store mention info in the comment's metadata
                 db.prepare(`
                     UPDATE ticket_activities SET metadata = ? WHERE id = ?
                 `).run(
-                    JSON.stringify({ mentioned_users: parsedMentions }),
+                    JSON.stringify({ ...metadata, mentioned_users: fullMentionObjects }),
                     activityId
                 );
             }
 
+            if (ticket.assigned_to && ticket.assigned_to !== user.id && !allMentionedIds.includes(ticket.assigned_to)) {
+                try {
+                    db.prepare(`
+                        INSERT INTO notifications (
+                            recipient_id, notification_type, title, content, icon,
+                            related_type, related_id, action_url, metadata, created_at
+                        ) VALUES (?, 'update', ?, ?, 'ticket', 'ticket', ?, ?, ?, ?)
+                    `).run(
+                        ticket.assigned_to,
+                        `${user.display_name || user.username} 更新了您负责的工单`,
+                        `工单 ${ticket.ticket_number}`,
+                        ticketId,
+                        `/service/tickets/${ticketId}`,
+                        JSON.stringify({ ticket_number: ticket.ticket_number, updated_by: user.display_name || user.username, activity_id: activityId }),
+                        now
+                    );
+                } catch (e) {
+                    console.error('[Activities] Failed to notify assignee:', e.message);
+                }
+            }
+
             // Update ticket's updated_at
-            db.prepare(`UPDATE ${ticketTable} SET updated_at = ? WHERE id = ?`).run(now, ticketId);
+            db.prepare(`UPDATE tickets SET updated_at = ? WHERE id = ?`).run(now, ticketId);
 
             // First response tracking (only for unified tickets)
-            if (ticketTable === 'tickets' && !ticket.first_response_at && user.department === 'marketing') {
+            if (!ticket.first_response_at && user.department === 'marketing') {
                 const responseMinutes = Math.floor((new Date(now) - new Date(ticket.created_at)) / 60000);
                 db.prepare(`
                     UPDATE tickets SET first_response_at = ?, first_response_minutes = ? WHERE id = ?
@@ -353,9 +478,10 @@ module.exports = function (db, authenticate) {
                 success: true,
                 data: {
                     id: activityId,
-                    activity_type,
+                    activity_type: !content && activity_type === 'comment' && req.files?.length > 0 ? 'attachment' : activity_type,
                     visibility: finalVisibility,
-                    created_at: now
+                    created_at: now,
+                    attachments
                 }
             });
         } catch (err) {

@@ -182,12 +182,14 @@ module.exports = function (db, authenticate) {
             const { department, role } = req.query;
             const currentUserId = req.user.id;
 
-            let conditions = ["(u.user_type = 'Employee' OR u.user_type IS NULL)"];
+            let conditions = ["(u.status = 'active' OR u.status IS NULL)"];
             let params = [];
 
             if (department) {
-                conditions.push('u.department_id = ?');
-                params.push(department);
+                // department can be numeric ID or code string (OP/MS/RD)
+                // d.code stores 'OP','MS','RD', d.name stores Chinese
+                conditions.push('(u.department_id = ? OR d.code = ?)');
+                params.push(department, department);
             }
             if (role) {
                 conditions.push('u.role = ?');
@@ -196,7 +198,7 @@ module.exports = function (db, authenticate) {
 
             // P2: Get current user's department code for sorting
             const currentUser = db.prepare(`
-                SELECT d.name as dept_code 
+                SELECT d.code as dept_code 
                 FROM users u 
                 LEFT JOIN departments d ON u.department_id = d.id 
                 WHERE u.id = ?
@@ -207,20 +209,20 @@ module.exports = function (db, authenticate) {
             const users = db.prepare(`
                 SELECT u.id, COALESCE(u.display_name, u.username) as name, 
                        u.username, u.display_name, u.role, 
-                       d.name as department, d.name as department_name, d.name as dept_code
+                       d.name as department, d.name as department_name, d.code as dept_code
                 FROM users u
                 LEFT JOIN departments d ON u.department_id = d.id
                 WHERE ${conditions.join(' AND ')}
                 ORDER BY 
                     CASE 
-                        WHEN d.name = ? THEN 0  -- Current user's dept first
-                        WHEN d.name = 'MS' THEN 1
-                        WHEN d.name = 'OP' THEN 2
-                        WHEN d.name = 'RD' THEN 3
+                        WHEN d.code = ? THEN 0
+                        WHEN d.code = 'MS' THEN 1
+                        WHEN d.code = 'OP' THEN 2
+                        WHEN d.code = 'RD' THEN 3
                         ELSE 4
                     END,
                     u.username
-            `).all(currentDeptCode, ...params);
+            `).all(...params, currentDeptCode);
 
             res.json({
                 success: true,
@@ -335,14 +337,35 @@ module.exports = function (db, authenticate) {
      */
     router.get('/attachments/:id/download', authenticate, (req, res) => {
         try {
-            const attachment = db.prepare(`
-                SELECT ia.*, i.created_by, i.assigned_to, i.dealer_id, i.customer_id
-                FROM issue_attachments ia
-                JOIN issues i ON ia.issue_id = i.id
-                WHERE ia.id = ?
+            // First check ticket_attachments (P2 Unified System)
+            let attachment = db.prepare(`
+                SELECT ta.*, t.created_by, t.assigned_to, t.dealer_id
+                FROM ticket_attachments ta
+                JOIN tickets t ON ta.ticket_id = t.id
+                WHERE ta.id = ?
             `).get(req.params.id);
 
-            if (!attachment) {
+            // Determine Full Path across different systems
+            let fullPath;
+            const DISK_A = process.env.STORAGE_PATH || (process.platform === 'darwin' && !__dirname.includes('KineCore') ? '/Volumes/fileserver/Files' : path.join(__dirname, '../../data/DiskA'));
+            const SERVICE_BASE_DIR = (process.platform === 'darwin' && !__dirname.includes('KineCore'))
+                ? '/Volumes/fileserver/Service'
+                : path.join(__dirname, '../../data/Service');
+
+            console.log(`[System] SERVICE_BASE_DIR: ${SERVICE_BASE_DIR}`);
+
+            if (attachment && attachment.file_path.includes('/')) {
+                // Case 1: New OPS-compliant structure (e.g. Tickets/RMA/...)
+                fullPath = path.join(SERVICE_BASE_DIR, attachment.file_path);
+            } else if (attachment && attachment.ticket_id) {
+                // Case 2: Legacy P2 unified (just filename in Service_Uploads)
+                fullPath = path.join(DISK_A, 'Service_Uploads', attachment.file_path);
+            } else if (attachment) {
+                // Case 3: Legacy Issue system
+                fullPath = path.join(__dirname, '../../data/issue_attachments', attachment.file_path);
+            }
+
+            if (!attachment || !fullPath) {
                 return res.status(404).json({
                     success: false,
                     error: { code: 'NOT_FOUND', message: '附件不存在' }
@@ -353,11 +376,11 @@ module.exports = function (db, authenticate) {
             const user = req.user;
             let hasAccess = false;
 
-            if (user.role === 'Admin' || user.role === 'Exec' || user.role === 'Lead') {
+            if (user.role === 'Admin' || user.role === 'Exec' || user.role === 'Lead' || user.department === 'marketing' || user.department === 'production' || user.department === 'rd') {
                 hasAccess = true;
             } else if (user.user_type === 'Dealer' && attachment.dealer_id === user.dealer_id) {
                 hasAccess = true;
-            } else if (attachment.created_by === user.id || attachment.assigned_to === user.id) {
+            } else if (attachment.uploaded_by === user.id || attachment.created_by === user.id || attachment.assigned_to === user.id) {
                 hasAccess = true;
             }
 
@@ -368,17 +391,19 @@ module.exports = function (db, authenticate) {
                 });
             }
 
-            const attachmentsDir = path.join(__dirname, '../../data/issue_attachments');
-            const filePath = path.join(attachmentsDir, attachment.file_path);
-
-            if (!fs.existsSync(filePath)) {
+            if (!fs.existsSync(fullPath)) {
+                console.warn(`[System] File not found on disk: ${fullPath}`);
                 return res.status(404).json({
                     success: false,
                     error: { code: 'FILE_NOT_FOUND', message: '文件不存在' }
                 });
             }
 
-            res.download(filePath, attachment.file_name);
+            if (req.query.inline === 'true') {
+                res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(attachment.file_name)}"`);
+                return res.sendFile(fullPath, { dotfiles: 'allow' });
+            }
+            res.download(fullPath, attachment.file_name);
         } catch (err) {
             console.error('[System] Download error:', err);
             res.status(500).json({
@@ -425,29 +450,51 @@ module.exports = function (db, authenticate) {
 
     /**
      * GET /api/v1/attachments/:id/thumbnail
-
      * Get image thumbnail
      */
     router.get('/attachments/:id/thumbnail', authenticate, async (req, res) => {
         try {
-            const attachment = db.prepare(`
-                SELECT ia.*, i.created_by, i.assigned_to
-                FROM issue_attachments ia
-                JOIN issues i ON ia.issue_id = i.id
-                WHERE ia.id = ? AND ia.file_type = 'image'
+            // First check ticket_attachments
+            let attachment = db.prepare(`
+                SELECT ta.*, t.created_by, t.assigned_to
+                FROM ticket_attachments ta
+                JOIN tickets t ON ta.ticket_id = t.id
+                WHERE ta.id = ? AND (ta.file_type LIKE 'image/%' OR ta.file_type = 'image')
             `).get(req.params.id);
 
-            if (!attachment) {
+            let fullPath;
+            const DISK_A = process.env.STORAGE_PATH || (process.platform === 'darwin' && !__dirname.includes('KineCore') ? '/Volumes/fileserver/Files' : path.join(__dirname, '../../data/DiskA'));
+            const SERVICE_BASE_DIR = (process.platform === 'darwin' && !__dirname.includes('KineCore'))
+                ? '/Volumes/fileserver/Service'
+                : path.join(__dirname, '../../data/Service');
+
+            if (attachment && attachment.file_path.includes('/')) {
+                fullPath = path.join(SERVICE_BASE_DIR, attachment.file_path);
+            } else if (attachment && attachment.ticket_id) {
+                fullPath = path.join(DISK_A, 'Service_Uploads', attachment.file_path);
+            } else {
+                // Check legacy issue attachments if not found in ticket_attachments
+                attachment = db.prepare(`
+                    SELECT ia.*, i.created_by, i.assigned_to
+                    FROM issue_attachments ia
+                    JOIN issues i ON ia.issue_id = i.id
+                    WHERE ia.id = ? AND (ia.file_type LIKE 'image/%' OR ia.file_type = 'image')
+                `).get(req.params.id);
+
+                if (attachment) {
+                    fullPath = path.join(__dirname, '../../data/issue_attachments', attachment.file_path);
+                }
+            }
+
+            if (!attachment || !fullPath) {
                 return res.status(404).json({
                     success: false,
-                    error: { code: 'NOT_FOUND', message: '图片附件不存在' }
+                    error: { code: 'NOT_FOUND', message: '附件不存在' }
                 });
             }
 
-            const attachmentsDir = path.join(__dirname, '../../data/issue_attachments');
-            const filePath = path.join(attachmentsDir, attachment.file_path);
-
-            if (!fs.existsSync(filePath)) {
+            // Verify file exists
+            if (!fs.existsSync(fullPath)) {
                 return res.status(404).json({
                     success: false,
                     error: { code: 'FILE_NOT_FOUND', message: '文件不存在' }
@@ -455,24 +502,33 @@ module.exports = function (db, authenticate) {
             }
 
             // Check if thumbnail exists, generate if not
-            const thumbDir = path.join(__dirname, '../../data/.thumbnails');
+            const thumbDir = path.resolve(__dirname, '../../data/.thumbnails');
             fs.ensureDirSync(thumbDir);
-            const thumbPath = path.join(thumbDir, `${attachment.file_path}_thumb.jpg`);
+            const thumbFilename = String(attachment.file_path).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.jpg';
+            const thumbPath = path.join(thumbDir, thumbFilename);
+
+            console.log(`[System] Thumbnail request: ${req.params.id}, Path: ${thumbPath}`);
 
             if (!fs.existsSync(thumbPath)) {
                 try {
                     const sharp = require('sharp');
-                    await sharp(filePath)
-                        .resize(200, 200, { fit: 'cover' })
+                    await sharp(fullPath)
+                        .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
                         .jpeg({ quality: 80 })
                         .toFile(thumbPath);
                 } catch (sharpErr) {
+                    console.error('[System] Sharp error:', sharpErr);
                     // If sharp fails, serve original
-                    return res.sendFile(filePath);
+                    return res.sendFile(fullPath, { dotfiles: 'allow' });
                 }
             }
 
-            res.sendFile(thumbPath);
+            if (!fs.existsSync(thumbPath)) {
+                console.error(`[System] Thumbnail still missing after generation: ${thumbPath}`);
+                return res.status(404).json({ error: 'Thumbnail generation failed' });
+            }
+
+            res.sendFile(thumbPath, { dotfiles: 'allow' });
         } catch (err) {
             console.error('[System] Thumbnail error:', err);
             res.status(500).json({

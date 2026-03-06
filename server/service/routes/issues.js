@@ -956,7 +956,7 @@ module.exports = function (db, authenticate, attachmentsDir, multerModule) {
             file_name: att.file_name,
             file_size: att.file_size,
             file_type: att.file_type,
-            file_url: `/api/v1/attachments/${att.id}/download`,
+            file_url: `/api/v1/system/attachments/${att.id}/download`,
             uploaded_by: { id: att.uploaded_by, name: att.uploaded_by_name },
             uploaded_at: att.uploaded_at
         };

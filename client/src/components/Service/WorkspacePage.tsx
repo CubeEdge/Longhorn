@@ -8,10 +8,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  Star, Loader2, Search, MoreHorizontal,
+  Star, Loader2, Search, MoreHorizontal, Plus,
   Flame, Hand, MessageSquare, Clock, CheckSquare, Users, Package, Wrench, Truck, AlertCircle, Trash2
 } from 'lucide-react';
 import axios from 'axios';
+import { useTicketStore } from '../../store/useTicketStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useConfirm } from '../../store/useConfirm';
@@ -130,7 +131,7 @@ const DEPT_TABS: Record<string, DeptTabConfig[]> = {
     { key: 'receiving', label: { zh: '待收货', en: 'Receiving' }, icon: <Package size={14} />, filter: (t: Ticket) => t.current_node === 'op_receiving' },
     { key: 'diagnosing', label: { zh: '待检测', en: 'Diagnosing' }, icon: <AlertCircle size={14} />, filter: (t: Ticket) => t.current_node === 'op_diagnosing' },
     { key: 'repairing', label: { zh: '待维修', en: 'Repairing' }, icon: <Wrench size={14} />, filter: (t: Ticket) => t.current_node === 'op_repairing' },
-    { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: (t: Ticket) => t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
+    { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: (t: Ticket) => t.current_node === 'op_shipping' || t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
     { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
   ],
   // B. RD (研发): 完全由部门@Mention驱动
@@ -175,10 +176,27 @@ const WorkspacePage: React.FC = () => {
 
   // P2: View As support - use viewingAs user's department if active
   const { viewingAs } = useViewAs();
-  const actingDeptCode = viewingAs?.department_code || (user as any)?.department_code;
+  const rawDeptCode = viewingAs?.department_code || (user as any)?.department_code || (user as any)?.department_name;
+
+  // Normalize department name to code (Internal helper to match DEPT_TABS keys)
+  const normalizeDeptCode = (name: string) => {
+    if (!name) return 'DEFAULT';
+
+    // Try to extract code in parentheses: "Marketing (MS)" -> "MS"
+    const match = name.match(/\(([A-Z]{2,3})\)/);
+    if (match) return match[1].toUpperCase();
+
+    const upper = name.toUpperCase();
+    if (/^[A-Z]{2,3}$/.test(upper)) return upper;
+    const map: Record<string, string> = {
+      '市场部': 'MS', '生产运营部': 'OP', '运营部': 'OP',
+      '研发部': 'RD', '通用台面': 'GE', '综合部': 'GE', '管理层': 'GE'
+    };
+    return map[name] || 'DEFAULT';
+  };
 
   // User's department for Team Hub tab config
-  const userDept = actingDeptCode?.toUpperCase() || 'DEFAULT';
+  const userDept = normalizeDeptCode(rawDeptCode);
   const deptTabs = DEPT_TABS[userDept] || DEPT_TABS.DEFAULT;
 
   // Determine current view from route
@@ -571,7 +589,8 @@ const WorkspacePage: React.FC = () => {
       op_receiving: { label: '待收货', color: '#F59E0B' },
       op_diagnosing: { label: '诊断中', color: '#8B5CF6' },
       op_repairing: { label: '维修中', color: '#3B82F6' },
-      op_qa: { label: 'QA检测', color: '#06B6D4' },
+      op_shipping: { label: '待发货', color: '#06B6D4' },
+      op_qa: { label: '待发货', color: '#06B6D4' },
       ms_closing: { label: '待结案', color: '#10B981' },
       resolved: { label: '已解决', color: '#10B981' },
       closed: { label: '已关闭', color: '#6B7280' }
@@ -633,6 +652,35 @@ const WorkspacePage: React.FC = () => {
                 onBlur={e => e.currentTarget.style.borderColor = 'var(--glass-border)'}
               />
             </div>
+
+            {/* Create Ticket Button (My Tasks Only) */}
+            {currentView === 'my-tasks' && (() => {
+              const actingRole = viewingAs?.role || user?.role;
+              const userDeptName = viewingAs?.department_code || (viewingAs as any)?.department_name || (user as any)?.department_code || (user as any)?.department_name || '';
+              const normalizedDept = normalizeDeptCode(userDeptName);
+              const canCreate = actingRole === 'Admin' || actingRole === 'Exec' || normalizedDept === 'MS';
+              if (!canCreate) return null;
+
+              return (
+                <button
+                  onClick={() => useTicketStore.getState().openModal('Inquiry')}
+                  title={t('action.create_ticket', { defaultValue: '新建工单' })}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    height: 40, padding: '0 16px', marginLeft: 16,
+                    background: 'var(--accent-blue)', color: 'var(--bg-main)',
+                    border: 'none', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600,
+                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(var(--accent-rgb), 0.3)',
+                    transition: 'all 0.2s', whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+                  onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+                >
+                  <Plus size={18} />
+                  <span className="hidden-mobile">{t('action.create_ticket', { defaultValue: '新建工单' })}</span>
+                </button>
+              );
+            })()}
             {/* Trash Menu Component - macOS Style極簡三點 */}
             {currentView === 'team-hub' && (() => {
               const actingRole = viewingAs?.role || user?.role;
@@ -752,8 +800,15 @@ const WorkspacePage: React.FC = () => {
             <UnifiedTicketDetail
               ticketId={selectedTicket.id}
               onBack={() => setSelectedTicket(null)}
+              viewContext={
+                currentView === 'my-tasks' ? 'my_tasks'
+                  : currentView === 'team-hub' ? 'team_queue'
+                    : currentView === 'mentioned' ? 'mentioned'
+                      : 'search'
+              }
             />
           </div>
+
         ) : (
           <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto', padding: '12px 20px' }}>
             {loading ? (

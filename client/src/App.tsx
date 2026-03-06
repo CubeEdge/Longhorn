@@ -26,7 +26,8 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  Eye
+  Eye,
+  Plus
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -59,18 +60,19 @@ import KnowledgeAuditLog from './components/KnowledgeAuditLog';
 import { KinefinityWiki } from './components/KinefinityWiki';
 import AppRail from './components/AppRail';
 // ... imports
+import { useTicketStore } from './store/useTicketStore';
 import TicketCreationModal from './components/Service/TicketCreationModal';
 import BokehContainer from './components/Bokeh/BokehContainer';
 import WorkspacePage from './components/Service/WorkspacePage';
 import ServiceOverviewPage from './components/Service/ServiceOverviewPage';
 
-
-
 import TicketAiWizard from './components/TicketAiWizard';
 import { useNavigationState, canAccessFilesModule } from './hooks/useNavigationState';
 import type { ModuleType } from './hooks/useNavigationState';
+import { useUIStore } from './store/useUIStore';
 
 import ShareCollectionPage from './components/ShareCollectionPage';
+
 import Toast from './components/Toast';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { NotificationBell, NotificationCenter } from './components/Notifications';
@@ -96,10 +98,22 @@ const MainLayout: React.FC<{ user: any }> = ({ user }) => {
     availableUsers
   } = useViewAs();
 
+  // Alt + N Global Shortcut
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt + N (Mac: Option + N)
+      if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        useTicketStore.getState().openModal('Inquiry');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="app-container fade-in" style={{ display: 'flex', flexDirection: 'row', width: '100vw', height: '100vh', overflow: 'hidden' }}>
 
-      {/* App Rail - Always visible on Desktop */}
       <AppRail
         currentModule={currentModule}
         onModuleChange={switchModule}
@@ -331,6 +345,7 @@ const Sidebar: React.FC<{
   currentModule: ModuleType
 }> = ({ user, viewingAs, role, isOpen, onClose, currentModule }) => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
   const { t } = useLanguage();
@@ -467,17 +482,30 @@ const Sidebar: React.FC<{
                     <span>{t('sidebar.overview')}</span>
                   </Link>
                 )}
-                <Link to={getRoute('/service/workspace')} className={`sidebar-item ${location.pathname === '/service/workspace' ? 'active' : ''}`} onClick={onClose}>
+                {/* 侧边栏选中态逻辑：支持路径匹配 + URL参数 ctx 匹配 */}
+                <Link
+                  to={getRoute('/service/workspace')}
+                  className={`sidebar-item ${location.pathname === '/service/workspace' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'my_tasks') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
                   <CheckSquare size={18} />
                   <span>{t('sidebar.my_tasks')}</span>
                   {workspaceCounts.my_tasks > 0 && <span className="sidebar-badge">{workspaceCounts.my_tasks}</span>}
                 </Link>
-                <Link to={getRoute('/service/mentioned')} className={`sidebar-item ${location.pathname === '/service/mentioned' ? 'active' : ''}`} onClick={onClose}>
+                <Link
+                  to={getRoute('/service/mentioned')}
+                  className={`sidebar-item ${location.pathname === '/service/mentioned' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'mentioned') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
                   <Bell size={18} />
                   <span>{t('sidebar.mentioned')}</span>
                   {workspaceCounts.mentioned > 0 && <span className="sidebar-badge badge-blue">{workspaceCounts.mentioned}</span>}
                 </Link>
-                <Link to={getRoute('/service/team-hub')} className={`sidebar-item ${location.pathname === '/service/team-hub' ? 'active' : ''}`} onClick={onClose}>
+                <Link
+                  to={getRoute('/service/team-hub')}
+                  className={`sidebar-item ${location.pathname === '/service/team-hub' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'team_queue') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
                   <Users size={18} />
                   <span>{t('sidebar.team_hub', { defaultValue: '部门工单' })}</span>
                   {workspaceCounts.team_hub_total !== undefined && (
@@ -514,18 +542,30 @@ const Sidebar: React.FC<{
               <>
                 {/* Inquiry visible to Global access users (MS, etc) */}
                 {hasCrmAccess && (
-                  <Link to={getRoute('/service/inquiry-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') ? 'active' : ''}`} onClick={onClose}>
+                  <Link
+                    to={getRoute('/service/inquiry-tickets')}
+                    className={`sidebar-item ${location.pathname.startsWith('/service/inquiry-tickets') || (location.pathname.startsWith('/service/tickets/') && (searchParams.get('ctx') === 'search-inquiry' || searchParams.get('ctx') === 'search' || !searchParams.get('ctx'))) ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
                     <MessageCircleQuestion size={18} />
                     <span>{t('sidebar.inquiry_tickets')}</span>
                   </Link>
                 )}
-                <Link to={getRoute('/service/rma-tickets')} className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') ? 'active' : ''}`} onClick={onClose}>
+                <Link
+                  to={getRoute('/service/rma-tickets')}
+                  className={`sidebar-item ${location.pathname.startsWith('/service/rma-tickets') || (location.pathname.startsWith('/service/tickets/') && (searchParams.get('ctx') === 'search-rma' || searchParams.get('ctx') === 'search')) ? 'active' : ''}`}
+                  onClick={onClose}
+                >
                   <ClipboardList size={18} />
                   <span>{t('sidebar.rma_tickets')}</span>
                 </Link>
                 {/* SVC visible to Global access users (MS, etc) */}
                 {hasCrmAccess && (
-                  <Link to={getRoute('/service/dealer-repairs')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') ? 'active' : ''}`} onClick={onClose}>
+                  <Link
+                    to={getRoute('/service/dealer-repairs')}
+                    className={`sidebar-item ${location.pathname.startsWith('/service/dealer-repairs') || (location.pathname.startsWith('/service/tickets/') && (searchParams.get('ctx') === 'search-svc' || searchParams.get('ctx') === 'search')) ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
                     <Wrench size={18} />
                     <span>{t('sidebar.dealer_repairs')}</span>
                   </Link>
@@ -537,6 +577,7 @@ const Sidebar: React.FC<{
                     <span>{t('sidebar.parts_inventory')}</span>
                   </Link>
                 )}
+
               </>
             )}
 
@@ -1013,6 +1054,42 @@ const TopBar: React.FC<{
           <Menu size={24} />
         </button>
 
+        {/* TOPBAR CONTEXT LABEL: 居左显示场景标签 */}
+        {(() => {
+          const { contextLabel } = useUIStore();
+          if (!contextLabel) return null;
+          return (
+            <div
+              className="fade-in"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '0 12px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: contextLabel.color,
+                marginLeft: 12,
+                height: 24,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {contextLabel.pulsing && (
+                <span style={{
+                  display: 'inline-block',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: contextLabel.color,
+                  boxShadow: `0 0 8px ${contextLabel.color}`,
+                  animation: 'pulse 1.5s infinite'
+                }} />
+              )}
+              {contextLabel.text}
+            </div>
+          );
+        })()}
+
         {/* Stats card only visible in FILES module */}
         {currentModule === 'files' && (
           <div className="hidden-mobile">
@@ -1038,6 +1115,43 @@ const TopBar: React.FC<{
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Global Create Ticket Action: Only visible to MS/Admin */}
+        {(() => {
+          const userDept = (user?.department_code || user?.department_name || '').toUpperCase();
+          const isAdmin = user?.role === 'Admin' || user?.role === 'Exec';
+          const isMS = userDept === 'MS' || userDept === '市场部';
+          const canCreateTicket = isAdmin || isMS;
+
+          if (currentModule === 'service' && canCreateTicket) {
+            return (
+              <button
+                onClick={() => useTicketStore.getState().openModal('Inquiry')}
+                title={t('action.create_ticket', { defaultValue: '新建工单' })}
+                style={{
+                  width: 32, height: 32,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  color: 'var(--text-main)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  marginLeft: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }}
+              >
+                <Plus size={18} />
+              </button>
+            );
+          }
+          return null;
+        })()}
+
         {/* Notification Bell - Service Module only */}
         {currentModule === 'service' && <NotificationBell />}
 

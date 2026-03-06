@@ -364,44 +364,46 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             </div>
                         </div>
 
-                        {/* Action Required Section */}
-                        <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
-                            <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
-                                建议操作
+                        {/* Action Required Section - Only visible to MS department */}
+                        {useAuthStore.getState().user?.department_name === 'MS' && (
+                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
+                                <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
+                                    建议操作
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <button
+                                        onClick={() => setShowLinkModal(true)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                            background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                        }}
+                                    >
+                                        <Search size={14} /> 关联到企业
+                                    </button>
+                                    <button
+                                        onClick={() => setShowConvertModal(true)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                            background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
+                                            borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                        }}
+                                    >
+                                        <UserPlus size={14} /> 入库新企业 / 新散客
+                                    </button>
+                                    <button
+                                        onClick={() => setShowSpamModal(true)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                                            borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                        }}
+                                    >
+                                        <Trash2 size={14} /> 标记为垃圾
+                                    </button>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <button
-                                    onClick={() => setShowLinkModal(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                    }}
-                                >
-                                    <Search size={14} /> 关联到企业
-                                </button>
-                                <button
-                                    onClick={() => setShowConvertModal(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                        background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
-                                        borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                    }}
-                                >
-                                    <UserPlus size={14} /> 入库新企业 / 新散客
-                                </button>
-                                <button
-                                    onClick={() => setShowSpamModal(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                                        borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                    }}
-                                >
-                                    <Trash2 size={14} /> 标记为垃圾
-                                </button>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 )}
 

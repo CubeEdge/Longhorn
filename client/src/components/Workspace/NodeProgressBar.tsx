@@ -11,12 +11,12 @@ import { useLanguage } from '../../i18n/useLanguage';
 
 // RMA node sequence (PRD 5.2 - Optimized to 6 steps)
 const RMA_NODES = [
-    { key: 'receiving', defaultDept: 'OP', match: ['draft', 'submitted', 'op_receiving', 'pending_arrival'] },
-    { key: 'diagnosing', defaultDept: 'OP', match: ['op_diagnosing'] },
-    { key: 'commercial', defaultDept: 'MS', match: ['ms_review'] },
-    { key: 'repairing', defaultDept: 'OP', match: ['op_repairing'] },
-    { key: 'settlement', defaultDept: 'MS', match: ['ge_review', 'ms_closing', 'pending_ship', 'waiting_customer'] },
-    { key: 'shipped', defaultDept: 'OP', match: ['shipped', 'op_qa', 'ge_closing', 'resolved'] },
+    { key: 'op_receiving', defaultDept: 'OP', match: ['draft', 'submitted', 'op_receiving', 'pending_arrival'] },
+    { key: 'op_diagnosing', defaultDept: 'OP', match: ['op_diagnosing'] },
+    { key: 'ms_review', defaultDept: 'MS', match: ['ms_review'] },
+    { key: 'op_repairing', defaultDept: 'OP', match: ['op_repairing'] },
+    { key: 'ms_closing', defaultDept: 'MS', match: ['ge_review', 'ms_closing', 'ms_review_finance', 'waiting_customer'] },
+    { key: 'op_shipping', defaultDept: 'OP', match: ['shipped', 'op_shipping', 'op_qa', 'ge_closing', 'resolved'] },
 ];
 
 // SVC node sequence (PRD 5.3)
@@ -38,12 +38,12 @@ const INQUIRY_NODES = [
 
 const NODE_LABELS: Record<string, Record<string, string>> = {
     zh: {
-        receiving: '待收货',
-        diagnosing: '诊断',
-        commercial: '商务审核',
-        repairing: '维修中',
-        settlement: '结算审核',
-        shipped: '已发货',
+        op_receiving: '待收货',
+        op_diagnosing: '诊断中',
+        ms_review: '商务审核',
+        op_repairing: '维修中',
+        ms_closing: '最终结案',
+        op_shipping: '打包发货',
         ge_closing: '财务结案',
         resolved: '已完成',
         dl_submitted: '已提交',
@@ -52,12 +52,12 @@ const NODE_LABELS: Record<string, Record<string, string>> = {
         waiting_customer: '待客户反馈',
     },
     en: {
-        receiving: 'Arrival',
-        diagnosing: 'Diagnosis',
-        commercial: 'Review',
-        repairing: 'Repairing',
-        settlement: 'Settlement',
-        shipped: 'Shipped',
+        op_receiving: 'Arrival',
+        op_diagnosing: 'Diagnosis',
+        ms_review: 'Review',
+        op_repairing: 'Repairing',
+        ms_closing: 'Settlement',
+        op_shipping: 'Shipping',
         ge_closing: 'Closing',
         resolved: 'Resolved',
         dl_submitted: 'Submitted',
@@ -71,6 +71,7 @@ interface Props {
     ticketType: string;
     currentNode: string;
     assignedName?: string;
+    assignedDept?: string;
 }
 
 const BALL_HINT_CONFIG: Record<string, { role: string; advice: string }> = {
@@ -82,7 +83,7 @@ const BALL_HINT_CONFIG: Record<string, { role: string; advice: string }> = {
     'op_repairing': { role: '技术专家', advice: '正在物理维修。完成后，付费单将流向财务核销节点。' },
     'ge_review': { role: '财务审计', advice: '等待核实款项到账。核销后，球将交由客服进行发货前终审。' },
     'ms_closing': { role: '客服/商务', advice: '收款已确认。请核对回寄地址，释放后球传由物流发票并发货。' },
-    'shipped': { role: '库管/物流', advice: '客服已释放。请打单发货并录入顺丰/DHL物流单号。' },
+    'op_shipping': { role: '库管/物流', advice: '客服已释放。请打单发货并录入顺丰/DHL物流单号。' },
     'resolved': { role: '归档库', advice: '流程已终结。' },
     'waiting_customer': { role: '客服/商务', advice: '已反馈客户方案，目前等待客户回复确认中。' },
 };
@@ -92,7 +93,8 @@ const PortalTooltip: React.FC<{
     anchorRect: DOMRect | null;
     hint: { role: string; advice: string };
     assignedName?: string;
-}> = ({ anchorRect, hint, assignedName }) => {
+    assignedDept?: string;
+}> = ({ anchorRect, hint, assignedName, assignedDept }) => {
     if (!anchorRect) return null;
 
     const TOOLTIP_W = 240;
@@ -127,7 +129,10 @@ const PortalTooltip: React.FC<{
         }}>
             <div style={{ fontWeight: 600, color: '#3B82F6', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
                 <span>球权: {hint.role}</span>
-                <span style={{ opacity: 0.8 }}>{assignedName || '🚩待认领'}</span>
+                <span style={{ opacity: 0.8, fontSize: 10 }}>
+                    {assignedDept && `[${assignedDept}] `}
+                    {assignedName || '🚩待认领'}
+                </span>
             </div>
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6, color: '#ccc' }}>
                 {hint.advice}
@@ -148,7 +153,7 @@ const PortalTooltip: React.FC<{
     );
 };
 
-const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedName }) => {
+const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedName, assignedDept }) => {
     const { language } = useLanguage();
     const lang = language === 'zh' || language === 'ja' ? 'zh' : 'en';
 
@@ -185,6 +190,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
             'op_receiving': 'OP',
             'op_diagnosing': 'OP',
             'op_repairing': 'OP',
+            'op_shipping': 'OP',
             'op_qa': 'OP',
             'ms_closing': 'MS',
             'submitted': 'MS',
@@ -192,7 +198,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
             'pending_ship': 'MS',
             'waiting_customer': 'MS'
         };
-        const dept = backendToDept[currentNode] || node.defaultDept;
+        const dept = assignedDept || backendToDept[currentNode] || node.defaultDept;
         if (assignedName) return `${dept} · ${assignedName}`;
         return `${dept} · 🚩待认领`;
     };
@@ -317,6 +323,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                     anchorRect={hoverRect}
                     hint={activeHint}
                     assignedName={assignedName}
+                    assignedDept={assignedDept}
                 />
             )}
 

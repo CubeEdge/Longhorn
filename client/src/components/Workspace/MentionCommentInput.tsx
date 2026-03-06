@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, AtSign, Paperclip, X, Image } from 'lucide-react';
+import { Send, AtSign, Paperclip, X, Image, Loader2 } from 'lucide-react';
 import axios from 'axios';
 
 const INTERACTION_FREQS_KEY = 'longhorn_interaction_freqs';
@@ -39,13 +39,15 @@ interface AttachmentFile {
 }
 
 interface MentionCommentInputProps {
-    onSubmit: (content: string, visibility: string, mentions: number[], attachments?: File[]) => void;
+    onSubmit: (content: string, visibility: string, mentions: number[], attachments?: File[]) => Promise<void> | void;
     loading?: boolean;
 }
 
 const FREQ_THRESHOLD = 2;
 
-export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubmit, loading }) => {
+export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubmit, loading: externalLoading }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const loading = externalLoading || isSubmitting;
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState('all');
     const [mentions, setMentions] = useState<number[]>([]);
@@ -196,9 +198,21 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        const newAttachments: AttachmentFile[] = files.map(file => {
+
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+        const validFiles: File[] = [];
+
+        for (const file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                alert(`文件 ${file.name} 超过了 50MB 的限制。`);
+            } else {
+                validFiles.push(file);
+            }
+        }
+
+        const newAttachments: AttachmentFile[] = validFiles.map(file => {
             const attachment: AttachmentFile = { file };
-            if (file.type.startsWith('image/')) {
+            if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
                 attachment.preview = URL.createObjectURL(file);
             }
             return attachment;
@@ -215,22 +229,83 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
         });
     };
 
-    const handleSubmit = () => {
-        if (!content.trim() && attachments.length === 0) return;
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+            const validFiles: File[] = [];
+            const files = Array.from(e.dataTransfer.files);
+
+            for (const file of files) {
+                if (file.size > MAX_FILE_SIZE) {
+                    alert(`文件 ${file.name} 超过了 50MB 的限制。`);
+                } else {
+                    validFiles.push(file);
+                }
+            }
+
+            const newAttachments: AttachmentFile[] = validFiles.map(file => {
+                const attachment: AttachmentFile = { file };
+                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                    attachment.preview = URL.createObjectURL(file);
+                }
+                return attachment;
+            });
+            setAttachments(prev => [...prev, ...newAttachments]);
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (loading || (!content.trim() && attachments.length === 0)) return;
         const finalMentions = mentions.filter(id => {
             const u = users.find(x => x.id === id);
             return u && content.includes(`@${u.name}`);
         });
-        onSubmit(content, visibility, finalMentions, attachments.map(a => a.file));
-        setContent('');
-        setMentions([]);
-        // Clean up previews
-        attachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
-        setAttachments([]);
+
+        try {
+            setIsSubmitting(true);
+            await onSubmit(content, visibility, finalMentions, attachments.map(a => a.file));
+            setContent('');
+            setMentions([]);
+            attachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
+            setAttachments([]);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
-        <div style={{ padding: 16, background: 'rgba(30, 30, 30, 0.6)', position: 'relative' }}>
+        <div
+            style={{ padding: 16, background: 'rgba(30, 30, 30, 0.6)', position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+        >
+            {/* Uploading Overlay - More prominent for "global" feel */}
+            {(loading || isSubmitting) && (
+                <div style={{
+                    position: 'absolute', inset: -4, background: 'rgba(0,0,0,0.7)',
+                    backdropFilter: 'blur(8px)', zIndex: 2000, borderRadius: 16,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+                    animation: 'fadeIn 0.2s ease-out', border: '1px solid rgba(255,215,0,0.2)'
+                }}>
+                    <div style={{ position: 'relative', width: 56, height: 56 }}>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
+                        <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: '2px solid rgba(255,215,0,0.4)', borderBottomColor: 'transparent', animation: 'spin 1.5s linear infinite reverse' }} />
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>
+                            {attachments.length > 0 ? '正在安全上传大文件...' : '正在提交评论...'}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>请勿刷新或关闭此页面</div>
+                    </div>
+                </div>
+            )}
             <textarea
                 ref={textareaRef}
                 value={content}
@@ -264,9 +339,20 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                             background: 'rgba(255,255,255,0.05)',
                         }}>
                             {att.preview ? (
-                                <img src={att.preview} alt="" style={{
-                                    width: 80, height: 80, objectFit: 'cover', display: 'block',
-                                }} />
+                                att.file.type.startsWith('video/') ? (
+                                    <div style={{ position: 'relative', width: 80, height: 80, background: '#000' }}>
+                                        <video src={att.preview} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                                            <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: 4, color: '#FFD700' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <img src={att.preview} alt="" style={{
+                                        width: 80, height: 80, objectFit: 'cover', display: 'block',
+                                    }} />
+                                )
                             ) : (
                                 <div style={{
                                     width: 80, height: 80, display: 'flex',
@@ -310,7 +396,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     padding: '8px 0',
                     maxHeight: 400,
                     overflowY: 'auto',
-                    zIndex: 100,
+                    zIndex: 1000,
                     minWidth: 260, maxWidth: 320,
                 }}>
                     {mentionGroups.map(group => (
@@ -399,7 +485,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx,.zip"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.zip"
                     style={{ display: 'none' }}
                     onChange={handleFileSelect}
                 />
@@ -428,18 +514,56 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '7px 16px',
-                        background: (content.trim() || attachments.length > 0) ? '#FFD700' : 'rgba(255,255,255,0.1)',
-                        color: (content.trim() || attachments.length > 0) ? '#000' : '#666',
+                        background: loading ? 'rgba(255,255,255,0.05)' : ((content.trim() || attachments.length > 0) ? '#FFD700' : 'rgba(255,255,255,0.1)'),
+                        color: loading ? '#666' : ((content.trim() || attachments.length > 0) ? '#000' : '#666'),
                         border: 'none', borderRadius: 6,
                         fontSize: 13, fontWeight: 600,
-                        cursor: (content.trim() || attachments.length > 0) ? 'pointer' : 'not-allowed',
+                        cursor: (loading || (!content.trim() && attachments.length === 0)) ? 'not-allowed' : 'pointer',
                         transition: 'background 0.2s, color 0.2s'
                     }}
                 >
-                    <Send size={13} />
-                    发送
+                    {loading ? (
+                        <>
+                            <Loader2 className="animate-spin" size={13} />
+                            {attachments.length > 0 ? '正在上传附件...' : '正在发送...'}
+                        </>
+                    ) : (
+                        <>
+                            <Send size={13} />
+                            发送
+                        </>
+                    )}
                 </button>
             </div>
+            {/* Loading Overlay */}
+            {loading && (
+                <div style={{
+                    position: 'absolute', inset: 0, zIndex: 999,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: 12, borderRadius: 12,
+                    border: '1px solid rgba(255,215,0,0.2)'
+                }}>
+                    <div className="animate-spin" style={{
+                        width: 32, height: 32, border: '3px solid rgba(255,215,0,0.1)',
+                        borderTopColor: '#FFD700', borderRadius: '50%'
+                    }} />
+                    <div style={{ fontSize: 13, color: '#FFD700', fontWeight: 600, textAlign: 'center' }}>
+                        {attachments.length > 0 ? (
+                            <>正在上传大文件...<br /><span style={{ fontSize: 11, opacity: 0.8 }}>请勿刷新或关闭页面</span></>
+                        ) : '请稍候...'}
+                    </div>
+                </div>
+            )}
+            <style>{`
+                .animate-spin {
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 };

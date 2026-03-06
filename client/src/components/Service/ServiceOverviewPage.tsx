@@ -9,12 +9,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown,
-  Users, RefreshCw, ChevronRight, Loader2
+  Users, RefreshCw, ChevronRight, Loader2, Zap
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useViewAs } from '../Workspace/ViewAsComponents';
+import { DispatchRulesDrawer } from './DispatchRulesDrawer';
 
 interface DashboardStats {
   total_open: number;
@@ -54,6 +55,11 @@ const ServiceOverviewPage: React.FC = () => {
   const [teamLoad, setTeamLoad] = useState<TeamMember[]>([]);
   const [riskTickets, setRiskTickets] = useState<RiskTicket[]>([]);
   const [approvalCount, setApprovalCount] = useState(0);
+  const [isDispatchDrawerOpen, setIsDispatchDrawerOpen] = useState(false);
+
+  // Permission check
+  const actingDept = viewingAs?.department_code || (user as any)?.department_code || '';
+  const isLeadOrAdmin = (user as any)?.role === 'Admin' || (user as any)?.role === 'Exec' || (user as any)?.role === 'Lead';
 
   useEffect(() => {
     fetchDashboardData();
@@ -107,23 +113,46 @@ const ServiceOverviewPage: React.FC = () => {
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>{t('overview.title') || '服务概览'}</h1>
           <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>{t('overview.subtitle') || 'Service Overview Dashboard'}</p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            padding: '8px 16px',
-            color: '#ccc',
-            cursor: 'pointer'
-          }}
-        >
-          <RefreshCw size={16} />
-          {t('overview.refresh') || '刷新'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isLeadOrAdmin && (
+            <button
+              onClick={() => setIsDispatchDrawerOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255,210,0,0.1)',
+                border: '1px solid rgba(255,210,0,0.2)',
+                borderRadius: 8,
+                padding: '8px 16px',
+                color: '#FFD200',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 13
+              }}
+            >
+              <Zap size={16} />
+              自动分发规则
+            </button>
+          )}
+          <button
+            onClick={fetchDashboardData}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              padding: '8px 16px',
+              color: '#ccc',
+              cursor: 'pointer'
+            }}
+          >
+            <RefreshCw size={16} />
+            {t('overview.refresh') || '刷新'}
+          </button>
+        </div>
       </div>
 
       {/* Action Zone - PRD Section A.1 */}
@@ -251,6 +280,12 @@ const ServiceOverviewPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <DispatchRulesDrawer
+        isOpen={isDispatchDrawerOpen}
+        onClose={() => setIsDispatchDrawerOpen(false)}
+        departmentCode={actingDept}
+      />
     </div>
   );
 };

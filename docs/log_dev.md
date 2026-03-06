@@ -1,5 +1,47 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-05] 工单评论侧滑详情与全能预览系统实装 (v12.3.50)
+### Frontend
+- **核心组件设计 (ActivityDetailDrawer)**:
+  - 在 `TicketDetailComponents.tsx` 中新增 400px 毛玻璃侧滑窗。
+  - 点击 `ActivityTimeline` 无声进入详情，支持 `dangerouslySetInnerHTML` 展示带有 `pre-wrap` 的原始排版。
+  - **附件网格**: 移除了固定的预览截断逻辑，所有的附件均采用响应式 Grid `minmax(100px, 1fr)` 展示，并支持视频的即时预览标识。
+- **媒体播放器 (MediaLightbox)**:
+  - 重构灯箱逻辑，支持条件渲染 `<img>` 与 `<video>` 标签。
+  - 引用地址统一添加 `?inline=true` 尾部参数，绕过下载头限制并激活浏览器原生播放控件。
+- **上传防火墙**:
+  - `MentionCommentInput` 增加递归拦截检查：在 `handleFileSelect` 和 `handleDrop` 中单兵布控，拦截超过 **50MB** 的图片、视频及 ZIP 包。
+### Backend
+- **寻址模型重构**: 修复了 `system.js` 后端分发路由。通过 `fullPath` 全局匹配挂载盘路径（`/Volumes/fileserver`），并修正了 `/thumbnail` 访问 404 及特殊字符生成的 FsError 问题。
+- **响应头注入**: 后端增加对 `?inline=true` Query 的硬性判定。直接使用 `res.setHeader('Content-Disposition', 'inline;...')` 并通过 `res.sendFile` 响应流式播放/查看。
+### Infrastructure
+- **交付发布**: Client `12.3.50`, Server `1.7.42`。已完成生产服务器 `mini` 的热部署与 `pm2 reload`。
+
+## [2026-03-05] 活动时间轴自然语言重构与后端元数据解析修复 (v12.3.46)
+### Backend
+- **修复**: `tickets.js` 获取活动列表时未解析 `metadata` JSON 字符串的 Bug，解决了时间轴上 "[字段]" 占位及 "(空)" 渲染异常的问题。
+- **逻辑优化**: 升级 `normalize` 算法，在比对字段变更时进行 `trim()` 处理，彻底杜绝无意义的 "空对空" (Empty to Empty) 审计记录。
+### Frontend
+- **时间轴重构**: `TicketDetailComponents.tsx` 全部移除表格布局，采用极简的单行自然语言模式：`[HH:mm] [Icon] [Actor] 修改了 [字段]: [旧值] ➔ [新值]`。
+- **文字修复**: `UnifiedTicketDetail.tsx` 移除了错误的 `t()` key 引用，将 "问题概要" 文本硬编码修复。
+### Infrastructure
+- **版本交付**: Client `12.3.46`, Server `1.7.38`。已完成全量构建及同步部署。
+
+
+## [2026-03-05] UI/UX 细节精细化与安全审计展示增强 (v12.3.45)
+### Frontend
+- **组件重构**: `UnifiedTicketDetail.tsx`
+  - 侧滑窗口宽度全局统一：600px -> 400px (macOS 风格极致紧凑化)。
+  - 移除所有 Label 中的中英对照双语后缀，纯净本地化。
+  - 引入 `ShieldAlert` 强化审计视觉语境。
+  - 核心字段 (SN/Product) 状态感知渲染：引入黄色预警色系与警示文案，降低误操作风险。
+  - 编辑表单逻辑分支：针对非 Inquiry 工单移除冗余的 Resolution 编辑项。
+- **时间轴优化**: `TicketDetailComponents.tsx`
+  - 实现了 `FieldUpdateContent` 的单行化重构，单条修改记录垂直空间减小 60%。
+  - 引入了值截断 (Value Truncation) 与 Diff 箭头符号。
+### Infrastructure
+- **版本交付**: Client `12.3.45`, Server `1.7.37`。完成全量 `npm run build` 并通过 `./scripts/deploy.sh` 同步至远程 `mini` 服务器。
+
 ## [2026-03-05] 审计模型健壮性优化与全量文档归档 (v12.3.44)
 ### Backend
 - 修复 `tickets.js` 中的 `PATCH` 逻辑：自动转换 Boolean 为 Integer 以适配 SQLite3 绑定规则。

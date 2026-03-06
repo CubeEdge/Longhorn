@@ -25,9 +25,11 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'longhorn.db');
 const DISK_A = process.env.STORAGE_PATH || (process.platform === 'darwin' && !__dirname.includes('KineCore') ? '/Volumes/fileserver/Files' : path.join(__dirname, 'data/DiskA'));
+const SERVICE_BASE_DIR = process.platform === 'darwin' && !__dirname.includes('KineCore') ? '/Volumes/fileserver/Service' : path.join(__dirname, 'data/Service');
+const SERVICE_TEMP_DIR = path.join(SERVICE_BASE_DIR, 'Temp');
 const RECYCLE_DIR = path.join(__dirname, 'data/.recycle');
 const THUMB_DIR = path.join(__dirname, 'data/.thumbnails');
-const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads');
+const SERVICE_UPLOADS_DIR = path.join(DISK_A, 'Service_Uploads'); // Legacy, keeping for compatibility if needed
 const BACKUP_DIR = process.env.BACKUP_PATH || './data/Backups';
 const JWT_SECRET = process.env.JWT_SECRET || 'longhorn-secret-key-2026';
 
@@ -42,8 +44,8 @@ const filesRoutes = require('./files/routes');
 const serviceUpload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
-            fs.mkdirSync(SERVICE_UPLOADS_DIR, { recursive: true });
-            cb(null, SERVICE_UPLOADS_DIR);
+            fs.mkdirSync(SERVICE_TEMP_DIR, { recursive: true });
+            cb(null, SERVICE_TEMP_DIR);
         },
         filename: (req, file, cb) => {
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -250,6 +252,25 @@ db.exec(`
         FOREIGN KEY(uploaded_by) REFERENCES users(id)
     );
     CREATE INDEX IF NOT EXISTS idx_service_attachments_ticket ON service_attachments(ticket_type, ticket_id);
+
+    -- [P2 Enhanced] Unified Ticket Attachments
+    -- Links to tickets.id and optionally ticket_activities.id (for comment attachments)
+    CREATE TABLE IF NOT EXISTS ticket_attachments (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id   INTEGER NOT NULL,
+        activity_id INTEGER,         -- NULL for ticket-level attachments
+        file_name   TEXT NOT NULL,
+        file_path   TEXT NOT NULL,
+        file_size   INTEGER,
+        file_type   TEXT,
+        uploaded_by INTEGER NOT NULL,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+        FOREIGN KEY(activity_id) REFERENCES ticket_activities(id) ON DELETE CASCADE,
+        FOREIGN KEY(uploaded_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket ON ticket_attachments(ticket_id);
+    CREATE INDEX IF NOT EXISTS idx_ticket_attachments_activity ON ticket_attachments(activity_id);
 
     -- Import History
     CREATE TABLE IF NOT EXISTS import_history (
@@ -614,11 +635,20 @@ function normalizeDeptCode(name) {
 
 // Authentication Middleware
 const authenticate = (req, res, next) => {
+    let token = null;
     const authHeader = req.headers.authorization;
     if (authHeader) {
-        const token = authHeader.split(' ')[1];
+        token = authHeader.split(' ')[1];
+        // console.log(`[Auth] Token from header`);
+    } else if (req.query.token) {
+        token = req.query.token;
+        console.log(`[Auth] Token from query for ${req.path}`);
+    }
+
+    if (token) {
         jwt.verify(token, JWT_SECRET, (err, decoded) => {
             if (err) {
+                console.warn(`[Auth] Invalid token for ${req.path}`);
                 return res.sendStatus(403);
             }
 

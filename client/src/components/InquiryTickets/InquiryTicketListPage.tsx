@@ -1,15 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, MessageSquare, Clock, CheckCircle, Loader2, AlertCircle, AlertTriangle, List, Layers, ChevronDown, ChevronUp, Users, MessageCircleQuestion } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, MessageSquare, Clock, CheckCircle, Loader2, AlertCircle, AlertTriangle, List, Layers, ChevronDown, ChevronUp, Users, MessageCircleQuestion } from 'lucide-react';
 import { KineSelect } from '../UI/KineSelect';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
 import { SortDropdown } from '../UI/SortDropdown';
 import { formatDistanceToNow, differenceInHours, subDays, format, subMonths } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useLanguage } from '../../i18n/useLanguage';
-import { useTicketStore } from '../../store/useTicketStore';
-import { useCachedTickets } from '../../hooks/useCachedTickets';
 import { useListStateStore } from '../../store/useListStateStore';
+import { useCachedTickets } from '../../hooks/useCachedTickets';
 
 interface InquiryTicket {
     id: number;
@@ -118,7 +117,6 @@ const InquiryTicketListPage: React.FC = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const openModal = useTicketStore(state => state.openModal);
 
     // List state store for persisting view preferences
     const {
@@ -610,32 +608,6 @@ const InquiryTicketListPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={() => openModal('Inquiry')}
-                        className="btn"
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '40px',
-                            padding: '0 16px', fontSize: '0.85rem', whiteSpace: 'nowrap',
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            border: '1px solid rgba(59, 130, 246, 0.5)',
-                            color: '#3B82F6',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-                            e.currentTarget.style.borderColor = '#3B82F6';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                        }}
-                    >
-                        <Plus size={16} />
-                        {t('inquiry_ticket.title')}
-                    </button>
                 </div>
             </div>
 

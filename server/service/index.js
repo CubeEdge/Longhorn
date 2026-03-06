@@ -46,7 +46,7 @@ function initService(app, db, options = {}) {
 
     // P2 Upgrade: Unified Tickets System (统一工单系统)
     const ticketsRoutes = require('./routes/tickets')(db, authenticate, serviceUpload);
-    const ticketActivitiesRoutes = require('./routes/ticket-activities')(db, authenticate);
+    const ticketActivitiesRoutes = require('./routes/ticket-activities')(db, authenticate, serviceUpload);
     const notificationsRoutes = require('./routes/notifications')(db, authenticate);
 
     // Account-Contact Architecture (账户-联系人双层架构)
@@ -78,10 +78,14 @@ function initService(app, db, options = {}) {
     const dealerInventoryRoutes = require('./routes/dealer-inventory')(db, authenticate);
     const proformaInvoiceRoutes = require('./routes/proforma-invoice')(db, authenticate);
 
+    // Phase 7: Department settings and dispatch rules
+    const departmentRoutes = require('./routes/departments')(db, authenticate);
+
     // Mount routes under /api/v1 prefix (new API version)
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/issues', issueRoutes);  // Legacy, kept for backward compatibility
     app.use('/api/v1/dealers', dealerRoutes);
+    app.use('/api/v1/departments', departmentRoutes);
     app.use('/api/v1/stats', statsRoutes);
     app.use('/api/v1/system', systemRoutes);
 

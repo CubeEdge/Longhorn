@@ -60,7 +60,8 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
             op_receiving: '运营接收中',
             op_diagnosing: '诊断中',
             op_repairing: '维修中',
-            op_qa: '质检中',
+            op_shipping: '待发货',
+            op_qa: '待发货',
             ms_closing: '待关闭',
             resolved: '已解决',
             closed: '已关闭',
@@ -274,8 +275,8 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                     marginBottom: 10
                                 }}>
                                     {t('delete.modal.confirm_label') || '请输入工单号确认删除'}
-                                    <span style={{ 
-                                        marginLeft: 6, 
+                                    <span style={{
+                                        marginLeft: 6,
                                         fontFamily: 'monospace',
                                         color: '#EF4444',
                                         fontWeight: 700,
@@ -293,10 +294,10 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                         width: '100%',
                                         padding: '12px 14px',
                                         borderRadius: 10,
-                                        border: confirmText === ticketNumber 
+                                        border: confirmText === ticketNumber
                                             ? '1px solid rgba(16,185,129,0.4)'
                                             : '1px solid rgba(255,255,255,0.1)',
-                                        background: confirmText === ticketNumber 
+                                        background: confirmText === ticketNumber
                                             ? 'rgba(16,185,129,0.05)'
                                             : 'rgba(255,255,255,0.03)',
                                         color: '#fff',
@@ -360,8 +361,8 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                         >
                             {loading ? (
                                 <>
-                                    <span className="animate-spin" style={{ 
-                                        width: 14, height: 14, 
+                                    <span className="animate-spin" style={{
+                                        width: 14, height: 14,
                                         border: '2px solid transparent',
                                         borderTopColor: '#fff',
                                         borderRadius: '50%'

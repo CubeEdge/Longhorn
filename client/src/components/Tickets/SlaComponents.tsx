@@ -19,18 +19,18 @@ const PRIORITY_COLORS: Record<string, { bg: string; text: string; label: string 
 
 // SLA status colors
 const SLA_STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-  normal: { 
-    bg: 'rgba(16, 185, 129, 0.15)', 
+  normal: {
+    bg: 'rgba(16, 185, 129, 0.15)',
     text: '#10B981',
     icon: <CheckCircle2 size={14} />
   },
-  warning: { 
-    bg: 'rgba(255, 215, 0, 0.15)', 
+  warning: {
+    bg: 'rgba(255, 215, 0, 0.15)',
     text: '#FFD700',
     icon: <Clock size={14} />
   },
-  breached: { 
-    bg: 'rgba(239, 68, 68, 0.15)', 
+  breached: {
+    bg: 'rgba(239, 68, 68, 0.15)',
     text: '#EF4444',
     icon: <AlertTriangle size={14} />
   }
@@ -78,10 +78,10 @@ interface SlaStatusBadgeProps {
 /**
  * SLA Status Badge - SLA 状态标签
  */
-export const SlaStatusBadge: React.FC<SlaStatusBadgeProps> = ({ 
-  slaStatus, 
+export const SlaStatusBadge: React.FC<SlaStatusBadgeProps> = ({
+  slaStatus,
   slaDueAt,
-  showTimer = false 
+  showTimer = false
 }) => {
   const [remainingText, setRemainingText] = useState<string>('');
   const config = SLA_STATUS_COLORS[slaStatus] || SLA_STATUS_COLORS.normal;
@@ -154,11 +154,11 @@ interface SlaTimerProps {
 /**
  * SLA Timer - 实时倒计时组件
  */
-export const SlaTimer: React.FC<SlaTimerProps> = ({ 
-  slaDueAt, 
-  slaStatus, 
+export const SlaTimer: React.FC<SlaTimerProps> = ({
+  slaDueAt,
+  slaStatus,
   priority,
-  showLabel = true 
+  showLabel = true
 }) => {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [percentage, setPercentage] = useState<number>(100);
@@ -207,9 +207,9 @@ export const SlaTimer: React.FC<SlaTimerProps> = ({
         <span className="sla-timer-value">{timeRemaining}</span>
       </div>
       <div className="sla-timer-bar">
-        <div 
+        <div
           className="sla-timer-fill"
-          style={{ 
+          style={{
             width: `${percentage}%`,
             background: statusColor
           }}
@@ -279,7 +279,8 @@ const NODE_LABELS: Record<string, string> = {
   op_receiving: 'OP 收货',
   op_diagnosing: 'OP 诊断',
   op_repairing: 'OP 维修',
-  op_qa: 'OP 质检',
+  op_shipping: 'OP 发货',
+  op_qa: 'OP 发货',
   ms_closing: 'MS 结案',
   ge_review: 'GE 审核',
   dl_receiving: 'DL 收货',

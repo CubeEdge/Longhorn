@@ -52,7 +52,7 @@ echo "🚀 Deploying Longhorn to $SERVER_HOST..."
 # Server Sync (Backend) - Always rsync
 # ------------------------------------------
 log "📤 Syncing Server Code (Backend)..."
-rsync -avzc --delete \
+rsync -avc --delete \
     --exclude='node_modules' \
     --exclude='.env' \
     --exclude='*.db*' \
@@ -77,7 +77,7 @@ if [ "$FAST_MODE" = true ]; then
     cd ..
     
     log "📤 Syncing dist to server..."
-    rsync -avz --delete client/dist/ $SERVER_HOST:$REMOTE_PATH/client/dist/ || error "Dist sync failed"
+    rsync -av --delete client/dist/ $SERVER_HOST:$REMOTE_PATH/client/dist/ || error "Dist sync failed"
     
     log "🔄 Restarting server..."
     ssh -t $SERVER_HOST "/bin/zsh -l -c \"
