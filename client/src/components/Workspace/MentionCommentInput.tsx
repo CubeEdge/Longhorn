@@ -265,7 +265,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
         if (loading || (!content.trim() && attachments.length === 0)) return;
         const finalMentions = mentions.filter(id => {
             const u = users.find(x => x.id === id);
-            return u && content.includes(`@${u.name}`);
+            return u && content.toLowerCase().includes(`@${u.name.toLowerCase()}`);
         });
 
         try {

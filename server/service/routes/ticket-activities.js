@@ -34,10 +34,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 // @[name](user_id) format
                 mentions.push({ user_id: parseInt(match[2]), name: match[1] });
             } else if (match[3]) {
-                // @username format - look up by username or display_name
+                // @username format - look up by username or display_name case-insensitively
+                const usernameInput = match[3].toLowerCase();
                 const user = db.prepare(
-                    'SELECT id, COALESCE(display_name, username) as name FROM users WHERE username = ? OR display_name = ?'
-                ).get(match[3], match[3]);
+                    'SELECT id, COALESCE(display_name, username) as name FROM users WHERE LOWER(username) = ? OR LOWER(display_name) = ?'
+                ).get(usernameInput, usernameInput);
                 if (user) {
                     mentions.push({ user_id: user.id, name: user.name });
                 }
