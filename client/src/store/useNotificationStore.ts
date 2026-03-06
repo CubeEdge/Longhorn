@@ -1,8 +1,11 @@
 /**
  * Notification Store (通知状态管理)
  * P2 架构升级 - 通知中心
+ * 
+ * 使用 axios 进行 API 调用，确保 Bearer token 认证
  */
 import { create } from 'zustand';
+import axios from 'axios';
 
 export interface Notification {
   id: number;
@@ -45,6 +48,12 @@ interface NotificationStore {
 
 const API_BASE = '/api/v1';
 
+/** Helper: get auth headers from localStorage token */
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   notifications: [],
   unreadCount: 0,
@@ -61,9 +70,8 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   
   markAsRead: async (id) => {
     try {
-      await fetch(`${API_BASE}/notifications/${id}/read`, {
-        method: 'PATCH',
-        credentials: 'include'
+      await axios.patch(`${API_BASE}/notifications/${id}/read`, {}, {
+        headers: getAuthHeaders()
       });
       
       set((state) => ({
@@ -79,9 +87,8 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   
   markAllAsRead: async () => {
     try {
-      await fetch(`${API_BASE}/notifications/read-all`, {
-        method: 'PATCH',
-        credentials: 'include'
+      await axios.patch(`${API_BASE}/notifications/read-all`, {}, {
+        headers: getAuthHeaders()
       });
       
       set((state) => ({
@@ -107,13 +114,12 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   fetchNotifications: async () => {
     set({ isLoading: true });
     try {
-      const response = await fetch(`${API_BASE}/notifications?page_size=50`, {
-        credentials: 'include'
+      const res = await axios.get(`${API_BASE}/notifications?page_size=50`, {
+        headers: getAuthHeaders()
       });
-      const result = await response.json();
       
-      if (result.success) {
-        set({ notifications: result.data });
+      if (res.data.success) {
+        set({ notifications: res.data.data });
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
@@ -124,19 +130,18 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   
   fetchUnreadCount: async () => {
     try {
-      const response = await fetch(`${API_BASE}/notifications/unread-count`, {
-        credentials: 'include'
+      const res = await axios.get(`${API_BASE}/notifications/unread-count`, {
+        headers: getAuthHeaders()
       });
-      const result = await response.json();
       
-      if (result.success) {
+      if (res.data.success) {
         set({
-          unreadCount: result.data.total,
-          unreadByType: result.data.by_type || {}
+          unreadCount: res.data.total ?? res.data.data?.total ?? 0,
+          unreadByType: res.data.data?.by_type || {}
         });
       }
     } catch (err) {
-      console.error('Failed to fetch unread count:', err);
+      // Silently fail for polling — avoid console spam
     }
   }
 }));

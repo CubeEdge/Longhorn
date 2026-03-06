@@ -227,8 +227,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
       markAsRead(notification.id);
     }
     if (notification.action_url) {
-      // Navigate to the action URL
-      window.location.href = notification.action_url;
+      // Use hash navigation to stay within the SPA (no full page reload)
+      window.location.hash = notification.action_url;
     }
     closePanel();
   };

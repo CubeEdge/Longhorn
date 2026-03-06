@@ -396,7 +396,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     padding: '8px 0',
                     maxHeight: 400,
                     overflowY: 'auto',
-                    zIndex: 1000,
+                    zIndex: 9999,
                     minWidth: 260, maxWidth: 320,
                 }}>
                     {mentionGroups.map(group => (
