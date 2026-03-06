@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { ChevronDown, Search, Loader2, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Search, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 interface UserOption {
     id: number;
@@ -16,6 +16,8 @@ interface AssigneeSelectorProps {
     currentAssigneeId?: number | null;
     currentAssigneeName?: string | null;
     currentAssigneeDept?: string | null;
+    currentNode: string;
+    ticketType: string;
     onUpdate: () => void;
 }
 
@@ -24,6 +26,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
     currentAssigneeId,
     currentAssigneeName,
     currentAssigneeDept,
+    currentNode,
     onUpdate
 }) => {
     const { token, user: authUser } = useAuthStore();
@@ -31,6 +34,12 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
     const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; targetUser: UserOption | null; reason: string; countdown: number }>({
+        isOpen: false,
+        targetUser: null,
+        reason: '',
+        countdown: 5
+    });
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Normalize department name to code for comparison
@@ -51,8 +60,6 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
     };
 
     const isAdmin = authUser?.role === 'Admin' || authUser?.role === 'Exec';
-    const isLead = authUser?.role === 'Lead';
-    const myDeptCode = getDeptCode(authUser?.department_code || authUser?.department_name);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -87,19 +94,40 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         return () => document.removeEventListener('mousedown', handler);
     }, [isOpen]);
 
-    const handleAssign = async (userId: number, userName: string) => {
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        if (confirmModal.isOpen && confirmModal.countdown > 0) {
+            timer = setTimeout(() => {
+                setConfirmModal(prev => ({ ...prev, countdown: prev.countdown - 1 }));
+            }, 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [confirmModal.isOpen, confirmModal.countdown]);
+
+    const handlePreAssign = (u: UserOption) => {
+        setIsOpen(false);
+        setConfirmModal({
+            isOpen: true,
+            targetUser: u,
+            reason: '',
+            countdown: 5
+        });
+    };
+
+    const handleConfirmAssign = async () => {
+        if (!confirmModal.targetUser || confirmModal.countdown > 0) return;
         try {
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
-                assigned_to: userId,
-                change_reason: `指派给 ${userName} 处理`
+                assigned_to: confirmModal.targetUser.id,
+                change_reason: `指派流转: 指派给 ${confirmModal.targetUser.name}。理由: ${confirmModal.reason}`
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             onUpdate();
-            setIsOpen(false);
+            setConfirmModal({ isOpen: false, targetUser: null, reason: '', countdown: 5 });
             setSearchQuery('');
-        } catch (e) {
-            console.error('Assignment failed', e);
+        } catch (e: any) {
+            alert(e.response?.data?.error || '配置指派人失败');
         }
     };
 
@@ -107,11 +135,24 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         const query = searchQuery.toLowerCase();
         let filteredUsers = users;
 
-        // Requirement 1: Leads can only assign to their own department members
-        if (isLead && !isAdmin && myDeptCode) {
+        // Requirement: Only show users of the target department computed from currentNode
+        const getTargetDeptCode = (node: string) => {
+            if (!node) return null;
+            const n = node.toLowerCase();
+            if (n.startsWith('ms_')) return 'MS';
+            if (n.startsWith('op_')) return 'OP';
+            if (n.startsWith('ge_')) return 'GE';
+            if (['draft', 'open', 'waiting', 'resolved', 'closed'].includes(n)) return 'MS';
+            if (['submitted', 'shipped'].includes(n)) return 'OP';
+            return null;
+        };
+
+        const targetDeptCode = getTargetDeptCode(currentNode);
+
+        if (targetDeptCode && !isAdmin) {
             filteredUsers = users.filter(u => {
                 const uDeptCode = getDeptCode(u.department_name || u.department);
-                return uDeptCode === myDeptCode;
+                return uDeptCode === targetDeptCode;
             });
         }
 
@@ -207,7 +248,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                                 {usrs.map(u => (
                                     <button
                                         key={u.id}
-                                        onClick={() => handleAssign(u.id, u.name)}
+                                        onClick={() => handlePreAssign(u)}
                                         style={{
                                             width: '100%', textAlign: 'left', padding: '6px 16px', border: 'none',
                                             background: currentAssigneeId === u.id ? 'rgba(59,130,246,0.15)' : 'transparent',
@@ -232,6 +273,63 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                                 无匹配人员
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {confirmModal.isOpen && confirmModal.targetUser && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
+                    zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{
+                        background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 12, width: 400, overflow: 'hidden',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10, alignItems: 'center', background: 'rgba(255, 215, 0, 0.1)' }}>
+                            <ShieldAlert size={20} color="#FFD700" />
+                            <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>核心操作转移球权</h3>
+                        </div>
+                        <div style={{ padding: '20px' }}>
+                            <p style={{ fontSize: 14, color: '#ddd', marginBottom: 16, lineHeight: 1.5 }}>
+                                将工单 <span style={{ color: '#3B82F6', fontWeight: 600 }}>重新指派</span> 给：<br />
+                                <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>[{getDeptCode(confirmModal.targetUser.department_name || confirmModal.targetUser.department)}] {confirmModal.targetUser.name}</span>
+                            </p>
+                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>变更理由 (必填项)</label>
+                            <textarea
+                                value={confirmModal.reason}
+                                onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
+                                placeholder="输入为什么修改指派人..."
+                                style={{
+                                    width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.3)',
+                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical'
+                                }}
+                            />
+                        </div>
+                        <div style={{ padding: '16px 20px', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: 12 }}>
+                            <button
+                                onClick={() => setConfirmModal({ isOpen: false, targetUser: null, reason: '', countdown: 5 })}
+                                style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleConfirmAssign}
+                                disabled={!confirmModal.reason.trim() || confirmModal.countdown > 0}
+                                style={{
+                                    flex: 1.5, padding: '10px',
+                                    background: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'rgba(255,215,0,0.3)' : '#FFD700',
+                                    border: 'none', color: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? '#aaa' : '#000', borderRadius: 8, fontWeight: 700,
+                                    cursor: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'not-allowed' : 'pointer',
+                                    fontSize: 14, transition: 'all 0.2s',
+                                    boxShadow: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'none' : '0 4px 15px rgba(255,215,0,0.25)'
+                                }}
+                            >
+                                {confirmModal.countdown > 0 ? `确认指派 (${confirmModal.countdown}s)` : '确认指派'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

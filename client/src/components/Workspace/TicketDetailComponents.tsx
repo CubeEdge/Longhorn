@@ -334,7 +334,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
             const color = getTypeColor(activity.activity_type);
             const isFieldUpdate = activity.activity_type === 'field_update';
             const actorName = activity.actor?.name || '系统';
-            const timeStr = formatFullDateTime(activity.created_at).split(' ')[1]; // HH:mm
+            const formattedDate = formatFullDateTime(activity.created_at);
 
             return (
               <div
@@ -355,8 +355,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
               >
                 {/* Meta: Time & Icon */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
-                  <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '40px' }}>
-                    {timeStr}
+                  <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '40px', whiteSpace: 'nowrap' }}>
+                    {formattedDate}
                   </span>
                   <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
                     {getTypeIcon(activity.activity_type)}

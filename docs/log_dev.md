@@ -1,5 +1,12 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-06] 版本版本迭代与流水线部署 (v12.3.82)
+### Infrastructure
+- 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.82 / `server` v1.7.70。
+- 物理清理并重新构建 `client` 前端资产，确保生产环境产物一致性。
+- 调用 `./scripts/deploy.sh` (Fast Mode) 同步 `dist` 及后端代码至远程服务器 `mini`。
+- 自动化执行 `pm2 reload`，验证生产环境成功加载最新版号。
+
 ## [2026-03-05] 工单评论侧滑详情与全能预览系统实装 (v12.3.50)
 ### Frontend
 - **核心组件设计 (ActivityDetailDrawer)**:

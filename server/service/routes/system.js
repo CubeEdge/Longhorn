@@ -22,7 +22,8 @@ module.exports = function (db, authenticate) {
                 data: {
                     system_name: settings?.system_name || 'Longhorn System',
                     ai_search_history_limit: parseInt(settings?.ai_search_history_limit) || 10,
-                    show_daily_word: Boolean(settings?.show_daily_word)
+                    show_daily_word: Boolean(settings?.show_daily_word),
+                    notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30
                 }
             });
         } catch (err) {

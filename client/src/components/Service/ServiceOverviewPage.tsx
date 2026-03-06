@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown,
-  Users, RefreshCw, ChevronRight, Loader2, Zap
+  Users, RefreshCw, ChevronRight, Loader2, Zap, PackageOpen
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -19,6 +19,7 @@ import { DispatchRulesDrawer } from './DispatchRulesDrawer';
 
 interface DashboardStats {
   total_open: number;
+  unassigned_count: number;
   total_closed_today: number;
   avg_response_time: number;
   sla_breach_rate: number;
@@ -80,6 +81,7 @@ const ServiceOverviewPage: React.FC = () => {
 
       setStats({
         total_open: data.total_open,
+        unassigned_count: data.unassigned_count || 0,
         total_closed_today: data.total_closed_today,
         avg_response_time: data.avg_response_time,
         sla_breach_rate: data.sla_breach_rate,
@@ -156,7 +158,18 @@ const ServiceOverviewPage: React.FC = () => {
       </div>
 
       {/* Action Zone - PRD Section A.1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+        {/* Unassigned Card - NEW */}
+        <ActionCard
+          title={t('overview.unassigned') || "待分配"}
+          subtitle={t('overview.unassigned_sub') || "Unassigned"}
+          value={stats?.unassigned_count || 0}
+          icon={PackageOpen}
+          color="#F59E0B"
+          onClick={() => navigate(`/service/team-hub?assignee=0`)}
+          alert={(stats?.unassigned_count || 0) > 0}
+        />
+
         {/* Approvals Card */}
         <ActionCard
           title={t('overview.approvals') || "待审批"}
@@ -164,7 +177,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={approvalCount}
           icon={CheckCircle}
           color="#10B981"
-          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all&node=ms_review,ge_review')}
+          onClick={() => navigate('/service/team-hub?assignee=all&node=ms_review,ge_review')}
         />
 
         {/* Risks Card */}
@@ -174,7 +187,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={riskTickets.length}
           icon={AlertTriangle}
           color="#EF4444"
-          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all&sla_status=warning,breached')}
+          onClick={() => navigate('/service/team-hub?assignee=all&sla_status=warning,breached')}
           alert={riskTickets.length > 0}
         />
 
@@ -185,7 +198,7 @@ const ServiceOverviewPage: React.FC = () => {
           value={stats?.total_open || 0}
           icon={Clock}
           color="#3B82F6"
-          onClick={() => navigate('/service/workspace?view=team-hub&assignee=all')}
+          onClick={() => navigate('/service/team-hub?assignee=all')}
         />
 
         {/* Closed Today */}
@@ -384,7 +397,7 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
 
   return (
     <div
-      onClick={() => navigate(`/service/workspace?view=team-hub&assignee=${member.id}`)}
+      onClick={() => navigate(`/service/team-hub?assignee=${member.id}`)}
       style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0', transition: 'opacity 0.2s' }}
       onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
       onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}

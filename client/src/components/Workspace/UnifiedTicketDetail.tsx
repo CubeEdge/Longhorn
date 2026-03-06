@@ -72,11 +72,13 @@ interface Props {
 // 节点主动作映射 (ticket_type → current_node → action object)
 const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_en: string; action: string }>> = {
     rma: {
+        submitted: { label_zh: '确认收货入库', label_en: 'Confirm Receipt', action: 'receive' },
         op_receiving: { label_zh: '确认收货入库', label_en: 'Confirm Receipt', action: 'receive' },
         op_diagnosing: { label_zh: '提交诊断报告', label_en: 'Submit Diagnosis', action: 'diagnose' },
         ms_review: { label_zh: '审核报价方案', label_en: 'Approve Quote', action: 'commercial_approve' },
         op_repairing: { label_zh: '标记维修完成', label_en: 'Complete Repair', action: 'repair_complete' },
-        ms_closing: { label_zh: '确认收款', label_en: 'Confirm Payment', action: 'settle' },
+        ms_closing: { label_zh: '最终确认', label_en: 'Final Confirm', action: 'settle' },
+        ge_review: { label_zh: '财务确认收款', label_en: 'Confirm Payment', action: 'finance_approve' },
         op_shipping: { label_zh: '打包发货并结案', label_en: 'Ship & Close', action: 'close' },
         waiting_customer: { label_zh: '客户已付款', label_en: 'Customer Paid', action: 'paid' },
     },
@@ -185,7 +187,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         // RD 节点
         rd_consulting: 'RD', rd_resolved: 'RD',
     };
-    const nodeOwnerDept = ticket ? (NODE_DEPT_MAP[ticket.current_node] || '') : '';
+    const nodeOwnerDept = ticket ? (
+        (ticket.current_node === 'submitted' && ticket.ticket_type.toLowerCase() === 'rma')
+            ? 'OP'
+            : (NODE_DEPT_MAP[ticket.current_node] || '')
+    ) : '';
     // !! 空值守卫：nodeOwnerDept 为空时禁止任何人通过 isDeptLead 匹配（防止 '' === '' 误判）
     const isDeptLead = !!nodeOwnerDept && actingUser.role === 'Lead' && actingDeptNorm === nodeOwnerDept;
     const isDeptMember = !!nodeOwnerDept && actingDeptNorm === nodeOwnerDept;
@@ -537,20 +543,37 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
         // Simple transition logic for MVP
         if (type === 'rma') {
-            const rmaFlow = ['op_receiving', 'op_diagnosing', 'ms_review', 'op_repairing', 'ms_closing', 'op_shipping', 'resolved'];
-            const idx = rmaFlow.indexOf(ticket.current_node);
-            if (idx >= 0 && idx < rmaFlow.length - 1) nextNode = rmaFlow[idx + 1];
+            const rmaFlow = ['submitted', 'op_receiving', 'op_diagnosing', 'ms_review', 'op_repairing', 'ms_closing', 'op_shipping', 'resolved'];
+            let idx = rmaFlow.indexOf(ticket.current_node);
+            if (ticket.current_node === 'submitted' || ticket.current_node === 'op_receiving') {
+                nextNode = 'op_diagnosing';
+            } else if (idx >= 0 && idx < rmaFlow.length - 1) {
+                nextNode = rmaFlow[idx + 1];
+            }
+
+            // High-priority override for finance flow
+            if (ticket.current_node === 'ms_closing' && Number(ticket.is_warranty) === 0 && (!ticket.payment_amount || Number(ticket.payment_amount) === 0)) {
+                nextNode = 'ge_review';
+            }
+            if (ticket.current_node === 'ge_review') {
+                nextNode = 'ms_closing';
+            }
         } else if (type === 'inquiry') {
             if (ticket.current_node === 'open') nextNode = 'waiting';
             else if (ticket.current_node === 'waiting') nextNode = 'open';
         }
 
         // Check if we need to open Buffer Modal instead of direct patch
-        const mandatoryNodes = ['op_repairing', 'op_shipping', 'ms_review', 'ms_closing'];
+        const mandatoryNodes = ['op_receiving', 'submitted', 'op_repairing', 'op_shipping', 'ms_review', 'ms_closing', 'ge_review'];
         if (mandatoryNodes.includes(ticket.current_node)) {
             // For ms_review and ms_closing, only mandatory if NOT warranty
-            if (['ms_review', 'ms_closing'].includes(ticket.current_node) && ticket.is_warranty) {
+            if (['ms_review'].includes(ticket.current_node) && ticket.is_warranty) {
                 // Keep direct patch for warranty
+            } else if (ticket.current_node === 'ms_closing' && ticket.is_warranty) {
+                // For ms_closing, warranty means we still want a confirmation to push to OP Shipping cleanly
+                setActionBufferTarget({ nextNode, label: actionLabel });
+                setIsActionBufferModalOpen(true);
+                return;
             } else {
                 setActionBufferTarget({ nextNode, label: actionLabel });
                 setIsActionBufferModalOpen(true);
@@ -760,6 +783,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             currentAssigneeId={ticket.assigned_to as number | null}
                                             currentAssigneeName={ticket.assigned_name}
                                             currentAssigneeDept={ticket.assigned_dept}
+                                            currentNode={ticket.current_node}
+                                            ticketType={ticket.ticket_type}
                                             onUpdate={fetchDetail}
                                         />
                                     ) : (
@@ -874,6 +899,84 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     }}>
                         <MentionCommentInput onSubmit={handleAddComment} />
                     </div>
+
+                    {/* Sticky Action Bar (Bottom) - Fixed at the bottom of the left column area */}
+                    {canExecuteAction && (
+                        <div style={{
+                            position: 'sticky',
+                            bottom: 0,
+                            margin: '24px 0 -24px 0',
+                            padding: '12px 24px',
+                            background: 'rgba(28, 28, 30, 0.8)',
+                            backdropFilter: 'blur(20px)',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                            boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            zIndex: 100,
+                            borderRadius: '12px 12px 0 0', // Optional: rounded top corners since it's now inside
+                        }}>
+                            {/* Left side: Node Info */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6', boxShadow: '0 0 10px rgba(59,130,246,0.6)' }} />
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: 1 }}>当前节点</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e0e0' }}>
+                                        {ticket.current_node} · 负责人: {ticket.assigned_name || '未指派'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right side: Primary Action */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                {!isAssignedToActingUser && (isGlobalAdmin || isDeptLead) && (
+                                    <span style={{ fontSize: 12, color: '#888', fontStyle: 'italic' }}>
+                                        (作为主管代理执行)
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (footerAction) {
+                                            if (ticket.current_node === 'op_diagnosing') {
+                                                setIsDiagnosticModalOpen(true);
+                                            } else {
+                                                handleAction(footerAction.action);
+                                            }
+                                        }
+                                    }}
+                                    disabled={loading || !footerAction}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '10px 24px',
+                                        borderRadius: 10,
+                                        background: isAssignedToActingUser ? '#FFD700' : 'rgba(255,215,0,0.15)',
+                                        color: isAssignedToActingUser ? '#000' : '#FFD700',
+                                        border: isAssignedToActingUser ? 'none' : '1px solid rgba(255,215,0,0.4)',
+                                        fontSize: 14,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        boxShadow: isAssignedToActingUser ? '0 4px 15px rgba(255,215,0,0.25)' : 'none'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#ffdf33';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'none';
+                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD700';
+                                    }}
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
+                                    {footerAction ? (lang === 'zh' ? footerAction.label_zh : footerAction.label_en) : '未知操作'}
+                                    {isAssignedToActingUser ? '' : ' (强制)'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ====== RIGHT COLUMN (Context) ====== */}
@@ -903,83 +1006,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 </div>
             </div>
 
-            {/* Sticky Action Bar (Bottom) - Fixed at the bottom of the content area */}
-            {canExecuteAction && (
-                <div style={{
-                    position: 'sticky',
-                    bottom: 0,
-                    margin: '24px 0 -24px 0', // Bottom margin negative to match container, horizontal 0
-                    padding: '12px 24px',
-                    background: 'rgba(28, 28, 30, 0.8)',
-                    backdropFilter: 'blur(20px)',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    zIndex: 100
-                }}>
-                    {/* Left side: Node Info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6', boxShadow: '0 0 10px rgba(59,130,246,0.6)' }} />
-                        <div>
-                            <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: 1 }}>当前节点</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e0e0' }}>
-                                {ticket.current_node} · 负责人: {ticket.assigned_name || '未指派'}
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Right side: Primary Action */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        {!isAssignedToActingUser && (isGlobalAdmin || isDeptLead) && (
-                            <span style={{ fontSize: 12, color: '#888', fontStyle: 'italic' }}>
-                                (作为主管代理执行)
-                            </span>
-                        )}
-                        <button
-                            onClick={() => {
-                                if (footerAction) {
-                                    if (ticket.current_node === 'op_diagnosing') {
-                                        setIsDiagnosticModalOpen(true);
-                                    } else {
-                                        handleAction(footerAction.action);
-                                    }
-                                }
-                            }}
-                            disabled={loading || !footerAction}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: '10px 24px',
-                                borderRadius: 10,
-                                // Priority Style: Bright Yellow for assignee, Dimmer or internal style for Lead override
-                                background: isAssignedToActingUser ? '#FFD700' : 'rgba(255,215,0,0.15)',
-                                color: isAssignedToActingUser ? '#000' : '#FFD700',
-                                border: isAssignedToActingUser ? 'none' : '1px solid rgba(255,215,0,0.4)',
-                                fontSize: 14,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: isAssignedToActingUser ? '0 4px 15px rgba(255,215,0,0.25)' : 'none'
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                if (isAssignedToActingUser) e.currentTarget.style.background = '#ffdf33';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'none';
-                                if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD700';
-                            }}
-                        >
-                            {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
-                            {footerAction ? (lang === 'zh' ? footerAction.label_zh : footerAction.label_en) : '未知操作'}
-                            {isAssignedToActingUser ? '' : ' (强制)'}
-                        </button>
-                    </div>
-                </div>
-            )}
             {
                 isEditing && (
                     <div style={{

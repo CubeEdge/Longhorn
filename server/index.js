@@ -316,6 +316,7 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_prompts TEXT").run()
 try { db.prepare("ALTER TABLE inquiry_tickets ADD COLUMN knowledge_article_id INTEGER REFERENCES knowledge_articles(id)").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_search_history_limit INTEGER DEFAULT 10").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN show_daily_word BOOLEAN DEFAULT 0").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN notification_refresh_interval INTEGER DEFAULT 30").run(); } catch (e) { }
 
 // [DEPRECATED] Migration: customers table extra columns
 // customers 表已废弃，以下迁移代码保留仅作为历史参考

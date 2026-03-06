@@ -45,6 +45,7 @@ module.exports = (db, authenticate, backupService) => {
                 // Normalize Primary Backup Settings
                 settings.ai_search_history_limit = parseInt(settings.ai_search_history_limit) || 10;
                 settings.show_daily_word = Boolean(settings.show_daily_word);
+                settings.notification_refresh_interval = parseInt(settings.notification_refresh_interval) || 30;
                 settings.backup_enabled = Boolean(settings.backup_enabled);
                 settings.backup_frequency = parseInt(settings.backup_frequency) || 180;
                 settings.backup_retention_days = parseInt(settings.backup_retention_days) || 7;
@@ -104,6 +105,7 @@ module.exports = (db, authenticate, backupService) => {
                         ai_prompts = @ai_prompts,
                         ai_search_history_limit = @ai_search_history_limit,
                         show_daily_word = @show_daily_word,
+                        notification_refresh_interval = @notification_refresh_interval,
 
                         system_name = @system_name,
                         backup_enabled = @backup_enabled,
@@ -124,6 +126,7 @@ module.exports = (db, authenticate, backupService) => {
                     ai_prompts: aiPrompts,
                     ai_search_history_limit: Math.max(1, Math.min(30, parseInt(settings.ai_search_history_limit) || 10)),
                     show_daily_word: settings.show_daily_word ? 1 : 0,
+                    notification_refresh_interval: Math.max(5, Math.min(300, parseInt(settings.notification_refresh_interval) || 30)),
                     backup_enabled: settings.backup_enabled ? 1 : 0,
                     backup_frequency: parseInt(settings.backup_frequency) || 180,
                     backup_retention_days: parseInt(settings.backup_retention_days) || 7,

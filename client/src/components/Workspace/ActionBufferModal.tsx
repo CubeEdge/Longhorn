@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2 } from 'lucide-react';
+import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -16,8 +16,9 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     const { token } = useAuthStore();
     const [submitting, setSubmitting] = useState(false);
 
-    // Form states
     const [formData, setFormData] = useState<any>({});
+    const [attachments, setAttachments] = useState<File[]>([]);
+    const [snDiffers, setSnDiffers] = useState(false);
 
     if (!isOpen) return null;
 
@@ -102,11 +103,43 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             );
         }
 
-        if (currentNode === 'ms_closing' && !ticket.is_warranty) {
+        if (currentNode === 'ms_closing') {
+            const isFirstClosing = Number(ticket.is_warranty) === 0 && (!ticket.payment_amount || Number(ticket.payment_amount) === 0);
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(59,130,246,0.05)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.1)' }}>
+                        <CreditCard size={18} color="#3B82F6" />
+                        <span style={{ fontSize: 13, color: '#ddd' }}>
+                            {ticket.is_warranty
+                                ? "此单为【保修内免费】，请确认客户信息无误后，准予发货。"
+                                : (isFirstClosing
+                                    ? "此单为【过保付费】，请确认客户已提供支付水单/截图，点击提交转交财务核款。"
+                                    : "财务已确认收到款项，请执行最终审核，准予发货。")}
+                        </span>
+                    </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>本次实收金额 (¥)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>补充声明/备注 (选填)</label>
+                        <textarea
+                            value={formData.closing_comment || ''}
+                            onChange={e => setFormData({ ...formData, closing_comment: e.target.value })}
+                            placeholder="如：客户收件地址已更新..."
+                            style={inputStyle}
+                            rows={3}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        if (currentNode === 'ge_review') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(16,185,129,0.05)', borderRadius: 10, border: '1px solid rgba(16,185,129,0.1)' }}>
+                        <ShieldAlert size={18} color="#10B981" />
+                        <span style={{ fontSize: 13, color: '#ddd' }}>财务核审：请核对银行/第三方平台对应流水，认领并确认到账。</span>
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>本次实收金额 (¥) (必填)</label>
                         <input
                             type="number"
                             value={formData.paid_amount || ''}
@@ -126,7 +159,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>收款渠道</label>
+                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>收款渠道 (必选)</label>
                             <select
                                 value={formData.payment_channel || ''}
                                 onChange={e => setFormData({ ...formData, payment_channel: e.target.value })}
@@ -139,6 +172,68 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                                 <option value="cash">现金</option>
                                 <option value="offset">对冲/其他</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (currentNode === 'op_receiving' || currentNode === 'submitted') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(255,255,0,0.05)', borderRadius: 10, border: '1px solid rgba(255,255,0,0.1)' }}>
+                        <AlertCircle size={16} color="#FFD700" />
+                        <span style={{ fontSize: 13, color: '#ddd' }}>[OP建议] 请确认实物无误并拍照留存。</span>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#aaa', marginBottom: 8, cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={snDiffers}
+                                onChange={e => setSnDiffers(e.target.checked)}
+                                style={{ accentColor: '#3B82F6' }}
+                            />
+                            实物序列号与报修不符？
+                        </label>
+                        {snDiffers && (
+                            <input
+                                type="text"
+                                value={formData.at_receipt_sn || ''}
+                                onChange={e => setFormData({ ...formData, at_receipt_sn: e.target.value })}
+                                placeholder="请输入正确的实物序列号 (必填)"
+                                style={{ ...inputStyle, borderColor: '#3B82F6', boxShadow: '0 0 0 2px rgba(59,130,246,0.1)' }}
+                            />
+                        )}
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>收货备注 / 问题初判 (可选)</label>
+                        <textarea
+                            value={formData.receipt_notes || ''}
+                            onChange={e => setFormData({ ...formData, receipt_notes: e.target.value })}
+                            placeholder="如：包装破损、缺少配件..."
+                            style={inputStyle}
+                            rows={2}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>上传开箱照片 (可选)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            <label style={{
+                                width: 50, height: 50, borderRadius: 8, border: '1px dashed rgba(255,255,255,0.2)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666'
+                            }}>
+                                <Camera size={20} />
+                                <input type="file" multiple onChange={e => e.target.files && setAttachments(prev => [...prev, ...Array.from(e.target.files!)])} style={{ display: 'none' }} />
+                            </label>
+                            {attachments.map((_, i) => (
+                                <div key={i} style={{ width: 50, height: 50, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                    <Paperclip size={16} color="#aaa" />
+                                    <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', border: 'none', borderRadius: '50%', width: 16, height: 16, color: '#fff', fontSize: 10, cursor: 'pointer' }}>×</button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -158,8 +253,14 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
         if (currentNode === 'ms_review' && !ticket.is_warranty) {
             return formData.quote_reference?.trim();
         }
-        if (currentNode === 'ms_closing' && !ticket.is_warranty) {
+        if (currentNode === 'ms_closing') {
+            return true; // Simple confirmation
+        }
+        if (currentNode === 'ge_review') {
             return formData.paid_amount && formData.payment_channel;
+        }
+        if ((currentNode === 'op_receiving' || currentNode === 'submitted') && snDiffers) {
+            return !!formData.at_receipt_sn?.trim();
         }
         return true;
     };
@@ -179,12 +280,16 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             } else if (currentNode === 'op_shipping') {
                 logContent = `【发货物流录入】\n承运商：${formData.carrier}\n单号：${formData.tracking_number}`;
             } else if (currentNode === 'ms_review') {
-                logContent = `【批准维修】\n报价单/PI：${formData.quote_reference || '保修内单'}`;
+                logContent = `【批准维修】商业方案与报价已获客户确认`;
             } else if (currentNode === 'ms_closing') {
-                logContent = `【确认收款】\n金额：¥${formData.paid_amount}\n日期：${formData.payment_date}\n渠道：${formData.payment_channel}`;
+                logContent = `【结案确认】\n备注：${formData.closing_comment || '无'}`;
+            } else if (currentNode === 'ge_review') {
+                logContent = `【财务收款确认】财务部已核实并确认相关款项核销到账`;
+            } else if (currentNode === 'op_receiving' || currentNode === 'submitted') {
+                logContent = `【完成收货入库】${formData.at_receipt_sn ? `\n修正序列号：${formData.at_receipt_sn}` : ''}\n备注：${formData.receipt_notes || '无'}`;
             }
 
-            await axios.post(`/api/v1/tickets/${ticket.id}/activities`, {
+            const activityRes = await axios.post(`/api/v1/tickets/${ticket.id}/activities`, {
                 activity_type: 'comment',
                 content: logContent,
                 visibility: 'all',
@@ -195,7 +300,21 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                 }
             }, { headers: { Authorization: `Bearer ${token}` } });
 
-            // 2. Perform the actual transition
+            const activityId = activityRes.data.id;
+
+            // 2. Handle file uploads if any
+            if (attachments.length > 0) {
+                const formDataUpload = new FormData();
+                attachments.forEach(file => formDataUpload.append('files', file));
+                await axios.post(`/api/v1/tickets/${ticket.id}/attachments?activity_id=${activityId}`, formDataUpload, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+            }
+
+            // 3. Perform the actual transition
             // Update fields in the ticket record as well
             const patchData: any = {
                 current_node: nextNode,
@@ -209,7 +328,9 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             }
             if (currentNode === 'ms_closing') {
                 patchData.payment_amount = formData.paid_amount;
-                // Add more sync fields if backend supports them later
+            }
+            if ((currentNode === 'op_receiving' || currentNode === 'submitted') && snDiffers && formData.at_receipt_sn) {
+                patchData.serial_number = formData.at_receipt_sn;
             }
 
             await axios.patch(`/api/v1/tickets/${ticket.id}`, patchData, { headers: { Authorization: `Bearer ${token}` } });
@@ -226,7 +347,9 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     const getIcon = () => {
         if (currentNode === 'op_repairing') return <Wrench size={24} color="#3B82F6" />;
         if (currentNode === 'op_shipping') return <Truck size={24} color="#10B981" />;
-        if (currentNode === 'ms_closing') return <CreditCard size={24} color="#10B981" />;
+        if (currentNode === 'ms_closing') return <CreditCard size={24} color="#3B82F6" />;
+        if (currentNode === 'ge_review') return <ShieldCheck size={24} color="#10B981" />;
+        if (currentNode === 'op_receiving' || currentNode === 'submitted') return <PackageOpen size={24} color="#3B82F6" />;
         return <FileCheck size={24} color="#8B5CF6" />;
     };
 
@@ -270,14 +393,15 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                         onClick={handleSubmit}
                         disabled={submitting}
                         style={{
-                            padding: '10px 24px', background: currentNode === 'op_shipping' || currentNode === 'ms_closing' ? '#10B981' : '#3B82F6',
-                            border: 'none', color: '#fff', borderRadius: 8, fontWeight: 700,
+                            padding: '10px 24px', background: '#FFD700',
+                            border: 'none', color: '#000', borderRadius: 8, fontWeight: 700,
                             cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                            fontSize: 14, opacity: submitting ? 0.7 : 1
+                            fontSize: 14, opacity: submitting ? 0.7 : 1,
+                            boxShadow: '0 4px 15px rgba(255,215,0,0.25)'
                         }}
                     >
                         {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        提交并结案
+                        提交并推进至下个环节
                     </button>
                 </div>
             </div>

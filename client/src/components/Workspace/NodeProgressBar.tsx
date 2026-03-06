@@ -193,7 +193,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
             'op_shipping': 'OP',
             'op_qa': 'OP',
             'ms_closing': 'MS',
-            'submitted': 'MS',
+            'submitted': type === 'rma' ? 'OP' : 'MS',
             'draft': 'MS',
             'pending_ship': 'MS',
             'waiting_customer': 'MS'
@@ -221,9 +221,10 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                 gap: 0,
             }}>
                 {nodes.map((node, i) => {
-                    const isCompleted = i < effectiveIdx;
-                    const isCurrent = i === effectiveIdx;
-                    const isPending = i > effectiveIdx;
+                    const isTicketFinalized = ['resolved', 'closed', 'cancelled'].includes(currentNode);
+                    const isCompleted = isTicketFinalized ? true : i < effectiveIdx;
+                    const isCurrent = isTicketFinalized ? false : i === effectiveIdx;
+                    const isPending = isTicketFinalized ? false : i > effectiveIdx;
                     const label = NODE_LABELS[lang]?.[node.key] || node.key;
                     const displayDept = getDisplayDept(node, isCurrent);
 

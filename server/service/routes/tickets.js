@@ -137,51 +137,60 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // Find the department for this node
             let targetDept = null;
-            for (const [dept, nodes] of Object.entries(DEPARTMENT_NODES)) {
-                if (nodes.includes(nodeId)) {
-                    targetDept = dept;
-                    break;
+
+            // Priority: if node starts with department prefix, use that department
+            if (nodeId.startsWith('op_')) {
+                targetDept = 'OP';
+            } else if (nodeId.startsWith('ms_')) {
+                targetDept = 'MS';
+            } else if (nodeId.startsWith('ge_')) {
+                targetDept = 'GE';
+            } else if (nodeId.startsWith('rd_')) {
+                targetDept = 'RD';
+            } else {
+                // Generic fallback search
+                for (const [dept, nodes] of Object.entries(DEPARTMENT_NODES)) {
+                    if (nodes.includes(nodeId)) {
+                        targetDept = dept;
+                        break;
+                    }
                 }
             }
 
             if (!targetDept) return;
 
-            // 1. Get the department Info
-            const dept = db.prepare('SELECT id, auto_dispatch_enabled FROM departments WHERE code = ?').get(targetDept);
+            // 1. Get the department Info (code column stores 'OP', 'MS', etc.)
+            const dept = db.prepare('SELECT id, auto_dispatch_enabled, lead_id FROM departments WHERE code = ?').get(targetDept);
             if (!dept) return;
 
-            // 2. Respect global toggle
-            if (dept.auto_dispatch_enabled === 0) {
-                // If global dispatch is disabled, we might still want to clear assignee if moving to a NEW department
-                // to avoid cross-dept assignment "leaks", but we definitely DON'T auto-assign.
-                return;
+            // 2. Fetch dispatch rule ONLY IF auto_dispatch is ON
+
+            if (dept.auto_dispatch_enabled === 1) {
+                const rule = db.prepare(`
+                    SELECT default_assignee_id 
+                    FROM dispatch_rules 
+                    WHERE department_id = ? AND ticket_type = ? AND node_key = ? AND is_enabled = 1
+                `).get(dept.id, ticketType.toLowerCase(), nodeId);
+
+                if (rule && rule.default_assignee_id) {
+                    if (rule.default_assignee_id === -1) {
+                        const creator = db.prepare('SELECT submitted_by FROM tickets WHERE id = ?').get(id);
+                        if (creator && creator.submitted_by) {
+                            targetAssigneeId = creator.submitted_by;
+                            assignLogContent = `系统依据 [返回创建人] 规则自动指派给: {assigneeName}`;
+                        }
+                    } else {
+                        targetAssigneeId = rule.default_assignee_id;
+                        assignLogContent = `系统依据分发规则自动指派给: {assigneeName}`;
+                    }
+                }
             }
 
-            // Check if there's a dispatch rule for this node
-            const rule = db.prepare(`
-                SELECT default_assignee_id 
-                FROM dispatch_rules 
-                WHERE department_id = ? AND ticket_type = ? AND node_key = ? AND is_enabled = 1
-            `).get(dept.id, ticketType.toLowerCase(), nodeId);
-
-            if (rule && rule.default_assignee_id) {
-                if (rule.default_assignee_id === -1) {
-                    const creator = db.prepare('SELECT submitted_by FROM tickets WHERE id = ?').get(id);
-                    if (creator && creator.submitted_by) {
-                        targetAssigneeId = creator.submitted_by;
-                        assignLogContent = `系统依据 [返回创建人] 规则自动指派给: {assigneeName}`;
-                    }
-                } else {
-                    targetAssigneeId = rule.default_assignee_id;
-                    assignLogContent = `系统依据分发规则自动指派给: {assigneeName}`;
-                }
-            } else {
-                // FALLBACK LOGIC (no dispatch rule configured)
-                // Department-specific behavior per PRD:
+            // 3. FALLBACK LOGIC (Run if no rule matched OR auto_dispatch was OFF)
+            if (!targetAssigneeId) {
                 if (targetDept === 'OP') {
                     // OP: No rule → release to department pool (NULL assignee)
                     targetAssigneeId = null;
-                    assignLogContent = null; // will be handled by the else branch below
                 } else if (targetDept === 'MS') {
                     // MS: No rule → find last MS handler for this ticket
                     const lastDeptOwner = db.prepare(`
@@ -196,32 +205,55 @@ module.exports = function (db, authenticate, serviceUpload) {
                     if (lastDeptOwner) {
                         targetAssigneeId = lastDeptOwner.user_id;
                         assignLogContent = `系统依据 [返回本部门原处理人] 规则自动指派给: {assigneeName}`;
+                    } else if (dept.lead_id) {
+                        // MS Fallback 1: Department Lead
+                        targetAssigneeId = dept.lead_id;
+                        assignLogContent = `系统依据 [部门负责人] 防呆规则自动指派给: {assigneeName}`;
                     } else {
-                        // Fallback: submitted_by (original MS creator)
-                        const creator = db.prepare('SELECT submitted_by FROM tickets WHERE id = ?').get(id);
-                        if (creator && creator.submitted_by) {
+                        // MS Fallback 2: creator (only if they are in MS)
+                        const creator = db.prepare(`
+                            SELECT t.submitted_by, u.department_id 
+                            FROM tickets t 
+                            JOIN users u ON t.submitted_by = u.id 
+                            WHERE t.id = ?
+                        `).get(id);
+
+                        if (creator && creator.department_id === dept.id) {
                             targetAssigneeId = creator.submitted_by;
-                            assignLogContent = `系统依据 [返回创建人] 默认防呆规则自动指派给: {assigneeName}`;
+                            assignLogContent = `系统依据 [返回创建人] 防呆规则自动指派给: {assigneeName}`;
+                        } else {
+                            targetAssigneeId = null;
                         }
                     }
                 } else {
-                    // GE/RD: Fallback to submitted_by
-                    const creator = db.prepare('SELECT submitted_by FROM tickets WHERE id = ?').get(id);
-                    if (creator && creator.submitted_by) {
-                        targetAssigneeId = creator.submitted_by;
-                        assignLogContent = `系统依据 [返回创建人] 默认防呆规则自动指派给: {assigneeName}`;
+                    // GE/RD: Fallback to department Lead if exists
+                    if (dept.lead_id) {
+                        targetAssigneeId = dept.lead_id;
+                        assignLogContent = `系统依据 [部门负责人] 规则自动指派给: {assigneeName}`;
+                    } else {
+                        // Fallback: creator (only if they are in target dept)
+                        const creator = db.prepare(`
+                            SELECT t.submitted_by, u.department_id 
+                            FROM tickets t 
+                            JOIN users u ON t.submitted_by = u.id 
+                            WHERE t.id = ?
+                        `).get(id);
+
+                        if (creator && creator.department_id === dept.id) {
+                            targetAssigneeId = creator.submitted_by;
+                            assignLogContent = `系统依据 [返回创建人] 防呆规则自动指派给: {assigneeName}`;
+                        } else {
+                            targetAssigneeId = null;
+                        }
                     }
                 }
-            }
+            }     // 4. APPLY ASSIGNMENT OR CROSS-DEPT CLEARANCE
+            const now = new Date().toISOString();
+            const ticket = db.prepare('SELECT assigned_to FROM tickets WHERE id = ?').get(id);
+            const oldAssigneeId = ticket ? ticket.assigned_to : null;
 
             if (targetAssigneeId) {
-                const now = new Date().toISOString();
-
-                // Get old assignee for logging
-                const ticket = db.prepare('SELECT assigned_to FROM tickets WHERE id = ?').get(id);
-                const oldAssigneeId = ticket ? ticket.assigned_to : null;
-
-                // Perform assignment
+                // Apply the found assignee
                 db.prepare(`
                     UPDATE tickets SET 
                         assigned_to = ?, 
@@ -260,34 +292,70 @@ module.exports = function (db, authenticate, serviceUpload) {
                     UPDATE ticket_participants SET role = 'assignee' WHERE ticket_id = ? AND user_id = ?
                 `).run(id, targetAssigneeId);
 
+                // Send notification for auto-assignment
+                try {
+                    const ticketData = db.prepare('SELECT ticket_number FROM tickets WHERE id = ?').get(id);
+                    if (ticketData && targetAssigneeId !== actorId) {
+                        db.prepare(`
+                            INSERT INTO notifications (
+                                recipient_id, notification_type, title, content, icon,
+                                related_type, related_id, action_url, metadata, created_at
+                            ) VALUES (?, 'assignment', ?, ?, 'user', 'ticket', ?, ?, ?, ?)
+                        `).run(
+                            targetAssigneeId,
+                            `工单已自动指派给您`,
+                            `工单 ${ticketData.ticket_number}`,
+                            id,
+                            `/service/tickets/${id}`,
+                            JSON.stringify({ ticket_number: ticketData.ticket_number, is_auto: true }),
+                            now
+                        );
+                    }
+                } catch (e) {
+                    console.error('[Tickets] Auto-assignment notification error:', e.message);
+                }
+
                 console.log(`[Tickets] Ticket ${id} auto-assigned to ${targetAssigneeId} for node ${nodeId}`);
             } else {
-                // If no rule exists and no fallback, reset assignee to NULL (待认领)
+                // targetAssigneeId is null (no rule and no fallback found)
                 const now = new Date().toISOString();
-
-                // Get old assignee for logging
                 const ticket = db.prepare('SELECT assigned_to FROM tickets WHERE id = ?').get(id);
                 const oldAssigneeId = ticket ? ticket.assigned_to : null;
 
-                // Perform clear
-                db.prepare(`
-                    UPDATE tickets SET 
-                        assigned_to = NULL, 
-                        updated_at = ?
-                    WHERE id = ? AND assigned_to IS NOT NULL
-                `).run(now, id);
-
-                // Add activity for unassignment
                 if (oldAssigneeId) {
-                    db.prepare(`
-                        INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
-                        VALUES (?, 'assignment_change', ?, ?, ?, 'System', 'Automation', 'all')
-                    `).run(
-                        id,
-                        '系统自动释出工单 (变更为待认领)',
-                        JSON.stringify({ from_user_id: oldAssigneeId, to_user_id: null, is_auto: true }),
-                        actorId
-                    );
+                    const currentAssignee = db.prepare('SELECT department_id FROM users WHERE id = ?').get(oldAssigneeId);
+
+                    const isCrossDept = currentAssignee && currentAssignee.department_id !== dept.id;
+                    const shouldClear = isCrossDept || (dept.auto_dispatch_enabled === 1 && targetDept === 'OP');
+
+                    if (shouldClear) {
+                        const oldUser = db.prepare('SELECT display_name, username FROM users WHERE id = ?').get(oldAssigneeId);
+                        const oldName = oldUser ? (oldUser.display_name || oldUser.username) : '原负责人';
+                        const reasonDisplay = isCrossDept
+                            ? `[跨部门流转] 原负责人 "${oldName}" 不属于当前节点部门，工单已自动进入待分配池`
+                            : '系统由于匹配不到分发规则，自动释出工单 (变更为待认领)';
+
+                        db.prepare(`
+                            UPDATE tickets SET 
+                                assigned_to = NULL, 
+                                updated_at = ?
+                            WHERE id = ?
+                        `).run(now, id);
+
+                        db.prepare(`
+                            INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                            VALUES (?, 'assignment_change', ?, ?, ?, 'System', 'Automation', 'all')
+                        `).run(
+                            id,
+                            reasonDisplay,
+                            JSON.stringify({ from_user_id: oldAssigneeId, to_user_id: null, is_auto: true, reason: isCrossDept ? 'cross_dept_clear' : 'no_rule_pool' }),
+                            actorId
+                        );
+
+                        if (isCrossDept) {
+                            console.log(`[Tickets] Ticket ${id} cross-dept clear: ${oldName} removed.`);
+                        }
+                    }
                 }
             }
         } catch (err) {
@@ -836,6 +904,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 success: true,
                 data: {
                     total_open: openTickets.length,
+                    unassigned_count: handlerMap[0]?.active_tickets || 0,
                     total_closed_today: closedToday,
                     avg_response_time: 4.5, // TODO: future SLA extraction
                     sla_breach_rate: openTickets.length > 0 ? (breachedCount / openTickets.length * 100) : 0,
@@ -1192,7 +1261,7 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // Determine initial node
             let initialNode = 'draft';
-            if (ticket_type === 'rma') initialNode = 'submitted';
+            if (ticket_type === 'rma') initialNode = 'op_receiving';
             if (ticket_type === 'svc') initialNode = 'submitted';
 
             // Calculate SLA due
@@ -1392,6 +1461,31 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
 
             const now = new Date().toISOString();
+
+            // PRD Cross-Dept Protection: Validate that the new assignee belongs to the department of current node
+            if (updates.assigned_to !== undefined && updates.assigned_to !== null && updates.assigned_to !== ticket.assigned_to) {
+                const targetNode = updates.current_node || ticket.current_node;
+                let nodeDept = null;
+                if (targetNode.startsWith('op_')) nodeDept = 'OP';
+                else if (targetNode.startsWith('ms_')) nodeDept = 'MS';
+                else if (targetNode.startsWith('ge_')) nodeDept = 'GE';
+                else if (targetNode.startsWith('rd_')) nodeDept = 'RD';
+
+                if (nodeDept) {
+                    const newUser = db.prepare(`
+                        SELECT u.department_id, d.code as dept_code 
+                        FROM users u 
+                        LEFT JOIN departments d ON u.department_id = d.id 
+                        WHERE u.id = ?
+                    `).get(updates.assigned_to);
+
+                    if (newUser && newUser.dept_code !== nodeDept) {
+                        console.warn(`[Tickets] Blocked cross-dept manual assignment: User ${updates.assigned_to} (${newUser.dept_code}) to node ${targetNode} (${nodeDept})`);
+                        delete updates.assigned_to;
+                    }
+                }
+            }
+
             const sets = [];
             const params = [];
 
@@ -1494,6 +1588,43 @@ module.exports = function (db, authenticate, serviceUpload) {
                 // Auto-assignment logic
                 const ttype = updates.ticket_type || ticket.ticket_type;
                 autoAssignTicket(id, updates.current_node, ttype, req.user.id);
+
+                // [Update v1.8] Status change notifications to interested parties
+                try {
+                    const participants = db.prepare('SELECT user_id FROM ticket_participants WHERE ticket_id = ?').all(id);
+                    const recipientIds = new Set([
+                        ticket.submitted_by,
+                        ticket.assigned_to,
+                        ...participants.map(p => p.user_id)
+                    ]);
+
+                    recipientIds.delete(req.user.id); // Exclude self
+
+                    for (const rid of recipientIds) {
+                        if (!rid || rid <= 0) continue;
+                        db.prepare(`
+                            INSERT INTO notifications (
+                                recipient_id, notification_type, title, content, icon,
+                                related_type, related_id, action_url, metadata, created_at
+                            ) VALUES (?, 'status_change', ?, ?, 'info', 'ticket', ?, ?, ?, ?)
+                        `).run(
+                            rid,
+                            `工单状态变更`,
+                            `工单 ${ticket.ticket_number}: ${ticket.current_node} → ${updates.current_node}`,
+                            id,
+                            `/service/tickets/${id}`,
+                            JSON.stringify({
+                                ticket_number: ticket.ticket_number,
+                                from_node: ticket.current_node,
+                                to_node: updates.current_node,
+                                changed_by: actorName
+                            }),
+                            now
+                        );
+                    }
+                } catch (e) {
+                    console.error('[Tickets] Status change notification error:', e.message);
+                }
 
                 // Update status field
                 sets.push('status = ?');
@@ -2129,7 +2260,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ms.mentioned_user_id as user_id,
                     u.username as name,
                     d.name as department,
-                    d.name as dept_code,
+                    d.code as dept_code,
                     ms.mention_count,
                     ms.last_mention_at
                 FROM user_mention_stats ms
@@ -2163,7 +2294,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     is.invited_user_id as user_id,
                     u.username as name,
                     d.name as department,
-                    d.name as dept_code,
+                    d.code as dept_code,
                     is.invite_count,
                     is.last_invite_at
                 FROM user_invite_stats is

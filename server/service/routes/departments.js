@@ -102,7 +102,7 @@ module.exports = function (db, authenticate) {
         try {
             const userId = req.user.id;
             const dept = db.prepare(`
-                SELECT d.id, d.name, d.code, d.auto_dispatch_enabled
+                SELECT d.id, d.name, d.code, d.auto_dispatch_enabled, d.lead_id
                 FROM users u
                 JOIN departments d ON u.department_id = d.id
                 WHERE u.id = ?
@@ -126,7 +126,7 @@ module.exports = function (db, authenticate) {
         try {
             const code = req.params.code;
             const dept = db.prepare(`
-                SELECT id, name, code, auto_dispatch_enabled
+                SELECT id, name, code, auto_dispatch_enabled, lead_id
                 FROM departments
                 WHERE code = ?
             `).get(code);

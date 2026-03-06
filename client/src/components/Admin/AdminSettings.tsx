@@ -30,6 +30,7 @@ interface SystemSettings {
     ai_prompts?: any; // custom prompts for specific scenarios
     ai_search_history_limit?: number; // 默认 10
     show_daily_word?: boolean; // 显示每日一词徽章
+    notification_refresh_interval?: number; // 通知刷新频率（秒）
     // Primary Backup
     backup_enabled: boolean;
     backup_frequency: number;
@@ -1239,6 +1240,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                 setSettings({ ...settings, show_daily_word: v });
                                             }}
                                         />
+                                    </div>
+
+                                    <div className="setting-card" style={{ minHeight: '72px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="setting-label">通知刷新频率 (秒)</div>
+                                            <div className="setting-desc">设置系统自动检查新通知的时间间隔（建议 15-60s）。</div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <input
+                                                type="number"
+                                                min={5} max={300}
+                                                value={settings.notification_refresh_interval || 30}
+                                                onChange={e => setSettings({ ...settings, notification_refresh_interval: Math.max(5, Math.min(300, parseInt(e.target.value) || 30)) })}
+                                                style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
