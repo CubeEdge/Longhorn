@@ -16,7 +16,7 @@ module.exports = function (db, authenticate) {
      */
     router.get('/public-settings', (req, res) => {
         try {
-            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word FROM system_settings LIMIT 1').get();
+            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval FROM system_settings LIMIT 1').get();
             res.json({
                 success: true,
                 data: {

@@ -282,7 +282,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
 
     return (
         <div
-            style={{ padding: 16, background: 'rgba(30, 30, 30, 0.6)', position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}
+            style={{ padding: 16, background: 'var(--card-bg)', position: 'relative', borderRadius: 12, border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)' }}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
         >
@@ -314,15 +314,15 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                 placeholder="添加评论... (输入 @ 提及用户)"
                 style={{
                     width: '100%', minHeight: 72, padding: 12,
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 8, color: '#fff', fontSize: 14,
+                    background: 'var(--card-bg-light)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: 8, color: 'var(--text-main)', fontSize: 14,
                     resize: 'vertical', marginBottom: attachments.length > 0 ? 8 : 10,
                     outline: 'none',
-                    boxShadow: showMentionMenu ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
+                    boxShadow: showMentionMenu ? '0 0 0 2px var(--accent-blue)' : 'none',
                     transition: 'box-shadow 0.2s'
                 }}
-                onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.5)'; }}
+                onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px var(--accent-blue)'; }}
                 onBlur={(e) => { if (!showMentionMenu) e.target.style.boxShadow = 'none'; }}
             />
 
@@ -335,8 +335,8 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     {attachments.map((att, idx) => (
                         <div key={idx} style={{
                             position: 'relative', borderRadius: 8, overflow: 'hidden',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid var(--card-border)',
+                            background: 'var(--card-bg-light)',
                         }}>
                             {att.preview ? (
                                 att.file.type.startsWith('video/') ? (
@@ -359,9 +359,9 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                                     flexDirection: 'column', alignItems: 'center',
                                     justifyContent: 'center', gap: 4,
                                 }}>
-                                    <Paperclip size={16} color="#888" />
+                                    <Paperclip size={16} color="var(--text-tertiary)" />
                                     <span style={{
-                                        fontSize: 10, color: '#888', maxWidth: 70,
+                                        fontSize: 10, color: 'var(--text-tertiary)', maxWidth: 70,
                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                         textAlign: 'center',
                                     }}>{att.file.name}</span>
@@ -389,10 +389,10 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                 <div ref={mentionMenuRef} style={{
                     position: 'absolute', bottom: attachments.length > 0 ? 160 : 80,
                     left: 16,
-                    background: '#1E1E1E',
-                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'var(--modal-bg)',
+                    border: '1px solid var(--card-border)',
                     borderRadius: 10,
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                    boxShadow: 'var(--glass-shadow-lg)',
                     padding: '8px 0',
                     maxHeight: 400,
                     overflowY: 'auto',
@@ -402,7 +402,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     {mentionGroups.map(group => (
                         <div key={group.name}>
                             <div style={{
-                                fontSize: 11, fontWeight: 600, color: '#888',
+                                fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)',
                                 padding: '6px 14px 4px', letterSpacing: 0.5,
                             }}>
                                 {group.name} ({group.users.length})
@@ -423,13 +423,13 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                                         style={{
                                             padding: '7px 14px', cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', gap: 10,
-                                            background: isSelected ? 'rgba(255,215,0,0.1)' : 'transparent',
+                                            background: isSelected ? 'var(--accent-subtle)' : 'transparent',
                                             transition: 'background 0.1s',
                                         }}
                                     >
                                         <div style={{
                                             width: 26, height: 26, borderRadius: '50%',
-                                            background: 'rgba(255,215,0,0.15)', color: '#FFD700',
+                                            background: 'var(--accent-subtle)', color: 'var(--accent-blue)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             fontSize: 11, fontWeight: 600, flexShrink: 0,
                                         }}>
@@ -437,19 +437,19 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{
-                                                fontSize: 13, fontWeight: 500, color: '#e0e0e0',
+                                                fontSize: 13, fontWeight: 500, color: 'var(--text-main)',
                                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                             }}>
                                                 {user.name}
                                             </div>
                                             {deptLabel && (
-                                                <div style={{ fontSize: 11, color: '#666' }}>{deptLabel}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{deptLabel}</div>
                                             )}
                                         </div>
                                         {totalInteractions > 0 && (
                                             <span style={{
-                                                fontSize: 11, color: '#3B82F6', fontWeight: 600,
-                                                background: 'rgba(59,130,246,0.12)',
+                                                fontSize: 11, color: 'var(--accent-blue)', fontWeight: 600,
+                                                background: 'var(--accent-subtle)',
                                                 padding: '1px 6px', borderRadius: 4,
                                                 display: 'flex', alignItems: 'center', gap: 3,
                                             }}>
@@ -469,10 +469,10 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     value={visibility}
                     onChange={e => setVisibility(e.target.value)}
                     style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--card-bg-light)',
+                        border: '1px solid var(--card-border)',
                         borderRadius: 6, padding: '6px 10px',
-                        color: '#ccc', fontSize: 12, outline: 'none'
+                        color: 'var(--text-secondary)', fontSize: 12, outline: 'none'
                     }}
                 >
                     <option value="all">所有人可见</option>
@@ -495,13 +495,13 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 32, height: 32, borderRadius: 6,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        background: 'rgba(255,255,255,0.04)',
-                        color: '#888', cursor: 'pointer', padding: 0,
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--card-bg-light)',
+                        color: 'var(--text-tertiary)', cursor: 'pointer', padding: 0,
                         transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#FFD700'; e.currentTarget.style.borderColor = 'rgba(255,215,0,0.3)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#888'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-blue)'; e.currentTarget.style.borderColor = 'var(--accent-blue)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                 >
                     <Image size={14} />
                 </button>
@@ -514,8 +514,8 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                     style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '7px 16px',
-                        background: loading ? 'rgba(255,255,255,0.05)' : ((content.trim() || attachments.length > 0) ? '#FFD700' : 'rgba(255,255,255,0.1)'),
-                        color: loading ? '#666' : ((content.trim() || attachments.length > 0) ? '#000' : '#666'),
+                        background: loading ? 'var(--glass-bg-hover)' : ((content.trim() || attachments.length > 0) ? 'var(--accent-blue)' : 'var(--glass-bg-light)'),
+                        color: loading ? 'var(--text-tertiary)' : ((content.trim() || attachments.length > 0) ? '#000' : 'var(--text-tertiary)'),
                         border: 'none', borderRadius: 6,
                         fontSize: 13, fontWeight: 600,
                         cursor: (loading || (!content.trim() && attachments.length === 0)) ? 'not-allowed' : 'pointer',

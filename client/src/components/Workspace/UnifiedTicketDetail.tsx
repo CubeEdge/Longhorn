@@ -315,10 +315,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             {showMoreMenu && (
                 <div style={{
                     position: 'absolute', top: '100%', right: 0, marginTop: 4,
-                    background: 'rgba(30,30,30,0.95)', backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+                    background: 'var(--modal-bg)', backdropFilter: 'var(--glass-blur)',
+                    border: '1px solid var(--card-border)', borderRadius: 8,
                     padding: 4, minWidth: 160, zIndex: 100,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                    boxShadow: 'var(--glass-shadow-lg)'
                 }}>
                     <button
                         onClick={() => {
@@ -616,8 +616,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 <p style={{ color: '#EF4444', marginTop: 12 }}>{error || '工单不存在'}</p>
                 <button onClick={onBack} style={{
                     marginTop: 16, padding: '8px 20px', borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.15)', background: 'transparent',
-                    color: '#fff', cursor: 'pointer'
+                    border: '1px solid var(--card-border)', background: 'transparent',
+                    color: 'var(--text-main)', cursor: 'pointer'
                 }}>
                     {t('action.back') || '返回'}
                 </button>
@@ -643,7 +643,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 0', marginBottom: 16,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                borderBottom: '1px solid var(--card-border)',
             }}>
                 <button
                     onClick={onBack}
@@ -651,9 +651,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         width: 36, height: 36,
                         borderRadius: '50%',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        background: 'rgba(255,255,255,0.04)',
-                        color: '#fff',
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--card-bg-light)',
+                        color: 'var(--text-main)',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                         padding: 0,
@@ -667,7 +667,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 <span style={{
                     fontSize: 18,
                     fontWeight: 700,
-                    color: (viewContext === 'archive' || viewContext === 'search') ? '#aaa' : '#fff'
+                    color: (viewContext === 'archive' || viewContext === 'search') ? 'var(--text-tertiary)' : 'var(--text-main)'
                 }}>
                     {ticket.ticket_number}
                 </span>
@@ -764,12 +764,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
                 {/* ====== LEFT COLUMN (Main) ====== */}
-                <div style={{ flex: '1 1 70%', minWidth: 0 }}>
+                <div style={{ flex: '1 1 70%', minWidth: 0, overflow: 'visible' }}>
 
-                    {/* Basic Info Card - Collapsible */}
+                    {/* Basic Info Card - Collapsible, elevated z-index for dropdown */}
+                    <div style={{ position: 'relative', zIndex: 10 }}>
                     <CollapsiblePanel
                         title={t('ticket.basic_info') || '基本信息'}
-                        icon={<Tag size={14} color="#FFD700" />}
+                        icon={<Tag size={14} color="var(--accent-blue)" />}
                         defaultOpen={true}
                     >
                         <div style={{ padding: '12px 20px 16px' }}>
@@ -869,6 +870,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             )}
                         </div>
                     </CollapsiblePanel>
+                    </div>
 
                     {/* Node Progress Bar (RMA / SVC only) */}
                     {isRmaOrSvc && (
@@ -895,7 +897,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         borderRadius: 12,
                         background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
                         border: '1px solid rgba(255,255,255,0.06)',
-                        overflow: 'hidden',
+                        position: 'relative',
                     }}>
                         <MentionCommentInput onSubmit={handleAddComment} />
                     </div>
@@ -923,7 +925,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 <div>
                                     <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: 1 }}>当前节点</div>
                                     <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e0e0' }}>
-                                        {ticket.current_node} · 负责人: {ticket.assigned_name || '未指派'}
+                                        {({
+                                            draft: '草稿', submitted: '已提交', ms_review: '商务审核',
+                                            op_receiving: '待收货', op_diagnosing: '诊断中', op_repairing: '维修中',
+                                            op_qa: 'QA检测', op_shipping: '打包发货', ms_closing: '待结案',
+                                            ge_review: '财务审核', ge_closing: '财务结案', resolved: '已解决',
+                                            closed: '已关闭', waiting_customer: '待反馈'
+                                        })[ticket.current_node] || ticket.current_node} · 负责人: {ticket.assigned_name || '未指派'}
                                     </div>
                                 </div>
                             </div>
@@ -972,7 +980,6 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 >
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
                                     {footerAction ? (lang === 'zh' ? footerAction.label_zh : footerAction.label_en) : '未知操作'}
-                                    {isAssignedToActingUser ? '' : ' (强制)'}
                                 </button>
                             </div>
                         </div>

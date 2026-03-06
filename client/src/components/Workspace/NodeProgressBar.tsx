@@ -113,16 +113,16 @@ const PortalTooltip: React.FC<{
             left: 0,
             width: TOOLTIP_W,
             transform: `translate(${left}px, ${top}px) translateY(-100%)`,
-            background: 'rgba(22, 22, 26, 0.97)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            background: 'var(--modal-bg)',
+            backdropFilter: 'var(--glass-blur)',
+            border: '1px solid var(--card-border)',
             padding: '10px 14px',
             borderRadius: 10,
-            color: '#efefef',
+            color: 'var(--text-main)',
             fontSize: 11,
             lineHeight: 1.5,
             textAlign: 'left',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            boxShadow: 'var(--glass-shadow-lg)',
             zIndex: 99999,
             pointerEvents: 'none',
             animation: 'fadeInTooltip 0.18s ease-out',
@@ -134,7 +134,7 @@ const PortalTooltip: React.FC<{
                     {assignedName || '🚩待认领'}
                 </span>
             </div>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 6, color: '#ccc' }}>
+            <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 6, color: 'var(--text-secondary)' }}>
                 {hint.advice}
             </div>
             {/* Arrow pointing down */}
@@ -208,10 +208,10 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
     return (
         <div style={{
             padding: '16px 20px',
-            background: 'rgba(30, 30, 30, 0.5)',
-            backdropFilter: 'blur(12px)',
+            background: 'var(--card-bg)',
+            backdropFilter: 'var(--glass-blur)',
             borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid var(--card-border)',
             marginBottom: 16,
         }}>
             <div style={{
@@ -265,9 +265,9 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                                         boxShadow: '0 0 12px rgba(59,130,246,0.5)',
                                         animation: 'pulse-blue 2s ease-in-out infinite',
                                     } : {
-                                        background: 'rgba(255,255,255,0.08)',
-                                        color: '#555',
-                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'var(--bg-sidebar)',
+                                        color: 'var(--text-tertiary)',
+                                        border: '1px solid var(--card-border)',
                                     })
                                 }}>
                                     {isCompleted ? '✓' : i + 1}
@@ -277,7 +277,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                                 <span style={{
                                     fontSize: 11,
                                     marginTop: 6,
-                                    color: isCompleted ? '#10B981' : isCurrent ? '#3B82F6' : '#555',
+                                    color: isCompleted ? '#10B981' : isCurrent ? 'var(--accent-blue)' : 'var(--text-tertiary)',
                                     fontWeight: isCurrent ? 600 : 400,
                                     whiteSpace: 'nowrap',
                                     textAlign: 'center',
@@ -292,8 +292,8 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                                         marginTop: 2,
                                         padding: '1px 8px',
                                         borderRadius: 4,
-                                        background: isPending ? 'rgba(255,255,255,0.04)' : isCurrent ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.12)',
-                                        color: isPending ? '#555' : isCurrent ? '#3B82F6' : '#10B981',
+                                        background: isPending ? 'var(--bg-sidebar)' : isCurrent ? 'var(--accent-subtle)' : 'rgba(16,185,129,0.12)',
+                                        color: isPending ? 'var(--text-tertiary)' : isCurrent ? 'var(--accent-blue)' : '#10B981',
                                         fontWeight: 500,
                                         whiteSpace: 'nowrap',
                                     }}>
@@ -308,7 +308,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
                                     flex: 1,
                                     height: 2,
                                     minWidth: 20,
-                                    background: isCompleted ? '#10B981' : 'rgba(255,255,255,0.08)',
+                                    background: isCompleted ? '#10B981' : 'var(--card-border)',
                                     borderRadius: 1,
                                     marginTop: -32,
                                 }} />

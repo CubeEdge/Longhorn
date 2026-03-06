@@ -1,5 +1,37 @@
 # Prompt Log
 
+## 2026-03-07 01:00 (耗时: 12m)
+
+**User Prompt**:
+1. **强制执行 `/upd` 更新远程服务器**:
+   - 递增 `client/package.json`（和必要的 `server/package.json`）中的最后一位 (Z位) 版本号。
+   - 运行 `npm run build` 确保前端代码编译成功。
+   - 运行 `./scripts/deploy.sh` 进行全量远程部署（至 `mini`）。
+   - 校验部署脚本退出状态，确认 `pm2 reload` 成功执行。
+
+2. **执行  `/pmlog` 记录prompt的信息**
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.84`，`server` 版本至 `1.7.72`。
+2. **构建成功**: 在 `client` 目录下成功执行 `npm run build`，完成前端资产编译。
+3. **全量部署**: 运行 `./scripts/deploy.sh --full` 进行原子级远程同步至 `mini` 服务器，成功通过 `tar` 交换、远程安装依赖及远程构建。
+4. **服务重载**: 验证 `pm2 reload longhorn` 成功执行，生产环境已同步至最新状态。
+5. **日志归档**: 执行 `/pmlog` 规范，完成 `log_prompt`、`log_dev` 和 `log_backlog` 的存档同步。
+
+## 2026-03-06 23:06 (耗时: 45m)
+
+**User Prompt**:
+1. 强制执行 `/upd` 更新远程服务器
+2. 执行 `/pmlog` 记录prompt的信息
+3. 之前要求：修复 RMA 工作流 (`ge_review` 转 `ms_closing` 后不应退回，而应去 `op_shipping`) 并中文化 UI 中的节点名称。
+
+**Agent Response**:
+1. **RMA 工作流修复**: 修改 `client/src/components/Workspace/ActionBufferModal.tsx`，将在 `ge_review` 节点能够正确保存填写的金额 `payment_amount`，确保下一步顺利流转到 `op_shipping`。
+2. **UI 与日志中文化**: 
+   - 前端：在 `UnifiedTicketDetail.tsx` 页脚中加入中文状态名映射，直观展示中文节点。
+   - 后端：在 `server/service/routes/tickets.js` 的状态变更 API 中引入 `NODE_NAME_MAP`，实现写入 Activity 日志与系统通知时的节点名称中文化（如 `商务结案` 等）。
+3. **交付更新**: 递增 `client` 版本至 `12.3.83`，`server` 版本至 `1.7.71`。执行 `npm run build` 和 `./scripts/deploy.sh` 完成远程热部署与 PM2 重载。
+4. **日志归档**: 执行 `/pmlog` 规范，对开发与提示词历史完成存档记录。
 ## 2026-03-06 22:23 (耗时: 4m 13s)
 
 **User Prompt**:

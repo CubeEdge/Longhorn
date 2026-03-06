@@ -449,7 +449,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                         INSERT INTO notifications (
                             recipient_id, notification_type, title, content, icon,
                             related_type, related_id, action_url, metadata, created_at
-                        ) VALUES (?, 'update', ?, ?, 'ticket', 'ticket', ?, ?, ?, ?)
+                        ) VALUES (?, 'new_comment', ?, ?, 'info', 'ticket', ?, ?, ?, ?)
                     `).run(
                         ticket.assigned_to,
                         `${user.display_name || user.username} 更新了您负责的工单`,

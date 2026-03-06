@@ -196,7 +196,7 @@ function batchCheckSlaStatus(db) {
   `);
   
   for (const ticket of tickets) {
-    const { sla_status, remaining_percent } = checkSlaStatus(ticket);
+    const { sla_status, remaining_percent, remaining_hours } = checkSlaStatus(ticket);
     
     // 如果状态有变化，更新数据库
     if (sla_status !== ticket.sla_status) {
@@ -209,6 +209,8 @@ function batchCheckSlaStatus(db) {
           ticket_id: ticket.id,
           ticket_number: ticket.ticket_number,
           assigned_to: ticket.assigned_to,
+          sla_due_at: ticket.sla_due_at,
+          remaining_hours,
           remaining_percent
         });
       } else if (sla_status === 'breached') {

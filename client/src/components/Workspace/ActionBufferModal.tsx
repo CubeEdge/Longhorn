@@ -30,7 +30,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             return (
                 <>
                     <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>维修工作详述 (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>维修工作详述 (必填)</label>
                         <textarea
                             value={formData.repair_content || ''}
                             onChange={e => setFormData({ ...formData, repair_content: e.target.value })}
@@ -40,7 +40,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>老化/测试结论 (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>老化/测试结论 (必填)</label>
                         <textarea
                             value={formData.test_result || ''}
                             onChange={e => setFormData({ ...formData, test_result: e.target.value })}
@@ -57,7 +57,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             return (
                 <>
                     <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>物流快递公司 (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>物流快递公司 (必填)</label>
                         <select
                             value={formData.carrier || ''}
                             onChange={e => setFormData({ ...formData, carrier: e.target.value })}
@@ -72,7 +72,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                         </select>
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>快递单号 (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>快递单号 (必填)</label>
                         <input
                             type="text"
                             value={formData.tracking_number || ''}
@@ -89,7 +89,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             return (
                 <>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>报价单/PI 关联信息 (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>报价单/PI 关联信息 (必填)</label>
                         <input
                             type="text"
                             value={formData.quote_reference || ''}
@@ -97,7 +97,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             placeholder="输入 PI 号或报价详情说明..."
                             style={inputStyle}
                         />
-                        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#777' }}>此单为【过保付费】，必须确认客户已同意报价方案。</p>
+                        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>此单为【过保付费】，必须确认客户已同意报价方案。</p>
                     </div>
                 </>
             );
@@ -107,9 +107,9 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             const isFirstClosing = Number(ticket.is_warranty) === 0 && (!ticket.payment_amount || Number(ticket.payment_amount) === 0);
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(59,130,246,0.05)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.1)' }}>
-                        <CreditCard size={18} color="#3B82F6" />
-                        <span style={{ fontSize: 13, color: '#ddd' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--accent-subtle)', borderRadius: 10, border: '1px solid var(--glass-border-accent)' }}>
+                        <CreditCard size={18} color="var(--accent-blue)" />
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                             {ticket.is_warranty
                                 ? "此单为【保修内免费】，请确认客户信息无误后，准予发货。"
                                 : (isFirstClosing
@@ -118,7 +118,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                         </span>
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>补充声明/备注 (选填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>补充声明/备注 (选填)</label>
                         <textarea
                             value={formData.closing_comment || ''}
                             onChange={e => setFormData({ ...formData, closing_comment: e.target.value })}
@@ -134,12 +134,12 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
         if (currentNode === 'ge_review') {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(16,185,129,0.05)', borderRadius: 10, border: '1px solid rgba(16,185,129,0.1)' }}>
-                        <ShieldAlert size={18} color="#10B981" />
-                        <span style={{ fontSize: 13, color: '#ddd' }}>财务核审：请核对银行/第三方平台对应流水，认领并确认到账。</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--badge-success-bg)', borderRadius: 10, border: '1px solid var(--badge-success-text)' }}>
+                        <ShieldAlert size={18} color="var(--badge-success-text)" />
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>财务核审：请核对银行/第三方平台对应流水，认领并确认到账。</span>
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>本次实收金额 (¥) (必填)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>本次实收金额 (¥) (必填)</label>
                         <input
                             type="number"
                             value={formData.paid_amount || ''}
@@ -150,7 +150,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>收款日期</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>收款日期</label>
                             <input
                                 type="date"
                                 value={formData.payment_date || new Date().toISOString().split('T')[0]}
@@ -159,7 +159,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>收款渠道 (必选)</label>
+                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>收款渠道 (必选)</label>
                             <select
                                 value={formData.payment_channel || ''}
                                 onChange={e => setFormData({ ...formData, payment_channel: e.target.value })}
@@ -219,18 +219,18 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 8 }}>上传开箱照片 (可选)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>上传开箱照片 (可选)</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             <label style={{
-                                width: 50, height: 50, borderRadius: 8, border: '1px dashed rgba(255,255,255,0.2)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#666'
+                                width: 50, height: 50, borderRadius: 8, border: '1px dashed var(--card-border)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)'
                             }}>
                                 <Camera size={20} />
                                 <input type="file" multiple onChange={e => e.target.files && setAttachments(prev => [...prev, ...Array.from(e.target.files!)])} style={{ display: 'none' }} />
                             </label>
                             {attachments.map((_, i) => (
-                                <div key={i} style={{ width: 50, height: 50, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                                    <Paperclip size={16} color="#aaa" />
+                                <div key={i} style={{ width: 50, height: 50, borderRadius: 8, background: 'var(--bg-sidebar)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                    <Paperclip size={16} color="var(--text-tertiary)" />
                                     <button onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', border: 'none', borderRadius: '50%', width: 16, height: 16, color: '#fff', fontSize: 10, cursor: 'pointer' }}>×</button>
                                 </div>
                             ))}
@@ -326,7 +326,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                 patchData.shipping_tracking_number = formData.tracking_number;
                 patchData.shipping_carrier = formData.carrier;
             }
-            if (currentNode === 'ms_closing') {
+            if (currentNode === 'ge_review') {
                 patchData.payment_amount = formData.paid_amount;
             }
             if ((currentNode === 'op_receiving' || currentNode === 'submitted') && snDiffers && formData.at_receipt_sn) {
@@ -356,27 +356,27 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100,
-            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+            background: 'var(--modal-overlay)', backdropFilter: 'var(--glass-blur)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 440, background: '#1c1c1e', borderRadius: 16,
-                border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
-                boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
+                width: 440, background: 'var(--modal-bg)', borderRadius: 16,
+                border: '1px solid var(--card-border)', overflow: 'hidden',
+                boxShadow: 'var(--glass-shadow-lg)',
                 display: 'flex', flexDirection: 'column'
             }}>
                 {/* Header */}
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--bg-sidebar)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {getIcon()}
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>确认执行: {actionLabel}</h3>
-                            <p style={{ margin: 0, fontSize: 12, color: '#666', marginTop: 2 }}>{ticket.ticket_number}</p>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>确认执行: {actionLabel}</h3>
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{ticket.ticket_number}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>
                 </div>
@@ -387,17 +387,17 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'rgba(0,0,0,0.2)' }}>
-                    <button onClick={onClose} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14 }}>取消</button>
+                <div style={{ padding: '16px 24px', borderTop: '1px solid var(--card-border)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'var(--bg-sidebar)' }}>
+                    <button onClick={onClose} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 14 }}>取消</button>
                     <button
                         onClick={handleSubmit}
                         disabled={submitting}
                         style={{
-                            padding: '10px 24px', background: '#FFD700',
+                            padding: '10px 24px', background: 'var(--accent-blue)',
                             border: 'none', color: '#000', borderRadius: 8, fontWeight: 700,
                             cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                             fontSize: 14, opacity: submitting ? 0.7 : 1,
-                            boxShadow: '0 4px 15px rgba(255,215,0,0.25)'
+                            boxShadow: 'var(--glass-shadow-accent)'
                         }}
                     >
                         {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -412,10 +412,10 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
 const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px',
-    background: 'rgba(0,0,0,0.3)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--card-bg-light)',
+    border: '1px solid var(--card-border)',
     borderRadius: 8,
-    color: '#fff',
+    color: 'var(--text-main)',
     fontSize: 14,
     outline: 'none',
     boxSizing: 'border-box'

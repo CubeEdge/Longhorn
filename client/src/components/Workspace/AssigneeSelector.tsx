@@ -183,9 +183,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                     padding: '6px 12px',
                     borderRadius: 8,
                     // Requirement 2: Prominent styling for Unassigned when actionable
-                    background: !currentAssigneeName ? 'rgba(255, 68, 68, 0.1)' : 'rgba(255,255,255,0.06)',
-                    border: !currentAssigneeName ? '1.5px solid #EF4444' : '1px solid rgba(255,255,255,0.1)',
-                    color: !currentAssigneeName ? '#EF4444' : '#e0e0e0',
+                    background: !currentAssigneeName ? 'rgba(239, 68, 68, 0.1)' : 'var(--card-bg-light)',
+                    border: !currentAssigneeName ? '1.5px solid #EF4444' : '1px solid var(--card-border)',
+                    color: !currentAssigneeName ? '#EF4444' : 'var(--text-main)',
                     fontWeight: !currentAssigneeName ? 700 : 400,
                     fontSize: 12,
                     cursor: 'pointer',
@@ -215,21 +215,21 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
             {isOpen && (
                 <div ref={dropdownRef} style={{
                     position: 'absolute', top: '100%', left: 0, marginTop: 4,
-                    zIndex: 2000, background: '#1e1e1e',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                    zIndex: 9999, background: 'var(--modal-bg)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: 10, boxShadow: 'var(--glass-shadow-lg)',
                     width: 240, maxHeight: 400, display: 'flex', flexDirection: 'column'
                 }}>
                     <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '4px 8px' }}>
-                            <Search size={12} color="#888" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--glass-bg-light)', borderRadius: 6, padding: '4px 8px' }}>
+                            <Search size={12} color="var(--text-tertiary)" />
                             <input
                                 type="text"
                                 autoFocus
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="搜索人员或部门..."
-                                style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: '#fff', fontSize: 12 }}
+                                style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: 'var(--text-main)', fontSize: 12 }}
                             />
                         </div>
                     </div>
@@ -242,7 +242,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                         )}
                         {!loading && buildGroups().map(([dept, usrs]) => (
                             <div key={dept}>
-                                <div style={{ fontSize: 10, fontWeight: 600, color: '#888', padding: '4px 12px', background: 'rgba(255,255,255,0.02)' }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', padding: '4px 12px', background: 'var(--bg-sidebar)' }}>
                                     {dept}
                                 </div>
                                 {usrs.map(u => (
@@ -251,12 +251,12 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                                         onClick={() => handlePreAssign(u)}
                                         style={{
                                             width: '100%', textAlign: 'left', padding: '6px 16px', border: 'none',
-                                            background: currentAssigneeId === u.id ? 'rgba(59,130,246,0.15)' : 'transparent',
-                                            color: currentAssigneeId === u.id ? '#3B82F6' : '#e0e0e0',
+                                            background: currentAssigneeId === u.id ? 'var(--accent-subtle)' : 'transparent',
+                                            color: currentAssigneeId === u.id ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                             fontSize: 12, cursor: 'pointer', display: 'flex', justifyContent: 'space-between'
                                         }}
                                         onMouseEnter={e => {
-                                            if (currentAssigneeId !== u.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                            if (currentAssigneeId !== u.id) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                         }}
                                         onMouseLeave={e => {
                                             if (currentAssigneeId !== u.id) e.currentTarget.style.background = 'transparent';
@@ -280,22 +280,22 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
             {confirmModal.isOpen && confirmModal.targetUser && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
+                    background: 'var(--modal-overlay)', backdropFilter: 'var(--glass-blur)',
                     zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                     <div style={{
-                        background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--modal-bg)', border: '1px solid var(--card-border)',
                         borderRadius: 12, width: 400, overflow: 'hidden',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                        boxShadow: 'var(--glass-shadow-lg)'
                     }}>
-                        <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10, alignItems: 'center', background: 'rgba(255, 215, 0, 0.1)' }}>
-                            <ShieldAlert size={20} color="#FFD700" />
-                            <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>核心操作转移球权</h3>
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--card-border)', display: 'flex', gap: 10, alignItems: 'center', background: 'var(--badge-warning-bg)' }}>
+                            <ShieldAlert size={20} color="var(--badge-warning-text)" />
+                            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)', fontWeight: 600 }}>核心操作转移球球</h3>
                         </div>
                         <div style={{ padding: '20px' }}>
-                            <p style={{ fontSize: 14, color: '#ddd', marginBottom: 16, lineHeight: 1.5 }}>
-                                将工单 <span style={{ color: '#3B82F6', fontWeight: 600 }}>重新指派</span> 给：<br />
-                                <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>[{getDeptCode(confirmModal.targetUser.department_name || confirmModal.targetUser.department)}] {confirmModal.targetUser.name}</span>
+                            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+                                将工单 <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>重新指派</span> 给：<br />
+                                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>[{getDeptCode(confirmModal.targetUser.department_name || confirmModal.targetUser.department)}] {confirmModal.targetUser.name}</span>
                             </p>
                             <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>变更理由 (必填项)</label>
                             <textarea
@@ -303,15 +303,15 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                                 onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
                                 placeholder="输入为什么修改指派人..."
                                 style={{
-                                    width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.3)',
-                                    border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical'
+                                    width: '100%', padding: '10px 12px', background: 'var(--card-bg-light)',
+                                    border: '1px solid var(--card-border)', color: 'var(--text-main)', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical'
                                 }}
                             />
                         </div>
-                        <div style={{ padding: '16px 20px', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: 12 }}>
+                        <div style={{ padding: '16px 20px', background: 'var(--bg-sidebar)', display: 'flex', gap: 12 }}>
                             <button
                                 onClick={() => setConfirmModal({ isOpen: false, targetUser: null, reason: '', countdown: 5 })}
-                                style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
+                                style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--card-border)', color: 'var(--text-secondary)', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
                             >
                                 取消
                             </button>
@@ -320,8 +320,8 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                                 disabled={!confirmModal.reason.trim() || confirmModal.countdown > 0}
                                 style={{
                                     flex: 1.5, padding: '10px',
-                                    background: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'rgba(255,215,0,0.3)' : '#FFD700',
-                                    border: 'none', color: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? '#aaa' : '#000', borderRadius: 8, fontWeight: 700,
+                                    background: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'var(--glass-bg-hover)' : 'var(--accent-blue)',
+                                    border: 'none', color: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'var(--text-tertiary)' : '#000', borderRadius: 8, fontWeight: 700,
                                     cursor: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'not-allowed' : 'pointer',
                                     fontSize: 14, transition: 'all 0.2s',
                                     boxShadow: (!confirmModal.reason.trim() || confirmModal.countdown > 0) ? 'none' : '0 4px 15px rgba(255,215,0,0.25)'

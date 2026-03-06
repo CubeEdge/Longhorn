@@ -76,7 +76,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
         <div style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.7)',
+            background: 'var(--bg-overlay, rgba(0,0,0,0.7))',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
@@ -86,10 +86,10 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
             animation: 'fadeIn 0.15s ease-out'
         }}>
             <div style={{
-                background: 'var(--bg-secondary, #1E1E1E)',
+                background: 'var(--modal-bg)',
                 width: 440,
                 borderRadius: 16,
-                boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+                boxShadow: 'var(--glass-shadow-lg)',
                 border: '1px solid rgba(239,68,68,0.2)',
                 overflow: 'hidden'
             }}>
@@ -119,7 +119,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                             </h3>
                             <div style={{
                                 fontSize: 12,
-                                color: '#888',
+                                color: 'var(--text-tertiary)',
                                 marginTop: 2
                             }}>
                                 {ticketNumber}
@@ -131,7 +131,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                         style={{
                             background: 'transparent',
                             border: 'none',
-                            color: '#888',
+                            color: 'var(--text-tertiary)',
                             cursor: 'pointer',
                             padding: 6,
                             borderRadius: 6,
@@ -140,8 +140,6 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                             justifyContent: 'center',
                             transition: 'all 0.15s'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                         <X size={18} />
                     </button>
@@ -150,7 +148,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                 {/* Warning Message */}
                 <div style={{
                     padding: '20px 24px',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)'
+                    borderBottom: '1px solid var(--glass-border)'
                 }}>
                     <div style={{
                         display: 'flex',
@@ -173,7 +171,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                             </div>
                             <div style={{
                                 fontSize: 13,
-                                color: '#aaa',
+                                color: 'var(--text-secondary)',
                                 lineHeight: 1.5
                             }}>
                                 {t('delete.modal.warning_text') || '工单将从系统中移除（数据仍保留在数据库中）。请确认是否继续删除。'}
@@ -188,17 +186,17 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                         alignItems: 'center',
                         gap: 10
                     }}>
-                        <span style={{ fontSize: 13, color: '#888' }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
                             {t('delete.modal.current_status') || '当前状态'}:
                         </span>
                         <span style={{
                             padding: '4px 10px',
                             borderRadius: 6,
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--glass-bg-light)',
+                            border: '1px solid var(--glass-border)',
                             fontSize: 12,
                             fontWeight: 600,
-                            color: '#ccc'
+                            color: 'var(--text-secondary)'
                         }}>
                             {getStatusLabel(currentNode)}
                         </span>
@@ -231,7 +229,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                 display: 'block',
                                 fontSize: 12,
                                 fontWeight: 600,
-                                color: '#888',
+                                color: 'var(--text-tertiary)',
                                 marginBottom: 10,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px'
@@ -249,9 +247,9 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                     width: '100%',
                                     padding: '12px 14px',
                                     borderRadius: 10,
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    background: 'rgba(255,255,255,0.03)',
-                                    color: '#fff',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'var(--input-bg)',
+                                    color: 'var(--text-main)',
                                     fontSize: 14,
                                     lineHeight: 1.5,
                                     resize: 'vertical',
@@ -260,7 +258,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                     boxSizing: 'border-box'
                                 }}
                                 onFocus={e => e.target.style.borderColor = 'rgba(239,68,68,0.4)'}
-                                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                onBlur={e => e.target.style.borderColor = 'var(--glass-border)'}
                             />
                         </div>
 
@@ -271,7 +269,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                     display: 'block',
                                     fontSize: 12,
                                     fontWeight: 600,
-                                    color: '#888',
+                                    color: 'var(--text-tertiary)',
                                     marginBottom: 10
                                 }}>
                                     {t('delete.modal.confirm_label') || '请输入工单号确认删除'}
@@ -296,11 +294,11 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                                         borderRadius: 10,
                                         border: confirmText === ticketNumber
                                             ? '1px solid rgba(16,185,129,0.4)'
-                                            : '1px solid rgba(255,255,255,0.1)',
+                                            : '1px solid var(--glass-border)',
                                         background: confirmText === ticketNumber
                                             ? 'rgba(16,185,129,0.05)'
-                                            : 'rgba(255,255,255,0.03)',
-                                        color: '#fff',
+                                            : 'var(--input-bg)',
+                                        color: 'var(--text-main)',
                                         fontSize: 14,
                                         fontFamily: 'monospace',
                                         outline: 'none',
@@ -315,11 +313,11 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                     {/* Actions */}
                     <div style={{
                         padding: '16px 24px',
-                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        borderTop: '1px solid var(--glass-border)',
                         display: 'flex',
                         justifyContent: 'flex-end',
                         gap: 12,
-                        background: 'rgba(0,0,0,0.2)'
+                        background: 'var(--glass-bg-light)'
                     }}>
                         <button
                             type="button"
@@ -327,16 +325,14 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                             style={{
                                 padding: '10px 20px',
                                 background: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.15)',
+                                border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
-                                color: '#ccc',
+                                color: 'var(--text-secondary)',
                                 fontSize: 14,
                                 fontWeight: 500,
                                 cursor: 'pointer',
                                 transition: 'all 0.15s'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
                             {t('common.cancel') || '取消'}
                         </button>
@@ -345,7 +341,7 @@ const DeleteTicketModal: React.FC<DeleteTicketModalProps> = ({
                             disabled={loading || !canSubmit}
                             style={{
                                 padding: '10px 24px',
-                                background: 'var(--accent-red, #EF4444)',
+                                background: 'var(--accent-red)',
                                 border: 'none',
                                 borderRadius: 8,
                                 color: '#fff',

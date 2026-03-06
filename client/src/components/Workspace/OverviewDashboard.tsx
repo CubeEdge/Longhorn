@@ -48,11 +48,13 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   return (
     <div style={{
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
+      background: 'var(--card-bg)',
+      backdropFilter: 'var(--glass-blur)',
       borderRadius: 12,
       padding: 20,
-      border: '1px solid rgba(255,255,255,0.08)'
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--card-shadow)',
+      transition: 'var(--transition-smooth)'
     }}>
       <div style={{ 
         display: 'flex', 
@@ -88,7 +90,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div style={{ 
         fontSize: 28, 
         fontWeight: 600, 
-        color: '#fff',
+        color: 'var(--text-main)',
         marginBottom: 4
       }}>
         {value}
@@ -136,11 +138,13 @@ export const SlaHealthIndicator: React.FC<SlaHealthProps> = ({
 
   return (
     <div style={{
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
+      background: 'var(--card-bg)',
+      backdropFilter: 'var(--glass-blur)',
       borderRadius: 12,
       padding: 20,
-      border: '1px solid rgba(255,255,255,0.08)'
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--card-shadow)',
+      transition: 'var(--transition-smooth)'
     }}>
       <div style={{ 
         display: 'flex', 
@@ -148,8 +152,8 @@ export const SlaHealthIndicator: React.FC<SlaHealthProps> = ({
         gap: 8,
         marginBottom: 16
       }}>
-        <Activity size={18} color="#FFD700" />
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>
+        <Activity size={18} color="var(--accent-blue)" />
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-main)' }}>
           SLA 健康度
         </span>
       </div>
@@ -206,7 +210,7 @@ export const SlaHealthIndicator: React.FC<SlaHealthProps> = ({
         display: 'flex', 
         gap: 16,
         paddingTop: 12,
-        borderTop: '1px solid rgba(255,255,255,0.08)'
+        borderTop: '1px solid var(--card-border)'
       }}>
         <div style={{ flex: 1 }}>
           <div style={{ 
@@ -260,11 +264,13 @@ export const TypeDistribution: React.FC<TypeDistributionProps> = ({ data }) => {
 
   return (
     <div style={{
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
+      background: 'var(--card-bg)',
+      backdropFilter: 'var(--glass-blur)',
       borderRadius: 12,
       padding: 20,
-      border: '1px solid rgba(255,255,255,0.08)'
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--card-shadow)',
+      transition: 'var(--transition-smooth)'
     }}>
       <div style={{ 
         display: 'flex', 
@@ -272,8 +278,8 @@ export const TypeDistribution: React.FC<TypeDistributionProps> = ({ data }) => {
         gap: 8,
         marginBottom: 16
       }}>
-        <PieChart size={18} color="#FFD700" />
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>
+        <PieChart size={18} color="var(--accent-blue)" />
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-main)' }}>
           工单类型分布
         </span>
       </div>
@@ -315,7 +321,7 @@ export const TypeDistribution: React.FC<TypeDistributionProps> = ({ data }) => {
               }} />
               <span style={{ fontSize: 12, color: '#888' }}>{item.label}</span>
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: '#fff' }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>
               {item.value}
             </div>
             <div style={{ fontSize: 11, color: '#666' }}>
@@ -345,11 +351,13 @@ interface RecentActivityProps {
 export const RecentActivityList: React.FC<RecentActivityProps> = ({ activities }) => {
   return (
     <div style={{
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
+      background: 'var(--card-bg)',
+      backdropFilter: 'var(--glass-blur)',
       borderRadius: 12,
       padding: 20,
-      border: '1px solid rgba(255,255,255,0.08)'
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--card-shadow)',
+      transition: 'var(--transition-smooth)'
     }}>
       <div style={{ 
         display: 'flex', 
@@ -357,8 +365,8 @@ export const RecentActivityList: React.FC<RecentActivityProps> = ({ activities }
         gap: 8,
         marginBottom: 16
       }}>
-        <Clock size={18} color="#FFD700" />
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>
+        <Clock size={18} color="var(--accent-blue)" />
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-main)' }}>
           最近活动
         </span>
       </div>
@@ -429,7 +437,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
         <h1 style={{ 
           fontSize: 24, 
           fontWeight: 600, 
-          color: '#fff',
+          color: 'var(--text-main)',
           marginBottom: 4
         }}>
           服务概览

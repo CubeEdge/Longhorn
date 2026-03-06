@@ -71,9 +71,9 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   return (
     <div style={{
       width: 220,
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
-      borderRight: '1px solid rgba(255,255,255,0.08)',
+      background: 'var(--bg-sidebar)',
+      backdropFilter: 'var(--glass-blur)',
+      borderRight: '1px solid var(--glass-border)',
       padding: '16px 8px',
       display: 'flex',
       flexDirection: 'column',
@@ -90,8 +90,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             padding: '10px 12px',
             borderRadius: 8,
             border: 'none',
-            background: currentView === item.id ? 'rgba(255, 215, 0, 0.15)' : 'transparent',
-            color: currentView === item.id ? '#FFD700' : '#999',
+            background: currentView === item.id ? 'var(--accent-subtle)' : 'transparent',
+            color: currentView === item.id ? 'var(--accent-blue)' : 'var(--text-tertiary)',
             cursor: 'pointer',
             transition: 'all 0.2s',
             width: '100%',
@@ -102,8 +102,8 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           <span style={{ flex: 1, fontSize: 14 }}>{item.label}</span>
           {item.count > 0 && (
             <span style={{
-              background: item.alert ? '#EF4444' : 'rgba(255,255,255,0.1)',
-              color: item.alert ? '#fff' : '#888',
+              background: item.alert ? '#EF4444' : 'var(--glass-bg-light)',
+              color: item.alert ? '#fff' : 'var(--text-tertiary)',
               padding: '2px 8px',
               borderRadius: 10,
               fontSize: 12,
@@ -151,21 +151,21 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
       alignItems: 'center',
       gap: 12,
       padding: '12px 16px',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
-      background: 'rgba(30, 30, 30, 0.4)'
+      borderBottom: '1px solid var(--glass-border)',
+      background: 'var(--card-bg-light)'
     }}>
       {/* Search */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        background: 'rgba(255,255,255,0.06)',
+        background: 'var(--glass-bg-light)',
         borderRadius: 8,
         padding: '8px 12px',
         flex: 1,
         maxWidth: 300
       }}>
-        <Search size={16} color="#666" />
+        <Search size={16} color="var(--text-tertiary)" />
         <input
           type="text"
           placeholder="搜索..."
@@ -175,7 +175,7 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            color: '#fff',
+            color: 'var(--text-main)',
             fontSize: 14,
             width: '100%'
           }}
@@ -187,13 +187,14 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
         value={filter.ticket_type || ''}
         onChange={e => onFilterChange({ ticket_type: e.target.value })}
         style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'var(--glass-bg-light)',
+          border: '1px solid var(--glass-border)',
           borderRadius: 8,
           padding: '8px 12px',
-          color: '#ccc',
+          color: 'var(--text-secondary)',
           fontSize: 14,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          outline: 'none'
         }}
       >
         {typeOptions.map(opt => (
@@ -206,13 +207,14 @@ export const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
         value={filter.priority || ''}
         onChange={e => onFilterChange({ priority: e.target.value })}
         style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'var(--glass-bg-light)',
+          border: '1px solid var(--glass-border)',
           borderRadius: 8,
           padding: '8px 12px',
-          color: '#ccc',
+          color: 'var(--text-secondary)',
           fontSize: 14,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          outline: 'none'
         }}
       >
         {priorityOptions.map(opt => (
@@ -273,8 +275,8 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
         alignItems: 'flex-start',
         gap: 12,
         padding: '14px 16px',
-        background: isSelected ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: isSelected ? 'var(--accent-subtle)' : 'transparent',
+        borderBottom: '1px solid var(--glass-border)',
         cursor: 'pointer',
         transition: 'background 0.15s'
       }}
@@ -294,7 +296,7 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
           <span style={{ 
             fontSize: 13, 
             fontWeight: 600, 
-            color: isSelected ? '#FFD700' : '#fff' 
+            color: isSelected ? 'var(--accent-blue)' : 'var(--text-main)' 
           }}>
             {ticket.ticket_number}
           </span>
@@ -302,8 +304,8 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
             fontSize: 11,
             padding: '2px 6px',
             borderRadius: 4,
-            background: 'rgba(255,255,255,0.1)',
-            color: '#888'
+            background: 'var(--glass-bg-light)',
+            color: 'var(--text-tertiary)'
           }}>
             {getTypeLabel()}
           </span>
@@ -312,7 +314,7 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
 
         <div style={{ 
           fontSize: 13, 
-          color: '#aaa', 
+          color: 'var(--text-secondary)', 
           marginBottom: 4,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -321,7 +323,7 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
           {ticket.problem_summary || ticket.reporter_name}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#666' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>
           <span>{ticket.account_name || ticket.reporter_name}</span>
           <span>·</span>
           <span>{ticket.product_name}</span>
@@ -337,7 +339,7 @@ export const TicketListItem: React.FC<TicketListItemProps> = ({
       {/* Time */}
       <div style={{ 
         fontSize: 12, 
-        color: '#666',
+        color: 'var(--text-tertiary)',
         flexShrink: 0
       }}>
         {formatRelativeTime(ticket.updated_at)}
@@ -413,7 +415,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     <div style={{
       display: 'flex',
       height: '100%',
-      background: '#1a1a1a'
+      background: 'var(--bg-main)'
     }}>
       {sidebar}
       <div style={{
@@ -427,9 +429,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       {detail && (
         <div style={{
           width: 480,
-          borderLeft: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(30, 30, 30, 0.6)',
-          backdropFilter: 'blur(20px)'
+          borderLeft: '1px solid var(--glass-border)',
+          background: 'var(--bg-sidebar)',
+          backdropFilter: 'var(--glass-blur)'
         }}>
           {detail}
         </div>

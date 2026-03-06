@@ -160,6 +160,32 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/internal/tickets (工单索引化)');
     console.log('  - /api/v1/synonyms (同义词字典管理)');
 
+    // Start background tasks
+    const slaService = require('./sla_service');
+    setInterval(() => {
+        try {
+            const { updated, warnings, breaches } = slaService.batchCheckSlaStatus(db);
+            if (updated > 0) {
+                console.log(`[SLA] Batch check completed. Updated: ${updated}, Warnings: ${warnings.length}, Breaches: ${breaches.length}`);
+                
+                // Create SLA notifications calling methods on the router
+                for (const warn of warnings) {
+                    if (warn.assigned_to) {
+                        const remaining = slaService.formatRemainingTime(warn.remaining_hours || 0);
+                        notificationsRoutes.createSlaWarningNotification(warn.ticket_id, warn.ticket_number, warn.assigned_to, warn.sla_due_at, remaining);
+                    }
+                }
+                for (const breach of breaches) {
+                    if (breach.assigned_to) {
+                        notificationsRoutes.createSlaBreachNotification(breach.ticket_id, breach.ticket_number, breach.assigned_to);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[SLA] Batch check error:', e.message);
+        }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
     return {
         generateRmaNumber: (productCode, channelCode) => generateRmaNumber(db, productCode, channelCode),
         generateIssueNumber: () => generateIssueNumber(db)

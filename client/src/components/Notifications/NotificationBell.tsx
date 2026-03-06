@@ -2,8 +2,9 @@
  * NotificationBell - 通知铃铛组件
  * P2 架构升级 - 导航栏通知入口
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
+import axios from 'axios';
 import { useNotificationStore } from '../../store/useNotificationStore';
 
 interface NotificationBellProps {
@@ -12,13 +13,43 @@ interface NotificationBellProps {
 
 const NotificationBell: React.FC<NotificationBellProps> = ({ onClick }) => {
   const { unreadCount, fetchUnreadCount, togglePanel } = useNotificationStore();
+  const [refreshInterval, setRefreshInterval] = useState(30); // Default 30s
+  const intervalRef = useRef<number | null>(null);
 
-  // Poll for unread count every 30 seconds
+  // Fetch settings safely
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get('/api/v1/system/public-settings');
+        if (res.data.success && res.data.data.notification_refresh_interval) {
+          setRefreshInterval(res.data.data.notification_refresh_interval);
+        }
+      } catch (e) {
+        console.error('[NotificationBell] Failed to fetch settings', e);
+      }
+    };
+    
+    fetchSettings();
+    window.addEventListener('system-settings-updated', fetchSettings);
+    return () => window.removeEventListener('system-settings-updated', fetchSettings);
+  }, []);
+
+  // Poll for unread count with dynamic interval
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+    
+    if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+    }
+    
+    intervalRef.current = setInterval(fetchUnreadCount, refreshInterval * 1000);
+    
+    return () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
+    };
+  }, [fetchUnreadCount, refreshInterval]);
 
   const handleClick = () => {
     if (onClick) {

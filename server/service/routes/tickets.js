@@ -1572,13 +1572,32 @@ module.exports = function (db, authenticate, serviceUpload) {
                 const priority = updates.priority || ticket.priority;
                 const slaUpdate = slaService.updateSlaOnNodeChange(db, id, updates.current_node, priority);
 
+                const NODE_NAME_MAP = {
+                    draft: '草稿',
+                    submitted: '已提交',
+                    ms_review: '商务审核',
+                    op_receiving: '待收货',
+                    op_diagnosing: '诊断中',
+                    op_repairing: '维修中',
+                    op_qa: 'QA检测',
+                    op_shipping: '打包发货',
+                    ms_closing: '待结案',
+                    ge_review: '财务审核',
+                    ge_closing: '财务结案',
+                    resolved: '已解决',
+                    closed: '已关闭',
+                    waiting_customer: '待反馈'
+                };
+                const oldNodeName = NODE_NAME_MAP[ticket.current_node] || ticket.current_node;
+                const newNodeName = NODE_NAME_MAP[updates.current_node] || updates.current_node;
+
                 // Record activity
                 db.prepare(`
                     INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
                     VALUES (?, 'status_change', ?, ?, ?, ?, ?, 'all')
                 `).run(
                     id,
-                    `状态变更: ${ticket.current_node} → ${updates.current_node}`,
+                    `状态变更: ${oldNodeName} → ${newNodeName}`,
                     JSON.stringify({ from_node: ticket.current_node, to_node: updates.current_node }),
                     req.user.id,
                     actorName,
@@ -1610,7 +1629,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                         `).run(
                             rid,
                             `工单状态变更`,
-                            `工单 ${ticket.ticket_number}: ${ticket.current_node} → ${updates.current_node}`,
+                            `工单 ${ticket.ticket_number}: ${oldNodeName} → ${newNodeName}`,
                             id,
                             `/service/tickets/${id}`,
                             JSON.stringify({

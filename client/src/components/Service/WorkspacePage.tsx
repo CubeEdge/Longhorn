@@ -756,9 +756,9 @@ const WorkspacePage: React.FC = () => {
                     padding: '8px 14px',
                     borderRadius: 20,
 
-                    background: isActive ? 'rgba(255, 215, 0, 0.15)' : 'rgba(255,255,255,0.08)',
-                    color: isActive ? '#FFD700' : 'var(--text-secondary)',
-                    border: isActive ? '1px solid rgba(255, 215, 0, 0.3)' : '1px solid transparent',
+                    background: isActive ? 'var(--accent-subtle)' : 'var(--glass-bg-light)',
+                    color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                    border: isActive ? '1px solid var(--accent-subtle)' : '1px solid transparent',
                     fontWeight: isActive ? 600 : 400,
                     fontSize: 13,
                     cursor: 'pointer',
@@ -766,16 +766,16 @@ const WorkspacePage: React.FC = () => {
                     whiteSpace: 'nowrap'
                   }}
                   onMouseEnter={e => {
-                    if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                    if (!isActive) e.currentTarget.style.background = 'var(--glass-bg-hover)';
                   }}
                   onMouseLeave={e => {
-                    if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                    if (!isActive) e.currentTarget.style.background = 'var(--glass-bg-light)';
                   }}
                 >
                   {tab.icon}
                   <span>{tab.label[lang]}</span>
                   <span style={{
-                    background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
+                    background: isActive ? 'var(--glass-bg-hover)' : 'var(--glass-bg)',
                     padding: '2px 8px',
                     borderRadius: 10,
                     fontSize: 12,
@@ -790,8 +790,7 @@ const WorkspacePage: React.FC = () => {
             );
           })}
         </div>
-      )
-      }
+      )}
 
       {/* Main Content Area */}
       {

@@ -112,8 +112,8 @@ const ServiceOverviewPage: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: 0 }}>{t('overview.title') || '服务概览'}</h1>
-          <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>{t('overview.subtitle') || 'Service Overview Dashboard'}</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>{t('overview.title') || '服务概览'}</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>{t('overview.subtitle') || 'Service Overview Dashboard'}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {isLeadOrAdmin && (
@@ -143,11 +143,11 @@ const ServiceOverviewPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--glass-bg-light)',
+              border: '1px solid var(--card-border)',
               borderRadius: 8,
               padding: '8px 16px',
-              color: '#ccc',
+              color: 'var(--text-secondary)',
               cursor: 'pointer'
             }}
           >
@@ -216,16 +216,17 @@ const ServiceOverviewPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Left: Risk Tickets */}
         <div style={{
-          background: 'rgba(30, 30, 30, 0.6)',
-          backdropFilter: 'blur(20px)',
+          background: 'var(--card-bg)',
+          backdropFilter: 'var(--glass-blur)',
           borderRadius: 12,
           padding: 20,
-          border: '1px solid rgba(255,255,255,0.08)'
+          border: '1px solid var(--card-border)',
+          boxShadow: 'var(--card-shadow)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <AlertTriangle size={18} color="#EF4444" />
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.risks') || '风险工单'}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>{t('overview.risks') || '风险工单'}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
               {t('overview.risks_hint') || '点击可催办 @Assignee'}
             </span>
           </div>
@@ -245,16 +246,17 @@ const ServiceOverviewPage: React.FC = () => {
 
         {/* Right: Team Health */}
         <div style={{
-          background: 'rgba(30, 30, 30, 0.6)',
-          backdropFilter: 'blur(20px)',
+          background: 'var(--card-bg)',
+          backdropFilter: 'var(--glass-blur)',
           borderRadius: 12,
           padding: 20,
-          border: '1px solid rgba(255,255,255,0.08)'
+          border: '1px solid var(--card-border)',
+          boxShadow: 'var(--card-shadow)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Users size={18} color="#FFD700" />
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.team_load') || '团队负载'}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
+            <Users size={18} color="var(--accent-blue)" />
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>{t('overview.team_load') || '团队负载'}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
               {t('overview.team_hint') || '点击柱子可改派任务'}
             </span>
           </div>
@@ -270,15 +272,16 @@ const ServiceOverviewPage: React.FC = () => {
       {/* SLA Health Indicator */}
       <div style={{
         marginTop: 20,
-        background: 'rgba(30, 30, 30, 0.6)',
-        backdropFilter: 'blur(20px)',
+        background: 'var(--card-bg)',
+        backdropFilter: 'var(--glass-blur)',
         borderRadius: 12,
         padding: 20,
-        border: '1px solid rgba(255,255,255,0.08)'
+        border: '1px solid var(--card-border)',
+        boxShadow: 'var(--card-shadow)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Clock size={18} color="#FFD700" />
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>{t('overview.sla_health') || 'SLA 健康度'}</span>
+          <Clock size={18} color="var(--accent-blue)" />
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>{t('overview.sla_health') || 'SLA 健康度'}</span>
         </div>
 
         <div style={{ display: 'flex', gap: 40, alignItems: 'center' }}>
@@ -317,11 +320,12 @@ const ActionCard: React.FC<{
   <div
     onClick={onClick}
     style={{
-      background: 'rgba(30, 30, 30, 0.6)',
-      backdropFilter: 'blur(20px)',
+      background: 'var(--card-bg)',
+      backdropFilter: 'var(--glass-blur)',
       borderRadius: 12,
       padding: 20,
-      border: `1px solid ${alert ? color + '40' : 'rgba(255,255,255,0.08)'}`,
+      border: `1px solid ${alert ? color + '40' : 'var(--card-border)'}`,
+      boxShadow: 'var(--card-shadow)',
       cursor: onClick ? 'pointer' : 'default',
       transition: 'all 0.2s'
     }}
@@ -345,9 +349,9 @@ const ActionCard: React.FC<{
         </div>
       )}
     </div>
-    <div style={{ fontSize: 28, fontWeight: 600, color: '#fff', marginBottom: 4 }}>{value}</div>
-    <div style={{ fontSize: 13, color: '#888' }}>{title}</div>
-    <div style={{ fontSize: 11, color: '#666' }}>{subtitle}</div>
+    <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-main)', marginBottom: 4 }}>{value}</div>
+    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{title}</div>
+    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subtitle}</div>
   </div>
 );
 
@@ -372,12 +376,12 @@ const RiskTicketRow: React.FC<{ ticket: RiskTicket; onClick: () => void }> = ({ 
       background: ticket.sla_status === 'breached' ? '#EF4444' : '#F59E0B'
     }} />
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>{ticket.ticket_number}</div>
-      <div style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-main)' }}>{ticket.ticket_number}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {ticket.problem_summary}
       </div>
     </div>
-    <div style={{ fontSize: 12, color: '#888' }}>@{ticket.assigned_name}</div>
+    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>@{ticket.assigned_name}</div>
     <div style={{
       fontSize: 12,
       fontWeight: 600,
@@ -402,10 +406,10 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
       onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
       onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
     >
-      <div style={{ width: 80, fontSize: 13, color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ width: 80, fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {member.name}
       </div>
-      <div style={{ flex: 1, height: 24, background: 'rgba(255,255,255,0.06)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 24, background: 'var(--glass-bg-light)', borderRadius: 6, overflow: 'hidden' }}>
         <div style={{
           width: `${width}%`,
           height: '100%',
@@ -417,7 +421,7 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
           paddingRight: 8,
           minWidth: 30
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#fff' }}>{member.active_tickets}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF' }}>{member.active_tickets}</span>
         </div>
       </div>
       {isOverloaded && (
@@ -439,7 +443,7 @@ const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
         width: 80,
         height: 80,
         borderRadius: '50%',
-        background: `conic-gradient(${color} ${healthRate}%, rgba(255,255,255,0.1) 0)`,
+        background: `conic-gradient(${color} ${healthRate}%, var(--glass-bg-light) 0)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
@@ -448,7 +452,7 @@ const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
           width: 60,
           height: 60,
           borderRadius: '50%',
-          background: '#1a1a1a',
+          background: 'var(--card-bg-light)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -459,7 +463,7 @@ const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
       </div>
       <div>
         <div style={{ fontSize: 16, fontWeight: 500, color, marginBottom: 4 }}>{label}</div>
-        <div style={{ fontSize: 12, color: '#888' }}>超时率: {breachRate.toFixed(1)}%</div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>超时率: {breachRate.toFixed(1)}%</div>
       </div>
     </div>
   );
@@ -467,9 +471,9 @@ const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
 
 const MiniStat: React.FC<{ label: string; value: string | number; trend: number; negative?: boolean }> = ({ label, value, trend, negative }) => (
   <div>
-    <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{label}</div>
+    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>{label}</div>
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-      <span style={{ fontSize: 20, fontWeight: 600, color: '#fff' }}>{value}</span>
+      <span style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-main)' }}>{value}</span>
       <span style={{
         fontSize: 11,
         color: (negative ? trend > 0 : trend < 0) ? '#EF4444' : '#10B981',

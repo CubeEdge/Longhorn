@@ -53,6 +53,23 @@
   /* Legacy Shadows (for compatibility) */
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.7);
+
+  /* Component Level Colors (Dark) */
+  --card-bg: #1C1C1E;
+  --card-bg-light: #2C2C2E;
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.1);
+  
+  --modal-bg: #1C1C1E;
+  --modal-overlay: rgba(0, 0, 0, 0.8);
+  
+  --badge-warning-bg: rgba(255, 210, 0, 0.15);
+  --badge-warning-text: #FFD200;
+  --badge-success-bg: rgba(16, 185, 129, 0.15);
+  --badge-success-text: #10B981;
 }
 
 [data-theme="light"] {
@@ -98,6 +115,23 @@
   /* Layout and shapes stay the same */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Component Level Colors (Light) */
+  --card-bg: #FFFFFF;
+  --card-bg-light: #F9FAFB;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  
+  --input-bg: #FFFFFF;
+  --input-border: #D1D5DB;
+  
+  --modal-bg: #FFFFFF;
+  --modal-overlay: rgba(0, 0, 0, 0.4);
+  
+  --badge-warning-bg: #FEF3C7;
+  --badge-warning-text: #B45309;
+  --badge-success-bg: #D1FAE5;
+  --badge-success-text: #047857;
 }
 
 * {
@@ -1928,4 +1962,38 @@ select.form-control option {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   margin-top: 32px;
   margin-bottom: 32px;
+}
+
+/* ==========================================================================
+   GLOBAL THEME OVERRIDES (macOS 26 Style) 
+   Fixes hardcoding for light mode
+   ========================================================================== */
+
+[data-theme="light"] {
+  /* Global form control fixes */
+  .form-control {
+    background: var(--card-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-main) !important;
+    color-scheme: light !important;
+  }
+
+  select.form-control option {
+    background: var(--bg-content) !important;
+    color: var(--text-main) !important;
+  }
+  
+  /* Catch-all for common dark hardcoded backgrounds in components */
+  [style*="background: #1C1C1E"], 
+  [style*="background: rgb(28, 28, 30)"],
+  [style*="background: #1c1c1e"] {
+     background: var(--card-bg) !important;
+     color: var(--text-main) !important;
+  }
+  
+  /* Fix yellow text contrast on light background */
+  [style*="color: rgb(255, 210, 0)"],
+  [style*="color: #FFD200"] {
+     color: var(--accent-blue) !important;
+  }
 }

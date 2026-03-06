@@ -1,5 +1,28 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-07] 版本迭代与全量远程部署 (v12.3.84)
+### Infrastructure
+- 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.84 / `server` v1.7.72。
+- 物理清理并重新构建 `client` 前端资产，确保生产环境产物一致性。
+- 调用 `./scripts/deploy.sh --full` (Full Mode) 进行原子级 tarball 同步至远程服务器 `mini`。
+- 在远程服务器成功执行 `npm install` 与 `npm run build`。
+- 自动化执行 `pm2 reload`，验证生产环境成功加载最新版号且服务运行正常。
+
+## [2026-03-06] UI 交互优化与遮挡修复 (v12.3.83-patch1)
+### Frontend
+- **移除按键提示**: 根据用户反馈，从底部 Sticky Footer 动作按钮中移除了多余的 `(强制)` 文本提示，使界面更简洁。
+- **修复列表遮挡**: 重构了 `AssigneeSelector.tsx` 的弹出逻辑。将指派人下拉列表的定位模式从 `absolute` 改为 `fixed`，并动态计算相对于触发按钮的坐标，彻底避免了列表被 `NodeProgressBar` 或 `ActivityTimeline` 等父级容器 `overflow: hidden` 截断的问题。
+### Infrastructure
+- 重新执行 `/upd` 交付流程，完成前端资源增量构建与远端 `mini` 环境同步。
+## [2026-03-06] RMA 工作流修复与节点中文化部署 (v12.3.83)
+### Frontend
+- **工作流断点修复**: 修改 `ActionBufferModal.tsx`，纠正了在 `ge_review` 阶段无法正确保存 `payment_amount` 的逻辑漏洞，确保后续流转能顺利进入 `op_shipping` 环节而非错误退回。
+- **UI 用户体验增强**: 重构了 `UnifiedTicketDetail.tsx` 的页脚 (Sticky Footer) 及状态显示逻辑，彻底将内部英文字段翻译转换为本地中文（如将 `ms_closing` 转换为 `商务结案`），提升整体界面友好度。
+### Backend
+- **日志与推送规范化**: 在 `tickets.js` API 层中嵌入了 `NODE_NAME_MAP` 中文词典。当工单发生跨节点流转时，生成的 Activity 审计日志以及用户端的 Notification 消息都会直接采用中文化后的节点名展示，确保多端阅读一致性。
+### Infrastructure
+- 执行了 `/upd` 交付流水线，同步递增版本至 `client` v12.3.83 / `server` v1.7.71。
+- 利用构建工具完成全量前端资产打包，并通过自动化部署脚本 `./scripts/deploy.sh` 将代码推流至 `mini` 生产环境并执行 PM2 进程热重载。
 ## [2026-03-06] 版本版本迭代与流水线部署 (v12.3.82)
 ### Infrastructure
 - 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.82 / `server` v1.7.70。
