@@ -1,5 +1,20 @@
 # Prompt Log
 
+## 2026-03-07 04:30 (耗时: 10m)
+
+**User Prompt**:
+1. **强制执行 `/upd` 更新远程服务器**:
+   - 递增 `client/package.json`（和必要的 `server/package.json`）中的最后一位 (Z位) 版本号。
+   - 运行 `npm run build` 确保前端代码编译成功。
+   - 运行 `./scripts/deploy.sh` 进行全量远程部署（至 `mini`）。
+   - 校验部署脚本退出状态，确认 `pm2 reload` 成功执行。
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.85`，`server` 版本至 `1.7.73`。
+2. **构建验证**: 成功运行 `npm run build`，编译产生前端资产。
+3. **部署至生产环境**: 通过执行 `./scripts/deploy.sh --full` 脚本成功将项目同步至 `mini` 远程服务器。系统自动在远端执行原子级别包交换并重新安装最新依赖，重构。
+4. **服务无缝重启**: 远程端成功重载和重启了 `pm2` 中关联的 `longhorn` 相关应用。发布圆满结束，确保了工作台更新完全上线。
+
 ## 2026-03-07 01:00 (耗时: 12m)
 
 **User Prompt**:
