@@ -988,6 +988,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                     team_hub_unclaimed: teamUnassignedCount
                 }
             });
+        } catch (err) {
+            console.error('[Tickets] Workspace counts error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
     /**
      * GET /api/v1/tickets/stats/summary
@@ -1049,6 +1054,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                     by_type: byType
                 }
             });
+        } catch (err) {
+            console.error('[Tickets] Stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
     /**
      * GET /api/v1/tickets/mention-stats
@@ -1079,6 +1089,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 success: true,
                 data: stats
             });
+        } catch (err) {
+            console.error('[Tickets] Mention stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
     /**
      * GET /api/v1/tickets/invite-stats
@@ -1108,6 +1123,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 success: true,
                 data: stats
             });
+        } catch (err) {
+            console.error('[Tickets] Invite stats error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
     /**
      * GET /api/v1/tickets/:id
@@ -2214,17 +2234,6 @@ module.exports = function (db, authenticate, serviceUpload) {
         }
     });
 
-        } catch (err) {
-            console.error('[Tickets] Workspace counts error:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    });
-
-        } catch (err) {
-            console.error('[Tickets] Stats error:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    });
 
     /**
      * POST /api/v1/tickets/:id/participants
@@ -2326,17 +2335,7 @@ module.exports = function (db, authenticate, serviceUpload) {
         }
     });
 
-        } catch (err) {
-            console.error('[Tickets] Mention stats error:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    });
 
-        } catch (err) {
-            console.error('[Tickets] Invite stats error:', err);
-            res.status(500).json({ success: false, error: err.message });
-        }
-    });
 
     /**
      * POST /api/v1/tickets/:id/clean-contact
