@@ -922,6 +922,194 @@ module.exports = function (db, authenticate, serviceUpload) {
     });
 
     /**
+     * GET /api/v1/tickets/workspace/counts
+     * Get counts for Workspace views: My Tasks, Mentioned, Team Queue
+     */
+    router.get('/workspace/counts', authenticate, (req, res) => {
+        try {
+            const user = req.user;
+            const userId = user.id;
+
+            // 1. My Tasks (Assigned to me, not closed/resolved)
+            const myTasksCount = db.prepare(`
+                SELECT COUNT(*) as count FROM tickets 
+                WHERE assigned_to = ? AND current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            `).get(userId).count;
+
+            // 2. Mentioned (In participants, not assigned_to, not closed/resolved)
+            // Use existing participant logic
+            const mentionedCount = db.prepare(`
+                SELECT COUNT(*) as count FROM tickets t
+                WHERE EXISTS (SELECT 1 FROM ticket_participants tp WHERE tp.ticket_id = t.id AND tp.user_id = ?)
+                AND (t.assigned_to IS NULL OR t.assigned_to != ?)
+                AND t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+            `).get(userId, userId).count;
+
+            // 3. Team Hub (All active tickets visible to this user)
+            let teamSql = `
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN (assigned_to IS NULL OR assigned_to = 0) THEN 1 ELSE 0 END) as unassigned
+                FROM tickets t
+                WHERE t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
+                AND (t.is_deleted IS NULL OR t.is_deleted = 0)
+            `;
+
+            let teamParams = [];
+            if (user.user_type === 'Dealer') {
+                teamSql += ' AND t.dealer_id = ?';
+                teamParams.push(user.dealer_id);
+            } else if (!hasGlobalAccess(user)) {
+                // OP/RD: Only see RMA or tickets they are part of
+                teamSql += ` AND (
+                    t.ticket_type = 'rma'
+                    OR t.assigned_to = ?
+                    OR t.created_by = ?
+                    OR t.submitted_by = ?
+                    OR EXISTS (
+                        SELECT 1 FROM ticket_participants tp 
+                        WHERE tp.ticket_id = t.id AND tp.user_id = ?
+                    )
+                )`;
+                teamParams.push(userId, userId, userId, userId);
+            }
+
+            const teamStats = db.prepare(teamSql).get(...teamParams);
+            const teamTotalCount = teamStats ? teamStats.total : 0;
+            const teamUnassignedCount = teamStats ? (teamStats.unassigned || 0) : 0;
+
+            res.json({
+                success: true,
+                data: {
+                    my_tasks: myTasksCount,
+                    mentioned: mentionedCount,
+                    team_queue: teamUnassignedCount, // Backwards compatibility
+                    team_hub_total: teamTotalCount,
+                    team_hub_unclaimed: teamUnassignedCount
+                }
+            });
+
+    /**
+     * GET /api/v1/tickets/stats/summary
+     * Get ticket statistics
+     */
+    router.get('/stats/summary', authenticate, (req, res) => {
+        try {
+            const { ticket_type, created_from, created_to } = req.query;
+            const user = req.user;
+
+            let conditions = [];
+            let params = [];
+
+            if (user.user_type === 'Dealer') {
+                conditions.push('dealer_id = ?');
+                params.push(user.dealer_id);
+            }
+            if (ticket_type) {
+                conditions.push('ticket_type = ?');
+                params.push(ticket_type);
+            }
+            if (created_from) {
+                conditions.push('created_at >= ?');
+                params.push(created_from);
+            }
+            if (created_to) {
+                conditions.push('created_at <= ?');
+                params.push(created_to);
+            }
+
+            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+            // By status
+            const byStatus = db.prepare(`
+                SELECT status, COUNT(*) as count FROM tickets ${whereClause} GROUP BY status
+            `).all(...params);
+
+            // By priority
+            const byPriority = db.prepare(`
+                SELECT priority, COUNT(*) as count FROM tickets ${whereClause} GROUP BY priority
+            `).all(...params);
+
+            // By SLA status
+            const bySla = db.prepare(`
+                SELECT sla_status, COUNT(*) as count FROM tickets ${whereClause} AND sla_status IS NOT NULL GROUP BY sla_status
+            `).all(...params);
+
+            // By type
+            const byType = db.prepare(`
+                SELECT ticket_type, COUNT(*) as count FROM tickets ${whereClause} GROUP BY ticket_type
+            `).all(...params);
+
+            res.json({
+                success: true,
+                data: {
+                    by_status: byStatus,
+                    by_priority: byPriority,
+                    by_sla_status: bySla,
+                    by_type: byType
+                }
+            });
+
+    /**
+     * GET /api/v1/tickets/mention-stats
+     * Get frequently mentioned users for current user (sorted by mention count)
+     */
+    router.get('/mention-stats', authenticate, (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            // Get frequently mentioned users sorted by count
+            const stats = db.prepare(`
+                SELECT 
+                    ms.mentioned_user_id as user_id,
+                    u.username as name,
+                    d.name as department,
+                    d.code as dept_code,
+                    ms.mention_count,
+                    ms.last_mention_at
+                FROM user_mention_stats ms
+                LEFT JOIN users u ON ms.mentioned_user_id = u.id
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE ms.user_id = ?
+                ORDER BY ms.mention_count DESC, ms.last_mention_at DESC
+                LIMIT 20
+            `).all(userId);
+
+            res.json({
+                success: true,
+                data: stats
+            });
+
+    /**
+     * GET /api/v1/tickets/invite-stats
+     * Get frequently invited users for current user (sorted by invite count)
+     */
+    router.get('/invite-stats', authenticate, (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            const stats = db.prepare(`
+                SELECT 
+                    is.invited_user_id as user_id,
+                    u.username as name,
+                    d.name as department,
+                    d.code as dept_code,
+                    is.invite_count,
+                    is.last_invite_at
+                FROM user_invite_stats is
+                LEFT JOIN users u ON is.invited_user_id = u.id
+                LEFT JOIN departments d ON u.department_id = d.id
+                WHERE is.user_id = ?
+                ORDER BY is.invite_count DESC, is.last_invite_at DESC
+                LIMIT 20
+            `).all(userId);
+
+            res.json({
+                success: true,
+                data: stats
+            });
+
+    /**
      * GET /api/v1/tickets/:id
      * Get ticket detail
      */
@@ -2026,139 +2214,12 @@ module.exports = function (db, authenticate, serviceUpload) {
         }
     });
 
-    /**
-     * GET /api/v1/tickets/workspace/counts
-     * Get counts for Workspace views: My Tasks, Mentioned, Team Queue
-     */
-    router.get('/workspace/counts', authenticate, (req, res) => {
-        try {
-            const user = req.user;
-            const userId = user.id;
-
-            // 1. My Tasks (Assigned to me, not closed/resolved)
-            const myTasksCount = db.prepare(`
-                SELECT COUNT(*) as count FROM tickets 
-                WHERE assigned_to = ? AND current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
-            `).get(userId).count;
-
-            // 2. Mentioned (In participants, not assigned_to, not closed/resolved)
-            // Use existing participant logic
-            const mentionedCount = db.prepare(`
-                SELECT COUNT(*) as count FROM tickets t
-                WHERE EXISTS (SELECT 1 FROM ticket_participants tp WHERE tp.ticket_id = t.id AND tp.user_id = ?)
-                AND (t.assigned_to IS NULL OR t.assigned_to != ?)
-                AND t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
-            `).get(userId, userId).count;
-
-            // 3. Team Hub (All active tickets visible to this user)
-            let teamSql = `
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN (assigned_to IS NULL OR assigned_to = 0) THEN 1 ELSE 0 END) as unassigned
-                FROM tickets t
-                WHERE t.current_node NOT IN ('closed', 'cancelled', 'auto_closed', 'converted', 'resolved')
-                AND (t.is_deleted IS NULL OR t.is_deleted = 0)
-            `;
-
-            let teamParams = [];
-            if (user.user_type === 'Dealer') {
-                teamSql += ' AND t.dealer_id = ?';
-                teamParams.push(user.dealer_id);
-            } else if (!hasGlobalAccess(user)) {
-                // OP/RD: Only see RMA or tickets they are part of
-                teamSql += ` AND (
-                    t.ticket_type = 'rma'
-                    OR t.assigned_to = ?
-                    OR t.created_by = ?
-                    OR t.submitted_by = ?
-                    OR EXISTS (
-                        SELECT 1 FROM ticket_participants tp 
-                        WHERE tp.ticket_id = t.id AND tp.user_id = ?
-                    )
-                )`;
-                teamParams.push(userId, userId, userId, userId);
-            }
-
-            const teamStats = db.prepare(teamSql).get(...teamParams);
-            const teamTotalCount = teamStats ? teamStats.total : 0;
-            const teamUnassignedCount = teamStats ? (teamStats.unassigned || 0) : 0;
-
-            res.json({
-                success: true,
-                data: {
-                    my_tasks: myTasksCount,
-                    mentioned: mentionedCount,
-                    team_queue: teamUnassignedCount, // Backwards compatibility
-                    team_hub_total: teamTotalCount,
-                    team_hub_unclaimed: teamUnassignedCount
-                }
-            });
         } catch (err) {
             console.error('[Tickets] Workspace counts error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });
 
-    /**
-     * GET /api/v1/tickets/stats/summary
-     * Get ticket statistics
-     */
-    router.get('/stats/summary', authenticate, (req, res) => {
-        try {
-            const { ticket_type, created_from, created_to } = req.query;
-            const user = req.user;
-
-            let conditions = [];
-            let params = [];
-
-            if (user.user_type === 'Dealer') {
-                conditions.push('dealer_id = ?');
-                params.push(user.dealer_id);
-            }
-            if (ticket_type) {
-                conditions.push('ticket_type = ?');
-                params.push(ticket_type);
-            }
-            if (created_from) {
-                conditions.push('created_at >= ?');
-                params.push(created_from);
-            }
-            if (created_to) {
-                conditions.push('created_at <= ?');
-                params.push(created_to);
-            }
-
-            const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-            // By status
-            const byStatus = db.prepare(`
-                SELECT status, COUNT(*) as count FROM tickets ${whereClause} GROUP BY status
-            `).all(...params);
-
-            // By priority
-            const byPriority = db.prepare(`
-                SELECT priority, COUNT(*) as count FROM tickets ${whereClause} GROUP BY priority
-            `).all(...params);
-
-            // By SLA status
-            const bySla = db.prepare(`
-                SELECT sla_status, COUNT(*) as count FROM tickets ${whereClause} AND sla_status IS NOT NULL GROUP BY sla_status
-            `).all(...params);
-
-            // By type
-            const byType = db.prepare(`
-                SELECT ticket_type, COUNT(*) as count FROM tickets ${whereClause} GROUP BY ticket_type
-            `).all(...params);
-
-            res.json({
-                success: true,
-                data: {
-                    by_status: byStatus,
-                    by_priority: byPriority,
-                    by_sla_status: bySla,
-                    by_type: byType
-                }
-            });
         } catch (err) {
             console.error('[Tickets] Stats error:', err);
             res.status(500).json({ success: false, error: err.message });
@@ -2265,69 +2326,12 @@ module.exports = function (db, authenticate, serviceUpload) {
         }
     });
 
-    /**
-     * GET /api/v1/tickets/mention-stats
-     * Get frequently mentioned users for current user (sorted by mention count)
-     */
-    router.get('/mention-stats', authenticate, (req, res) => {
-        try {
-            const userId = req.user.id;
-
-            // Get frequently mentioned users sorted by count
-            const stats = db.prepare(`
-                SELECT 
-                    ms.mentioned_user_id as user_id,
-                    u.username as name,
-                    d.name as department,
-                    d.code as dept_code,
-                    ms.mention_count,
-                    ms.last_mention_at
-                FROM user_mention_stats ms
-                LEFT JOIN users u ON ms.mentioned_user_id = u.id
-                LEFT JOIN departments d ON u.department_id = d.id
-                WHERE ms.user_id = ?
-                ORDER BY ms.mention_count DESC, ms.last_mention_at DESC
-                LIMIT 20
-            `).all(userId);
-
-            res.json({
-                success: true,
-                data: stats
-            });
         } catch (err) {
             console.error('[Tickets] Mention stats error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });
 
-    /**
-     * GET /api/v1/tickets/invite-stats
-     * Get frequently invited users for current user (sorted by invite count)
-     */
-    router.get('/invite-stats', authenticate, (req, res) => {
-        try {
-            const userId = req.user.id;
-
-            const stats = db.prepare(`
-                SELECT 
-                    is.invited_user_id as user_id,
-                    u.username as name,
-                    d.name as department,
-                    d.code as dept_code,
-                    is.invite_count,
-                    is.last_invite_at
-                FROM user_invite_stats is
-                LEFT JOIN users u ON is.invited_user_id = u.id
-                LEFT JOIN departments d ON u.department_id = d.id
-                WHERE is.user_id = ?
-                ORDER BY is.invite_count DESC, is.last_invite_at DESC
-                LIMIT 20
-            `).all(userId);
-
-            res.json({
-                success: true,
-                data: stats
-            });
         } catch (err) {
             console.error('[Tickets] Invite stats error:', err);
             res.status(500).json({ success: false, error: err.message });

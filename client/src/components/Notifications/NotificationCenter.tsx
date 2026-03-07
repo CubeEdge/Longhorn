@@ -13,6 +13,7 @@ import { X, Check, CheckCheck, Bell, AlertTriangle, AtSign, UserPlus, Clock, Inf
 import { useNotificationStore } from '../../store/useNotificationStore';
 import type { Notification } from '../../store/useNotificationStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { useNavigate } from 'react-router-dom';
 
 interface NotificationCenterProps {
   onClose?: () => void;
@@ -188,6 +189,7 @@ const NotificationItem: React.FC<{
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
   const { /* t, */ } = useLanguage();
+  const navigate = useNavigate();
   const {
     notifications,
     unreadCount,
@@ -227,10 +229,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
       markAsRead(notification.id);
     }
     if (notification.action_url) {
-      // Use hash navigation to stay within the SPA (no full page reload)
-      window.location.hash = notification.action_url;
+      navigate(notification.action_url);
     }
     closePanel();
+    onClose?.();
   };
 
   if (!isPanelOpen) return null;
