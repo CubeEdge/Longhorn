@@ -30,6 +30,8 @@ interface NotificationStore {
   unreadByType: Record<string, number>;
   isLoading: boolean;
   isPanelOpen: boolean;
+  lastPopupId: number | null;
+  popups: Notification[];
   
   // Actions
   setNotifications: (notifications: Notification[]) => void;
@@ -40,6 +42,7 @@ interface NotificationStore {
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
+  dismissPopup: (id: number) => void;
   
   // API actions
   fetchNotifications: () => Promise<void>;
@@ -60,6 +63,8 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   unreadByType: {},
   isLoading: false,
   isPanelOpen: false,
+  lastPopupId: null,
+  popups: [],
   
   setNotifications: (notifications) => set({ notifications }),
   
@@ -110,6 +115,7 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
   togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => set({ isPanelOpen: false }),
+  dismissPopup: (id) => set((state) => ({ popups: state.popups.filter(p => p.id !== id) })),
   
   fetchNotifications: async () => {
     set({ isLoading: true });
@@ -135,9 +141,25 @@ export const useNotificationStore = create<NotificationStore>((set, _get) => ({
       });
       
       if (res.data.success) {
+        const data = res.data.data;
+        const totalCount = res.data.total ?? data?.total ?? 0;
+        
+        // Popup trigger logic for macOS 26 style Toast
+        const latest = data?.latest_notification;
+        if (latest) {
+          const currentLastId = _get().lastPopupId;
+          // First time initialization doesn't trigger popup unless requested.
+          if (currentLastId !== null && latest.id > currentLastId) {
+             set(state => ({ popups: [...state.popups, latest] }));
+          }
+          if (currentLastId === null || latest.id > currentLastId) {
+             set({ lastPopupId: latest.id });
+          }
+        }
+
         set({
-          unreadCount: res.data.total ?? res.data.data?.total ?? 0,
-          unreadByType: res.data.data?.by_type || {}
+          unreadCount: totalCount,
+          unreadByType: data?.by_type || {}
         });
       }
     } catch (err) {

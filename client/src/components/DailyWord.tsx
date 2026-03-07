@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import axios from 'axios';
 import { Volume2, RefreshCw, X, BookOpen, Layers, ArrowRight, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { getSpeechLang, getAvailableLevels } from '../data/dailyWords';
 import { useDailyWordStore } from '../store/useDailyWordStore';
+import { useUserSettingsStore } from '../store/useUserSettingsStore';
 
 // Supported languages for Daily Word
 const SUPPORTED_LANGS = ['en', 'de', 'ja', 'zh'];
@@ -11,27 +11,8 @@ const SUPPORTED_LANGS = ['en', 'de', 'ja', 'zh'];
 // 每日一词徽章 - 显示在TopBar，受通用设置控制
 export const DailyWordBadge: React.FC = () => {
     const { t } = useLanguage();
+    const { showDailyWord: visible } = useUserSettingsStore();
     const [showModal, setShowModal] = React.useState(false);
-    const [visible, setVisible] = React.useState(false);
-
-    // Fetch visibility from system settings
-    React.useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await axios.get('/api/v1/system/public-settings');
-                if (res.data.success) {
-                    setVisible(res.data.data.show_daily_word);
-                }
-            } catch (e) {
-                console.error('[DailyWord] Failed to fetch settings', e);
-            }
-        };
-        fetchSettings();
-
-        // Listen for setting changes
-        window.addEventListener('system-settings-updated', fetchSettings);
-        return () => window.removeEventListener('system-settings-updated', fetchSettings);
-    }, []);
 
     // Use Store
     const {

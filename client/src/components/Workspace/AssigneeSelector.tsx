@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ChevronDown, Search, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
@@ -40,7 +41,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         reason: '',
         countdown: 5
     });
+    const buttonRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0 });
 
     // Normalize department name to code for comparison
     const getDeptCode = (name?: string) => {
@@ -85,13 +88,24 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
-            if (isOpen && dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+            if (isOpen && dropdownRef.current && !dropdownRef.current.contains(e.target as Node) && buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
                 setIsOpen(false);
                 setSearchQuery('');
             }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Position it below the button with a small margin
+            setDropdownCoords({
+                top: rect.bottom + 4,
+                left: rect.left,
+            });
+        }
     }, [isOpen]);
 
     useEffect(() => {
@@ -174,6 +188,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
     return (
         <div style={{ position: 'relative' }}>
             <button
+                ref={buttonRef}
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     display: 'flex',
@@ -212,9 +227,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                 <ChevronDown size={14} color={!currentAssigneeName ? '#EF4444' : '#888'} />
             </button>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <div ref={dropdownRef} style={{
-                    position: 'absolute', top: '100%', left: 0, marginTop: 4,
+                    position: 'absolute', top: dropdownCoords.top, left: dropdownCoords.left,
                     zIndex: 9999, background: 'var(--modal-bg)',
                     border: '1px solid var(--card-border)',
                     borderRadius: 10, boxShadow: 'var(--glass-shadow-lg)',
@@ -274,10 +289,11 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {confirmModal.isOpen && confirmModal.targetUser && (
+            {confirmModal.isOpen && confirmModal.targetUser && createPortal(
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     background: 'var(--modal-overlay)', backdropFilter: 'var(--glass-blur)',
@@ -331,7 +347,8 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

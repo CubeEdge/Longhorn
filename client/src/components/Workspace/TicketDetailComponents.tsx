@@ -53,7 +53,7 @@ interface Participant {
 // ==============================
 
 interface CollapsiblePanelProps {
-  title: string;
+  title: React.ReactNode;
   icon?: React.ReactNode;
   count?: number;
   defaultOpen?: boolean;

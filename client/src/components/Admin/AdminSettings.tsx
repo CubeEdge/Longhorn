@@ -6,6 +6,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
 import { useThemeStore } from '../../store/useThemeStore';
+import { useUserSettingsStore } from '../../store/useUserSettingsStore';
+import type { NotificationDuration } from '../../store/useUserSettingsStore';
 import { DebugModeToggle } from '../DebugOverlay';
 interface AIProvider {
     name: string;
@@ -113,6 +115,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { theme, setTheme } = useThemeStore();
+    const { showDailyWord, setShowDailyWord, notificationDuration, setNotificationDuration } = useUserSettingsStore();
 
     // 路由前缀根据模块类型
     const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
@@ -1232,31 +1235,58 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                     <div className="setting-card" style={{ minHeight: '72px' }}>
                                         <div style={{ flex: 1 }}>
                                             <div className="setting-label">{t('admin.show_daily_word')}</div>
-                                            <div className="setting-desc">{t('admin.show_daily_word_desc')}</div>
+                                            <div className="setting-desc">开启后，在顶部导航栏显示每日学习卡片。此设置仅对您自己生效。</div>
                                         </div>
                                         <Switch
-                                            checked={settings.show_daily_word || false}
-                                            onChange={v => {
-                                                setSettings({ ...settings, show_daily_word: v });
-                                            }}
+                                            checked={showDailyWord}
+                                            onChange={setShowDailyWord}
                                         />
                                     </div>
 
                                     <div className="setting-card" style={{ minHeight: '72px' }}>
                                         <div style={{ flex: 1 }}>
-                                            <div className="setting-label">通知刷新频率 (秒)</div>
-                                            <div className="setting-desc">设置系统自动检查新通知的时间间隔（建议 15-60s）。</div>
+                                            <div className="setting-label">消息提醒模式</div>
+                                            <div className="setting-desc">设置新消息横幅弹窗的驻留时间。</div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <input
-                                                type="number"
-                                                min={5} max={300}
-                                                value={settings.notification_refresh_interval || 30}
-                                                onChange={e => setSettings({ ...settings, notification_refresh_interval: Math.max(5, Math.min(300, parseInt(e.target.value) || 30)) })}
-                                                style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
-                                            />
+                                        <div style={{ display: 'flex', background: 'var(--glass-bg-light)', padding: 4, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                                            {[
+                                                { id: 5, label: '5秒' },
+                                                { id: 15, label: '15秒' },
+                                                { id: 0, label: '直到点击' }
+                                            ].map(mode => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => setNotificationDuration(mode.id as NotificationDuration)}
+                                                    style={{
+                                                        padding: '6px 16px', borderRadius: 8, border: 'none',
+                                                        background: notificationDuration === mode.id ? 'var(--accent-blue)' : 'transparent',
+                                                        color: notificationDuration === mode.id ? 'var(--bg-main)' : 'var(--text-secondary)',
+                                                        cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {mode.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
+
+                                    {isSuperAdmin && (
+                                        <div className="setting-card" style={{ minHeight: '72px' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="setting-label">通知刷新频率 (秒)</div>
+                                                <div className="setting-desc">设置系统自动检查新通知的时间间隔（建议 15-60s）。此为全局设置。</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <input
+                                                    type="number"
+                                                    min={5} max={300}
+                                                    value={settings.notification_refresh_interval || 30}
+                                                    onChange={e => setSettings({ ...settings, notification_refresh_interval: Math.max(5, Math.min(300, parseInt(e.target.value) || 30)) })}
+                                                    style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div style={{ height: '1px', background: 'var(--glass-bg-hover)', marginTop: 24, marginBottom: 24 }} />
 

@@ -29,6 +29,7 @@ export const translations = {
         'overview.breach_rate': '超时率',
         'overview.avg_response': '平均响应',
         'overview.today_processed': '今日处理',
+        'workspace.mentioned_subtitle': '提到您的工单以及内部协作',
         'workspace.action_zones': '处理动作',
 
         // General

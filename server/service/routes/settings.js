@@ -7,23 +7,33 @@ const checkDiskSpace = require('check-disk-space').default;
 module.exports = (db, authenticate, backupService) => {
     const router = express.Router();
 
-    // Middleware: Admin Only
-    const adminOnly = (req, res, next) => {
-        if (!req.user || req.user.role !== 'Admin') {
-            return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    // Middleware: SuperAdmin Only (Admin, Exec) for critical actions
+    const superAdminOnly = (req, res, next) => {
+        if (!req.user || (req.user.role !== 'Admin' && req.user.role !== 'Exec')) {
+            return res.status(403).json({ error: 'Access denied. SuperAdmin role required.' });
         }
         next();
     };
 
-    router.use(authenticate, adminOnly);
+    router.use(authenticate);
 
     // GET /api/admin/settings
     router.get('/settings', (req, res) => {
         try {
+            const isSuperAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+            
             const settings = db.prepare('SELECT * FROM system_settings LIMIT 1').get();
-            const providers = db.prepare('SELECT * FROM ai_providers').all();
+            let providers = db.prepare('SELECT * FROM ai_providers').all();
 
-            // Normalize booleans
+            // Strip sensitive API keys for non-super-admins
+            if (!isSuperAdmin) {
+                providers = providers.map(p => {
+                    const { api_key, ...rest } = p;
+                    return { ...rest, api_key: api_key ? '***' : null };
+                });
+            }
+
+            // Normalize booleans ... (rest of normalization logic)
             if (settings) {
                 settings.ai_enabled = Boolean(settings.ai_enabled);
                 settings.ai_work_mode = Boolean(settings.ai_work_mode);
@@ -75,7 +85,7 @@ module.exports = (db, authenticate, backupService) => {
     });
 
     // POST /api/admin/settings
-    router.post('/settings', (req, res) => {
+    router.post('/settings', superAdminOnly, (req, res) => {
         try {
             const { settings, providers } = req.body;
 
@@ -185,7 +195,7 @@ module.exports = (db, authenticate, backupService) => {
     });
 
     // GET /api/admin/backup/status - Get backup status and file lists
-    router.get('/backup/status', (req, res) => {
+    router.get('/backup/status', superAdminOnly, (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
 
@@ -197,7 +207,7 @@ module.exports = (db, authenticate, backupService) => {
     });
 
     // POST /api/admin/backup/now - Trigger primary backup (backward compatible)
-    router.post('/backup/now', async (req, res) => {
+    router.post('/backup/now', superAdminOnly, async (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
 
@@ -213,7 +223,7 @@ module.exports = (db, authenticate, backupService) => {
     });
 
     // POST /api/admin/backup/now/:type - Trigger specific backup type
-    router.post('/backup/now/:type', async (req, res) => {
+    router.post('/backup/now/:type', superAdminOnly, async (req, res) => {
         try {
             if (!backupService) return res.status(503).json({ error: 'Backup service not available' });
 
@@ -234,7 +244,7 @@ module.exports = (db, authenticate, backupService) => {
     });
 
     // POST /api/admin/providers/delete
-    router.post('/providers/delete', (req, res) => {
+    router.post('/providers/delete', superAdminOnly, (req, res) => {
         try {
             const { name } = req.body;
             if (!name) return res.status(400).json({ error: 'Provider name required' });

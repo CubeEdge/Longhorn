@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, User, Package, Tag, MessageSquare, Building, Clock, ExternalLink, Store, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -57,6 +57,7 @@ interface TicketDetail {
     updated_at: string;
     parent_ticket_number?: string;
     resolution?: string;
+    account_service_tier?: string;
     [key: string]: unknown;
 }
 
@@ -95,10 +96,6 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
 // ==============================
 // Priority & Status helpers
 // ==============================
-
-const priorityColors: Record<string, string> = {
-    P0: '#EF4444', P1: '#FFD700', P2: '#3B82F6',
-};
 
 const statusLabels: Record<string, { zh: string; en: string; color: string }> = {
     draft: { zh: '草稿', en: 'Draft', color: '#666' },
@@ -400,7 +397,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 pulsing = true;
                 break;
             case 'team_queue':
-                text = `工作空间 › ${ticket.department_code || '部门'} - ${ticket.current_node || '任务'}`;
+                text = `工作空间 › 部门工单`;
                 color = '#60A5FA';
                 pulsing = true;
                 break;
@@ -625,7 +622,6 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         );
     }
 
-    const statusInfo = statusLabels[ticket.status] || { zh: ticket.status, en: ticket.status, color: '#666' };
     const isRmaOrSvc = ['rma', 'svc'].includes(ticket.ticket_type?.toLowerCase());
 
     // Determine if the action footer should be shown and if the user can execute actions
@@ -672,23 +668,64 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     {ticket.ticket_number}
                 </span>
 
-                {/* Status badge */}
-                <span style={{
-                    padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    background: ticket.is_deleted ? 'rgba(239,68,68,0.2)' : `${statusInfo.color}20`,
-                    color: ticket.is_deleted ? '#EF4444' : statusInfo.color,
+                {/* Context Status Badge: [ Node · Dept · Assignee / Claim ] */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '4px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
+                    color: '#60A5FA',
                 }}>
-                    {ticket.is_deleted ? '已删除/回收站' : (lang === 'zh' ? statusInfo.zh : statusInfo.en)}
-                </span>
-
-                {/* Priority badge */}
-                <span style={{
-                    padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700,
-                    background: `${priorityColors[ticket.priority] || '#3B82F6'}20`,
-                    color: priorityColors[ticket.priority] || '#3B82F6',
-                }}>
-                    {ticket.priority}
-                </span>
+                    <span>
+                        {(() => {
+                            const node = ticket.current_node;
+                            if (node === 'draft') return '草稿';
+                            if (node === 'submitted') return '待收货';
+                            if (node === 'ms_review') return '商务审核';
+                            if (node === 'op_receiving') return '待收货';
+                            if (node === 'op_diagnosing') return '诊断中';
+                            if (node === 'op_repairing') return '维修中';
+                            if (node === 'op_qa') return 'QA检测';
+                            if (node === 'op_shipping') return '打包发货';
+                            if (node === 'ms_closing') return '最终结案';
+                            if (node === 'ge_review') return '财务审核';
+                            if (node === 'ge_closing') return '财务结案';
+                            if (node === 'resolved') return '已解决';
+                            if (node === 'closed') return '已关闭';
+                            if (node === 'waiting_customer') return '待反馈';
+                            return node;
+                        })()}
+                    </span>
+                    <span style={{ opacity: 0.4 }}>·</span>
+                    <span>{(() => {
+                        if (ticket.department_code) return ticket.department_code as string;
+                        if (ticket.assigned_dept) return ticket.assigned_dept as string;
+                        const n = String(ticket.current_node || '').toLowerCase();
+                        if (n.startsWith('ms_') || ['draft', 'open', 'waiting', 'resolved', 'closed', 'waiting_customer'].includes(n)) return 'MS';
+                        if (n.startsWith('op_') || ['submitted', 'shipped'].includes(n)) return 'OP';
+                        if (n.startsWith('ge_')) return 'GE';
+                        return '-';
+                    })()}</span>
+                    <span style={{ opacity: 0.4 }}>·</span>
+                    {canAssign ? (
+                        <div style={{ marginTop: '-1px' }}>
+                            <AssigneeSelector
+                                ticketId={ticket.id}
+                                currentAssigneeId={ticket.assigned_to as number | null}
+                                currentAssigneeName={ticket.assigned_name}
+                                currentAssigneeDept={ticket.assigned_dept}
+                                currentNode={ticket.current_node}
+                                ticketType={ticket.ticket_type}
+                                onUpdate={fetchDetail}
+                            />
+                        </div>
+                    ) : ticket.assigned_name ? (
+                        <span>{String(ticket.assigned_name)}</span>
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: '#888' }}>未认领</span>
+                        </div>
+                    )}
+                </div>
 
                 {/* SLA indicator */}
                 {ticket.sla_status === 'breached' && (
@@ -769,55 +806,71 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     {/* Basic Info Card - Collapsible, elevated z-index for dropdown */}
                     <div style={{ position: 'relative', zIndex: 10 }}>
                     <CollapsiblePanel
-                        title={t('ticket.basic_info') || '基本信息'}
-                        icon={<Tag size={14} color="var(--accent-blue)" />}
+                        title={
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span>{t('ticket.basic_info') || '基本信息'}</span>
+                            </div>
+                        }
+                        icon={
+                            <span style={{
+                                padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 900,
+                                background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#F59E0B' : '#FFFFFF',
+                                color: (ticket.priority === 'P1' || ticket.priority === 'P2') ? '#000' : '#fff',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                border: ticket.priority === 'P2' ? '1px solid rgba(0,0,0,0.1)' : 'none'
+                            }}>
+                                {ticket.priority}
+                            </span>
+                        }
                         defaultOpen={true}
                     >
                         <div style={{ padding: '12px 20px 16px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                <InfoRow icon={Calendar} label={t('ticket.created_at') || '创建时间'}
+                                <InfoRow label={t('ticket.product') || '产品型号'}
+                                    value={String(ticket.product_name || '-')} />
+                                <InfoRow label={t('ticket.serial') || '序列号'}
+                                    value={String(ticket.serial_number || '-')} />
+
+                                <InfoRow label={t('ticket.customer') || '客户'}
+                                    value={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {(() => {
+                                                const acc = String(ticket.account_name || '--') || '';
+                                                const rep = String(ticket.contact_name || ticket.reporter_snapshot?.name || ticket.reporter_name || '') || '';
+                                                let text = acc;
+                                                if (rep && rep !== acc && rep !== '-') {
+                                                    text += ` · ${rep}`;
+                                                }
+                                                return text;
+                                            })()}
+                                            {ticket.account_service_tier && (
+                                                <span style={{
+                                                    fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                                                    background: (ticket.account_service_tier as string) === 'DIAMOND' ? 'linear-gradient(135deg, #b9f2ff, #29abe2)' : 'rgba(255,255,255,0.1)',
+                                                    color: (ticket.account_service_tier as string) === 'DIAMOND' ? '#000' : '#888',
+                                                    fontWeight: 800
+                                                }}>
+                                                    {String(ticket.account_service_tier)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    } />
+                                <InfoRow label="销售渠道"
+                                    value={ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'} />
+
+                                <InfoRow label={t('ticket.created_at') || '创建时间'}
                                     value={formatDateMinute(ticket.created_at)} />
-                                <InfoRow icon={User} label={t('ticket.assignee') || '指派给'}
-                                    value={canAssign ? (
-                                        <AssigneeSelector
-                                            ticketId={ticket.id}
-                                            currentAssigneeId={ticket.assigned_to as number | null}
-                                            currentAssigneeName={ticket.assigned_name}
-                                            currentAssigneeDept={ticket.assigned_dept}
-                                            currentNode={ticket.current_node}
-                                            ticketType={ticket.ticket_type}
-                                            onUpdate={fetchDetail}
-                                        />
-                                    ) : (
-                                        ticket.assigned_name ? (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                {ticket.assigned_dept && <span style={{ color: '#888', fontSize: 11 }}>[{ticket.assigned_dept}]</span>}
-                                                {ticket.assigned_name}
-                                            </span>
-                                        ) : '-'
-                                    )} />
-                                <InfoRow icon={Package} label={t('ticket.product') || '产品型号'}
-                                    value={ticket.product_name || '-'} />
-                                <InfoRow icon={Tag} label={t('ticket.serial') || '序列号'}
-                                    value={ticket.serial_number || '-'} />
-                                <InfoRow icon={Building} label={t('ticket.customer') || '客户'}
-                                    value={ticket.account_name || '-- (待确认)'} />
-                                <InfoRow icon={User} label={t('ticket.reporter') || '报告人'}
-                                    value={ticket.contact_name ? ticket.contact_name : (ticket.reporter_snapshot?.name || ticket.reporter_name ? `${ticket.reporter_snapshot?.name || ticket.reporter_name}` : '-')} />
-                                <InfoRow icon={MessageSquare} label={t('ticket.submitted_by') || '提交者'}
+                                <InfoRow label={t('ticket.submitted_by') || '提交者'}
                                     value={ticket.submitted_name ? (
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             {ticket.submitted_dept && <span style={{ color: '#888', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
                                             {ticket.submitted_name}
                                         </span>
                                     ) : '-'} />
-                                {ticket.dealer_name && (
-                                    <InfoRow icon={Store} label={t('ticket.dealer') || '经销商'}
-                                        value={`${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}`} />
-                                )}
+
                                 {ticket.parent_ticket_number && (
-                                    <InfoRow icon={ExternalLink} label={t('ticket.parent') || '关联工单'}
-                                        value={ticket.parent_ticket_number} />
+                                    <InfoRow label={t('ticket.parent') || '关联工单'}
+                                        value={String(ticket.parent_ticket_number)} />
                                 )}
                             </div>
 
@@ -849,7 +902,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         fontSize: 13, color: '#ddd', lineHeight: 1.6,
                                         display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                                     }}>
-                                        {ticket.problem_summary || ticket.problem_description}
+                                        {(ticket.problem_summary as string) || (ticket.problem_description as string)}
                                     </div>
                                 </div>
                             )}
@@ -1504,11 +1557,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 // Sub-Components
 // ==============================
 
-const InfoRow: React.FC<{ icon: any; label: string; value: React.ReactNode }> = ({ icon: Icon, label, value }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Icon size={13} color="#666" />
-        <span style={{ fontSize: 12, color: '#888', minWidth: 50 }}>{label}:</span>
-        <span style={{ fontSize: 13, color: '#ccc', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{value}</span>
+const InfoRow: React.FC<{ icon?: any; label: string; value: React.ReactNode }> = ({ icon: Icon, label, value }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+        {Icon && <Icon size={14} color="#666" />}
+        <span style={{ fontSize: 14, color: '#888', minWidth: 60 }}>{label}:</span>
+        <span style={{ fontSize: 15, color: '#eee', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{value}</span>
     </div>
 );
 

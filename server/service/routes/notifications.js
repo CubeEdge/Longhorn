@@ -171,6 +171,13 @@ module.exports = function (db, authenticate) {
                 GROUP BY notification_type
             `).all(userId);
 
+            const latest = db.prepare(`
+                SELECT * FROM notifications 
+                WHERE recipient_id = ? AND is_read = 0 AND is_archived = 0
+                ORDER BY created_at DESC 
+                LIMIT 1
+            `).get(userId);
+
             res.json({
                 success: true,
                 data: {
@@ -178,7 +185,8 @@ module.exports = function (db, authenticate) {
                     by_type: byType.reduce((acc, row) => {
                         acc[row.notification_type] = row.count;
                         return acc;
-                    }, {})
+                    }, {}),
+                    latest_notification: latest ? formatNotification(latest) : null
                 }
             });
         } catch (err) {

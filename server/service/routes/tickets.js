@@ -820,7 +820,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 AND t.current_node NOT IN ('resolved', 'closed', 'auto_closed', 'converted', 'cancelled')
                 AND (
                     t.assigned_to IN (${teamUserIdList}) 
-                    OR (t.assigned_to IS NULL AND t.current_node IN (${nodesList}))
+                    OR t.current_node IN (${nodesList})
                 )
             `;
             const openTickets = db.prepare(openTicketsSql).all();

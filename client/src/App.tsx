@@ -74,6 +74,7 @@ import { useUIStore } from './store/useUIStore';
 import ShareCollectionPage from './components/ShareCollectionPage';
 
 import Toast from './components/Toast';
+import NotificationPopupManager from './components/Notifications/NotificationPopupManager';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { NotificationBell, NotificationCenter } from './components/Notifications';
 import { useRouteMemoryStore } from './store/useRouteMemoryStore';
@@ -323,6 +324,7 @@ const App: React.FC = () => {
         </Route>
       </Routes>
       <Toast />
+      <NotificationPopupManager />
       <ConfirmDialog />
     </Router>
   );
@@ -607,16 +609,12 @@ const Sidebar: React.FC<{
               </>
             )}
 
-            {/* Admin - bottom single item, no section header */}
-            {(role === 'Admin' || role === 'Exec') && (
-              <>
-                <div style={{ marginTop: 'auto' }} />
-                <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''}`} onClick={onClose}>
-                  <Settings size={18} />
-                  <span>{t('sidebar.service_admin')}</span>
-                </Link>
-              </>
-            )}
+            {/* System Settings - bottom single item, visible to all (permissions handled inside component) */}
+            <div style={{ marginTop: 'auto' }} />
+            <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''}`} onClick={onClose}>
+              <Settings size={18} />
+              <span>{t('sidebar.service_admin')}</span>
+            </Link>
           </>
         )}
 
@@ -674,17 +672,16 @@ const Sidebar: React.FC<{
                 </Link>
               </>
             )}
-          </>
-        )}
 
-        {role === 'Lead' && (
-          <>
-            <div style={{ marginTop: currentModule === 'service' ? 'auto' : '0' }} />
-            <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-            <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''} `} onClick={onClose}>
-              <Network size={20} />
-              <span>{t('admin.dept_manage')}</span>
-            </Link>
+            {role === 'Lead' && (
+              <>
+                <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
+                <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''} `} onClick={onClose}>
+                  <Network size={20} />
+                  <span>{t('admin.dept_manage')}</span>
+                </Link>
+              </>
+            )}
           </>
         )}
       </nav>
