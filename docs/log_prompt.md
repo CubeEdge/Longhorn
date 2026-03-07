@@ -1,5 +1,16 @@
 # Prompt Log
 
+## 2026-03-07 22:42 (耗时: 18m 29s)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.95`，`server` 版本至 `1.7.79`，根目录版本至 `1.5.47`。
+2. **构建验证**: 在 `client` 目录下成功执行 `npm run build`，确保前端产物编译无误。
+3. **自动化部署**: 运行 `./scripts/deploy.sh` (Fast Mode) 将最新的前端 `dist` 与后端代码全量同步至远程服务器 `mini`。
+4. **服务重载**: 远程验证 `pm2 reload longhorn` 成功执行，生产环境已无感平滑升级至最新版本。
+
 ## 2026-03-07 04:30 (耗时: 10m)
 
 **User Prompt**:

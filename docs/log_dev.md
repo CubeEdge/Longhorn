@@ -1,5 +1,11 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-07] 版本迭代与快速部署 (v12.3.95)
+### Infrastructure
+- 执行了 `/upd` 交付流水线，递增各模块版本号。
+- 本地构建验证通过后，通过 `rsync` 差量同步方式 (Fast Mode) 将代码推送至 `mini` 服务器。
+- 远程执行 `pm2 reload`，实现生产环境服务的平滑更替与版本同步。
+
 ## [2026-03-07] 版本迭代与全量远程部署 (v12.3.84)
 ### Infrastructure
 - 执行了 `/upd` 交付流水线，递增版本至 `client` v12.3.84 / `server` v1.7.72。
