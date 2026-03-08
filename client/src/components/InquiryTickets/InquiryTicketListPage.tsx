@@ -334,7 +334,7 @@ const InquiryTicketListPage: React.FC = () => {
 
         return (
             <div
-                onClick={() => navigate(`/service/tickets/${ticket.id}`)}
+                onClick={() => navigate(`/service/tickets/${ticket.id}?ctx=search-inquiry`)}
                 style={{
                     background: 'var(--bg-card)',
                     borderRadius: '12px',

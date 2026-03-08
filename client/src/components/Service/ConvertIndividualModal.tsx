@@ -67,7 +67,7 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>入库为新客户档</h3>
+                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>添加为新客户</h3>
                     <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>

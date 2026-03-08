@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck, Users, Package, Plane } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+
+// 发货方式类型
+type ShippingMethod = 'express' | 'forwarder' | 'pickup' | 'combined';
 
 interface ActionBufferModalProps {
     isOpen: boolean;
@@ -19,6 +22,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     const [formData, setFormData] = useState<any>({});
     const [attachments, setAttachments] = useState<File[]>([]);
     const [snDiffers, setSnDiffers] = useState(false);
+    const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('express');
 
     if (!isOpen) return null;
 
@@ -55,33 +59,133 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
 
         if (currentNode === 'op_shipping') {
             return (
-                <>
-                    <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>物流快递公司 (必填)</label>
-                        <select
-                            value={formData.carrier || ''}
-                            onChange={e => setFormData({ ...formData, carrier: e.target.value })}
-                            style={inputStyle}
-                        >
-                            <option value="">选择快递...</option>
-                            <option value="SF">顺丰速运 (SF Express)</option>
-                            <option value="DHL">DHL</option>
-                            <option value="FedEx">FedEx</option>
-                            <option value="EMS">EMS</option>
-                            <option value="Other">其他 (Other)</option>
-                        </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* 发货方式选择 */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 10 }}>发货方式 (必选)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                            {[
+                                { value: 'express', label: '快递直发', icon: <Truck size={16} />, desc: '国内/国际快递' },
+                                { value: 'forwarder', label: '货代中转', icon: <Plane size={16} />, desc: '国际货代转运' },
+                                { value: 'pickup', label: '客户自提', icon: <Users size={16} />, desc: '面交/线下带走' },
+                                { value: 'combined', label: '合并发货', icon: <Package size={16} />, desc: '随其他订单寄出' },
+                            ].map(opt => (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => { setShippingMethod(opt.value as ShippingMethod); setFormData({}); }}
+                                    style={{
+                                        padding: '12px', background: shippingMethod === opt.value ? 'var(--accent-subtle)' : 'var(--card-bg-light)',
+                                        border: `1px solid ${shippingMethod === opt.value ? 'var(--accent-blue)' : 'var(--card-border)'}`,
+                                        borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                                        display: 'flex', flexDirection: 'column', gap: 4
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: shippingMethod === opt.value ? 'var(--accent-blue)' : 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
+                                        {opt.icon} {opt.label}
+                                    </div>
+                                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{opt.desc}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 快递直发表单 */}
+                    {shippingMethod === 'express' && (
+                        <>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>物流快递公司 (必填)</label>
+                                <select value={formData.carrier || ''} onChange={e => setFormData({ ...formData, carrier: e.target.value })} style={inputStyle}>
+                                    <option value="">选择快递...</option>
+                                    <option value="SF">顺丰速运 (SF Express)</option>
+                                    <option value="DHL">DHL</option>
+                                    <option value="FedEx">FedEx</option>
+                                    <option value="EMS">EMS</option>
+                                    <option value="Other">其他 (Other)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>快递单号 (必填)</label>
+                                <input type="text" value={formData.tracking_number || ''} onChange={e => setFormData({ ...formData, tracking_number: e.target.value })} placeholder="输入运单号..." style={inputStyle} />
+                            </div>
+                        </>
+                    )}
+
+                    {/* 货代中转表单 */}
+                    {shippingMethod === 'forwarder' && (
+                        <>
+                            <div style={{ padding: '10px 12px', background: 'rgba(255,200,0,0.08)', borderRadius: 8, border: '1px solid rgba(255,200,0,0.2)' }}>
+                                <span style={{ fontSize: 12, color: '#ffc800' }}>📦 货代中转：提交后工单进入【待补外销单号】状态，待取得国际运单后再补充结案。</span>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>货代公司名称 (必填)</label>
+                                <input type="text" value={formData.forwarder_name || ''} onChange={e => setFormData({ ...formData, forwarder_name: e.target.value })} placeholder="如：中外运、嘉里大通..." style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>发往货代的国内单号 (必填)</label>
+                                <input type="text" value={formData.forwarder_domestic_tracking || ''} onChange={e => setFormData({ ...formData, forwarder_domestic_tracking: e.target.value })} placeholder="顺丰/中通等国内段运单号..." style={inputStyle} />
+                            </div>
+                        </>
+                    )}
+
+                    {/* 客户自提表单 */}
+                    {shippingMethod === 'pickup' && (
+                        <>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>提货人/带货人信息 (必填)</label>
+                                <input type="text" value={formData.pickup_person || ''} onChange={e => setFormData({ ...formData, pickup_person: e.target.value })} placeholder="姓名、联系方式..." style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>拍照留档 (建议)</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                    <label style={{ width: 50, height: 50, borderRadius: 8, border: '1px dashed var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+                                        <Camera size={20} />
+                                        <input type="file" accept="image/*" multiple onChange={e => e.target.files && setAttachments(prev => [...prev, ...Array.from(e.target.files!)])} style={{ display: 'none' }} />
+                                    </label>
+                                    {attachments.map((_, i) => (
+                                        <div key={i} style={{ width: 50, height: 50, borderRadius: 8, background: 'var(--bg-sidebar)', border: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                            <Paperclip size={16} color="var(--text-tertiary)" />
+                                            <button onClick={() => setAttachments(attachments.filter((__, idx) => idx !== i))} style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', border: 'none', borderRadius: '50%', width: 16, height: 16, color: '#fff', fontSize: 10, cursor: 'pointer' }}>×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* 合并发货表单 */}
+                    {shippingMethod === 'combined' && (
+                        <>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>关联工单/销售单号 (必填)</label>
+                                <input type="text" value={formData.associated_order_ref || ''} onChange={e => setFormData({ ...formData, associated_order_ref: e.target.value })} placeholder="RMA-xxx 或 Shopify Order ID..." style={inputStyle} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>合单快递单号 (选填)</label>
+                                <input type="text" value={formData.tracking_number || ''} onChange={e => setFormData({ ...formData, tracking_number: e.target.value })} placeholder="统一发货的总快递单号..." style={inputStyle} />
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        // 货代中转 - 补单结案
+        if (currentNode === 'op_shipping_transit') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ padding: '10px 12px', background: 'var(--badge-success-bg)', borderRadius: 8, border: '1px solid var(--badge-success-text)' }}>
+                        <span style={{ fontSize: 12, color: 'var(--badge-success-text)' }}>✅ 请补充最终国际运单号，完成后工单将正式结案。</span>
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>快递单号 (必填)</label>
-                        <input
-                            type="text"
-                            value={formData.tracking_number || ''}
-                            onChange={e => setFormData({ ...formData, tracking_number: e.target.value })}
-                            placeholder="输入运单号..."
-                            style={inputStyle}
-                        />
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>国际运单号 (必填)</label>
+                        <input type="text" value={formData.forwarder_final_tracking || ''} onChange={e => setFormData({ ...formData, forwarder_final_tracking: e.target.value })} placeholder="DHL/FedEx/UPS 等国际运单号..." style={inputStyle} />
                     </div>
-                </>
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>备注 (选填)</label>
+                        <textarea value={formData.closing_comment || ''} onChange={e => setFormData({ ...formData, closing_comment: e.target.value })} placeholder="其他补充说明..." style={inputStyle} rows={2} />
+                    </div>
+                </div>
             );
         }
 
@@ -248,7 +352,22 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             return formData.repair_content?.trim() && formData.test_result?.trim();
         }
         if (currentNode === 'op_shipping') {
-            return formData.carrier?.trim() && formData.tracking_number?.trim();
+            if (shippingMethod === 'express') {
+                return formData.carrier?.trim() && formData.tracking_number?.trim();
+            }
+            if (shippingMethod === 'forwarder') {
+                return formData.forwarder_name?.trim() && formData.forwarder_domestic_tracking?.trim();
+            }
+            if (shippingMethod === 'pickup') {
+                return formData.pickup_person?.trim();
+            }
+            if (shippingMethod === 'combined') {
+                return formData.associated_order_ref?.trim();
+            }
+            return false;
+        }
+        if (currentNode === 'op_shipping_transit') {
+            return formData.forwarder_final_tracking?.trim();
         }
         if (currentNode === 'ms_review' && !ticket.is_warranty) {
             return formData.quote_reference?.trim();
@@ -278,7 +397,18 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             if (currentNode === 'op_repairing') {
                 logContent = `【维修结案报告】\n内容：${formData.repair_content}\n测试结果：${formData.test_result}`;
             } else if (currentNode === 'op_shipping') {
-                logContent = `【发货物流录入】\n承运商：${formData.carrier}\n单号：${formData.tracking_number}`;
+                // 根据发货方式生成不同的日志
+                if (shippingMethod === 'express') {
+                    logContent = `【快递直发】\n承运商：${formData.carrier}\n单号：${formData.tracking_number}`;
+                } else if (shippingMethod === 'forwarder') {
+                    logContent = `【货代中转】件已发出，待补外销单号\n货代公司：${formData.forwarder_name}\n国内段单号：${formData.forwarder_domestic_tracking}`;
+                } else if (shippingMethod === 'pickup') {
+                    logContent = `【自提/面交】\n经办人：${formData.pickup_person}${attachments.length > 0 ? '\n(附照片凭证)' : ''}`;
+                } else if (shippingMethod === 'combined') {
+                    logContent = `【合并发货】随订单 ${formData.associated_order_ref} 发出${formData.tracking_number ? `\n合单运单号：${formData.tracking_number}` : ''}`;
+                }
+            } else if (currentNode === 'op_shipping_transit') {
+                logContent = `【补充外销单号】\n国际运单号：${formData.forwarder_final_tracking}${formData.closing_comment ? `\n备注：${formData.closing_comment}` : ''}`;
             } else if (currentNode === 'ms_review') {
                 logContent = `【批准维修】商业方案与报价已获客户确认`;
             } else if (currentNode === 'ms_closing') {
@@ -296,6 +426,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                 metadata: {
                     action: actionLabel,
                     node_transition: `${currentNode} -> ${nextNode}`,
+                    shipping_method: currentNode === 'op_shipping' ? shippingMethod : undefined,
                     ...formData
                 }
             }, { headers: { Authorization: `Bearer ${token}` } });
@@ -316,22 +447,48 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
 
             // 3. Perform the actual transition
             // Update fields in the ticket record as well
+            let targetNode = nextNode;
             const patchData: any = {
-                current_node: nextNode,
                 change_reason: `流程推进: ${actionLabel}`
             };
 
-            // Sync certain fields back to main ticket table if appropriate
+            // 发货节点的字段更新
             if (currentNode === 'op_shipping') {
-                patchData.shipping_tracking_number = formData.tracking_number;
-                patchData.shipping_carrier = formData.carrier;
+                patchData.shipping_method = shippingMethod;
+                if (shippingMethod === 'express') {
+                    // 快递直发 -> resolved
+                    targetNode = 'resolved';
+                } else if (shippingMethod === 'forwarder') {
+                    // 货代中转 -> op_shipping_transit (待补单)
+                    targetNode = 'op_shipping_transit';
+                    patchData.forwarder_name = formData.forwarder_name;
+                    patchData.forwarder_domestic_tracking = formData.forwarder_domestic_tracking;
+                } else if (shippingMethod === 'pickup') {
+                    // 自提 -> resolved
+                    targetNode = 'resolved';
+                    patchData.pickup_person = formData.pickup_person;
+                } else if (shippingMethod === 'combined') {
+                    // 合并发货 -> resolved
+                    targetNode = 'resolved';
+                    patchData.associated_order_ref = formData.associated_order_ref;
+                }
             }
+
+            // 货代补单节点
+            if (currentNode === 'op_shipping_transit') {
+                patchData.forwarder_final_tracking = formData.forwarder_final_tracking;
+                targetNode = 'resolved';
+            }
+
+            // 其他节点的字段同步
             if (currentNode === 'ge_review') {
                 patchData.payment_amount = formData.paid_amount;
             }
             if ((currentNode === 'op_receiving' || currentNode === 'submitted') && snDiffers && formData.at_receipt_sn) {
                 patchData.serial_number = formData.at_receipt_sn;
             }
+
+            patchData.current_node = targetNode;
 
             await axios.patch(`/api/v1/tickets/${ticket.id}`, patchData, { headers: { Authorization: `Bearer ${token}` } });
 
@@ -347,6 +504,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     const getIcon = () => {
         if (currentNode === 'op_repairing') return <Wrench size={24} color="#3B82F6" />;
         if (currentNode === 'op_shipping') return <Truck size={24} color="#10B981" />;
+        if (currentNode === 'op_shipping_transit') return <Plane size={24} color="#ffc800" />;
         if (currentNode === 'ms_closing') return <CreditCard size={24} color="#3B82F6" />;
         if (currentNode === 'ge_review') return <ShieldCheck size={24} color="#10B981" />;
         if (currentNode === 'op_receiving' || currentNode === 'submitted') return <PackageOpen size={24} color="#3B82F6" />;

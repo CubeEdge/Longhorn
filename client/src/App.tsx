@@ -337,6 +337,7 @@ const DeptRedirect: React.FC = () => {
 };
 
 const SIDEBAR_EXPANDED_KEY = 'longhorn_sidebar_expanded';
+const SIDEBAR_WIDTH_KEY = 'longhorn_sidebar_width';
 
 const Sidebar: React.FC<{
   user: any,
@@ -351,6 +352,39 @@ const Sidebar: React.FC<{
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
   const { t } = useLanguage();
+
+  // Sidebar resize
+  const [sidebarWidth, setSidebarWidth] = React.useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    return saved ? Math.max(160, Math.min(400, parseInt(saved))) : 220;
+  });
+  const sidebarResizingRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
+
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', sidebarWidth + 'px');
+  }, [sidebarWidth]);
+
+  const startSidebarResize = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    sidebarResizingRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+    const onMouseMove = (me: MouseEvent) => {
+      if (!sidebarResizingRef.current) return;
+      const delta = me.clientX - sidebarResizingRef.current.startX;
+      const newWidth = Math.max(160, Math.min(400, sidebarResizingRef.current.startWidth + delta));
+      setSidebarWidth(newWidth);
+      document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(newWidth));
+    };
+    const onMouseUp = () => {
+      sidebarResizingRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [sidebarWidth]);
 
   // Collapsible section state
   const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>(() => {
@@ -459,7 +493,7 @@ const Sidebar: React.FC<{
     (actingRole === 'Member' && (actingDeptCode === 'MS' || actingDeptCode === 'GE'));
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''} `}>
+    <aside className={`sidebar ${isOpen ? 'open' : ''} `} style={{ width: sidebarWidth, flexShrink: 0, position: 'relative' }}>
       <div className="sidebar-brand">
         <h2 className="sidebar-title">{t('app.name')}</h2>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -685,6 +719,18 @@ const Sidebar: React.FC<{
           </>
         )}
       </nav>
+
+      {/* Sidebar Resize Handle */}
+      <div
+        onMouseDown={startSidebarResize}
+        style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 5,
+          cursor: 'col-resize', zIndex: 10, background: 'transparent',
+          transition: 'background 0.15s'
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.4)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      />
     </aside>
   );
 };

@@ -257,7 +257,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                     </div>
                                 ) : (
                                     <div style={{ marginBottom: 16 }}>
-                                        <label className="hint">{(t as any)('customer.account_name', 'Account Name')} *</label>
+                                        <label className="hint">{(t as any)('customer.account_name', '账户/客户名称')} *</label>
                                         <input
                                             className="form-control"
                                             required
@@ -319,7 +319,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                         // Customer mode: show type selector with both INDIVIDUAL and ORGANIZATION options
                                         <>
                                             <div>
-                                                <label className="hint">{(t as any)('customer.type', 'Type')} *</label>
+                                                <label className="hint">{(t as any)('customer.type', '客户类型')} *</label>
                                                 <select
                                                     className="form-control"
                                                     value={formData.account_type}
@@ -330,7 +330,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="hint">Service Tier</label>
+                                                <label className="hint">{(t as any)('customer.serviceTier', '服务等级')}</label>
                                                 <select
                                                     className="form-control"
                                                     value={formData.service_tier || 'STANDARD'}
@@ -348,7 +348,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
                                 {/* Address - shown for all types */}
                                 <div style={{ marginBottom: 16 }}>
-                                    <label className="hint">Address</label>
+                                    <label className="hint">{(t as any)('customer.address', '地址')}</label>
                                     <input
                                         className="form-control"
                                         value={formData.address || ''}
@@ -359,7 +359,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                 {/* Region */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                                     <div>
-                                        <label className="hint">Region (Country)</label>
+                                        <label className="hint">{(t as any)('customer.region', '所在地区')}</label>
                                         <input
                                             className="form-control"
                                             value={formData.country}
@@ -367,7 +367,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="hint">City</label>
+                                        <label className="hint">{(t as any)('customer.city', '城市')}</label>
                                         <input
                                             className="form-control"
                                             value={formData.city}
@@ -378,7 +378,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
                                 {/* Notes */}
                                 <div style={{ marginBottom: 24 }}>
-                                    <label className="hint">Notes</label>
+                                    <label className="hint">{(t as any)('common.notes', '备注')}</label>
                                     <textarea
                                         className="form-control"
                                         rows={3}

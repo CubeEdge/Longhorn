@@ -81,6 +81,7 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
         ms_closing: { label_zh: '最终确认', label_en: 'Final Confirm', action: 'settle' },
         ge_review: { label_zh: '财务确认收款', label_en: 'Confirm Payment', action: 'finance_approve' },
         op_shipping: { label_zh: '打包发货并结案', label_en: 'Ship & Close', action: 'close' },
+        op_shipping_transit: { label_zh: '补充外销单号并结案', label_en: 'Add Tracking & Close', action: 'close' },
         waiting_customer: { label_zh: '客户已付款', label_en: 'Customer Paid', action: 'paid' },
     },
     inquiry: {
@@ -167,6 +168,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isActionBufferModalOpen, setIsActionBufferModalOpen] = useState(false);
     const [actionBufferTarget, setActionBufferTarget] = useState({ nextNode: '', label: '' });
 
+    // System settings for workflow control
+    const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
+
     // PRD §7.1: 权限判断基于 acting user
     const actingDeptNorm = (actingUser.department_code || '').toUpperCase();
     const isMsLead = (actingDeptNorm === 'MS' || actingDeptNorm === '市场部') && actingUser.role === 'Lead';
@@ -178,7 +182,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         // MS 节点
         draft: 'MS', submitted: 'MS', ms_review: 'MS', ms_closing: 'MS', waiting_customer: 'MS',
         // OP 节点
-        op_receiving: 'OP', op_diagnosing: 'OP', op_repairing: 'OP', op_shipping: 'OP',
+        op_receiving: 'OP', op_diagnosing: 'OP', op_repairing: 'OP', op_shipping: 'OP', op_shipping_transit: 'OP',
         // GE 节点
         ge_review: 'GE', ge_closing: 'GE',
         // RD 节点
@@ -195,13 +199,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
     // canAssign 改良逻辑：
     // 1. 全局管理员/执行官 随时可指派
-    // 2. 部门主管在工单处于本部门节点时，可指派或“改派”（即使已有负责人）
+    // 2. 部门主管在工单处于本部门节点时，可指派或"改派"（即使已有负责人）
     // 3. 部门成员在工单处于本部门节点且未指派时，可认领/指派
     // 4. 当前指派人可转派
-    const canAssign = isGlobalAdmin ||
+    // 5. 工单已结束时（resolved/closed等）禁止指派
+    const isTicketFinalized = ['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'].includes(String(ticket?.current_node || ''));
+    const canAssign = !isTicketFinalized && (
+        isGlobalAdmin ||
         (isDeptLead && !!nodeOwnerDept) ||
         (isDeptMember && !ticket?.assigned_to) ||
-        (ticket?.assigned_to === actingUser.id);
+        (ticket?.assigned_to === actingUser.id)
+    );
 
     const [products, setProducts] = useState<any[]>([]);
     const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -271,36 +279,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         return diffs;
     };
 
-    // 编辑按钮渲染 helper
-    const renderEditButton = () => {
-        if (!ticket) return null;
-        return (
-            <button
-                className="btn-glass"
-                onClick={() => {
-                    setEditForm({
-                        priority: ticket.priority,
-                        status: ticket.status,
-                        problem_summary: ticket.problem_summary,
-                        problem_description: ticket.problem_description,
-                        resolution: ticket.resolution,
-                        serial_number: ticket.serial_number,
-                        repair_content: ticket.repair_content,
-                        payment_amount: ticket.payment_amount,
-                        is_warranty: ticket.is_warranty,
-                        product_id: ticket.product_id as number
-                    });
-                    setIsEditing(true);
-                }}
-                style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-            >
-                <Edit2 size={14} /> 编辑
-            </button>
-        );
-    };
-
-    // 删除菜单渲染 helper
-    const renderDeleteMenu = () => (
+    // 更多菜单渲染 helper（包含编辑和删除功能）
+    const renderMoreMenu = (showEdit: boolean) => (
         <>
             <button
                 className="btn-glass"
@@ -317,6 +297,37 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     padding: 4, minWidth: 160, zIndex: 100,
                     boxShadow: 'var(--glass-shadow-lg)'
                 }}>
+                    {/* 编辑工单 */}
+                    {showEdit && ticket && (
+                        <button
+                            onClick={() => {
+                                setShowMoreMenu(false);
+                                setEditForm({
+                                    priority: ticket!.priority,
+                                    status: ticket!.status,
+                                    problem_summary: ticket!.problem_summary,
+                                    problem_description: ticket!.problem_description,
+                                    resolution: ticket!.resolution,
+                                    serial_number: ticket!.serial_number,
+                                    repair_content: ticket!.repair_content,
+                                    payment_amount: ticket!.payment_amount,
+                                    is_warranty: ticket!.is_warranty,
+                                    product_id: ticket!.product_id as number
+                                });
+                                setIsEditing(true);
+                            }}
+                            style={{
+                                width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
+                                background: 'transparent', border: 'none', color: 'var(--text-main)',
+                                fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 4
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                            <Edit2 size={14} /> 编辑工单
+                        </button>
+                    )}
+                    {/* 删除工单 */}
                     <button
                         onClick={() => {
                             setShowMoreMenu(false);
@@ -359,14 +370,19 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         setLoading(true);
         setError(null);
         try {
-            const res = await axios.get(`/api/v1/tickets/${ticketId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // Parallel fetch: ticket detail + system settings
+            const [res, settingsRes] = await Promise.all([
+                axios.get(`/api/v1/tickets/${ticketId}`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/v1/system/public-settings').catch(() => ({ data: { success: false } }))
+            ]);
             if (res.data.success) {
                 setTicket(res.data.data);
                 setActivities(res.data.activities || []);
                 setParticipants(res.data.participants || []);
                 setTicketAttachments(res.data.attachments || []);
+            }
+            if (settingsRes.data.success) {
+                setSystemSettings(settingsRes.data.data || {});
             }
         } catch (err: any) {
             setError(err.response?.data?.error || err.message);
@@ -549,8 +565,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             }
 
             // High-priority override for finance flow
-            if (ticket.current_node === 'ms_closing' && Number(ticket.is_warranty) === 0 && (!ticket.payment_amount || Number(ticket.payment_amount) === 0)) {
-                nextNode = 'ge_review';
+            // 根据系统设置决定是否需要财务确认
+            const requireFinance = systemSettings.require_finance_confirmation !== false;
+            if (ticket.current_node === 'ms_closing') {
+                if (requireFinance && Number(ticket.is_warranty) === 0 && (!ticket.payment_amount || Number(ticket.payment_amount) === 0)) {
+                    nextNode = 'ge_review';  // 需要财务确认
+                }
+                // 如果不需要财务确认或已有金额，则走默认流程到 op_shipping
             }
             if (ticket.current_node === 'ge_review') {
                 nextNode = 'ms_closing';
@@ -561,7 +582,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         }
 
         // Check if we need to open Buffer Modal instead of direct patch
-        const mandatoryNodes = ['op_receiving', 'submitted', 'op_repairing', 'op_shipping', 'ms_review', 'ms_closing', 'ge_review'];
+        const mandatoryNodes = ['op_receiving', 'submitted', 'op_repairing', 'op_shipping', 'op_shipping_transit', 'ms_review', 'ms_closing', 'ge_review'];
         if (mandatoryNodes.includes(ticket.current_node)) {
             // For ms_review and ms_closing, only mandatory if NOT warranty
             if (['ms_review'].includes(ticket.current_node) && ticket.is_warranty) {
@@ -752,35 +773,30 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 {/* Edit & More Actions — PRD §7.1 阶梯式权限守卫 */}
                 {!ticket.is_deleted ? (
                     <>
-                        {/* 编辑按钮可见性守卫 */}
-                        {(() => {
-                            const isFinalized = ['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'].includes(ticket.current_node);
-                            // 特权用户(MS Lead/Admin)：始终可编辑
-                            if (hasPrivilege) {
-                                return renderEditButton();
-                            }
-                            // 终结期：非特权用户不可编辑
-                            if (isFinalized) return null;
-                            // 活跃期：仅工单相关人员可编辑（负责人/创建者/提交者/参与者）
-                            const isRelated = ticket.assigned_to === actingUser.id
-                                || (ticket as any).created_by === actingUser.id
-                                || (ticket as any).submitted_by === actingUser.id
-                                || (ticket.participants as any[])?.some?.((p: any) => (p.user_id || p.id || p) === actingUser.id);
-                            if (!isRelated) return null;
-                            return renderEditButton();
-                        })()}
-
-                        {/* 删除按钮可见性守卫 */}
+                        {/* 更多菜单（编辑+删除）可见性守卫 */}
                         <div style={{ position: 'relative' }}>
                             {(() => {
-                                // 特权用户(MS Lead/Admin)：始终可删除
-                                if (hasPrivilege) return renderDeleteMenu();
-                                // 非特权：仅 draft/submitted 且是创建者/提交者
-                                if (!['draft', 'submitted'].includes(ticket.current_node)) return null;
+                                const isFinalized = ['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'].includes(ticket.current_node);
+                                // 特权用户(MS Lead/Admin)：始终显示更多菜单，包含编辑功能
+                                if (hasPrivilege) {
+                                    return renderMoreMenu(true);
+                                }
+                                // 检查编辑权限
+                                const isRelated = ticket.assigned_to === actingUser.id
+                                    || (ticket as any).created_by === actingUser.id
+                                    || (ticket as any).submitted_by === actingUser.id
+                                    || (ticket.participants as any[])?.some?.((p: any) => (p.user_id || p.id || p) === actingUser.id);
+                                const canEdit = !isFinalized && isRelated;
+                                // 检查删除权限
                                 const isOwner = (ticket as any).created_by === actingUser.id
                                     || (ticket as any).submitted_by === actingUser.id;
-                                if (!isOwner) return null;
-                                return renderDeleteMenu();
+                                const canDelete = ['draft', 'submitted'].includes(ticket.current_node) && isOwner;
+                                // 两个权限都没有，不显示菜单
+                                if (!canEdit && !canDelete) return null;
+                                // 只有编辑权限或两个都有，显示带编辑的菜单
+                                if (canEdit) return renderMoreMenu(true);
+                                // 只有删除权限，显示不带编辑的菜单
+                                return renderMoreMenu(false);
                             })()}
                         </div>
                     </>
@@ -814,7 +830,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         icon={
                             <span style={{
                                 padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 900,
-                                background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#F59E0B' : '#FFFFFF',
+                                background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#FFD700' : '#FFFFFF',
                                 color: (ticket.priority === 'P1' || ticket.priority === 'P2') ? '#000' : '#fff',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                                 border: ticket.priority === 'P2' ? '1px solid rgba(0,0,0,0.1)' : 'none'
@@ -1069,8 +1085,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
             {
                 isEditing && (
+                    <>
+                    {/* Overlay - click to close */}
+                    <div 
+                        onClick={() => setIsEditing(false)}
+                        style={{
+                            position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.4)', zIndex: 199
+                        }}
+                    />
                     <div style={{
-                        position: 'fixed', top: 0, right: 0, bottom: 0, width: 400,
+                        position: 'fixed', top: 60, right: 0, bottom: 0, width: 400,
                         background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)',
                         borderLeft: '1px solid rgba(255,255,255,0.1)',
                         zIndex: 200, display: 'flex', flexDirection: 'column',
@@ -1229,6 +1254,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             </button>
                         </div>
                     </div>
+                    </>
                 )
             }
 
@@ -1315,8 +1341,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             {/* ====== Details Drawer ====== */}
             {
                 isDescriptionDrawerOpen && (
+                    <>
+                    {/* Overlay - click to close */}
+                    <div 
+                        onClick={() => setIsDescriptionDrawerOpen(false)}
+                        style={{
+                            position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.4)', zIndex: 299
+                        }}
+                    />
                     <div style={{
-                        position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, zIndex: 300,
+                        position: 'fixed', top: 60, right: 0, bottom: 0, width: 400, zIndex: 300,
                         background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
                         borderLeft: '1px solid rgba(255,255,255,0.1)',
                         boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
@@ -1416,6 +1451,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             )}
                         </div>
                     </div>
+                    </>
                 )
             }
 

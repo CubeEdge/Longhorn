@@ -347,7 +347,7 @@ const RMATicketListPage: React.FC = () => {
 
     const TicketCard = ({ ticket }: { ticket: RMATicket }) => (
         <div
-            onClick={() => navigate(`/service/tickets/${ticket.id}`)}
+            onClick={() => navigate(`/service/tickets/${ticket.id}?ctx=search-rma`)}
             style={{
                 background: 'var(--bg-card)', borderRadius: '12px', padding: '18px',
                 border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',

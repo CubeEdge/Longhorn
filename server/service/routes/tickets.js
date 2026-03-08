@@ -53,7 +53,7 @@ module.exports = function (db, authenticate, serviceUpload) {
 
     const DEPARTMENT_NODES = {
         'MS': ['draft', 'submitted', 'ms_review', 'waiting_customer', 'ms_closing'],
-        'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_shipping', 'op_qa'],
+        'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_shipping', 'op_shipping_transit', 'op_qa'],
         'GE': ['ge_review', 'ge_closing'],
         'RD': ['op_diagnosing', 'op_repairing']
     };
@@ -378,6 +378,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             op_diagnosing: 'in_progress',
             op_repairing: 'in_progress',
             op_shipping: 'in_progress',
+            op_shipping_transit: 'in_progress',  // 货代中转待补单
             op_qa: 'in_progress',
             dl_receiving: 'in_progress',
             dl_repairing: 'in_progress',
@@ -517,6 +518,14 @@ module.exports = function (db, authenticate, serviceUpload) {
                 parent_ticket_id: row.parent_ticket_id,
                 parent_ticket_number: row.parent_ticket_number,
                 external_link: row.external_link,
+
+                // Shipping Methods (P2 Phase 2)
+                shipping_method: row.shipping_method || 'express',
+                forwarder_domestic_tracking: row.forwarder_domestic_tracking,
+                forwarder_name: row.forwarder_name,
+                forwarder_final_tracking: row.forwarder_final_tracking,
+                pickup_person: row.pickup_person,
+                associated_order_ref: row.associated_order_ref,
 
                 // Approval
                 approval_status: row.approval_status,
@@ -1606,7 +1615,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                 'payment_channel', 'payment_amount', 'payment_date',
                 'feedback_date', 'ship_date', 'received_date', 'completed_date',
                 'snooze_until',
-                'external_link'
+                'external_link',
+                // RMA Shipping Methods (P2 Phase 2)
+                'shipping_method', 'forwarder_domestic_tracking', 'forwarder_name',
+                'forwarder_final_tracking', 'pickup_person', 'associated_order_ref'
             ];
 
             // 1. 检测所有变更的字段 (normalize null/undefined/'' as equivalent)
@@ -1789,6 +1801,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     op_repairing: '维修中',
                     op_qa: 'QA检测',
                     op_shipping: '打包发货',
+                    op_shipping_transit: '待补外销单号',
                     ms_closing: '待结案',
                     ge_review: '财务审核',
                     ge_closing: '财务结案',

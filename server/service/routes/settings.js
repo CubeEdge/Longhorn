@@ -64,6 +64,9 @@ module.exports = (db, authenticate, backupService) => {
                 settings.secondary_backup_enabled = Boolean(settings.secondary_backup_enabled);
                 settings.secondary_backup_frequency = parseInt(settings.secondary_backup_frequency) || 1440;
                 settings.secondary_backup_retention_days = parseInt(settings.secondary_backup_retention_days) || 30;
+                
+                // Normalize RMA Finance Confirmation Setting
+                settings.require_finance_confirmation = settings.require_finance_confirmation !== 0;
             }
 
             providers.forEach(p => {
@@ -124,6 +127,7 @@ module.exports = (db, authenticate, backupService) => {
                         secondary_backup_enabled = @secondary_backup_enabled,
                         secondary_backup_frequency = @secondary_backup_frequency,
                         secondary_backup_retention_days = @secondary_backup_retention_days,
+                        require_finance_confirmation = @require_finance_confirmation,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
                 `).run({
@@ -142,7 +146,8 @@ module.exports = (db, authenticate, backupService) => {
                     backup_retention_days: parseInt(settings.backup_retention_days) || 7,
                     secondary_backup_enabled: settings.secondary_backup_enabled ? 1 : 0,
                     secondary_backup_frequency: parseInt(settings.secondary_backup_frequency) || 1440,
-                    secondary_backup_retention_days: parseInt(settings.secondary_backup_retention_days) || 30
+                    secondary_backup_retention_days: parseInt(settings.secondary_backup_retention_days) || 30,
+                    require_finance_confirmation: settings.require_finance_confirmation !== false ? 1 : 0
                 });
 
                 // Reload Backup Service

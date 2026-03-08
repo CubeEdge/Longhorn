@@ -635,14 +635,24 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
   return (
     <>
+      {/* Overlay - click to close */}
+      <div 
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 60, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.4)',
+          zIndex: 998
+        }}
+      />
       <div style={{
         position: 'fixed',
-        top: 0, right: 0, bottom: 0, width: 400,
+        top: 60, right: 0, bottom: 0, width: 400,
         background: 'rgba(30,30,30,0.95)',
         backdropFilter: 'blur(20px)',
         boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
         borderLeft: '1px solid rgba(255,255,255,0.1)',
-        zIndex: 1000,
+        zIndex: 999,
         display: 'flex', flexDirection: 'column',
         transform: 'translateX(0)',
         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -719,11 +729,22 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     >
                       {isImage ? (
                         <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                          {/* Loading spinner */}
+                          <div style={{
+                            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#555', transition: 'opacity 0.3s'
+                          }} className="thumb-loading">
+                            <div style={{ width: 20, height: 20, border: '2px solid #333', borderTopColor: '#FFD700', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                          </div>
                           <img
                             src={thumbUrl}
                             alt={att.file_name}
                             key={`${att.id}-${activity.id}`}
-                            onLoad={(e) => (e.currentTarget.style.opacity = '1')}
+                            onLoad={(e) => {
+                              e.currentTarget.style.opacity = '1';
+                              const loader = e.currentTarget.parentElement?.querySelector('.thumb-loading') as HTMLElement;
+                              if (loader) loader.style.opacity = '0';
+                            }}
                             style={{
                               width: '100%', height: '100%', objectFit: activity.attachments!.length === 1 ? 'contain' : 'cover',
                               opacity: 0, transition: 'opacity 0.3s'

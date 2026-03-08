@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -10,6 +10,7 @@ interface ConfirmModalProps {
     onConfirm: () => void;
     onCancel: () => void;
     loading?: boolean;
+    countdown?: number; // 倒计时秒数，设置后确认按钮需等待倒计时完成
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -20,8 +21,27 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     isDanger = false,
     onConfirm,
     onCancel,
-    loading = false
+    loading = false,
+    countdown = 0
 }) => {
+    const [remainingSeconds, setRemainingSeconds] = useState(countdown);
+
+    useEffect(() => {
+        if (countdown <= 0) return;
+        setRemainingSeconds(countdown);
+        const timer = setInterval(() => {
+            setRemainingSeconds(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [countdown]);
+
+    const isCountdownActive = countdown > 0 && remainingSeconds > 0;
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -57,13 +77,21 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     }}>
                         {cancelText}
                     </button>
-                    <button type="button" onClick={onConfirm} disabled={loading} style={{
-                        padding: '8px 16px',
-                        background: isDanger ? 'var(--accent-red, #EF4444)' : 'var(--accent-blue)',
-                        border: 'none', borderRadius: 6, color: '#fff',
-                        cursor: loading ? 'wait' : 'pointer', fontWeight: 600
-                    }}>
-                        {loading ? '处理中...' : confirmText}
+                    <button 
+                        type="button" 
+                        onClick={onConfirm} 
+                        disabled={loading || isCountdownActive} 
+                        style={{
+                            padding: '8px 16px',
+                            background: isDanger ? 'var(--accent-red, #EF4444)' : 'var(--accent-blue)',
+                            border: 'none', borderRadius: 6, color: '#fff',
+                            cursor: (loading || isCountdownActive) ? 'not-allowed' : 'pointer', 
+                            fontWeight: 600,
+                            opacity: isCountdownActive ? 0.6 : 1,
+                            minWidth: 100
+                        }}
+                    >
+                        {loading ? '处理中...' : isCountdownActive ? `${confirmText} (${remainingSeconds})` : confirmText}
                     </button>
                 </div>
             </div>

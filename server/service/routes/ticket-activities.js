@@ -381,8 +381,8 @@ module.exports = function (db, authenticate, serviceUpload) {
                             const thumbFilename = String(dbPath).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.jpg';
                             const thumbPath = path.join(thumbDir, thumbFilename);
                             sharp(finalPath)
-                                .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
-                                .jpeg({ quality: 80 })
+                                .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
+                                .jpeg({ quality: 75 })
                                 .toFile(thumbPath)
                                 .catch(err => console.error('[Activities] Background Thumbnail Error:', err));
                         }

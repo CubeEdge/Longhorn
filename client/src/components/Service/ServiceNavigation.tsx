@@ -156,9 +156,18 @@ const ServiceNavigation: React.FC = () => {
     // Handle wiki special case
     if (path.includes('wiki') && location.pathname.startsWith('/tech-hub/wiki')) return true;
     if (path.includes('bokeh') && location.pathname.startsWith('/tech-hub/bokeh')) return true;
+    
+    // Handle ticket detail page with ctx parameter
+    if (location.pathname.startsWith('/service/tickets/')) {
+      const ctx = new URLSearchParams(location.search).get('ctx');
+      if (path === '/service/inquiry-tickets') return ctx === 'search-inquiry';
+      if (path === '/service/rma-tickets') return ctx === 'search-rma';
+      if (path === '/service/dealer-repairs') return ctx === 'search-svc';
+    }
+    
     // Normal path matching
     return location.pathname.startsWith(path.split('?')[0]);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Handle navigation
   const handleNavigate = useCallback((path: string) => {

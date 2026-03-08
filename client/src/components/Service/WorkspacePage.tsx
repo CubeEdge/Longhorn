@@ -60,6 +60,20 @@ type WorkspaceView = 'my-tasks' | 'mentioned' | 'team-hub';
 // Star storage key
 const STAR_STORAGE_KEY = 'longhorn_workspace_stars';
 
+// Column widths storage
+const COL_WIDTHS_KEY = 'longhorn_workspace_col_widths';
+type ColKey = 'first' | 'id' | 'status' | 'sla';
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { first: 72, id: 150, status: 220, sla: 150 };
+
+function loadColWidths(): Record<ColKey, number> {
+  try {
+    const saved = localStorage.getItem(COL_WIDTHS_KEY);
+    return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : { ...DEFAULT_COL_WIDTHS };
+  } catch {
+    return { ...DEFAULT_COL_WIDTHS };
+  }
+}
+
 // View state storage keys for each workspace view
 const VIEW_STATE_KEYS: Record<WorkspaceView, string> = {
   'my-tasks': 'longhorn_workspace_my_tasks_state',
@@ -222,6 +236,35 @@ const WorkspacePage: React.FC = () => {
   // Context menu
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; ticketId: number } | null>(null);
   const [isTrashMenuOpen, setTrashMenuOpen] = useState(false);
+
+  // Column widths & resize
+  const [colWidths, setColWidths] = useState<Record<ColKey, number>>(loadColWidths);
+  const resizingRef = useRef<{ col: ColKey; startX: number; startWidth: number } | null>(null);
+
+  const startColResize = useCallback((e: React.MouseEvent, col: ColKey) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
+    const onMouseMove = (me: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = me.clientX - resizingRef.current.startX;
+      const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+      setColWidths(prev => {
+        const next = { ...prev, [resizingRef.current!.col]: newWidth };
+        localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+        return next;
+      });
+    };
+    const onMouseUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [colWidths]);
 
   // Detail view state - restore from saved state
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -815,14 +858,35 @@ const WorkspacePage: React.FC = () => {
                 <Loader2 className="animate-spin" size={24} style={{ color: 'var(--text-tertiary)' }} />
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                <colgroup>
+                  <col style={{ width: colWidths.first }} />
+                  <col style={{ width: colWidths.id }} />
+                  <col />
+                  <col style={{ width: colWidths.status }} />
+                  <col style={{ width: colWidths.sla }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '70px', textAlign: 'center' }}>Star/Lock</th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '140px' }}>ID</th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem' }}>{t('workspace.title')}</th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '220px' }}>{t('workspace.status')}</th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', width: '150px', textAlign: 'right' }}>{t('workspace.sla_timer')}</th>
+                    <th style={{ padding: '0 8px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.82rem', textAlign: 'center', position: 'relative', userSelect: 'none' }}>
+                      Pri/★
+                      <div onMouseDown={e => startColResize(e, 'first')} className="col-resize-handle" />
+                    </th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
+                      ID
+                      <div onMouseDown={e => startColResize(e, 'id')} className="col-resize-handle" />
+                    </th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
+                      {t('workspace.title')}
+                    </th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
+                      {t('workspace.status')}
+                      <div onMouseDown={e => startColResize(e, 'status')} className="col-resize-handle" />
+                    </th>
+                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
+                      {t('workspace.sla_timer')}
+                      <div onMouseDown={e => startColResize(e, 'sla')} className="col-resize-handle" />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -851,29 +915,39 @@ const WorkspacePage: React.FC = () => {
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        {/* Left: Star/Lock Icon */}
-                        <td style={{ padding: '16px', textAlign: 'center' }}>
-                          {isCritical ? (
-                            <Flame size={18} style={{ color: '#EF4444', margin: '0 auto' }} />
-                          ) : (
-                            <button
-                              onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
-                              className="workspace-star-btn"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                padding: 2,
-                                cursor: 'pointer',
-                                color: isStarred ? '#FFD700' : 'var(--text-tertiary)',
-                                opacity: isStarred ? 1 : 0,
-                                transition: 'opacity 0.15s',
-                                display: 'block',
-                                margin: '0 auto'
-                              }}
-                            >
-                              <Star size={16} fill={isStarred ? '#FFD700' : 'none'} />
-                            </button>
-                          )}
+                        {/* Left: Priority + Star/Lock */}
+                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                            {/* Priority badge - P2 is default, skip to reduce noise */}
+                            {ticket.priority && ticket.priority !== 'P2' && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, letterSpacing: '0.02em',
+                                color: priorityColors[ticket.priority] || '#3B82F6',
+                                background: `${priorityColors[ticket.priority] || '#3B82F6'}18`,
+                                border: `1px solid ${priorityColors[ticket.priority] || '#3B82F6'}44`,
+                                padding: '1px 5px', borderRadius: 4, lineHeight: 1.5
+                              }}>
+                                {ticket.priority}
+                              </span>
+                            )}
+                            {/* Star / Flame */}
+                            {isCritical ? (
+                              <Flame size={16} style={{ color: '#EF4444' }} />
+                            ) : (
+                              <button
+                                onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
+                                className="workspace-star-btn"
+                                style={{
+                                  background: 'none', border: 'none', padding: 2, cursor: 'pointer',
+                                  color: isStarred ? '#FFD700' : 'var(--text-tertiary)',
+                                  opacity: isStarred ? 1 : 0,
+                                  transition: 'opacity 0.15s', display: 'block'
+                                }}
+                              >
+                                <Star size={15} fill={isStarred ? '#FFD700' : 'none'} />
+                              </button>
+                            )}
+                          </div>
                         </td>
 
                         {/* ID */}
@@ -889,20 +963,7 @@ const WorkspacePage: React.FC = () => {
                         </td>
 
                         {/* Title & Subtitle */}
-                        <td style={{ padding: '16px', maxWidth: '300px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <span style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: priorityColors[ticket.priority] || '#3B82F6',
-                              background: `${priorityColors[ticket.priority] || '#3B82F6'}15`,
-                              padding: '2px 8px',
-                              borderRadius: 6
-                            }}>
-                              {ticket.priority}
-                            </span>
-                          </div>
-
+                        <td style={{ padding: '16px', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
                             <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                               {ticket.account_name || ticket.contact_name || ticket.reporter_name || '-'}
@@ -1111,7 +1172,21 @@ const WorkspacePage: React.FC = () => {
           opacity: 1 !important;
         }
         .workspace-star-btn[style*="opacity: 1"] {
-          opacity: 1 !important; /* Keep visible when starred */
+          opacity: 1 !important;
+        }
+        .col-resize-handle {
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 6px;
+          cursor: col-resize;
+          z-index: 10;
+          background: transparent;
+          transition: background 0.15s;
+        }
+        .col-resize-handle:hover {
+          background: rgba(59, 130, 246, 0.45);
         }
         @keyframes slideInRight {
           from { transform: translateX(100%); }

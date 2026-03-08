@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Save, RefreshCcw, Database, Server, Sparkles, AlertTriangle, CheckCircle, Trash2, Plus, Monitor, Bot, Moon, Sun, X, Eye, EyeOff, Activity } from 'lucide-react';
+import { Save, RefreshCcw, Database, Server, Sparkles, AlertTriangle, CheckCircle, Trash2, Plus, Monitor, Bot, Moon, Sun, X, Eye, EyeOff, Activity, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useToast } from '../../store/useToast';
@@ -9,6 +9,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { useUserSettingsStore } from '../../store/useUserSettingsStore';
 import type { NotificationDuration } from '../../store/useUserSettingsStore';
 import { DebugModeToggle } from '../DebugOverlay';
+import UserManagement from './UserManagement';
 interface AIProvider {
     name: string;
     api_key: string;
@@ -41,9 +42,11 @@ interface SystemSettings {
     secondary_backup_enabled: boolean;
     secondary_backup_frequency: number;
     secondary_backup_retention_days: number;
+    // RMA Workflow Settings
+    require_finance_confirmation?: boolean; // RMA过保工单是否需要财务确认
 }
 
-type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts';
+type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts' | 'users';
 
 interface AdminSettingsProps {
     initialTab?: AdminTab;
@@ -438,11 +441,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
             { id: 'health', label: t('admin.system_health') || '系统健康', icon: Activity },
             { id: 'backup', label: '数据备份', icon: Database },
             { id: 'audit', label: t('admin.audit_logs') || '审计日志', icon: Eye }
+        ] : []),
+        // Lead 及以上均可查看人员管理
+        ...(isSuperAdmin || user?.role === 'Lead' ? [
+            { id: 'users', label: '人员管理', icon: Users }
         ] : [])
     ];
 
-    if (!isSuperAdmin && activeTab !== 'general') {
+    if (!isSuperAdmin && user?.role !== 'Lead' && activeTab !== 'general') {
         setActiveTab('general');
+    }
+    if (!isSuperAdmin && user?.role === 'Lead' && activeTab !== 'general' && activeTab !== 'users') {
+        setActiveTab('users');
     }
 
     return (
@@ -469,7 +479,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                 </div>
 
                 <div style={{ display: 'flex', gap: 12 }}>
-                    {activeTab !== 'audit' && (
+                    {activeTab !== 'audit' && activeTab !== 'users' && (
                         <button
                             onClick={handleSave}
                             disabled={saving}
@@ -1196,6 +1206,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                             </div>
                         )}
 
+                        {/* === USERS TAB === */}
+                        {activeTab === 'users' && (
+                            <UserManagement />
+                        )}
+
                         {/* === GENERAL TAB === */}
                         {activeTab === 'general' && settings && (
                             <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -1283,6 +1298,26 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                                                     value={settings.notification_refresh_interval || 30}
                                                     onChange={e => setSettings({ ...settings, notification_refresh_interval: Math.max(5, Math.min(300, parseInt(e.target.value) || 30)) })}
                                                     style={{ width: '60px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)', color: 'var(--text-main)', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* RMA 工单流程配置 */}
+                                    {isSuperAdmin && (
+                                        <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginTop: 16 }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,215,0,0.03)' }}>
+                                                RMA 工单流程
+                                            </div>
+                                            <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="setting-label">过保工单需财务确认</div>
+                                                    <div className="setting-desc">开启后，过保付费工单在「结算审核」环节需转交财务确认收款后才能发货。关闭则直接发货。</div>
+                                                </div>
+                                                <Switch 
+                                                    checked={settings.require_finance_confirmation !== false} 
+                                                    onChange={v => setSettings({ ...settings, require_finance_confirmation: v })} 
+                                                    activeColor="#FFD700" 
                                                 />
                                             </div>
                                         </div>

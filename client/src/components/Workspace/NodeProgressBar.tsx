@@ -16,7 +16,7 @@ const RMA_NODES = [
     { key: 'ms_review', defaultDept: 'MS', match: ['ms_review'] },
     { key: 'op_repairing', defaultDept: 'OP', match: ['op_repairing'] },
     { key: 'ms_closing', defaultDept: 'MS', match: ['ge_review', 'ms_closing', 'ms_review_finance', 'waiting_customer'] },
-    { key: 'op_shipping', defaultDept: 'OP', match: ['shipped', 'op_shipping', 'op_qa', 'ge_closing', 'resolved'] },
+    { key: 'op_shipping', defaultDept: 'OP', match: ['shipped', 'op_shipping', 'op_shipping_transit', 'op_qa', 'ge_closing', 'resolved'] },
 ];
 
 // SVC node sequence (PRD 5.3)
@@ -44,6 +44,7 @@ const NODE_LABELS: Record<string, Record<string, string>> = {
         op_repairing: '维修中',
         ms_closing: '最终结案',
         op_shipping: '打包发货',
+        op_shipping_transit: '待补外销单号',
         ge_closing: '财务结案',
         resolved: '已完成',
         dl_submitted: '已提交',
@@ -58,6 +59,7 @@ const NODE_LABELS: Record<string, Record<string, string>> = {
         op_repairing: 'Repairing',
         ms_closing: 'Settlement',
         op_shipping: 'Shipping',
+        op_shipping_transit: 'Awaiting Tracking',
         ge_closing: 'Closing',
         resolved: 'Resolved',
         dl_submitted: 'Submitted',
@@ -84,6 +86,7 @@ const BALL_HINT_CONFIG: Record<string, { role: string; advice: string }> = {
     'ge_review': { role: '财务审计', advice: '等待核实款项到账。核销后，球将交由客服进行发货前终审。' },
     'ms_closing': { role: '客服/商务', advice: '收款已确认。请核对回寄地址，释放后球传由物流发票并发货。' },
     'op_shipping': { role: '库管/物流', advice: '客服已释放。请打单发货并录入顺丰/DHL物流单号。' },
+    'op_shipping_transit': { role: '库管/物流', advice: '货代中转中。待取得国际运单号后，请补充外销单号并结案。' },
     'resolved': { role: '归档库', advice: '流程已终结。' },
     'waiting_customer': { role: '客服/商务', advice: '已反馈客户方案，目前等待客户回复确认中。' },
 };
@@ -191,6 +194,7 @@ const NodeProgressBar: React.FC<Props> = ({ ticketType, currentNode, assignedNam
             'op_diagnosing': 'OP',
             'op_repairing': 'OP',
             'op_shipping': 'OP',
+            'op_shipping_transit': 'OP',
             'op_qa': 'OP',
             'ms_closing': 'MS',
             'submitted': type === 'rma' ? 'OP' : 'MS',

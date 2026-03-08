@@ -318,6 +318,21 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN ai_search_history_limit
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN show_daily_word BOOLEAN DEFAULT 0").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN notification_refresh_interval INTEGER DEFAULT 30").run(); } catch (e) { }
 
+// Migration for RMA Finance Confirmation Setting
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN require_finance_confirmation BOOLEAN DEFAULT 1").run(); } catch (e) { }
+
+// Migration for RMA Shipping Methods (P2 Phase 2)
+try { db.prepare("ALTER TABLE tickets ADD COLUMN shipping_method TEXT DEFAULT 'express'").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE tickets ADD COLUMN forwarder_domestic_tracking TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE tickets ADD COLUMN forwarder_name TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE tickets ADD COLUMN forwarder_final_tracking TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE tickets ADD COLUMN pickup_person TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE tickets ADD COLUMN associated_order_ref TEXT").run(); } catch (e) { }
+
+// Migration for User Management (display_name, is_active)
+try { db.prepare("ALTER TABLE users ADD COLUMN display_name TEXT").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1").run(); } catch (e) { }
+
 // [DEPRECATED] Migration: customers table extra columns
 // customers 表已废弃，以下迁移代码保留仅作为历史参考
 // try { db.prepare("ALTER TABLE customers ADD COLUMN account_type TEXT DEFAULT 'EndUser'").run(); } catch (e) { }
@@ -1541,10 +1556,10 @@ app.post('/api/upload/merge', authenticate, async (req, res) => {
 });
 
 app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {
-    const { username, password, role, department_id } = req.body;
+    const { username, password, role, department_id, display_name } = req.body;
     const hash = bcrypt.hashSync(password, 10);
     try {
-        const result = db.prepare('INSERT INTO users (username, password, role, department_id) VALUES (?, ?, ?, ?)').run(username, hash, role || 'Member', department_id);
+        const result = db.prepare('INSERT INTO users (username, password, role, department_id, display_name, is_active) VALUES (?, ?, ?, ?, ?, 1)').run(username, hash, role || 'Member', department_id || null, display_name || username);
 
         // Create personal folder for new user
         const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
@@ -1557,11 +1572,11 @@ app.post('/api/admin/users', authenticate, isAdmin, (req, res) => {
 });
 
 app.get('/api/admin/users', authenticate, (req, res) => {
-    if (req.user.role !== 'Admin' && req.user.role !== 'Lead') return res.status(403).json({ error: 'Forbidden' });
+    if (req.user.role !== 'Admin' && req.user.role !== 'Exec' && req.user.role !== 'Lead') return res.status(403).json({ error: 'Forbidden' });
 
     let query = `
         SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.created_at, 
-               u.dealer_id, dl.name as dealer_name,
+               u.is_active, u.dealer_id, dl.name as dealer_name,
                d.name as department_name, d.name as dept_code
         FROM users u 
         LEFT JOIN departments d ON u.department_id = d.id
@@ -1574,42 +1589,49 @@ app.get('/api/admin/users', authenticate, (req, res) => {
         params.push(req.user.department_id);
     }
 
+    query += " ORDER BY u.department_id, u.role, u.username";
+
     const users = db.prepare(query).all(...params);
 
-    // Append stats for each user
-    const usersWithStats = users.map(user => {
-        // Calculate stats from file_stats table for Members/<username> directory
-        // We use LIKE 'Members/username/%' to count all files recursively
-        // Note: This assumes file_stats path starts with Members/... 
-        const stats = db.prepare(`
-            SELECT COUNT(*) as count, SUM(size) as total_size 
-            FROM file_stats 
-            WHERE path LIKE ? OR path = ?
-        `).get(`Members/${user.username}/%`, `Members/${user.username}`);
-
-        return {
-            ...user,
-            dept_code: normalizeDeptCode(user.dept_code),
-            department_code: normalizeDeptCode(user.dept_code),
-            file_count: stats.count || 0,
-            total_size: stats.total_size || 0
-        };
-    });
+    const usersWithStats = users.map(user => ({
+        ...user,
+        is_active: user.is_active !== 0, // normalize to boolean
+        display_name: user.display_name || user.username,
+        dept_code: normalizeDeptCode(user.dept_code),
+        department_code: normalizeDeptCode(user.dept_code),
+    }));
 
     res.json(usersWithStats);
 });
 
 app.put('/api/admin/users/:id', authenticate, (req, res) => {
-    if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Requires Admin role' });
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec';
+    const isLead = req.user.role === 'Lead';
+    if (!isAdmin && !isLead) return res.status(403).json({ error: 'Forbidden' });
 
     try {
-        const { username, password, role, department_id } = req.body;
+        const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+        // Lead 只能修改本部门成员，且只能调整 Lead/Member 角色
+        if (isLead) {
+            if (targetUser.department_id !== req.user.department_id) return res.status(403).json({ error: 'Permission denied: different department' });
+            const { role } = req.body;
+            if (role && !['Lead', 'Member', 'Manager', 'Staff'].includes(role)) return res.status(403).json({ error: 'Lead can only set Lead or Member role' });
+            if (role) db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+            return res.json({ success: true });
+        }
+
+        // Admin/Exec: 完整操作权限
+        const { username, password, role, department_id, display_name, is_active } = req.body;
         const updates = [];
         const params = [];
 
-        if (username) { updates.push("username = ?"); params.push(username); }
-        if (role) { updates.push("role = ?"); params.push(role); }
-        if (department_id !== undefined) { updates.push("department_id = ?"); params.push(department_id); }
+        if (username !== undefined) { updates.push("username = ?"); params.push(username); }
+        if (display_name !== undefined) { updates.push("display_name = ?"); params.push(display_name); }
+        if (role !== undefined) { updates.push("role = ?"); params.push(role); }
+        if (department_id !== undefined) { updates.push("department_id = ?"); params.push(department_id || null); }
+        if (is_active !== undefined) { updates.push("is_active = ?"); params.push(is_active ? 1 : 0); }
         if (password) {
             const hashedPassword = bcrypt.hashSync(password, 10);
             updates.push("password = ?");
@@ -1624,6 +1646,18 @@ app.put('/api/admin/users/:id', authenticate, (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// Toggle user active status (soft disable/enable)
+app.patch('/api/admin/users/:id/toggle', authenticate, (req, res) => {
+    if (req.user.role !== 'Admin' && req.user.role !== 'Exec') return res.status(403).json({ error: 'Admin only' });
+    const targetUser = db.prepare('SELECT id, is_active FROM users WHERE id = ?').get(req.params.id);
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
+    // Prevent disabling own account
+    if (targetUser.id === req.user.id) return res.status(400).json({ error: 'Cannot disable your own account' });
+    const newStatus = targetUser.is_active === 0 ? 1 : 0;
+    db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(newStatus, req.params.id);
+    res.json({ success: true, is_active: newStatus === 1 });
 });
 
 // User Permissions Management

@@ -16,14 +16,15 @@ module.exports = function (db, authenticate) {
      */
     router.get('/public-settings', (req, res) => {
         try {
-            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval FROM system_settings LIMIT 1').get();
+            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval, require_finance_confirmation FROM system_settings LIMIT 1').get();
             res.json({
                 success: true,
                 data: {
                     system_name: settings?.system_name || 'Longhorn System',
                     ai_search_history_limit: parseInt(settings?.ai_search_history_limit) || 10,
                     show_daily_word: Boolean(settings?.show_daily_word),
-                    notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30
+                    notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30,
+                    require_finance_confirmation: settings?.require_finance_confirmation !== 0
                 }
             });
         } catch (err) {
@@ -514,8 +515,8 @@ module.exports = function (db, authenticate) {
                 try {
                     const sharp = require('sharp');
                     await sharp(fullPath)
-                        .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
-                        .jpeg({ quality: 80 })
+                        .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
+                        .jpeg({ quality: 75 })
                         .toFile(thumbPath);
                 } catch (sharpErr) {
                     console.error('[System] Sharp error:', sharpErr);

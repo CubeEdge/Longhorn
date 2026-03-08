@@ -340,7 +340,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
               <button
                 onClick={handleClear}
                 className="text-gray-400 hover:text-gray-600 p-1"
-                title={t('common.clear')}
+                title={t('common.clear', '清除')}
               >
                 ✕
               </button>
@@ -351,7 +351,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
         {/* 联系人选择 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('ticket.contact')} <span className="text-red-500">*</span>
+            {t('ticket.contact', '联系人')} <span className="text-red-500">*</span>
           </label>
           
           {contacts.length > 0 ? (
@@ -379,12 +379,12 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
                       <span className="font-medium text-gray-900">{contact.name}</span>
                       {contact.status === 'PRIMARY' && (
                         <span className="px-1.5 py-0.5 rounded text-xs bg-kine-yellow text-yellow-900">
-                          {t('contact.primary')}
+                          {t('contact.primary', '主要联系人')}
                         </span>
                       )}
                       {contact.status === 'INACTIVE' && (
                         <span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                          {t('contact.inactive')}
+                          {t('contact.inactive', '已停用')}
                         </span>
                       )}
                     </div>
@@ -399,7 +399,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
             </div>
           ) : (
             <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-              {t('account.noContacts')}
+              {t('account.noContacts', '该账户暂无联系人')}
             </div>
           )}
         </div>
@@ -407,7 +407,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
         {/* 报告人姓名（可编辑） */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('ticket.reporterName')}
+            {t('ticket.reporterName', '报告人姓名')}
           </label>
           <input
             type="text"
@@ -419,7 +419,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
             })}
             disabled={disabled}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-kine-yellow focus:border-transparent disabled:bg-gray-100"
-            placeholder={t('ticket.reporterNamePlaceholder')}
+            placeholder={t('ticket.reporterNamePlaceholder', '输入报告人姓名...')}
           />
         </div>
       </div>
@@ -430,7 +430,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
   return (
     <div className={`relative ${className}`} ref={accountDropdownRef}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        {t('account.select')} <span className="text-red-500">*</span>
+        {t('account.select', '选择客户账户')} <span className="text-red-500">*</span>
       </label>
       
       <div className="relative">
@@ -444,7 +444,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
           onFocus={() => setShowAccountDropdown(true)}
           disabled={disabled}
           className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-kine-yellow focus:border-transparent disabled:bg-gray-100"
-          placeholder={t('account.searchPlaceholder')}
+          placeholder={t('account.searchPlaceholder', '搜索客户企业 / 公司...')}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
           {loading ? (
@@ -463,13 +463,13 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
           {accounts.length > 0 ? (
             <>
               <div className="sticky top-0 bg-gray-50 px-3 py-2 text-xs text-gray-500 border-b">
-                {t('account.searchResults', { count: accounts.length })}
+                {t('account.searchResults', { count: accounts.length, defaultValue: `找到 ${accounts.length} 个结果` })}
               </div>
               {accounts.map(renderAccountCard)}
             </>
           ) : (
             <div className="p-4 text-center text-gray-500">
-              {searchQuery ? t('account.noResults') : t('account.startTyping')}
+              {searchQuery ? t('account.noResults', '未找到匹配的客户') : t('account.startTyping', '输入关键词开始搜索')}
             </div>
           )}
           
@@ -480,7 +480,7 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
               className="w-full py-2 px-3 text-sm text-kine-yellow hover:bg-yellow-50 rounded-lg flex items-center justify-center gap-2"
             >
               <span>+</span>
-              {t('account.createNew')}
+              {t('account.createNew', '新建客户档案')}
             </button>
           </div>
         </div>

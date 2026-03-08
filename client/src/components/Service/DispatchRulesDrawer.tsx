@@ -155,14 +155,14 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
             <div
                 onClick={onClose}
                 style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
                     background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
                     zIndex: 1000, transition: 'all 0.3s'
                 }}
             />
             {/* Drawer */}
             <div style={{
-                position: 'fixed', top: 0, right: 0, bottom: 0, width: 480,
+                position: 'fixed', top: 60, right: 0, bottom: 0, width: 480,
                 background: '#121214', borderLeft: '1px solid rgba(255,255,255,0.1)',
                 zIndex: 1001, display: 'flex', flexDirection: 'column',
                 boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',

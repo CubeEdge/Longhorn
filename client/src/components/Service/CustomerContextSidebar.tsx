@@ -365,7 +365,13 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         </div>
 
                         {/* Action Required Section - Only visible to MS department */}
-                        {useAuthStore.getState().user?.department_name === 'MS' && (
+                        {(() => {
+                            const user = useAuthStore.getState().user as any;
+                            const deptName = user?.department_name || user?.department_code || '';
+                            const isMsDept = deptName === 'MS' || deptName === '市场部' || deptName.includes('市场') || 
+                                             user?.role === 'Admin' || user?.role === 'Exec';
+                            if (!isMsDept) return null;
+                            return (
                             <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
                                 <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
                                     建议操作
@@ -389,7 +395,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                         }}
                                     >
-                                        <UserPlus size={14} /> 入库新企业 / 新散客
+                                    <UserPlus size={14} /> 添加为新客户
                                     </button>
                                     <button
                                         onClick={() => setShowSpamModal(true)}
@@ -403,7 +409,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     </button>
                                 </div>
                             </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 )}
 
@@ -816,6 +823,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     loading={isActionLoading}
                     onConfirm={handleMarkSpam}
                     onCancel={() => setShowSpamModal(false)}
+                    countdown={5}
                 />
             )}
         </div>
