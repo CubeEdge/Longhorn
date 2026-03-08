@@ -241,14 +241,27 @@ const WorkspacePage: React.FC = () => {
   const [colWidths, setColWidths] = useState<Record<ColKey, number>>(loadColWidths);
   const resizingRef = useRef<{ col: ColKey; startX: number; startWidth: number } | null>(null);
 
-  const startColResize = useCallback((e: React.MouseEvent, col: ColKey) => {
+  // Column sort state: null = hybrid default sort
+  type SortKey = 'priority' | 'id' | 'title' | 'status' | 'sla';
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
+  const handleSort = useCallback((key: SortKey) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        if (prev.dir === 'asc') return { key, dir: 'desc' as const };
+        return { key: null, dir: 'asc' as const }; // third click resets to default
+      }
+      return { key, dir: 'asc' as const };
+    });
+  }, []);
+
+  const startColResize = useCallback((e: React.MouseEvent, col: ColKey, inverse = false) => {
     e.preventDefault();
     e.stopPropagation();
     resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
     const onMouseMove = (me: MouseEvent) => {
       if (!resizingRef.current) return;
       const delta = me.clientX - resizingRef.current.startX;
-      const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+      const newWidth = Math.max(50, resizingRef.current.startWidth + (inverse ? -delta : delta));
       setColWidths(prev => {
         const next = { ...prev, [resizingRef.current!.col]: newWidth };
         localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
@@ -505,8 +518,42 @@ const WorkspacePage: React.FC = () => {
       return aDue - bDue;
     });
 
+    // User-selected column sort overrides hybrid sort
+    if (sortConfig.key) {
+      const priorityOrder: Record<string, number> = { P0: 0, P1: 1, P2: 2 };
+      result.sort((a, b) => {
+        let cmp = 0;
+        switch (sortConfig.key) {
+          case 'priority': {
+            const isAStarred = !!starredMap[a.id];
+            const isBStarred = !!starredMap[b.id];
+            if (isAStarred && !isBStarred) { cmp = -1; break; }
+            if (!isAStarred && isBStarred) { cmp = 1; break; }
+            cmp = (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
+            break;
+          }
+          case 'id':
+            cmp = a.ticket_number.localeCompare(b.ticket_number);
+            break;
+          case 'title':
+            cmp = (a.problem_summary || '').localeCompare(b.problem_summary || '');
+            break;
+          case 'status':
+            cmp = a.current_node.localeCompare(b.current_node);
+            break;
+          case 'sla': {
+            const aDue2 = a.sla_due_at ? new Date(a.sla_due_at).getTime() : Infinity;
+            const bDue2 = b.sla_due_at ? new Date(b.sla_due_at).getTime() : Infinity;
+            cmp = aDue2 - bDue2;
+            break;
+          }
+        }
+        return sortConfig.dir === 'asc' ? cmp : -cmp;
+      });
+    }
+
     return result;
-  }, [tickets, collabTickets, searchQuery, starredMap, snoozedIds, location.search, currentView, activeTab, deptTabs]);
+  }, [tickets, collabTickets, searchQuery, starredMap, snoozedIds, location.search, currentView, activeTab, deptTabs, sortConfig]);
 
   // Toggle star
   const toggleStar = useCallback((id: number) => {
@@ -643,7 +690,7 @@ const WorkspacePage: React.FC = () => {
 
   const priorityColors: Record<string, string> = {
     P0: '#EF4444',
-    P1: '#F59E0B',
+    P1: '#FFD700',
     P2: '#3B82F6'
   };
 
@@ -868,24 +915,65 @@ const WorkspacePage: React.FC = () => {
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '0 8px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.82rem', textAlign: 'center', position: 'relative', userSelect: 'none' }}>
-                      Pri/★
-                      <div onMouseDown={e => startColResize(e, 'first')} className="col-resize-handle" />
+                    <th
+                      onClick={() => handleSort('priority')}
+                      style={{ padding: '0 8px 16px', color: sortConfig.key === 'priority' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, fontSize: '0.82rem', textAlign: 'center', position: 'relative', userSelect: 'none', cursor: 'pointer' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        Pri/★
+                        {sortConfig.key === 'priority'
+                          ? <span style={{ fontSize: 10, color: 'var(--accent-blue)' }}>{sortConfig.dir === 'asc' ? ' ↑' : ' ↓'}</span>
+                          : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                      </span>
+                      <div onMouseDown={e => startColResize(e, 'first')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                     </th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
-                      ID
-                      <div onMouseDown={e => startColResize(e, 'id')} className="col-resize-handle" />
+                    <th
+                      onClick={() => handleSort('id')}
+                      style={{ padding: '0 16px 16px', color: sortConfig.key === 'id' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none', cursor: 'pointer' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        ID
+                        {sortConfig.key === 'id'
+                          ? <span style={{ fontSize: 10, color: 'var(--accent-blue)' }}>{sortConfig.dir === 'asc' ? ' ↑' : ' ↓'}</span>
+                          : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                      </span>
+                      <div onMouseDown={e => startColResize(e, 'id')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                     </th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
-                      {t('workspace.title')}
+                    <th
+                      onClick={() => handleSort('title')}
+                      style={{ padding: '0 16px 16px', color: sortConfig.key === 'title' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none', cursor: 'pointer' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        {t('workspace.title')}
+                        {sortConfig.key === 'title'
+                          ? <span style={{ fontSize: 10, color: 'var(--accent-blue)' }}>{sortConfig.dir === 'asc' ? ' ↑' : ' ↓'}</span>
+                          : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                      </span>
+                      <div onMouseDown={e => startColResize(e, 'status', true)} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                     </th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none' }}>
-                      {t('workspace.status')}
-                      <div onMouseDown={e => startColResize(e, 'status')} className="col-resize-handle" />
+                    <th
+                      onClick={() => handleSort('status')}
+                      style={{ padding: '0 16px 16px', color: sortConfig.key === 'status' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', position: 'relative', userSelect: 'none', cursor: 'pointer' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                        {t('workspace.status')}
+                        {sortConfig.key === 'status'
+                          ? <span style={{ fontSize: 10, color: 'var(--accent-blue)' }}>{sortConfig.dir === 'asc' ? ' ↑' : ' ↓'}</span>
+                          : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                      </span>
+                      <div onMouseDown={e => startColResize(e, 'status')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                     </th>
-                    <th style={{ padding: '0 16px 16px', color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', textAlign: 'right', position: 'relative', userSelect: 'none' }}>
-                      {t('workspace.sla_timer')}
-                      <div onMouseDown={e => startColResize(e, 'sla')} className="col-resize-handle" />
+                    <th
+                      onClick={() => handleSort('sla')}
+                      style={{ padding: '0 16px 16px', color: sortConfig.key === 'sla' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 500, fontSize: '0.9rem', textAlign: 'right', position: 'relative', userSelect: 'none', cursor: 'pointer' }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, justifyContent: 'flex-end', width: '100%' }}>
+                        {t('workspace.sla_timer')}
+                        {sortConfig.key === 'sla'
+                          ? <span style={{ fontSize: 10, color: 'var(--accent-blue)' }}>{sortConfig.dir === 'asc' ? ' ↑' : ' ↓'}</span>
+                          : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                      </span>
+                      <div onMouseDown={e => startColResize(e, 'sla')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                     </th>
                   </tr>
                 </thead>
@@ -915,37 +1003,34 @@ const WorkspacePage: React.FC = () => {
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        {/* Left: Priority + Star/Lock */}
-                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            {/* Priority badge - P2 is default, skip to reduce noise */}
-                            {ticket.priority && ticket.priority !== 'P2' && (
+                        {/* Left: Star/Flame + Priority badge - horizontal, whole cell is star zone */}
+                        <td
+                          onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
+                          style={{ padding: '8px 4px', textAlign: 'center', cursor: 'pointer' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                            {/* Star icon - always rendered; visible when starred or row hovered */}
+                            <Star
+                              size={14}
+                              fill={isStarred ? '#FFD700' : 'none'}
+                              className={`workspace-star-icon${isStarred ? ' starred' : ''}`}
+                              style={{ color: isStarred ? '#FFD700' : 'var(--text-tertiary)', flexShrink: 0, transition: 'opacity 0.15s, color 0.15s' }}
+                            />
+                            {/* Flame for critical/P0 */}
+                            {isCritical && (
+                              <Flame size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
+                            )}
+                            {/* Priority badge - always show */}
+                            {ticket.priority && (
                               <span style={{
-                                fontSize: 10, fontWeight: 700, letterSpacing: '0.02em',
+                                fontSize: 9, fontWeight: 700, letterSpacing: '0.02em',
                                 color: priorityColors[ticket.priority] || '#3B82F6',
                                 background: `${priorityColors[ticket.priority] || '#3B82F6'}18`,
                                 border: `1px solid ${priorityColors[ticket.priority] || '#3B82F6'}44`,
-                                padding: '1px 5px', borderRadius: 4, lineHeight: 1.5
+                                padding: '1px 4px', borderRadius: 3, lineHeight: 1.5, flexShrink: 0
                               }}>
                                 {ticket.priority}
                               </span>
-                            )}
-                            {/* Star / Flame */}
-                            {isCritical ? (
-                              <Flame size={16} style={{ color: '#EF4444' }} />
-                            ) : (
-                              <button
-                                onClick={e => { e.stopPropagation(); toggleStar(ticket.id); }}
-                                className="workspace-star-btn"
-                                style={{
-                                  background: 'none', border: 'none', padding: 2, cursor: 'pointer',
-                                  color: isStarred ? '#FFD700' : 'var(--text-tertiary)',
-                                  opacity: isStarred ? 1 : 0,
-                                  transition: 'opacity 0.15s', display: 'block'
-                                }}
-                              >
-                                <Star size={15} fill={isStarred ? '#FFD700' : 'none'} />
-                              </button>
                             )}
                           </div>
                         </td>
@@ -1167,12 +1252,20 @@ const WorkspacePage: React.FC = () => {
 
       {/* Hover styles for star/snooze visibility */}
       <style>{`
-        .workspace-ticket-row:hover .workspace-star-btn,
         .workspace-ticket-row:hover .workspace-snooze-btn {
           opacity: 1 !important;
         }
-        .workspace-star-btn[style*="opacity: 1"] {
-          opacity: 1 !important;
+        .workspace-star-icon {
+          opacity: 0;
+        }
+        .workspace-star-icon.starred {
+          opacity: 1;
+        }
+        .workspace-ticket-row:hover .workspace-star-icon {
+          opacity: 0.45;
+        }
+        .workspace-ticket-row:hover .workspace-star-icon.starred {
+          opacity: 1;
         }
         .col-resize-handle {
           position: absolute;

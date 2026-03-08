@@ -22,48 +22,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ moduleType = 'files' }) => {
     const { t } = useLanguage();
     const { user } = useAuthStore();
     const isSuperAdmin = user?.role === 'Admin' || user?.role === 'Exec';
+    const isLead = user?.role === 'Lead';
 
     // 路由前缀根据模块类型判断
     const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
 
+    // Service 模块不使用 dashboard (文件统计不相关)
+    // Service 模块默认进入 settings
+    const defaultTab = moduleType === 'service' ? 'settings' : (isSuperAdmin ? 'dashboard' : 'settings');
+
     // Determine active tab from URL path or stored memory
-    const pathSegment = location.pathname.split('/').pop() || (isSuperAdmin ? 'dashboard' : 'settings');
+    const pathSegment = location.pathname.split('/').pop() || defaultTab;
 
     // Memory logic
     const [activeTab, setActiveTab] = React.useState<AdminTab>(() => {
         // 1. Priority: Check URL path first
-        if (['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'].includes(pathSegment)) {
+        const validTabs = moduleType === 'service'
+            ? ['users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts']
+            : ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'];
+
+        if (validTabs.includes(pathSegment)) {
             return pathSegment as AdminTab;
         }
 
         // 2. Fallback: Check memory
         const storageKey = moduleType === 'service' ? 'longhorn_service_admin_tab' : 'longhorn_admin_active_tab';
         const remembered = localStorage.getItem(storageKey) as AdminTab;
-        if (remembered && ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'].includes(remembered) && (isSuperAdmin || remembered === 'settings')) {
+        if (remembered && validTabs.includes(remembered) && (isSuperAdmin || isLead || remembered === 'settings')) {
             return remembered;
         }
 
         // 3. Default
-        return isSuperAdmin ? 'dashboard' : 'settings';
+        return defaultTab as AdminTab;
     });
 
     React.useEffect(() => {
-        const seg = location.pathname.split('/').pop() || 'dashboard';
-        if (['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'].includes(seg)) {
+        const seg = location.pathname.split('/').pop() || defaultTab;
+        const validTabs = moduleType === 'service'
+            ? ['users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts']
+            : ['dashboard', 'users', 'depts', 'settings', 'intelligence', 'health', 'audit', 'backup', 'prompts'];
+        if (validTabs.includes(seg)) {
             setActiveTab(seg as AdminTab);
             const storageKey = moduleType === 'service' ? 'longhorn_service_admin_tab' : 'longhorn_admin_active_tab';
             localStorage.setItem(storageKey, seg);
         }
-    }, [location.pathname, moduleType]);
+    }, [location.pathname, moduleType, defaultTab]);
 
-    // Unified menu items (Removing duplicates with top tabs)
+    // Unified menu items - Service 模块不显示 dashboard
     const menuItems = [
-        ...(isSuperAdmin ? [
-            { id: 'dashboard', label: t('admin.overview') || '概览', icon: LayoutDashboard },
-            { id: 'users', label: t('admin.members') || '成员管理', icon: Users },
-            { id: 'depts', label: t('admin.depts_permissions') || '权限管理', icon: ShieldCheck }
+        // Files 模块: 显示 dashboard（含文件统计）
+        // Service 模块: 不显示 dashboard（无意义）
+        ...(isSuperAdmin && moduleType === 'files' ? [
+            { id: 'dashboard', label: t('admin.overview') || '概览', icon: LayoutDashboard }
         ] : []),
-        { id: 'settings', label: t('admin.system_settings') || '系统设置', icon: Settings }, // Only one settings entry
+        ...(isSuperAdmin ? [
+            { id: 'users', label: t('admin.members') || '成员账号', icon: Users },
+            { id: 'depts', label: t('admin.depts_permissions') || '部门和权限', icon: ShieldCheck }
+        ] : []),
+        { id: 'settings', label: t('admin.system_settings') || '系统设置', icon: Settings },
     ];
 
     // Map internal settings tabs to 'settings' sidebar id for highlighting
