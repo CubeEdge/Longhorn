@@ -17,7 +17,6 @@ import {
   ClipboardList,
   MessageCircleQuestion,
   Book,
-  Settings,
   Users,
   Building,
   Wrench,
@@ -27,7 +26,8 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
-  Plus
+  Plus,
+  Layers
 } from 'lucide-react';
 import { useLanguage } from './i18n/useLanguage';
 import axios from 'axios';
@@ -54,6 +54,8 @@ import { DealerInventoryListPage, RestockOrderListPage, RestockOrderDetailPage, 
 import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
 import ProductManagement from './components/ProductManagement';
+import ProductModelsManagement from './components/ProductModelsManagement';
+import { PartsManagementPage, PartsCatalogPage, PartsInventoryPage, PartsConsumptionPage, PartsSettlementPage } from './components/PartsManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
 
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
@@ -243,6 +245,9 @@ const App: React.FC = () => {
           <Route path="/service/products" element={
             ['Admin', 'Lead'].includes(user?.role || '') ? <ProductManagement /> : <Navigate to="/" />
           } />
+          <Route path="/service/product-models" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelsManagement /> : <Navigate to="/" />
+          } />
           <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 
           {/* Knowledge Audit Log - Internal Staff Only (Admin) */}
@@ -252,17 +257,21 @@ const App: React.FC = () => {
           <Route path="/tech-hub/wiki" element={<KinefinityWiki />} />
           <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
 
-          {/* Parts Management (placeholder) */}
-          <Route path="/service/parts" element={<InquiryTicketListPage />} />
+          {/* Parts Management */}
+          <Route path="/service/parts" element={<PartsManagementPage />} />
+          <Route path="/service/parts/catalog" element={<PartsCatalogPage />} />
+          <Route path="/service/parts/inventory" element={<PartsInventoryPage />} />
+          <Route path="/service/parts/consumption" element={<PartsConsumptionPage />} />
+          <Route path="/service/parts/settlement" element={<PartsSettlementPage />} />
 
           {/* Dealer Inventory Management */}
-          <Route path="/service/inventory" element={<DealerInventoryListPage />} />
-          <Route path="/service/inventory/restock" element={<RestockOrderListPage />} />
-          <Route path="/service/inventory/restock/new" element={<RestockOrderCreatePage />} />
-          <Route path="/service/inventory/restock/:id" element={<RestockOrderDetailPage />} />
-
-          {/* Admin Panel Routes - Permission handled inside the component */}
-          <Route path="/service/admin/*" element={user ? <AdminPanel moduleType="service" /> : <Navigate to="/" />} />
+          <Route path="/service/dealer-operations" element={<DealerInventoryListPage />} />
+          <Route path="/service/dealer-operations/restock" element={<RestockOrderListPage />} />
+          <Route path="/service/dealer-operations/restock/new" element={<RestockOrderCreatePage />} />
+          <Route path="/service/dealer-operations/restock/:id" element={<RestockOrderDetailPage />} />
+          {/* 旧路由重定向 */}
+          <Route path="/service/inventory" element={<Navigate to="/service/dealer-operations" replace />} />
+          <Route path="/service/inventory/*" element={<Navigate to="/service/dealer-operations" replace />} />
 
           {/* Legacy Service Routes - Redirects */}
           <Route path="/service/records" element={<Navigate to="/service/inquiry-tickets" replace />} />
@@ -292,8 +301,18 @@ const App: React.FC = () => {
           {/* ==================== ADMIN ROUTES ==================== */}
           <Route path="/root" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <RootDirectoryView /> : <Navigate to="/" />} />
           <Route path="/members" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <MemberSpacePage /> : <Navigate to="/" />} />
-          {/* Platform Settings (Files module version of admin panel) */}
-          <Route path="/admin/*" element={user ? <AdminPanel moduleType="files" /> : <Navigate to="/" />} />
+          
+          {/* Unified Settings Panel (统一系统设置) - Admin/Exec/Lead */}
+          <Route path="/settings/*" element={
+            ['Admin', 'Exec', 'Lead'].includes(user?.role || '') 
+              ? <AdminPanel /> 
+              : <Navigate to="/" />
+          } />
+          
+          {/* Legacy Admin Routes - Redirect to unified settings */}
+          <Route path="/admin/*" element={<Navigate to="/settings" replace />} />
+          <Route path="/service/admin/*" element={<Navigate to="/settings" replace />} />
+          
           <Route path="/department-dashboard" element={(user?.role === 'Lead' || user?.role === 'Exec') ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
           {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
@@ -348,6 +367,11 @@ const Sidebar: React.FC<{
   currentModule: ModuleType
 }> = ({ user, viewingAs, role, isOpen, onClose, currentModule }) => {
   const location = useLocation();
+
+  // Hide sidebar completely in Settings module (AdminPanel has its own sidebar)
+  if (location.pathname.startsWith('/settings')) {
+    return null;
+  }
   const [searchParams] = useSearchParams();
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
@@ -606,25 +630,17 @@ const Sidebar: React.FC<{
                     <span>{t('sidebar.dealer_repairs')}</span>
                   </Link>
                 )}
-                {/* Inventory visible to Global access users (MS, etc) */}
-                {hasCrmAccess && (
-                  <Link to={getRoute('/service/inventory')} className={`sidebar-item ${location.pathname.startsWith('/service/inventory') ? 'active' : ''}`} onClick={onClose}>
-                    <Package size={18} />
-                    <span>{t('sidebar.parts_inventory')}</span>
-                  </Link>
-                )}
-
               </>
             )}
 
-            {/* ARCHIVES section (档案和基础信息) - collapsible, Role-based visibility (OP/RD 隐藏) */}
+            {/* 客户和经销商分组 - collapsible, Role-based visibility (OP/RD 隐藏) */}
             {hasCrmAccess && (
               <>
-                <div className="sidebar-section-title" onClick={() => toggleSection('archives')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>{t('sidebar.section_archives')}</span>
-                  {expandedSections.archives !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <div className="sidebar-section-title" onClick={() => toggleSection('customers_dealers')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{t('sidebar.section_customers_dealers')}</span>
+                  {expandedSections.customers_dealers !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </div>
-                {expandedSections.archives !== false && (
+                {expandedSections.customers_dealers !== false && (
                   <>
                     <Link to={getRoute('/service/dealers')} className={`sidebar-item ${location.pathname.startsWith('/service/dealers') ? 'active' : ''}`} onClick={onClose}>
                       <Building size={18} />
@@ -634,21 +650,42 @@ const Sidebar: React.FC<{
                       <Users size={18} />
                       <span>{t('sidebar.archives_customers')}</span>
                     </Link>
-                    <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
-                      <Box size={18} />
-                      <span>{t('sidebar.archives_assets')}</span>
+                    <Link to={getRoute('/service/dealer-operations')} className={`sidebar-item ${location.pathname.startsWith('/service/dealer-operations') ? 'active' : ''}`} onClick={onClose}>
+                      <Package size={18} />
+                      <span>{t('sidebar.dealer_operations')}</span>
                     </Link>
                   </>
                 )}
               </>
             )}
 
-            {/* System Settings - bottom single item, visible to all (permissions handled inside component) */}
-            <div style={{ marginTop: 'auto' }} />
-            <Link to="/service/admin" className={`sidebar-item ${location.pathname.startsWith('/service/admin') ? 'active' : ''}`} onClick={onClose}>
-              <Settings size={18} />
-              <span>{t('sidebar.service_admin')}</span>
-            </Link>
+            {/* 产品和配件分组 - collapsible, Role-based visibility (OP/RD 隐藏) */}
+            {hasCrmAccess && (
+              <>
+                <div className="sidebar-section-title" onClick={() => toggleSection('products_parts')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{t('sidebar.section_products_parts')}</span>
+                  {expandedSections.products_parts !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.products_parts !== false && (
+                  <>
+                    <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
+                      <Layers size={18} />
+                      <span>{t('sidebar.product_catalog')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
+                      <Box size={18} />
+                      <span>{t('sidebar.archives_assets')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/parts')} className={`sidebar-item ${location.pathname.startsWith('/service/parts') ? 'active' : ''}`} onClick={onClose}>
+                      <Package size={18} />
+                      <span>{t('sidebar.parts')}</span>
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* System Settings - removed, now in AppRail */}
           </>
         )}
 
@@ -697,16 +734,18 @@ const Sidebar: React.FC<{
               <span>{t('browser.recycle')}</span>
             </Link>
 
+            {/* Files Admin - Admin/Exec: Root directory access */}
             {(role === 'Admin' || role === 'Exec') && (
               <>
                 <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-                <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') && !location.pathname.includes('settings') ? 'active' : ''} `} onClick={onClose}>
+                <Link to="/root" className={`sidebar-item ${location.pathname === '/root' ? 'active' : ''} `} onClick={onClose}>
                   <LayoutDashboard size={20} />
-                  <span>{t('sidebar.files_admin')}</span>
+                  <span>{t('sidebar.root_dir', { defaultValue: '根目录' })}</span>
                 </Link>
               </>
             )}
 
+            {/* Lead: Department Dashboard */}
             {role === 'Lead' && (
               <>
                 <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />

@@ -165,7 +165,7 @@ const RestockOrderDetailPage: React.FC = () => {
         <div className="fade-in" style={{ padding: '32px 40px', maxWidth: 1000, margin: '0 auto' }}>
             {/* 返回按钮 - Wiki Style */}
             <button
-                onClick={() => navigate('/service/inventory/restock')}
+                onClick={() => navigate('/service/dealer-operations/restock')}
                 style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: 36, height: 36, borderRadius: '50%',

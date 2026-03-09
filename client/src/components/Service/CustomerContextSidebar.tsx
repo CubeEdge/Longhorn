@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    User, Smartphone, Package, X, MapPin, Building, ChevronDown, ChevronUp, Ticket, Info, Hash, ChevronRight, Search, UserPlus, Trash2, Mail
+    User, Smartphone, Package, X, MapPin, Building, ChevronDown, ChevronUp, Ticket, Info, Hash, ChevronRight, Search, UserPlus, Trash2
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -112,6 +112,18 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         result.parts_catalog = json.data.parts_catalog;
                         console.log('[CustomerContext] Set device:', result.device);
                     }
+                }).catch((err) => {
+                    console.error('[CustomerContext] Failed to fetch product:', err);
+                    // Create a placeholder device even if API fails
+                    result.device = {
+                        id: null,
+                        serial_number: serialNumber,
+                        model_name: '未知型号 (查询失败)',
+                        product_family: null,
+                        firmware_version: null,
+                        warranty_status: 'Unknown',
+                        is_unregistered: true
+                    };
                 }));
             }
 
@@ -353,8 +365,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                                <Mail size={12} /> 来源:
-                                <span style={{ color: '#ddd' }}>{reporterSnapshot?.source || 'Email / 电话接入'}</span>
+                                来源: <span style={{ color: '#ddd' }}>{reporterSnapshot?.source || 'Email / 电话接入'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>原始信息:</span>
@@ -497,8 +508,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             </div>
                         </div>
 
-                        {/* 关联工单统计 */}
-                        {customerExpanded && data.ai_profile && data.ai_profile.ticket_count > 0 && (
+                        {/* 关联工单统计 - 排除当前工单 */}
+                        {customerExpanded && data.ai_profile && (data.ai_profile.ticket_count - (data.ai_profile.tickets?.some((t: any) => t.id === ticketId) ? 1 : 0)) > 0 && (
                             <div style={{
                                 background: 'rgba(255, 210, 0, 0.08)',
                                 borderRadius: '8px',
@@ -510,7 +521,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>工单统计</span>
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                    总计 <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{data.ai_profile.ticket_count}</span>
+                                    总计 <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{data.ai_profile.ticket_count - (data.ai_profile.tickets?.some((t: any) => t.id === ticketId) ? 1 : 0)}</span>
                                     {data.ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.ai_profile.inquiry_count}</span>}
                                     {data.ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.ai_profile.rma_count}</span>}
                                     {data.ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.ai_profile.repair_count}</span>}
@@ -631,17 +642,19 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     <div
                         style={{
                             ...cardStyle,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
+                            cursor: data.device.is_unregistered ? 'default' : 'pointer',
+                            transition: 'all 0.2s ease',
+                            border: data.device.is_unregistered ? '1px solid rgba(255, 215, 0, 0.3)' : '1px solid var(--glass-border)'
                         }}
-                        onClick={() => data.device?.serial_number && navigate(`/service/products?search=${data.device.serial_number}`)}
+                        onClick={() => !data.device.is_unregistered && data.device?.serial_number && navigate(`/service/products?search=${data.device.serial_number}`)}
                         onMouseEnter={(e) => {
+                            if (data.device.is_unregistered) return;
                             e.currentTarget.style.background = 'var(--glass-border)';
                             e.currentTarget.style.borderColor = 'rgba(255, 210, 0, 0.2)';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'var(--glass-border)';
-                            e.currentTarget.style.borderColor = 'var(--glass-border)';
+                            e.currentTarget.style.borderColor = data.device.is_unregistered ? 'rgba(255, 215, 0, 0.3)' : 'var(--glass-border)';
                         }}
                     >
                         <div
@@ -650,6 +663,16 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Smartphone size={12} /> 设备详情
+                                {data.device.is_unregistered && (
+                                    <span style={{
+                                        fontSize: '0.65rem',
+                                        padding: '1px 6px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(255, 215, 0, 0.15)',
+                                        color: '#FFD700',
+                                        fontWeight: 500
+                                    }}>未入库</span>
+                                )}
                             </div>
                             {deviceExpanded ? <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} /> : <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />}
                         </div>
@@ -659,15 +682,19 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
                                 {/* 设备型号和SN */}
                                 <div style={{ marginBottom: '12px' }}>
-                                    <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
+                                    <div style={{
+                                        fontWeight: 600,
+                                        color: data.device.is_unregistered ? '#FFD700' : 'var(--text-main)',
+                                        marginBottom: '4px'
+                                    }}>
                                         {data.device.model_name}
                                     </div>
                                     <div style={{
                                         display: 'inline-block',
                                         fontFamily: 'Monaco, monospace',
                                         fontSize: '0.85rem',
-                                        color: 'var(--accent-blue)',
-                                        background: 'rgba(255, 210, 0, 0.1)',
+                                        color: data.device.is_unregistered ? '#FFD700' : 'var(--accent-blue)',
+                                        background: data.device.is_unregistered ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255, 210, 0, 0.1)',
                                         padding: '2px 8px',
                                         borderRadius: '4px',
                                         letterSpacing: '0.05em'
@@ -676,8 +703,49 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     </div>
                                 </div>
 
-                                {/* 设备关联工单统计 */}
-                                {data.device_ai_profile && data.device_ai_profile.ticket_count > 0 && (
+                                {/* 未入库设备提示及建议操作 */}
+                                {data.device.is_unregistered && (
+                                    <div style={{
+                                        background: 'rgba(255, 215, 0, 0.08)',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginBottom: '12px',
+                                        border: '1px solid rgba(255, 215, 0, 0.15)'
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#FFD700', marginBottom: '4px' }}>
+                                            此设备尚未录入产品库
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                            该序列号未在系统中找到匹配的产品信息，可能是新设备或序列号录入有误。
+                                        </div>
+                                        {/* 建议操作 - 仅对MS部门可见 */}
+                                        {(() => {
+                                            const user = useAuthStore.getState().user as any;
+                                            const deptName = user?.department_name || user?.department_code || '';
+                                            const isMsDept = deptName === 'MS' || deptName === '市场部' || deptName.includes('市场') ||
+                                                             user?.role === 'Admin' || user?.role === 'Exec';
+                                            if (!isMsDept) return null;
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,215,0,0.1)' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: '#FFD700', fontWeight: 500 }}>建议操作</div>
+                                                    <button
+                                                        onClick={() => navigate('/service/products')}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                                            background: 'rgba(255, 215, 0, 0.1)', border: '1px solid rgba(255, 215, 0, 0.3)',
+                                                            borderRadius: 6, color: '#FFD700', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500
+                                                        }}
+                                                    >
+                                                        <Package size={14} /> 录入新产品
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* 设备关联工单统计 - 排除当前工单 */}
+                                {data.service_history && data.service_history.filter((h: any) => h.ticket_id !== ticketId).length > 0 && (
                                     <div style={{
                                         background: 'rgba(59, 130, 246, 0.1)',
                                         borderRadius: '8px',
@@ -689,35 +757,34 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 600 }}>关联工单</span>
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                            总计 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.device_ai_profile.ticket_count}</span>
-                                            {data.device_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.device_ai_profile.inquiry_count}</span>}
-                                            {data.device_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.device_ai_profile.rma_count}</span>}
-                                            {data.device_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.device_ai_profile.repair_count}</span>}
+                                            总计 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.service_history.filter((h: any) => h.ticket_id !== ticketId).length}</span>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* 设备信息 */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                                    <div>
-                                        <div style={labelStyle}>固件版本</div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.firmware_version || '-'}</div>
-                                    </div>
-                                    <div>
-                                        <div style={labelStyle}>保修状态</div>
-                                        <div style={{
-                                            fontSize: '0.85rem',
-                                            color: data.device.warranty_status === 'Active' ? '#10b981' : '#ef4444',
-                                            fontWeight: 600
-                                        }}>
-                                            {data.device.warranty_status === 'Active' ? '有效' : data.device.warranty_status || '-'}
+                                {/* 设备信息 - 仅对已注册设备显示 */}
+                                {!data.device.is_unregistered && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                        <div>
+                                            <div style={labelStyle}>固件版本</div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.firmware_version || '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div style={labelStyle}>保修状态</div>
+                                            <div style={{
+                                                fontSize: '0.85rem',
+                                                color: data.device.warranty_status === 'Active' ? '#10b981' : '#ef4444',
+                                                fontWeight: 600
+                                            }}>
+                                                {data.device.warranty_status === 'Active' ? '有效' : data.device.warranty_status || '-'}
+                                            </div>
+                                        </div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <div style={labelStyle}>购买日期</div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.purchase_date || '-'}</div>
                                         </div>
                                     </div>
-                                    <div style={{ gridColumn: 'span 2' }}>
-                                        <div style={labelStyle}>购买日期</div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{data.device.purchase_date || '-'}</div>
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* 注册附件 - 可折叠 */}
                                 {data.parts_catalog && data.parts_catalog.length > 0 && (

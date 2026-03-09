@@ -25,9 +25,12 @@ const DepartmentManagement: React.FC = () => {
     const [grantExpiry, setGrantExpiry] = useState('permanent');
     const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
 
-    const { token } = useAuthStore();
+    const { token, user: currentUser } = useAuthStore();
     const { showToast } = useToast();
     const { t } = useLanguage();
+
+    // Check user role permissions
+    const isSuperAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Exec';
 
     const fetchData = async () => {
         const headers = { Authorization: `Bearer ${token}` };
@@ -107,17 +110,55 @@ const DepartmentManagement: React.FC = () => {
                         <ShieldCheck size={20} color="var(--accent-blue)" /> {t('dept_mgmt.folder_auth')}
                     </h3>
                     <form onSubmit={grantPermission} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div>
+                        <div style={{ position: 'relative' }}>
                             <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 4, display: 'block' }}>{t('dept_mgmt.target_user')}</label>
                             <select
                                 value={grantUserId}
-                                onChange={e => setGrantUserId(e.target.value)}
-                                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '10px 14px', borderRadius: 8, color: 'var(--text-main)' }}
+                                onChange={e => {
+                                    console.log('[DepartmentManagement] User selected:', e.target.value);
+                                    setGrantUserId(e.target.value);
+                                }}
+                                style={{
+                                    width: '100%',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    border: '1px solid var(--glass-border)',
+                                    padding: '10px 14px',
+                                    borderRadius: 8,
+                                    color: grantUserId ? 'var(--text-main)' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    height: '42px',
+                                    boxSizing: 'border-box',
+                                    appearance: 'none',
+                                    WebkitAppearance: 'none',
+                                    MozAppearance: 'none',
+                                    paddingRight: '40px',
+                                    fontSize: '0.9rem'
+                                }}
                                 required
                             >
                                 <option value="">{t('dept_mgmt.select_user')}</option>
                                 {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                             </select>
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{
+                                    position: 'absolute',
+                                    right: '14px',
+                                    top: 'calc(50% + 10px)',
+                                    transform: 'translateY(-50%)',
+                                    color: 'var(--accent-blue)',
+                                    pointerEvents: 'none'
+                                }}
+                            >
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
                         </div>
                         <div>
                             <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 4, display: 'block' }}>{t('dept_mgmt.target_folder')}</label>
@@ -129,11 +170,13 @@ const DepartmentManagement: React.FC = () => {
                                     border: '1px solid var(--glass-border)',
                                     padding: '10px 14px',
                                     borderRadius: 8,
-                                    color: grantPath ? 'white' : 'var(--text-secondary)',
+                                    color: grantPath ? 'var(--text-main)' : 'var(--text-secondary)',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'space-between'
+                                    justifyContent: 'space-between',
+                                    height: '42px',
+                                    boxSizing: 'border-box'
                                 }}
                             >
                                 <span>{grantPath || t('dept_mgmt.click_select')}</span>
@@ -228,7 +271,7 @@ const DepartmentManagement: React.FC = () => {
                         </div>
                         <div>
                             <label className="hint" style={{ fontSize: '0.8rem', marginBottom: 8, display: 'block' }}>{t('label.validity_period')}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                                 <button
                                     type="button"
                                     onClick={() => setGrantExpiry('7days')}
@@ -332,57 +375,59 @@ const DepartmentManagement: React.FC = () => {
                     </form>
                 </div>
 
-                {/* Department Management */}
-                <div style={{ background: 'var(--glass-bg)', borderRadius: 20, border: '1px solid var(--glass-border)', padding: 32 }}>
-                    <h3 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Plus size={20} color="var(--accent-blue)" /> {t('dept_mgmt.add_dept')}
-                    </h3>
-                    <form onSubmit={createDept} style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-                        <div style={{ flex: 1, display: 'flex', gap: 10 }}>
-                            <input
-                                type="text"
-                                placeholder={t('dept_mgmt.dept_name_placeholder')}
-                                value={newDeptName}
-                                onChange={e => setNewDeptName(e.target.value)}
-                                style={{ flex: 2, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'var(--text-main)' }}
-                            />
-                            <div style={{ position: 'relative', flex: 1 }}>
+                {/* Department Management - Only visible to Admin/Exec */}
+                {isSuperAdmin && (
+                    <div style={{ background: 'var(--glass-bg)', borderRadius: 20, border: '1px solid var(--glass-border)', padding: 32 }}>
+                        <h3 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Plus size={20} color="var(--accent-blue)" /> {t('dept_mgmt.add_dept')}
+                        </h3>
+                        <form onSubmit={createDept} style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+                            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
                                 <input
                                     type="text"
-                                    placeholder="CODE (e.g. MS)"
-                                    value={newDeptCode}
-                                    onChange={e => setNewDeptCode(e.target.value.toUpperCase())}
-                                    maxLength={3}
-                                    style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'var(--accent-blue)', fontWeight: 'bold' }}
+                                    placeholder={t('dept_mgmt.dept_name_placeholder')}
+                                    value={newDeptName}
+                                    onChange={e => setNewDeptName(e.target.value)}
+                                    style={{ flex: 2, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'var(--text-main)' }}
                                 />
-                                <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>
-                                    2-3 Letters
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <input
+                                        type="text"
+                                        placeholder="CODE (e.g. MS)"
+                                        value={newDeptCode}
+                                        onChange={e => setNewDeptCode(e.target.value.toUpperCase())}
+                                        maxLength={3}
+                                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '12px 16px', borderRadius: 10, color: 'var(--accent-blue)', fontWeight: 'bold' }}
+                                    />
+                                    <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>
+                                        2-3 Letters
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <button type="submit" className="btn-primary" style={{ flexShrink: 0 }}>{t('dept_mgmt.add')}</button>
-                    </form>
+                            <button type="submit" className="btn-primary" style={{ flexShrink: 0 }}>{t('dept_mgmt.add')}</button>
+                        </form>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        {departments.map(d => (
-                            <div key={d.id} style={{
-                                background: 'rgba(255,210,0,0.1)',
-                                border: '1px solid rgba(255,210,0,0.2)',
-                                padding: '8px 16px',
-                                borderRadius: 8,
-                                fontSize: '0.9rem',
-                                color: 'var(--accent-blue)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontWeight: 500
-                            }}>
-                                <Tag size={14} /> {getDeptDisplayName(d.name)}
-                            </div>
-                        ))}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                            {departments.map(d => (
+                                <div key={d.id} style={{
+                                    background: 'rgba(255,210,0,0.1)',
+                                    border: '1px solid rgba(255,210,0,0.2)',
+                                    padding: '8px 16px',
+                                    borderRadius: 8,
+                                    fontSize: '0.9rem',
+                                    color: 'var(--accent-blue)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    fontWeight: 500
+                                }}>
+                                    <Tag size={14} /> {getDeptDisplayName(d.name)}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </div >
+                )}
+            </div>
 
             {/* Folder Selector Modal */}
             {

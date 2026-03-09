@@ -17,6 +17,7 @@ const BackupService = require('./service/backup_service');
 // Service Ticket Routes (products and settings loaded here; others via service/index.js)
 const products = require('./service/routes/products');
 const productsAdmin = require('./service/routes/products-admin');
+const productModelsAdmin = require('./service/routes/product-models-admin');
 const settings = require('./service/routes/settings');
 
 dotenv.config();
@@ -586,6 +587,7 @@ const getShareI18n = (lang = 'zh') => SHARE_I18N[lang] || SHARE_I18N.zh;
 // Chinese name to Code mapping (Global)
 const NAME_TO_CODE = {
     '运营部': 'OP',
+    '生产运营部': 'OP',
     '市场部': 'MS',
     '研发中心': 'RD',
     '研发部': 'RD',
@@ -894,6 +896,7 @@ const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');
 app.use('/api/admin', settings(db, authenticate, backupService));
 app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/admin/products', productsAdmin(db, authenticate));
+app.use('/api/v1/admin/product-models', productModelsAdmin(db, authenticate));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing
@@ -1294,10 +1297,11 @@ app.get('/api/user/accessible-departments', authenticate, (req, res) => {
         }
 
         // Add departments from explicit permissions
+        // Use d.code to match folder_path (which stores department codes like 'OP', 'MS')
         const explicitPerms = db.prepare(`
             SELECT DISTINCT d.* 
             FROM file_permissions p
-            JOIN departments d ON p.folder_path = d.name OR p.folder_path LIKE d.name || '/%'
+            JOIN departments d ON p.folder_path = d.code OR p.folder_path LIKE d.code || '/%'
             WHERE p.user_id = ? AND (p.expires_at IS NULL OR p.expires_at > datetime('now'))
         `).all(req.user.id);
 
@@ -1712,8 +1716,20 @@ app.delete('/api/admin/permissions/:id', authenticate, (req, res) => {
 });
 
 // Department Routes
-app.get('/api/admin/departments', authenticate, isAdmin, (req, res) => {
-    res.json(db.prepare('SELECT * FROM departments').all());
+app.get('/api/admin/departments', authenticate, (req, res) => {
+    // Allow Admin, Exec, and Lead to access departments
+    if (req.user.role !== 'Admin' && req.user.role !== 'Exec' && req.user.role !== 'Lead') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Lead can only see their own department
+    if (req.user.role === 'Lead') {
+        const dept = db.prepare('SELECT * FROM departments WHERE id = ?').get(req.user.department_id);
+        res.json(dept ? [dept] : []);
+    } else {
+        // Admin/Exec can see all departments
+        res.json(db.prepare('SELECT * FROM departments').all());
+    }
 });
 
 app.post('/api/admin/departments', authenticate, isAdmin, (req, res) => {
@@ -1961,8 +1977,42 @@ app.post('/api/files/access', authenticate, (req, res) => {
 });
 
 // Dynamic Permissions Management
-app.post('/api/admin/permissions', authenticate, isAdmin, (req, res) => {
+app.post('/api/admin/permissions', authenticate, (req, res) => {
+    // Allow Admin, Exec, and Lead to grant permissions
+    if (req.user.role !== 'Admin' && req.user.role !== 'Exec' && req.user.role !== 'Lead') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { user_id, folder_path, access_type, expiry_option } = req.body;
+
+    // Get target user info for Lead permission check
+    const targetUser = db.prepare('SELECT id, department_id, department_name FROM users WHERE id = ?').get(user_id);
+    if (!targetUser) {
+        return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    // Lead can only grant permissions to users in their own department
+    // and can only grant access to their department folders
+    if (req.user.role === 'Lead') {
+        // Check if target user is in the same department
+        if (targetUser.department_id !== req.user.department_id) {
+            return res.status(403).json({ error: 'Can only grant permissions to users in your department' });
+        }
+
+        // Check if folder path is within the Lead's department
+        // Lead can only grant access to their own department folder or Members folder
+        const leadDeptCode = req.user.department_name ? req.user.department_name.match(/\(([A-Z]{2,3})\)$/) : null;
+        const deptCode = leadDeptCode ? leadDeptCode[1] : '';
+
+        // Allow access to: 1) Department folder, 2) Members folder (for personal space)
+        const isDeptFolder = deptCode && folder_path.startsWith(deptCode);
+        const isMembersFolder = folder_path.startsWith('Members');
+
+        if (!isDeptFolder && !isMembersFolder) {
+            return res.status(403).json({ error: 'Can only grant access to your department folders or Members folder' });
+        }
+    }
+
     let expiresAt = null;
     if (expiry_option === '7days') expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
     if (expiry_option === '1month') expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();

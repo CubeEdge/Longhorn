@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreVertical, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -17,11 +17,14 @@ import { ActivityTimeline, CollapsiblePanel, MediaLightbox, ActivityDetailDrawer
 import { MentionCommentInput } from './MentionCommentInput';
 import { ActionBufferModal } from './ActionBufferModal';
 import { SubmitDiagnosticModal } from './SubmitDiagnosticModal';
+import { MSReviewPanel } from './MSReviewPanel';
+import { FinalSettlementModal } from './FinalSettlementModal';
 import CustomerContextSidebar from '../Service/CustomerContextSidebar';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useViewAs } from './ViewAsComponents';
 import { useUIStore } from '../../store/useUIStore';
+import { TicketPartsPanel } from '../PartsManagement';
 
 // ==============================
 // Types
@@ -165,6 +168,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isDeleting, setIsDeleting] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState(false);
+    const [isMSReviewPanelOpen, setIsMSReviewPanelOpen] = useState(false);
+    const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
     const [isActionBufferModalOpen, setIsActionBufferModalOpen] = useState(false);
     const [actionBufferTarget, setActionBufferTarget] = useState({ nextNode: '', label: '' });
 
@@ -199,9 +204,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
     // canAssign 改良逻辑：
     // 1. 全局管理员/执行官 随时可指派
-    // 2. 部门主管在工单处于本部门节点时，可指派或"改派"（即使已有负责人）
+    // 2. 部门主管在工单处于本部门节点时，可指派或"改派"（即使已有对接人）
     // 3. 部门成员在工单处于本部门节点且未指派时，可认领/指派
-    // 4. 当前指派人可转派
+    // 4. 当前对接人可转派
     // 5. 工单已结束时（resolved/closed等）禁止指派
     const isTicketFinalized = ['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'].includes(String(ticket?.current_node || ''));
     const canAssign = !isTicketFinalized && (
@@ -285,18 +290,33 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             <button
                 className="btn-glass"
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                style={{ padding: '6px', display: 'flex', alignItems: 'center' }}
+                style={{
+                    width: 36, height: 36, borderRadius: '50%', padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1.5px solid var(--glass-border)',
+                    background: 'var(--bg-card)',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
             >
-                <MoreVertical size={16} />
+                <MoreHorizontal size={16} />
             </button>
             {showMoreMenu && (
-                <div style={{
-                    position: 'absolute', top: '100%', right: 0, marginTop: 4,
-                    background: 'var(--modal-bg)', backdropFilter: 'var(--glass-blur)',
-                    border: '1px solid var(--card-border)', borderRadius: 8,
-                    padding: 4, minWidth: 160, zIndex: 100,
-                    boxShadow: 'var(--glass-shadow-lg)'
-                }}>
+                <>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                        onClick={() => setShowMoreMenu(false)}
+                    />
+                    <div style={{
+                        position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                        background: 'var(--modal-bg)', backdropFilter: 'var(--glass-blur)',
+                        border: '1px solid var(--card-border)', borderRadius: 8,
+                        padding: 4, minWidth: 160, zIndex: 100,
+                        boxShadow: 'var(--glass-shadow-lg)'
+                    }}>
                     {/* 编辑工单 */}
                     {showEdit && ticket && (
                         <button
@@ -346,6 +366,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         <Trash2 size={14} /> 废弃/删除工单
                     </button>
                 </div>
+                </>
             )}
         </>
     );
@@ -707,6 +728,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             if (node === 'op_repairing') return '维修中';
                             if (node === 'op_qa') return 'QA检测';
                             if (node === 'op_shipping') return '打包发货';
+                            if (node === 'op_shipping_transit') return '待补外销单号';
                             if (node === 'ms_closing') return '最终结案';
                             if (node === 'ge_review') return '财务审核';
                             if (node === 'ge_closing') return '财务结案';
@@ -1000,7 +1022,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             op_qa: 'QA检测', op_shipping: '打包发货', ms_closing: '待结案',
                                             ge_review: '财务审核', ge_closing: '财务结案', resolved: '已解决',
                                             closed: '已关闭', waiting_customer: '待反馈'
-                                        })[ticket.current_node] || ticket.current_node} · 负责人: {ticket.assigned_name || '未指派'}
+                                        })[ticket.current_node] || ticket.current_node} · 对接人: {ticket.assigned_name || '未对接'}
                                     </div>
                                 </div>
                             </div>
@@ -1017,6 +1039,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         if (footerAction) {
                                             if (ticket.current_node === 'op_diagnosing') {
                                                 setIsDiagnosticModalOpen(true);
+                                            } else if (ticket.current_node === 'ms_review') {
+                                                setIsMSReviewPanelOpen(true);
+                                            } else if (ticket.current_node === 'ms_closing') {
+                                                setIsFinalSettlementOpen(true);
                                             } else {
                                                 handleAction(footerAction.action);
                                             }
@@ -1061,6 +1087,59 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         ticketId={ticketId}
                         participants={participants}
                         onUpdate={fetchDetail}
+                    />
+
+                    {/* 产品信息卡片 - 仅当存在产品信息时显示 */}
+                    {(ticket.product_name || ticket.serial_number) && (
+                        <div style={{
+                            background: 'var(--glass-border)',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            border: '1px solid var(--glass-border)',
+                            marginBottom: '12px'
+                        }}>
+                            <div style={{
+                                fontSize: '0.7rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                                color: 'var(--text-tertiary)',
+                                marginBottom: '12px',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <Package size={12} /> 产品信息
+                            </div>
+                            {ticket.product_name && (
+                                <div style={{ marginBottom: '10px' }}>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '2px' }}>产品型号</div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>{ticket.product_name}</div>
+                                </div>
+                            )}
+                            {ticket.serial_number && (
+                                <div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '2px' }}>序列号 (S/N)</div>
+                                    <div style={{
+                                        fontFamily: 'Monaco, monospace',
+                                        fontSize: '0.85rem',
+                                        color: 'var(--accent-blue)',
+                                        background: 'rgba(255, 210, 0, 0.1)',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        letterSpacing: '0.05em',
+                                        display: 'inline-block'
+                                    }}>{ticket.serial_number}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 配件使用记录面板 */}
+                    <TicketPartsPanel
+                        ticketId={ticket.id}
+                        dealerId={ticket.dealer_id as number | undefined}
+                        isWarranty={ticket.is_warranty}
                     />
 
                     {/* CustomerContextSidebar — 与「所有工单」详情页完全一致 */}
@@ -1570,6 +1649,26 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 ticketNumber={ticket.ticket_number || ''}
                 onSuccess={() => {
                     setIsDiagnosticModalOpen(false);
+                    fetchDetail();
+                }}
+            />
+            <MSReviewPanel
+                isOpen={isMSReviewPanelOpen}
+                onClose={() => setIsMSReviewPanelOpen(false)}
+                ticketId={ticketId}
+                ticketNumber={ticket.ticket_number || ''}
+                onSuccess={() => {
+                    setIsMSReviewPanelOpen(false);
+                    fetchDetail();
+                }}
+            />
+            <FinalSettlementModal
+                isOpen={isFinalSettlementOpen}
+                onClose={() => setIsFinalSettlementOpen(false)}
+                ticketId={ticketId}
+                ticketNumber={ticket.ticket_number || ''}
+                onSuccess={() => {
+                    setIsFinalSettlementOpen(false);
                     fetchDetail();
                 }}
             />

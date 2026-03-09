@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, FolderOpen, LogOut } from 'lucide-react';
+import { Users, FolderOpen, LogOut, Settings } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../i18n/useLanguage';
 import { useAuthStore } from '../store/useAuthStore';
 import type { ModuleType } from '../hooks/useNavigationState';
@@ -8,17 +9,23 @@ interface AppRailProps {
   currentModule: ModuleType;
   onModuleChange: (module: ModuleType) => void;
   canAccessFiles: boolean;
-  userRole: string; // Kept in interface to avoid breaking caller, but unused in component
+  userRole: string;
 }
 
 const AppRail: React.FC<AppRailProps> = ({
   currentModule,
   onModuleChange,
   canAccessFiles,
-  // userRole - removed unused destructuring
+  userRole,
 }) => {
   const { t } = useLanguage();
   const { logout } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Settings access: Admin, Exec, Lead
+  const canAccessSettings = ['Admin', 'Exec', 'Lead'].includes(userRole);
+  const isSettingsActive = location.pathname.startsWith('/settings');
 
   return (
     <div className="app-rail">
@@ -40,8 +47,11 @@ const AppRail: React.FC<AppRailProps> = ({
       <nav className="rail-nav">
         {/* Service Module */}
         <button
-          className={`rail-item ${currentModule === 'service' ? 'active' : ''}`}
-          onClick={() => onModuleChange('service')}
+          className={`rail-item ${!isSettingsActive && currentModule === 'service' ? 'active' : ''}`}
+          onClick={() => {
+            console.log('[AppRail] Service button clicked, calling onModuleChange(service)');
+            onModuleChange('service');
+          }}
           title={t('nav.service')}
         >
           <Users size={24} />
@@ -51,7 +61,7 @@ const AppRail: React.FC<AppRailProps> = ({
         {/* Files Module (only if accessible) */}
         {canAccessFiles && (
           <button
-            className={`rail-item ${currentModule === 'files' ? 'active' : ''}`}
+            className={`rail-item ${!isSettingsActive && currentModule === 'files' ? 'active' : ''}`}
             onClick={() => onModuleChange('files')}
             title={t('nav.files')}
           >
@@ -64,6 +74,16 @@ const AppRail: React.FC<AppRailProps> = ({
 
       {/* Bottom Actions */}
       <div className="rail-bottom">
+        {/* Settings - Admin/Exec/Lead only */}
+        {canAccessSettings && (
+          <button
+            className={`rail-item ${isSettingsActive ? 'active' : ''}`}
+            onClick={() => navigate('/settings')}
+            title={t('sidebar.settings', { defaultValue: '系统设置' })}
+          >
+            <Settings size={20} />
+          </button>
+        )}
         <button className="rail-item" onClick={logout} title={t('auth.logout')}>
           <LogOut size={20} />
         </button>

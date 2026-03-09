@@ -28,7 +28,7 @@ const DEPARTMENT_NODES_DISPLAY: Record<string, { label: string; nodes: string[] 
 // Panel 计算逻辑说明
 const PANEL_TOOLTIPS: Record<string, { zh: string; en: string }> = {
   unassigned: {
-    zh: '统计条件:\n• 负责人为空\n• 当前节点在本部门职责范围内',
+    zh: '统计条件:\n• 对接人为空\n• 当前节点在本部门职责范围内',
     en: 'Criteria:\n• Assignee is empty\n• Current node within dept scope'
   },
   approvals: {
@@ -40,7 +40,7 @@ const PANEL_TOOLTIPS: Record<string, { zh: string; en: string }> = {
     en: 'Criteria:\n• SLA status is Warning or Breached\n• Or ticket open > 24 hours'
   },
   open: {
-    zh: '统计条件:\n• 负责人属于本部门\n• 或当前节点属于本部门职责',
+    zh: '统计条件:\n• 对接人属于本部门\n• 或当前节点属于本部门职责',
     en: 'Criteria:\n• Assignee belongs to dept\n• Or node belongs to dept scope'
   },
   closed_today: {
@@ -228,7 +228,7 @@ const ServiceOverviewPage: React.FC = () => {
       )}
 
       {/* Action Zone - PRD Section A.1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, position: 'relative', zIndex: 10 }}>
         {/* Unassigned Card - NEW */}
         <ActionCard
           title={t('overview.unassigned') || "待分配"}
@@ -293,7 +293,7 @@ const ServiceOverviewPage: React.FC = () => {
       </div>
 
       {/* Two Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, position: 'relative', zIndex: 5 }}>
         {/* Left: Risk Tickets */}
         <div style={{
           background: 'var(--card-bg)',
@@ -445,20 +445,20 @@ const ActionCard: React.FC<{
       <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{title}</div>
       <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subtitle}</div>
 
-      {/* 方案A: Hover Tooltip */}
+      {/* 方案A: Hover Tooltip - positioned above to avoid overlap */}
       {showTooltip && tooltip && (
         <div style={{
           position: 'absolute',
-          top: '100%',
+          bottom: '100%',
           left: '50%',
           transform: 'translateX(-50%)',
-          marginTop: 8,
+          marginBottom: 8,
           padding: '10px 14px',
-          background: 'var(--bg-popover)',
+          background: '#1C1C1E',
           border: '1px solid var(--glass-border)',
           borderRadius: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          zIndex: 100,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          zIndex: 1000,
           whiteSpace: 'pre-line',
           fontSize: 12,
           color: 'var(--text-secondary)',

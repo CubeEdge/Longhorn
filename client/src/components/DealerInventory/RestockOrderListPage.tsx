@@ -107,7 +107,7 @@ const RestockOrderListPage: React.FC = () => {
                 <div style={{ display: 'flex', gap: 12 }}>
                     <button 
                         className="btn-glass"
-                        onClick={() => navigate('/service/inventory')}
+                        onClick={() => navigate('/service/dealer-operations')}
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                     >
                         <Package size={16} />
@@ -115,7 +115,7 @@ const RestockOrderListPage: React.FC = () => {
                     </button>
                     <button 
                         className="btn-primary"
-                        onClick={() => navigate('/service/inventory/restock/new')}
+                        onClick={() => navigate('/service/dealer-operations/restock/new')}
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                     >
                         <Plus size={16} />
@@ -181,7 +181,7 @@ const RestockOrderListPage: React.FC = () => {
                     <button 
                         className="btn-primary" 
                         style={{ marginTop: 16 }}
-                        onClick={() => navigate('/service/inventory/restock/new')}
+                        onClick={() => navigate('/service/dealer-operations/restock/new')}
                     >
                         <Plus size={16} /> {t('restock.create_first') || '创建第一个订单'}
                     </button>
@@ -200,7 +200,7 @@ const RestockOrderListPage: React.FC = () => {
                         return (
                             <div 
                                 key={order.id}
-                                onClick={() => navigate(`/service/inventory/restock/${order.id}`)}
+                                onClick={() => navigate(`/service/dealer-operations/restock/${order.id}`)}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',

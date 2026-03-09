@@ -16,10 +16,21 @@ const TurndownService = require('turndown');
 const { gfm } = require('turndown-plugin-gfm');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
+const fsExtra = require('fs-extra');
+
+// Get knowledge base upload directory
+const getKnowledgeUploadDir = () => {
+    const fileserverPath = '/Volumes/fileserver/Service/Knowledge/Temp';
+    if (fsExtra.existsSync('/Volumes/fileserver')) {
+        return fileserverPath;
+    }
+    // Fallback to local temp for development
+    return '/tmp/knowledge_uploads';
+};
 
 // Configure multer for PDF uploads
 const upload = multer({
-    dest: '/tmp/knowledge_uploads',
+    dest: getKnowledgeUploadDir(),
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
@@ -32,7 +43,7 @@ const upload = multer({
 
 // Configure multer for DOCX uploads
 const docxUpload = multer({
-    dest: '/tmp/knowledge_uploads',
+    dest: getKnowledgeUploadDir(),
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
     fileFilter: (req, file, cb) => {
         const allowedMimes = [

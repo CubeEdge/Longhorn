@@ -138,32 +138,44 @@ module.exports = function (db, authenticate) {
 
     /**
      * GET /api/v1/system/products
-     * Get products list for dropdowns
+     * Get product models list for dropdowns (distinct model names from installed base)
      */
     router.get('/products', authenticate, (req, res) => {
         try {
             const { category } = req.query;
 
-            let sql = 'SELECT id, product_line, model_name, firmware_version FROM products';
+            // Get distinct model names from products (installed base) table
+            // Use GROUP BY to deduplicate by model_name, picking first non-null line/family
+            let sql = `
+                SELECT 
+                    model_name as name, 
+                    MAX(product_line) as line, 
+                    MAX(product_family) as family
+                FROM products 
+                WHERE model_name IS NOT NULL AND model_name != ''
+            `;
             let params = [];
 
             if (category) {
-                sql += ' WHERE product_line = ?';
+                sql += ' AND product_family = ?';
                 params.push(category);
             }
 
-            sql += ' ORDER BY product_line, model_name';
+            sql += ' GROUP BY model_name ORDER BY model_name';
 
             const products = db.prepare(sql).all(...params);
 
+            // Generate unique IDs for dropdown
+            const uniqueProducts = products.map((p, index) => ({
+                id: index + 1,
+                name: p.name,
+                line: p.line,
+                family: p.family
+            }));
+
             res.json({
                 success: true,
-                data: products.map(p => ({
-                    id: p.id,
-                    name: p.model_name,
-                    line: p.product_line,
-                    firmware_version: p.firmware_version
-                }))
+                data: uniqueProducts
             });
         } catch (err) {
             console.error('[System] Products error:', err);

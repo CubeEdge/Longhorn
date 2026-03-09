@@ -26,7 +26,7 @@ interface User {
 // Define nodes per department (mirroring backend)
 const DEPT_NODES: Record<string, string[]> = {
     'MS': ['draft', 'submitted', 'ms_review', 'ms_closing', 'waiting_customer'],
-    'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_shipping'],
+    'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_shipping', 'op_shipping_transit'],
     'RD': ['op_diagnosing', 'op_repairing'],
     'GE': ['ge_review', 'ge_closing']
 };
@@ -41,6 +41,7 @@ const NODE_LABELS: Record<string, string> = {
     op_diagnosing: '维修诊断 (Diagnosing)',
     op_repairing: '维修执行 (Repairing)',
     op_shipping: '打包发货 (Shipping)',
+    op_shipping_transit: '待补外销单号 (Transit)',
     ge_review: '通用审核 (GE Review)',
     ge_closing: '通用结案 (GE Closing)'
 };
@@ -139,7 +140,10 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
             }, { headers: { Authorization: `Bearer ${token}` } });
 
             setMessage({ type: 'success', text: '分发规则已保存' });
-            setTimeout(() => setMessage(null), 3000);
+            setTimeout(() => {
+                setMessage(null);
+                onClose(); // 保存成功后关闭侧滑窗口
+            }, 1000);
         } catch (err: any) {
             setMessage({ type: 'error', text: err.response?.data?.error || '保存失败' });
         } finally {
@@ -162,7 +166,7 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
             />
             {/* Drawer */}
             <div style={{
-                position: 'fixed', top: 60, right: 0, bottom: 0, width: 480,
+                position: 'fixed', top: 60, right: 0, bottom: 0, width: 400,
                 background: '#121214', borderLeft: '1px solid rgba(255,255,255,0.1)',
                 zIndex: 1001, display: 'flex', flexDirection: 'column',
                 boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',
@@ -230,26 +234,6 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
                                 </label>
                             </div>
 
-                            <div style={{
-                                padding: '12px 16px', background: 'rgba(59, 130, 246, 0.08)',
-                                borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.2)',
-                                display: 'flex', gap: 12, flexDirection: 'column'
-                            }}>
-                                <div style={{ display: 'flex', gap: 12 }}>
-                                    <Info size={18} color="#3B82F6" style={{ marginTop: 2, flexShrink: 0 }} />
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#3B82F6' }}>自动分发规则说明 (乒乓模型)</div>
-                                </div>
-                                <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, paddingLeft: 30 }}>
-                                    当工单进入本部门节点但<b>未配置/停用</b>特定规则时，回退逻辑如下：
-                                    <ul style={{ margin: '8px 0', paddingLeft: 18 }}>
-                                        <li><b>OP (运营/技师)</b>：未设规则 ➔ 放入部门池 (待领/NULL)</li>
-                                        <li><b>MS (管理/客服)</b>：未设规则 ➔ 找上一个 MS 负责人 ➔ 兜底创建人</li>
-                                        <li><b>GE/RD (财务/研发)</b>：未设规则 ➔ 直接指派给工单创建人</li>
-                                    </ul>
-                                    <span style={{ opacity: 0.8 }}>* 开启全局开关后，设定的阶梯分发才正式生效。</span>
-                                </div>
-                            </div>
-
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, opacity: autoDispatchGlobal ? 1 : 0.5, pointerEvents: autoDispatchGlobal ? 'auto' : 'none' }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: '#666', letterSpacing: 1 }}>按节点配置 (PER NODE)</div>
                                 {relevantNodes.map(nodeKey => {
@@ -272,24 +256,42 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
                                                     </div>
                                                 </div>
 
+                                                {/* macOS26 Toggle Switch Style */}
                                                 <div
                                                     onClick={() => handleToggleRule(nodeKey, !isRuleEnabled)}
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer'
                                                     }}
                                                 >
-                                                    <span style={{ fontSize: 13, fontWeight: 600, color: isRuleEnabled ? '#10B981' : '#666' }}>
+                                                    <span style={{ fontSize: 13, fontWeight: 500, color: isRuleEnabled ? 'var(--text-main)' : 'var(--text-tertiary)' }}>
                                                         {isRuleEnabled ? '已启用' : '已停用'}
                                                     </span>
-                                                    <div style={{ width: 34, height: 18, borderRadius: 10, background: isRuleEnabled ? '#10B981' : '#444', position: 'relative' }}>
-                                                        <div style={{ position: 'absolute', top: 2, left: isRuleEnabled ? 18 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                                                    <div style={{ 
+                                                        width: 36, 
+                                                        height: 20, 
+                                                        borderRadius: 10, 
+                                                        background: isRuleEnabled ? 'var(--accent-blue)' : 'rgba(120,120,128,0.3)', 
+                                                        position: 'relative',
+                                                        transition: 'background 0.2s ease'
+                                                    }}>
+                                                        <div style={{ 
+                                                            position: 'absolute', 
+                                                            top: 2, 
+                                                            left: isRuleEnabled ? 18 : 2, 
+                                                            width: 16, 
+                                                            height: 16, 
+                                                            borderRadius: '50%', 
+                                                            background: '#fff', 
+                                                            transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)' 
+                                                        }} />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div style={{ opacity: isRuleEnabled && autoDispatchGlobal ? 1 : 0.4, pointerEvents: (isRuleEnabled && autoDispatchGlobal) ? 'auto' : 'none' }}>
                                                 <div style={{ fontSize: 11, color: '#888', marginBottom: 8, marginLeft: 4 }}>
-                                                    默认指派给 (Default Assignee)
+                                                    默认对接人 (Default Assignee)
                                                     {!autoDispatchGlobal && <span style={{ color: '#EF4444', fontStyle: 'italic', marginLeft: 8 }}>[全局分发已关闭]</span>}
                                                 </div>
                                                 <div style={{ position: 'relative' }}>
@@ -324,6 +326,28 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
                                     );
                                 })}
                             </div>
+
+                            {/* Info Panel - Moved to the end */}
+                            <div style={{
+                                padding: '12px 16px', background: 'rgba(59, 130, 246, 0.08)',
+                                borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.2)',
+                                display: 'flex', gap: 12, flexDirection: 'column',
+                                marginTop: 8
+                            }}>
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    <Info size={18} color="#3B82F6" style={{ marginTop: 2, flexShrink: 0 }} />
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#3B82F6' }}>自动分发规则说明 (乒乓模型)</div>
+                                </div>
+                                <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, paddingLeft: 30 }}>
+                                    当工单进入本部门节点但<b>未配置/停用</b>特定规则时，回退逻辑如下：
+                                    <ul style={{ margin: '8px 0', paddingLeft: 18 }}>
+                                        <li><b>OP (运营/技师)</b>：未设规则 ➔ 放入部门池 (待领/NULL)</li>
+                                        <li><b>MS (管理/客服)</b>：未设规则 ⷄ 找上一个 MS 对接人 ⷄ 兜底创建人</li>
+                                        <li><b>GE/RD (财务/研发)</b>：未设规则 ⷄ 直接指派给工单创建人</li>
+                                    </ul>
+                                    <span style={{ opacity: 0.8 }}>* 开启全局开关后，设定的阶梯分发才正式生效。</span>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -331,22 +355,23 @@ export const DispatchRulesDrawer: React.FC<DispatchRulesDrawerProps> = ({ isOpen
                 {/* Footer */}
                 <div style={{
                     padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    display: 'flex', flexDirection: 'column', gap: 12,
                     background: 'rgba(0,0,0,0.2)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {message && (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                color: message.type === 'success' ? '#10B981' : '#EF4444',
-                                fontSize: 13
-                            }}>
-                                {message.type === 'success' && <CheckCircle size={14} />}
-                                {message.text}
-                            </div>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    {/* Message moved to bottom */}
+                    {message && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            color: message.type === 'success' ? '#10B981' : '#EF4444',
+                            fontSize: 13, padding: '8px 12px',
+                            background: message.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                            borderRadius: 8
+                        }}>
+                            {message.type === 'success' && <CheckCircle size={14} />}
+                            {message.text}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                         <button onClick={onClose} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14 }}>取消</button>
                         <button
                             onClick={handleSave}

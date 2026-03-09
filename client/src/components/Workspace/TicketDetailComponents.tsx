@@ -269,6 +269,27 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   onActivityClick
 }) => {
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
+  const [showSystemEvents, setShowSystemEvents] = useState(false);
+
+  // Define activity type categories
+  const COMMENT_TYPES = ['comment', 'diagnostic_report'];
+  const SYSTEM_TYPES = ['status_change', 'assignment_change', 'field_update', 'system_event', 'creation', 'assignment', 'priority_change', 'soft_delete'];
+
+  // Filter out standalone 'mention' type activities (merged into comments now)
+  const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
+
+  // Helper to check if a comment is actually a system operation (e.g., 【完成收货入库】)
+  const isSystemOperationComment = (activity: Activity): boolean => {
+    if (activity.activity_type !== 'comment') return false;
+    const content = activity.content || '';
+    // Match patterns like 【完成收货入库】, 【提交诊断报告】, etc.
+    return /^【[^】]+】/.test(content) || /^(完成|提交|确认|创建|修改|删除)/.test(content);
+  };
+
+  // Split activities into comments and system events
+  // System operation comments (e.g., 【完成收货入库】) are treated as system events
+  const commentActivities = filteredActivities.filter(a => COMMENT_TYPES.includes(a.activity_type) && !isSystemOperationComment(a));
+  const systemActivities = filteredActivities.filter(a => SYSTEM_TYPES.includes(a.activity_type) || isSystemOperationComment(a));
   const getVisibilityBadge = (visibility: string) => {
     if (visibility === 'all') return null;
     return (
@@ -304,9 +325,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'comment': return '#3B82F6';
-      case 'status_change': return '#10B981';
-      case 'creation': case 'system_event': return '#22C55E';
+      case 'comment': return '#10B981'; // Kine Green for comments
+      case 'status_change': return '#3B82F6'; // Kine Blue for system events
+      case 'creation': case 'system_event': return '#3B82F6'; // Kine Blue for system events
       case 'assignment': case 'assignment_change': return '#FFD700';
       case 'priority_change': return '#F59E0B';
       case 'mention': return '#8B5CF6';
@@ -321,87 +342,146 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     return <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>加载中...</div>;
   }
 
-  // Filter out standalone 'mention' type activities (merged into comments now)
-  const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
+  const renderActivityItem = (activity: Activity) => {
+    const isSystemOpComment = isSystemOperationComment(activity);
+    const displayType = isSystemOpComment ? 'system_event' : activity.activity_type;
+    const color = getTypeColor(displayType);
+    const isFieldUpdate = activity.activity_type === 'field_update';
+    const actorName = activity.actor?.name || '系统';
+    const formattedDate = formatFullDateTime(activity.created_at);
+    const isSystemEvent = SYSTEM_TYPES.includes(activity.activity_type) || isSystemOpComment;
+
+    return (
+      <div
+        key={activity.id}
+        onClick={() => onActivityClick && onActivityClick(activity)}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '8px',
+          padding: '4px 12px',
+          borderRadius: '6px',
+          transition: 'background 0.2s',
+          borderLeft: isFieldUpdate ? `2px solid ${color}44` : 'none',
+          cursor: onActivityClick ? 'pointer' : 'default',
+          opacity: isSystemEvent ? 0.85 : 1
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        {/* Meta: Time & Icon */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
+          <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '70px', whiteSpace: 'nowrap' }}>
+            {formattedDate}
+          </span>
+          <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+            {getTypeIcon(displayType)}
+          </span>
+        </div>
+
+        {/* Main Body */}
+        <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+            <span style={{ fontWeight: 600, color: isSystemEvent ? '#666' : '#999', flexShrink: 0 }}>{actorName}</span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
+              {getVisibilityBadge(activity.visibility)}
+
+              {activity.activity_type === 'field_update' && activity.metadata ? (
+                <FieldUpdateContent
+                  content={activity.content || ''}
+                  metadata={activity.metadata as FieldUpdateMetadata}
+                />
+              ) : activity.activity_type === 'diagnostic_report' && activity.metadata ? (
+                <DiagnosticReportContent metadata={activity.metadata as any} />
+              ) : (
+                <div
+                  style={{ color: isSystemEvent ? '#666' : '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  dangerouslySetInnerHTML={{
+                    __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
+                  }}
+                />
+              )}
+
+              {/* Attachments Icon Indicator */}
+              {activity.attachments && activity.attachments.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
+                  <Paperclip size={12} color="#666" />
+                  <span style={{ fontSize: '11px', color: '#555' }}>{activity.attachments.length}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Attachment Links have been moved to the Detail Drawer */}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: '8px 4px 16px' }}>
       {filteredActivities.length === 0 ? (
         <div style={{ padding: 16, textAlign: 'center', color: '#666', fontSize: 13 }}>暂无活动记录</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {filteredActivities.map((activity) => {
-            const color = getTypeColor(activity.activity_type);
-            const isFieldUpdate = activity.activity_type === 'field_update';
-            const actorName = activity.actor?.name || '系统';
-            const formattedDate = formatFullDateTime(activity.created_at);
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Comments Section - Always shown and expanded */}
+          {commentActivities.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#3B82F6',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                <MessageSquare size={12} />
+                讨论与诊断 ({commentActivities.length})
+              </div>
+              {commentActivities.map(renderActivityItem)}
+            </div>
+          )}
 
-            return (
-              <div
-                key={activity.id}
-                onClick={() => onActivityClick && onActivityClick(activity)}
+          {/* System Events Section - Collapsible */}
+          {systemActivities.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <button
+                onClick={() => setShowSystemEvents(!showSystemEvents)}
                 style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s',
-                  borderLeft: isFieldUpdate ? `2px solid ${color}44` : 'none',
-                  cursor: onActivityClick ? 'pointer' : 'default'
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#666',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'color 0.2s',
+                  width: '100%'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onMouseEnter={e => e.currentTarget.style.color = '#888'}
+                onMouseLeave={e => e.currentTarget.style.color = '#666'}
               >
-                {/* Meta: Time & Icon */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
-                  <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '40px', whiteSpace: 'nowrap' }}>
-                    {formattedDate}
-                  </span>
-                  <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-                    {getTypeIcon(activity.activity_type)}
-                  </span>
+                <Clock size={12} />
+                <span style={{ flex: 1 }}>系统变更 ({systemActivities.length})</span>
+                {showSystemEvents ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </button>
+              {showSystemEvents && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {systemActivities.map(renderActivityItem)}
                 </div>
-
-                {/* Main Body */}
-                <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-                    <span style={{ fontWeight: 600, color: '#999', flexShrink: 0 }}>{actorName}</span>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
-                      {getVisibilityBadge(activity.visibility)}
-
-                      {activity.activity_type === 'field_update' && activity.metadata ? (
-                        <FieldUpdateContent
-                          content={activity.content || ''}
-                          metadata={activity.metadata as FieldUpdateMetadata}
-                        />
-                      ) : activity.activity_type === 'diagnostic_report' && activity.metadata ? (
-                        <DiagnosticReportContent metadata={activity.metadata as any} />
-                      ) : (
-                        <div
-                          style={{ color: '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                          dangerouslySetInnerHTML={{
-                            __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
-                          }}
-                        />
-                      )}
-
-                      {/* Attachments Icon Indicator */}
-                      {activity.attachments && activity.attachments.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
-                          <Paperclip size={12} color="#666" />
-                          <span style={{ fontSize: '11px', color: '#555' }}>{activity.attachments.length}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Attachment Links have been moved to the Detail Drawer */}
-                </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          )}
         </div>
       )}
       <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />

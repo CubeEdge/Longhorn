@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
-import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Save, Trash2, Info } from 'lucide-react';
+import { ProductDetailModal } from './ProductDetailModal';
+
+// Top bar height constant for drawer positioning
+const TOP_BAR_HEIGHT = 64;
 
 // Types - Installed Base (PRD Service PRD_P2.md lines 209-265)
 interface Product {
@@ -70,7 +74,6 @@ type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
 const ProductManagement: React.FC = () => {
     const { t } = useLanguage();
     const { token, user } = useAuthStore();
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // State from URL
@@ -86,12 +89,17 @@ const ProductManagement: React.FC = () => {
     const [, setTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    // Drawer State (replacing Modal)
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false);
+
+    // Product Detail Modal State
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
     // More dropdown state
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
@@ -181,7 +189,7 @@ const ProductManagement: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleOpenModal = (product?: Product) => {
+    const handleOpenDrawer = (product?: Product) => {
         if (product) {
             setEditingProduct(product);
             setFormData({
@@ -203,11 +211,11 @@ const ProductManagement: React.FC = () => {
                 is_active: true
             });
         }
-        setIsModalOpen(true);
+        setIsDrawerOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
+    const handleCloseDrawer = () => {
+        setIsDrawerOpen(false);
         setEditingProduct(null);
     };
 
@@ -224,7 +232,7 @@ const ProductManagement: React.FC = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
-            handleCloseModal();
+            handleCloseDrawer();
             fetchProducts();
         } catch (err: any) {
             console.error('Failed to save product', err);
@@ -234,9 +242,15 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    // const handleDelete = async (product: Product) => {
-    //     setDeleteConfirm(product);
-    // };
+    const handleDeleteClick = (product: Product) => {
+        setDeleteConfirm(product);
+        setIsDeleteDrawerOpen(true);
+    };
+
+    const handleCloseDeleteDrawer = () => {
+        setIsDeleteDrawerOpen(false);
+        setDeleteConfirm(null);
+    };
 
     const confirmDelete = async () => {
         if (!deleteConfirm) return;
@@ -245,7 +259,7 @@ const ProductManagement: React.FC = () => {
             await axios.delete(`/api/v1/admin/products/${deleteConfirm.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setDeleteConfirm(null);
+            handleCloseDeleteDrawer();
             fetchProducts();
         } catch (err: any) {
             console.error('Failed to delete product', err);
@@ -257,6 +271,10 @@ const ProductManagement: React.FC = () => {
 
     // Check if user has admin access
     const canManage = user?.role === 'Admin' || user?.role === 'Lead';
+
+    // Check if user can manage product models (MS Lead, Exec, Admin)
+    const canManageModels = user?.role === 'Admin' || user?.role === 'Exec' || 
+                            (user?.role === 'Lead' && user?.department_code === 'MS');
 
     // Family tabs configuration
     const familyTabs: { key: ProductFamily; label: string }[] = [
@@ -274,9 +292,9 @@ const ProductManagement: React.FC = () => {
                 <div>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Package size={28} color="#FFD700" />
-                        产品管理
+                        设备台账
                     </h2>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_products_desc') || 'Manage Products & Device Models'}</p>
+                    <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_products_desc') || '管理已售设备序列号及保修信息'}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {/* Search Icon / Expandable Input */}
@@ -337,110 +355,145 @@ const ProductManagement: React.FC = () => {
                         )}
                     </div>
                     {canManage && (
-                        <button className="btn-kine-lowkey" onClick={() => handleOpenModal()}>
+                        <button className="btn-kine-lowkey" onClick={() => handleOpenDrawer()}>
                             <Plus size={18} /> 添加产品
                         </button>
                     )}
-                    {/* More Dropdown */}
+                    {/* More Dropdown - Circular Button */}
                     <div ref={moreDropdownRef} style={{ position: 'relative' }}>
                         <button
                             onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
                             style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
                                 background: 'var(--glass-bg-hover)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: 8,
-                                padding: '0 16px',
-                                height: '40px',
+                                border: '1.5px solid var(--glass-border)',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 8
+                                justifyContent: 'center',
+                                transition: 'all 0.15s'
                             }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
                         >
-                            <MoreHorizontal size={18} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>更多</span>
+                            <MoreHorizontal size={20} />
                         </button>
                         {isMoreDropdownOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                right: 0,
-                                marginTop: 4,
-                                background: 'var(--bg-sidebar)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: 8,
-                                padding: '4px 0',
-                                minWidth: 140,
-                                zIndex: 100,
-                                boxShadow: '0 8px 32px var(--glass-shadow)'
-                            }}>
-                                <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
-                                    查看列表
+                            <>
+                                <div
+                                    style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                                    onClick={() => setIsMoreDropdownOpen(false)}
+                                />
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: 4,
+                                    background: 'var(--bg-sidebar)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: 8,
+                                    padding: '4px 0',
+                                    minWidth: 160,
+                                    zIndex: 100,
+                                    boxShadow: '0 8px 32px var(--glass-shadow)'
+                                }}>
+                                    <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
+                                        查看列表
+                                    </div>
+                                    <button
+                                        onClick={() => setStatusFilter('active')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: statusFilter === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                            border: 'none',
+                                            color: statusFilter === 'active' ? '#10B981' : 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        启用中
+                                    </button>
+                                    <button
+                                        onClick={() => setStatusFilter('inactive')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
+                                            border: 'none',
+                                            color: statusFilter === 'inactive' ? 'var(--text-secondary)' : 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        已停用
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setStatusFilter('active')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        background: statusFilter === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                                        border: 'none',
-                                        color: statusFilter === 'active' ? '#10B981' : 'var(--text-main)',
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    启用中
-                                </button>
-                                <button
-                                    onClick={() => setStatusFilter('inactive')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
-                                        border: 'none',
-                                        color: statusFilter === 'inactive' ? 'var(--text-secondary)' : 'var(--text-main)',
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    已停用
-                                </button>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Family Filter Tabs */}
+            {/* Permission Notice */}
+            {canManageModels && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 16px', marginBottom: 16,
+                    background: 'rgba(255, 215, 0, 0.08)',
+                    border: '1px solid rgba(255, 215, 0, 0.2)',
+                    borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)'
+                }}>
+                    <Info size={16} color="#FFD700" />
+                    <span>
+                        设备台账权限：<strong style={{ color: '#FFD700' }}>仅 MS Lead、Exec 或 Admin 可添加/编辑设备</strong>
+                    </span>
+                </div>
+            )}
+
+            {/* Family Filter Tabs - macOS26 Segmented Control Style */}
             <div style={{ marginBottom: 20 }}>
-                <div className="tabs" style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 10, height: '48px', alignItems: 'center', width: 'fit-content' }}>
+                <div className="tabs" style={{ 
+                    display: 'flex', 
+                    gap: 2, 
+                    background: 'var(--glass-bg-light)', 
+                    padding: 3, 
+                    borderRadius: 8, 
+                    height: '36px', 
+                    alignItems: 'center', 
+                    width: 'fit-content',
+                    border: '1px solid var(--glass-border)'
+                }}>
                     {familyTabs.map((tab) => (
                         <button
                             key={tab.key}
                             className={`tab-btn ${productFamily === tab.key ? 'active' : ''}`}
                             onClick={() => setProductFamily(tab.key)}
                             style={{
-                                padding: '0 24px',
-                                height: '40px',
-                                background: productFamily === tab.key ? 'rgba(var(--accent-rgb), 0.2)' : 'transparent',
-                                color: productFamily === tab.key ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                                borderRadius: 8,
-                                fontWeight: productFamily === tab.key ? 600 : 400,
-                                fontSize: '1rem',
+                                padding: '0 16px',
+                                height: '30px',
+                                background: productFamily === tab.key ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: productFamily === tab.key ? 'var(--text-main)' : 'var(--text-secondary)',
+                                borderRadius: 6,
+                                fontWeight: productFamily === tab.key ? 500 : 400,
+                                fontSize: '0.9rem',
                                 border: 'none',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease',
+                                transition: 'all 0.15s ease',
                                 display: 'flex',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                boxShadow: productFamily === tab.key ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
                             }}
                         >
                             {tab.label}
@@ -509,7 +562,10 @@ const ProductManagement: React.FC = () => {
                                         borderBottom: '1px solid var(--glass-border)',
                                         cursor: 'pointer'
                                     }}
-                                    onClick={() => navigate(`/service/products/${product.id}`)}
+                                    onClick={() => {
+                                        setSelectedProductId(product.id);
+                                        setDetailModalOpen(true);
+                                    }}
                                 >
                                     <td style={{ padding: 16 }}>
                                         <div style={{ fontWeight: 600, fontSize: '1rem' }}>{product.model_name}</div>
@@ -538,7 +594,7 @@ const ProductManagement: React.FC = () => {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleOpenModal(product);
+                                                handleOpenDrawer(product);
                                             }}
                                             title="编辑"
                                             style={{
@@ -589,50 +645,89 @@ const ProductManagement: React.FC = () => {
                 </button>
             </div>
 
-            {/* Add/Edit Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-[#1C1C1E] rounded-2xl border border-white/10 shadow-xl w-full max-w-lg mx-4 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white">
-                                {editingProduct ? '编辑产品' : '添加产品'}
-                            </h2>
+            {/* Add/Edit Drawer - positioned below top bar */}
+            {isDrawerOpen && (
+                <>
+                    <div
+                        onClick={handleCloseDrawer}
+                        style={{
+                            position: 'fixed',
+                            top: TOP_BAR_HEIGHT,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            zIndex: 1000
+                        }}
+                    />
+                    <div style={{
+                        position: 'fixed',
+                        top: TOP_BAR_HEIGHT,
+                        right: 0,
+                        bottom: 0,
+                        width: 400,
+                        background: '#0a0a0a',
+                        borderLeft: '1px solid var(--glass-border)',
+                        zIndex: 1001,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '-8px 0 32px rgba(0,0,0,0.5)'
+                    }}>
+                        {/* Drawer Header */}
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                {editingProduct ? <Edit2 size={18} color="#3B82F6" /> : <Plus size={18} color="#3B82F6" />}
+                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
+                                    {editingProduct ? '编辑产品' : '添加产品'}
+                                </span>
+                            </div>
+                            <button onClick={handleCloseDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                <X size={20} />
+                            </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
-                                    型号名称 <span className="text-[#EF4444]">*</span>
+
+                        {/* Drawer Body */}
+                        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    型号名称 <span style={{ color: '#EF4444' }}>*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.model_name}
                                     onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                     placeholder="例如: MAVO Edge 8K"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                     内部名称
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.internal_name || ''}
                                     onChange={(e) => setFormData({ ...formData, internal_name: e.target.value })}
-                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                     placeholder="例如: MAVO Edge 8K (内部代号)"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
-                                    产品族群 <span className="text-[#EF4444]">*</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
                                 </label>
                                 <select
                                     required
                                     value={formData.product_family}
                                     onChange={(e) => setFormData({ ...formData, product_family: e.target.value as 'A' | 'B' | 'C' | 'D' })}
-                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                 >
                                     {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
                                         <option key={code} value={code}>
@@ -641,98 +736,177 @@ const ProductManagement: React.FC = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                     固件版本
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.firmware_version || ''}
                                     onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
-                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700]"
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                                     placeholder="例如: 8.0.123"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                     描述
                                 </label>
                                 <textarea
                                     value={formData.description || ''}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     rows={3}
-                                    className="w-full px-3 py-2 bg-[#000] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20 focus:border-[#FFD700] resize-none"
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
                                     placeholder="产品描述..."
                                 />
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: 'var(--glass-bg-light)', borderRadius: 8 }}>
                                 <input
                                     type="checkbox"
                                     id="is_active"
                                     checked={formData.is_active}
                                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                    className="w-4 h-4 text-[#FFD700] border-white/20 rounded bg-[#000] focus:ring-[#FFD700]"
+                                    style={{ width: 18, height: 18, accentColor: '#10B981' }}
                                 />
-                                <label htmlFor="is_active" className="text-sm text-gray-300">
-                                    启用
+                                <label htmlFor="is_active" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                                    启用此产品
                                 </label>
                             </div>
-                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                        </div>
+
+                        {/* Drawer Footer */}
+                        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {editingProduct && (
                                 <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
+                                    onClick={() => handleDeleteClick(editingProduct)}
+                                    style={{
+                                        width: '100%', padding: '10px', borderRadius: 10, fontWeight: 600,
+                                        background: 'rgba(239,68,68,0.08)', color: '#EF4444',
+                                        border: '1px solid rgba(239,68,68,0.3)',
+                                        cursor: 'pointer', fontSize: '0.88rem',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                                    }}
                                 >
-                                    取消
+                                    <Trash2 size={15} /> 删除产品
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="px-4 py-2 text-sm font-semibold text-black bg-[#FFD700] hover:bg-[#E6BD00] rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    {saving ? '保存中...' : '保存'}
-                                </button>
-                            </div>
-                        </form>
+                            )}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={saving}
+                                style={{
+                                    width: '100%', padding: '10px', borderRadius: 10, fontWeight: 600,
+                                    background: 'var(--accent-blue)', color: '#000',
+                                    border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: '0.88rem',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    opacity: saving ? 0.7 : 1
+                                }}
+                            >
+                                {editingProduct
+                                    ? <><Save size={15} /> {saving ? '保存中...' : '保存更改'}</>
+                                    : <><Plus size={15} /> {saving ? '创建中...' : '创建产品'}</>
+                                }
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </>
             )}
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-[#1C1C1E] rounded-2xl border border-white/10 shadow-xl w-full max-w-md mx-4 p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-[#EF4444]/20 rounded-full">
-                                <AlertCircle className="w-6 h-6 text-[#EF4444]" />
-                            </div>
-                            <h2 className="text-lg font-semibold text-white">确认删除</h2>
-                        </div>
-                        <p className="text-gray-400 mb-6">
-                            确定要删除产品 <span className="font-medium text-white">{deleteConfirm.model_name}</span> 吗？
-                            {deleteConfirm.ticket_count > 0 && (
-                                <span className="block mt-2 text-[#EF4444]">
-                                    注意：此产品有 {deleteConfirm.ticket_count} 个关联工单，无法删除。
+            {/* Delete Confirmation Drawer */}
+            {isDeleteDrawerOpen && deleteConfirm && (
+                <>
+                    <div
+                        onClick={handleCloseDeleteDrawer}
+                        style={{
+                            position: 'fixed',
+                            top: TOP_BAR_HEIGHT,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            zIndex: 1000
+                        }}
+                    />
+                    <div style={{
+                        position: 'fixed',
+                        top: TOP_BAR_HEIGHT,
+                        right: 0,
+                        bottom: 0,
+                        width: 400,
+                        background: '#0a0a0a',
+                        borderLeft: '1px solid var(--glass-border)',
+                        zIndex: 1001,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '-8px 0 32px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ padding: 8, background: 'rgba(239,68,68,0.2)', borderRadius: '50%' }}>
+                                    <AlertCircle size={18} color="#EF4444" />
+                                </div>
+                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
+                                    确认删除
                                 </span>
-                            )}
-                        </p>
-                        <div className="flex items-center justify-end gap-3">
+                            </div>
+                            <button onClick={handleCloseDeleteDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ flex: 1, padding: 24 }}>
+                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                确定要删除产品 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{deleteConfirm.model_name}</span> 吗？
+                                {deleteConfirm.ticket_count > 0 && (
+                                    <span style={{ display: 'block', marginTop: 12, color: '#EF4444' }}>
+                                        注意：此产品有 {deleteConfirm.ticket_count} 个关联工单，无法删除。
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 12 }}>
                             <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
+                                onClick={handleCloseDeleteDrawer}
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600,
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    border: '1px solid var(--glass-border)',
+                                    cursor: 'pointer', fontSize: '0.88rem'
+                                }}
                             >
                                 取消
                             </button>
                             <button
                                 onClick={confirmDelete}
                                 disabled={deleteLoading || deleteConfirm.ticket_count > 0}
-                                className="px-4 py-2 text-sm font-medium text-white bg-[#EF4444] hover:bg-[#DC2626] rounded-lg transition-colors disabled:opacity-50"
+                                style={{
+                                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600,
+                                    background: '#EF4444', color: '#fff',
+                                    border: 'none', cursor: deleteLoading || deleteConfirm.ticket_count > 0 ? 'not-allowed' : 'pointer',
+                                    fontSize: '0.88rem',
+                                    opacity: deleteLoading || deleteConfirm.ticket_count > 0 ? 0.5 : 1
+                                }}
                             >
                                 {deleteLoading ? '删除中...' : '删除'}
                             </button>
                         </div>
                     </div>
-                </div>
+                </>
+            )}
+
+            {/* Product Detail Modal */}
+            {detailModalOpen && selectedProductId && (
+                <ProductDetailModal
+                    productId={selectedProductId}
+                    onClose={() => {
+                        setDetailModalOpen(false);
+                        setSelectedProductId(null);
+                    }}
+                />
             )}
         </div>
     );

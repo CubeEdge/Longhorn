@@ -50,7 +50,7 @@ type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup' | 'pr
 
 interface AdminSettingsProps {
     initialTab?: AdminTab;
-    moduleType?: 'service' | 'files';
+    hideTabBar?: boolean; // When true, hides the tab navigation bar (used by AdminPanel sidebar mode)
 }
 
 const PREDEFINED_MODELS: Record<string, { chat: string[], reasoner: string[], vision: string[] }> = {
@@ -112,7 +112,7 @@ let cachedSettings: SystemSettings | null = null;
 let cachedProviders: AIProvider[] = [];
 
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 'files' }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = false }) => {
     const { token, user } = useAuthStore();
     const isSuperAdmin = user?.role === 'Admin' || user?.role === 'Exec';
     const navigate = useNavigate();
@@ -120,11 +120,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
     const { theme, setTheme } = useThemeStore();
     const { showDailyWord, setShowDailyWord, notificationDuration, setNotificationDuration } = useUserSettingsStore();
 
-    // 路由前缀根据模块类型
-    const routePrefix = moduleType === 'service' ? '/service/admin' : '/admin';
+    // Unified route prefix
+    const routePrefix = '/settings';
 
-    // 根据模块类型获取独立的持久化 key
-    const getStorageKey = () => moduleType === 'service' ? 'longhorn_service_settings_tab' : 'longhorn_files_settings_tab';
+    // Unified storage key
+    const getStorageKey = () => 'longhorn_settings_sub_tab';
 
     // 从 localStorage读取上次访问的tab
     const getLastTab = (): AdminTab => {
@@ -192,7 +192,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
     const handleTabChange = (tabId: string) => {
         const newTab = tabId as AdminTab;
-        if (!isSuperAdmin && newTab !== 'general') {
+        // Lead can switch to 'general' and 'users', others must be isSuperAdmin
+        if (!isSuperAdmin && newTab !== 'general' && newTab !== 'users') {
             return; // Prevent non-admins from switching to protected tabs
         }
         setActiveTab(newTab);
@@ -457,7 +458,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
 
     return (
         <div className="fade-in" style={{ padding: '0 20px 40px' }}>
-            {/* Header / Tabs */}
+            {/* Header / Tabs - hidden when AdminPanel sidebar controls navigation */}
+            {!hideTabBar && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <div style={{ display: 'flex', gap: 4, background: 'var(--glass-bg-hover)', padding: 4, borderRadius: 12 }}>
                     {tabs.map(tab => (
@@ -512,6 +514,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, moduleType = 
                     )}
                 </div>
             </div>
+            )}
+
+            {/* Save button when hideTabBar - shown at top right */}
+            {hideTabBar && activeTab !== 'audit' && activeTab !== 'users' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16, padding: '16px 0 0' }}>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            background: 'transparent', color: 'var(--accent-blue)',
+                            border: '1px solid rgba(var(--accent-rgb), 0.4)',
+                            padding: '8px 20px', borderRadius: 10,
+                            fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
+                            opacity: saving ? 0.7 : 1,
+                        }}
+                    >
+                        {saving ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
+                        {t('common.save_all_changes')}
+                    </button>
+                </div>
+            )}
 
             {/* CONTENT AREA */}
             <div style={{ background: 'var(--glass-bg)', borderRadius: 16, border: '1px solid var(--glass-border)', minHeight: 400 }}>

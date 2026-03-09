@@ -517,6 +517,61 @@ module.exports = function (db, authenticate) {
     });
 
     /**
+     * GET /api/v1/admin/products/:id/detail
+     * Get full product detail with ownership and warranty info (Installed Base)
+     */
+    router.get('/:id/detail', authenticate, requireAdmin, (req, res) => {
+        try {
+            const productId = req.params.id;
+
+            // Get product with dealer and owner info
+            const product = db.prepare(`
+                SELECT 
+                    p.*,
+                    d.name as sold_to_dealer_name,
+                    c.name as current_owner_name
+                FROM products p
+                LEFT JOIN accounts d ON p.sold_to_dealer_id = d.id
+                LEFT JOIN accounts c ON p.current_owner_id = c.id
+                WHERE p.id = ?
+            `).get(productId);
+
+            if (!product) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: 'Product not found' }
+                });
+            }
+
+            // Get service stats
+            const stats = db.prepare(`
+                SELECT 
+                    COUNT(CASE WHEN ticket_type = 'inquiry' THEN 1 END) as inquiry_count,
+                    COUNT(CASE WHEN ticket_type = 'rma' THEN 1 END) as rma_count,
+                    COUNT(CASE WHEN ticket_type = 'svc' THEN 1 END) as repair_count
+                FROM tickets
+                WHERE product_id = ?
+            `).get(productId);
+
+            res.json({
+                success: true,
+                data: {
+                    ...product,
+                    inquiry_count: stats?.inquiry_count || 0,
+                    rma_count: stats?.rma_count || 0,
+                    repair_count: stats?.repair_count || 0
+                }
+            });
+        } catch (err) {
+            console.error('[Products Admin] Detail error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
      * GET /api/v1/admin/products/:id/tickets
      * Get related tickets for a product
      */

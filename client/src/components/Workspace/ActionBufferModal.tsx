@@ -511,6 +511,23 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
         return <FileCheck size={24} color="#8B5CF6" />;
     };
 
+    const getActionLabelZh = (label: string): string => {
+        const labelMap: Record<string, string> = {
+            'close': '结案',
+            'receive': '收货入库',
+            'diagnose': '提交诊断',
+            'commercial_approve': '商务审核',
+            'repair_complete': '维修完成',
+            'settle': '最终确认',
+            'finance_approve': '财务确认',
+            'reply': '回复',
+            'nudge': '催促',
+            'view': '查看',
+            'paid': '确认付款',
+        };
+        return labelMap[label] || label;
+    };
+
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100,
@@ -530,7 +547,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             {getIcon()}
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>确认执行: {actionLabel}</h3>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>确认执行: {getActionLabelZh(actionLabel)}</h3>
                             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{ticket.ticket_number}</p>
                         </div>
                     </div>

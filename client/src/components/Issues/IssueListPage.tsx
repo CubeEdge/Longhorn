@@ -32,7 +32,7 @@ const statusColors: Record<string, string> = {
 const severityColors: Record<string, string> = {
   Low: '#6b7280',
   Medium: '#f59e0b',
-  High: '#f97316',
+  High: '#FFD700',
   Critical: '#ef4444'
 };
 

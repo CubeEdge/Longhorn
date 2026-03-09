@@ -63,7 +63,7 @@ const STAR_STORAGE_KEY = 'longhorn_workspace_stars';
 // Column widths storage
 const COL_WIDTHS_KEY = 'longhorn_workspace_col_widths';
 type ColKey = 'first' | 'id' | 'status' | 'sla';
-const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { first: 72, id: 150, status: 220, sla: 150 };
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { first: 72, id: 200, status: 220, sla: 150 };
 
 function loadColWidths(): Record<ColKey, number> {
   try {
@@ -146,7 +146,6 @@ const DEPT_TABS: Record<string, DeptTabConfig[]> = {
     { key: 'diagnosing', label: { zh: '待检测', en: 'Diagnosing' }, icon: <AlertCircle size={14} />, filter: (t: Ticket) => t.current_node === 'op_diagnosing' },
     { key: 'repairing', label: { zh: '待维修', en: 'Repairing' }, icon: <Wrench size={14} />, filter: (t: Ticket) => t.current_node === 'op_repairing' },
     { key: 'shipping', label: { zh: '待发货', en: 'Shipping' }, icon: <Truck size={14} />, filter: (t: Ticket) => t.current_node === 'op_shipping' || t.current_node === 'op_qa' || t.current_node === 'ms_closing' },
-    { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
   ],
   // B. RD (研发): 完全由部门@Mention驱动
   RD: [
@@ -155,12 +154,11 @@ const DEPT_TABS: Record<string, DeptTabConfig[]> = {
     { key: 'pending', label: { zh: '需技术建议', en: 'Need Advice' }, icon: <AlertCircle size={14} />, filter: (t: Ticket) => t.current_node === 'rd_consulting' },
     { key: 'provided', label: { zh: '已提供方案', en: 'Advice Provided' }, icon: <CheckSquare size={14} />, filter: (t: Ticket) => t.current_node === 'rd_resolved' },
   ],
-  // C. GE (通用台面/管理层): 全量工单 + 部门协作
+  // C. GE (通用台面/管理层): 全量工单
   GE: [
     { key: 'all', label: { zh: '全部', en: 'All' }, icon: null, filter: () => true },
     { key: 'unclaimed', label: { zh: '待认领', en: 'Unclaimed' }, icon: <Hand size={14} />, filter: (t: Ticket) => !t.assigned_to },
     { key: 'review', label: { zh: '待审批', en: 'Pending Review' }, icon: <Clock size={14} />, filter: (t: Ticket) => t.current_node === 'ms_review' || t.current_node === 'ge_review' },
-    { key: 'collab', label: { zh: '协作', en: 'Collab' }, icon: <MessageSquare size={14} />, filter: () => true, isCollabTab: true },
   ],
   // D. MS (市场): 全量活跃工单
   MS: [
@@ -676,7 +674,7 @@ const WorkspacePage: React.FC = () => {
       in_progress: { label: '处理中', color: '#3B82F6' },
       waiting_customer: { label: '待反馈', color: '#D946EF' },
       ms_review: { label: 'MS审阅', color: '#F59E0B' },
-      op_receiving: { label: '待收货', color: '#F59E0B' },
+      op_receiving: { label: '待收货', color: '#FFD700' },
       op_diagnosing: { label: '诊断中', color: '#8B5CF6' },
       op_repairing: { label: '维修中', color: '#3B82F6' },
       op_shipping: { label: '待发货', color: '#06B6D4' },
@@ -704,7 +702,7 @@ const WorkspacePage: React.FC = () => {
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0, color: 'inherit' }}>
               {currentView === 'my-tasks' && <CheckSquare size={28} color="#FFD700" />}
               {currentView === 'mentioned' && <MessageSquare size={28} color="#3B82F6" />}
-              {currentView === 'team-hub' && <Users size={28} color="#F97316" />}
+              {currentView === 'team-hub' && <Users size={28} color="#FFD700" />}
               {currentView === 'my-tasks' && t('workspace.page_title')}
               {currentView === 'mentioned' && (t('sidebar.mentioned') || '协作')}
               {currentView === 'team-hub' && (t('sidebar.team_hub') || '部门工单')}
@@ -783,35 +781,45 @@ const WorkspacePage: React.FC = () => {
                     id="trash-menu-trigger"
                     onClick={() => setTrashMenuOpen(!isTrashMenuOpen)}
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--glass-border)',
+                      width: 36, height: 36, borderRadius: '50%',
+                      border: activeTab === 'trash' ? '1.5px solid rgba(239,68,68,0.6)' : '1.5px solid var(--glass-border)',
                       background: activeTab === 'trash' ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-card)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                       color: activeTab === 'trash' ? '#EF4444' : 'var(--text-secondary)',
-                      boxShadow: '0 2px 8px var(--glass-shadow)',
-                      outline: 'none'
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+                      outline: 'none',
+                      transition: 'all 0.15s'
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = activeTab === 'trash' ? 'rgba(239,68,68,0.6)' : 'var(--glass-border)'; }}
                   >
                     <MoreHorizontal size={18} />
                   </button>
                   {isTrashMenuOpen && (
-                    <div style={{
-                      position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 100,
-                      background: 'var(--bg-popover)', border: '1px solid var(--glass-border)',
-                      borderRadius: 8, padding: '4px', minWidth: 160, boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
-                    }}>
-                      <button
-                        onClick={() => { setActiveTab(activeTab === 'trash' ? 'all' : 'trash'); setTrashMenuOpen(false); }}
-                        style={{
-                          width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent',
-                          color: 'var(--text-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <Trash2 size={14} color="#EF4444" />
-                        <span>{activeTab === 'trash' ? '返回工单池' : '查看已删除的工单'}</span>
-                      </button>
-                    </div>
+                    <>
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                        onClick={() => setTrashMenuOpen(false)}
+                      />
+                      <div style={{
+                        position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 100,
+                        background: 'var(--bg-popover)', border: '1px solid var(--glass-border)',
+                        borderRadius: 8, padding: '4px', minWidth: 160, boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+                      }}>
+                        <button
+                          onClick={() => { setActiveTab(activeTab === 'trash' ? 'all' : 'trash'); setTrashMenuOpen(false); }}
+                          style={{
+                            width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent',
+                            color: 'var(--text-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <Trash2 size={14} color="#EF4444" />
+                          <span>{activeTab === 'trash' ? '返回工单池' : '查看已删除的工单'}</span>
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -1039,7 +1047,7 @@ const WorkspacePage: React.FC = () => {
                         <td style={{ padding: '16px' }}>
                           <span style={{
                             fontSize: '1.05rem',
-                            fontWeight: 700,
+                            fontWeight: 400,
                             color: 'var(--text-primary)',
                             whiteSpace: 'nowrap'
                           }}>

@@ -107,15 +107,27 @@ const ServiceNavigation: React.FC = () => {
       defaultExpanded: true
     },
     {
-      id: 'archives',
-      title: '档案和基础信息',
+      id: 'customer-info',
+      title: '客户和经销商信息',
       items: [
-        // 档案和基础信息仅对 MS/Admin/Exec 可见 (OP/RD 隐藏)
+        // 仅 MS/Admin/Exec 可见
         ...(hasCrmAccess ? [
           { id: 'dealers', label: t('sidebar.archives_dealers') || '渠道和经销商', icon: Building, path: '/service/dealers' },
           { id: 'customers', label: t('sidebar.archives_customers') || '客户档案', icon: Users, path: '/service/customers' },
-          { id: 'products', label: t('sidebar.archives_assets') || '产品管理', icon: Box, path: '/service/products' },
-          { id: 'inventory', label: t('sidebar.parts_inventory') || '配件库存', icon: Package, path: '/service/inventory' },
+          { id: 'dealer-operations', label: t('sidebar.dealer_operations') || '经销商配件运营', icon: Package, path: '/service/dealer-operations' },
+        ] : []),
+      ],
+      defaultExpanded: true
+    },
+    {
+      id: 'product-info',
+      title: '产品和配件信息',
+      items: [
+        // MS/OP 可查看
+        ...(hasCrmAccess || actingDeptCode === 'OP' ? [
+          { id: 'product-models', label: t('sidebar.product_models') || '产品目录', icon: Package, path: '/service/product-models' },
+          { id: 'products', label: t('sidebar.archives_assets') || '设备台账', icon: Box, path: '/service/products' },
+          { id: 'parts', label: t('sidebar.parts') || '配件管理', icon: Package, path: '/service/parts' },
         ] : []),
       ],
       defaultExpanded: true
@@ -354,6 +366,8 @@ export const useServiceNavigation = () => {
     if (path.includes('/dealers')) return 'dealers';
     if (path.includes('/customers')) return 'customers';
     if (path.includes('/products')) return 'products';
+    if (path.includes('/product-models')) return 'product-models';
+    if (path.includes('/parts')) return 'parts';
     if (path.includes('/inventory')) return 'inventory';
     if (path.includes('/wiki')) return 'wiki';
     if (path.includes('/bokeh')) return 'bokeh';
@@ -370,7 +384,9 @@ export const useServiceNavigation = () => {
       dealers: '/service/dealers',
       customers: '/service/customers',
       products: '/service/products',
-      inventory: '/service/inventory',
+      'product-models': '/service/product-models',
+      parts: '/service/parts',
+      'dealer-operations': '/service/dealer-operations',
       wiki: '/tech-hub/wiki?line=A',
       bokeh: '/tech-hub/bokeh',
       admin: '/service/admin/settings'

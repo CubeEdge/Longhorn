@@ -135,7 +135,7 @@ const RestockOrderCreatePage: React.FC = () => {
             }, { headers });
 
             if (res.data?.success) {
-                navigate(`/service/inventory/restock/${res.data.data.id}`);
+                navigate(`/service/dealer-operations/restock/${res.data.data.id}`);
             }
         } catch (err: any) {
             console.error('Failed to create order:', err);
@@ -175,7 +175,7 @@ const RestockOrderCreatePage: React.FC = () => {
         <div className="fade-in" style={{ padding: '32px 40px', maxWidth: 1400, margin: '0 auto' }}>
             {/* 返回按钮 - Wiki Style */}
             <button
-                onClick={() => navigate('/service/inventory/restock')}
+                onClick={() => navigate('/service/dealer-operations/restock')}
                 style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     width: 36, height: 36, borderRadius: '50%',

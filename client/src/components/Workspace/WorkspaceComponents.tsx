@@ -63,7 +63,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
 }) => {
   const menuItems = [
     { id: 'inbox', icon: Inbox, label: '收件箱', count: counts.inbox },
-    { id: 'assigned', icon: User, label: '指派给我', count: counts.assigned },
+    { id: 'assigned', icon: User, label: '对接给我', count: counts.assigned },
     { id: 'sla_warning', icon: AlertTriangle, label: 'SLA 告警', count: counts.sla_warning, alert: counts.sla_warning > 0 },
     { id: 'all', icon: CheckCircle, label: '全部工单', count: counts.all }
   ];

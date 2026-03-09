@@ -16,6 +16,8 @@ interface SavedPaths {
 }
 
 const NAV_STATE_KEY = 'longhorn_nav_state';
+const NAV_STATE_VERSION_KEY = 'longhorn_nav_state_version';
+const CURRENT_NAV_VERSION = '2'; // Bump this when making breaking changes to nav state
 
 const DEFAULT_PATHS: SavedPaths = {
   lastServicePath: '/service/inquiry-tickets', // Guaranteed entry point
@@ -25,6 +27,7 @@ const DEFAULT_PATHS: SavedPaths = {
 // Service module routes
 const SERVICE_ROUTES = [
   '/service',
+  // Note: '/settings' is intentionally NOT included here - it's a system page, not part of service module
   '/admin/settings',
   '/admin/intelligence',
   '/admin/health',
@@ -37,10 +40,20 @@ const SERVICE_ROUTES = [
   '/tech-hub',
 ];
 
-// Files module routes
+// Paths that should NOT be saved as "last visited" (they're utility/settings pages)
+const EXCLUDED_FROM_SAVE = ['/settings'];
+
+// Files module routes - must be specific to avoid conflicts with Service admin routes
 const FILES_ROUTES = [
   '/files',
-  '/admin', // Catch-all for files admin (dashboard, users, depts)
+  '/files/personal',
+  '/files/dept',
+  '/files/root',
+  '/files/starred',
+  '/files/shares',
+  '/files/recycle',
+  '/files/search',
+  '/files/recent',
   '/dashboard', // Files overview
   '/personal',
   '/dept',
@@ -80,19 +93,31 @@ export function getModuleFromPath(path: string): ModuleType {
  */
 function loadSavedPaths(): SavedPaths {
   try {
+    // Check version - if outdated, reset to defaults
+    const savedVersion = localStorage.getItem(NAV_STATE_VERSION_KEY);
+    if (savedVersion !== CURRENT_NAV_VERSION) {
+      console.log(`[NavigationState] Version changed from ${savedVersion} to ${CURRENT_NAV_VERSION}, resetting nav state`);
+      localStorage.setItem(NAV_STATE_VERSION_KEY, CURRENT_NAV_VERSION);
+      localStorage.removeItem(NAV_STATE_KEY);
+      return DEFAULT_PATHS;
+    }
+
     const saved = localStorage.getItem(NAV_STATE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       const paths = { ...DEFAULT_PATHS, ...parsed };
 
       // Critical Validation: Ensure saved paths actually belong to the module they claim
-      // This prevents "unresponsive icon" if a path like /dashboard was moved from service to files
-      if (getModuleFromPath(paths.lastServicePath) !== 'service') {
-        console.log('[NavigationState] Invalid service path, resetting to default');
+      // Also reset if the saved path is an excluded path (like /settings)
+      const serviceExcluded = EXCLUDED_FROM_SAVE.some(p => paths.lastServicePath.startsWith(p));
+      if (getModuleFromPath(paths.lastServicePath) !== 'service' || serviceExcluded) {
+        console.log('[NavigationState] Invalid/excluded service path, resetting to default');
         paths.lastServicePath = DEFAULT_PATHS.lastServicePath;
       }
-      if (getModuleFromPath(paths.lastFilesPath) !== 'files') {
-        console.log('[NavigationState] Invalid files path, resetting to default');
+      
+      const filesExcluded = EXCLUDED_FROM_SAVE.some(p => paths.lastFilesPath.startsWith(p));
+      if (getModuleFromPath(paths.lastFilesPath) !== 'files' || filesExcluded) {
+        console.log('[NavigationState] Invalid/excluded files path, resetting to default');
         paths.lastFilesPath = DEFAULT_PATHS.lastFilesPath;
       }
 
@@ -110,6 +135,7 @@ function loadSavedPaths(): SavedPaths {
 function savePaths(paths: SavedPaths): void {
   try {
     localStorage.setItem(NAV_STATE_KEY, JSON.stringify(paths));
+    localStorage.setItem(NAV_STATE_VERSION_KEY, CURRENT_NAV_VERSION);
   } catch (e) {
     console.warn('[NavigationState] Failed to save state:', e);
   }
@@ -133,6 +159,13 @@ export function useNavigationState() {
   // Update path when navigating - called explicitly, not in effect
   const updateCurrentPath = useCallback(() => {
     const currentPath = location.pathname;
+    
+    // Don't save excluded paths (like /settings) - they shouldn't override module entry points
+    const shouldExclude = EXCLUDED_FROM_SAVE.some(p => currentPath.startsWith(p));
+    if (shouldExclude) {
+      return;
+    }
+    
     const module = getModuleFromPath(currentPath);
 
     setSavedPaths(prev => {
@@ -157,17 +190,23 @@ export function useNavigationState() {
    * Navigates to the last visited path in that module
    */
   const switchModule = useCallback((targetModule: ModuleType) => {
-    // First save current path
+    console.log(`[NavigationState] switchModule called for: ${targetModule}`);
+    
+    // First save current path (if not excluded)
     updateCurrentPath();
 
-    if (targetModule === currentModule) return;
-
+    // Read fresh from localStorage to avoid stale closure issues
+    const freshPaths = loadSavedPaths();
+    console.log(`[NavigationState] Loaded paths from localStorage:`, freshPaths);
+    
+    // Always navigate when explicitly switching modules
     const targetPath = targetModule === 'service'
-      ? savedPaths.lastServicePath
-      : savedPaths.lastFilesPath;
+      ? freshPaths.lastServicePath
+      : freshPaths.lastFilesPath;
 
+    console.log(`[NavigationState] Switching to ${targetModule}, navigating to: ${targetPath}`);
     navigate(targetPath);
-  }, [currentModule, savedPaths, navigate, updateCurrentPath]);
+  }, [navigate, updateCurrentPath]);
 
   /**
    * Get the default path for initial navigation

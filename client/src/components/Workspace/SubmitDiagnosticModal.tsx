@@ -18,7 +18,8 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
     // Form State
     const [diagnosis, setDiagnosis] = useState('');
     const [repairAdvice, setRepairAdvice] = useState('');
-    const [warrantyStatus, setWarrantyStatus] = useState<'true' | 'false' | ''>('');
+    const [damageStatus, setDamageStatus] = useState<'no_damage' | 'physical_damage' | 'uncertain' | ''>('');
+    const [warrantySuggestion, setWarrantySuggestion] = useState<'suggest_in_warranty' | 'suggest_out_warranty' | 'needs_verification' | ''>('');
     const [attachments, setAttachments] = useState<File[]>([]);
 
     if (!isOpen) return null;
@@ -35,8 +36,8 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
     };
 
     const handleSubmit = async () => {
-        if (!diagnosis.trim() || !repairAdvice.trim() || !warrantyStatus) {
-            alert('请完善必填的诊断结论与保修判定！');
+        if (!diagnosis.trim() || !repairAdvice.trim() || !damageStatus) {
+            alert('请完善必填的诊断结论与技术损坏判定！');
             return;
         }
 
@@ -48,11 +49,12 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
             formData.append('content', '提交了详细诊断报告与故障确认。');
             formData.append('visibility', 'all');
 
-            // Build metadata
+            // Build metadata with new technical assessment fields
             const metadata = {
                 diagnosis: diagnosis.trim(),
                 repair_advice: repairAdvice.trim(),
-                is_warranty: warrantyStatus === 'true',
+                technical_damage_status: damageStatus,
+                technical_warranty_suggestion: warrantySuggestion,
                 submission_type: 'technical_diagnosis'
             };
             formData.append('metadata', JSON.stringify(metadata));
@@ -68,10 +70,11 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                 }
             });
 
-            // 2. Perform Flow Transition to MS Review + update ticket warranty status
+            // 2. Perform Flow Transition to MS Review + update ticket technical assessment
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 current_node: 'ms_review',
-                is_warranty: warrantyStatus === 'true',
+                technical_damage_status: damageStatus,
+                technical_warranty_suggestion: warrantySuggestion || null,
                 change_reason: '完成技术诊断，流向商务审核 (MS Review)'
             }, { headers: { Authorization: `Bearer ${token}` } });
 
@@ -175,28 +178,76 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                         />
                     </div>
 
-                    {/* Warranty Decision */}
+                    {/* Technical Damage Assessment */}
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>初步保修判定 (必填，供商务参考)</label>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>
+                            <AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle', color: '#F59E0B' }} />
+                            技术损坏判定 (必填)
+                        </label>
                         <div style={{ display: 'flex', gap: 12 }}>
                             <button
-                                onClick={() => setWarrantyStatus('true')}
+                                onClick={() => setDamageStatus('no_damage')}
                                 style={{
-                                    flex: 1, padding: '12px', background: warrantyStatus === 'true' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${warrantyStatus === 'true' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                    color: warrantyStatus === 'true' ? '#10B981' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
-                                    fontWeight: warrantyStatus === 'true' ? 600 : 400
+                                    flex: 1, padding: '12px', background: damageStatus === 'no_damage' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${damageStatus === 'no_damage' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
+                                    color: damageStatus === 'no_damage' ? '#10B981' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: damageStatus === 'no_damage' ? 600 : 400
                                 }}
-                            >保修免费</button>
+                            >无人为损坏 / 正常故障</button>
                             <button
-                                onClick={() => setWarrantyStatus('false')}
+                                onClick={() => setDamageStatus('physical_damage')}
                                 style={{
-                                    flex: 1, padding: '12px', background: warrantyStatus === 'false' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${warrantyStatus === 'false' ? '#F59E0B' : 'rgba(255,255,255,0.1)'}`,
-                                    color: warrantyStatus === 'false' ? '#F59E0B' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
-                                    fontWeight: warrantyStatus === 'false' ? 600 : 400
+                                    flex: 1, padding: '12px', background: damageStatus === 'physical_damage' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${damageStatus === 'physical_damage' ? '#EF4444' : 'rgba(255,255,255,0.1)'}`,
+                                    color: damageStatus === 'physical_damage' ? '#EF4444' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: damageStatus === 'physical_damage' ? 600 : 400
                                 }}
-                            >付费包修 / 拒保退回</button>
+                            >人为损坏 / 物理损伤</button>
+                            <button
+                                onClick={() => setDamageStatus('uncertain')}
+                                style={{
+                                    flex: 1, padding: '12px', background: damageStatus === 'uncertain' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${damageStatus === 'uncertain' ? '#F59E0B' : 'rgba(255,255,255,0.1)'}`,
+                                    color: damageStatus === 'uncertain' ? '#F59E0B' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: damageStatus === 'uncertain' ? 600 : 400
+                                }}
+                            >无法判定</button>
+                        </div>
+                    </div>
+
+                    {/* Warranty Suggestion (Optional) */}
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>
+                            保修建议 (选填，供商务参考)
+                        </label>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button
+                                onClick={() => setWarrantySuggestion('suggest_in_warranty')}
+                                style={{
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_in_warranty' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
+                                    color: warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: warrantySuggestion === 'suggest_in_warranty' ? 600 : 400
+                                }}
+                            >建议保内</button>
+                            <button
+                                onClick={() => setWarrantySuggestion('suggest_out_warranty')}
+                                style={{
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_out_warranty' ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : 'rgba(255,255,255,0.1)'}`,
+                                    color: warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: warrantySuggestion === 'suggest_out_warranty' ? 600 : 400
+                                }}
+                            >建议保外</button>
+                            <button
+                                onClick={() => setWarrantySuggestion('needs_verification')}
+                                style={{
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'needs_verification' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${warrantySuggestion === 'needs_verification' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
+                                    color: warrantySuggestion === 'needs_verification' ? '#3B82F6' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    fontWeight: warrantySuggestion === 'needs_verification' ? 600 : 400
+                                }}
+                            >需进一步核实</button>
                         </div>
                     </div>
 

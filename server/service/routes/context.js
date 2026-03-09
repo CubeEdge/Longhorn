@@ -367,35 +367,55 @@ module.exports = (db, authenticate) => {
             }
 
             // 1. Fetch Device Info
-            const device = db.prepare(`
+            let device = db.prepare(`
                 SELECT * FROM products WHERE serial_number = ?
             `).get(serial_number);
 
-            if (!device) {
-                return res.status(404).json({ success: false, error: "Device not found" });
+            // 2. Fetch Service History for this Device (by product_id or serial_number)
+            let tickets = [];
+            let pId = device?.id;
+
+            if (pId) {
+                // Device found in product catalog - query by product_id
+                tickets = db.prepare(`
+                    SELECT 
+                        t.id, t.ticket_number, 
+                        CASE t.ticket_type
+                            WHEN 'inquiry' THEN 'Inquiry'
+                            WHEN 'rma' THEN 'RMA'
+                            WHEN 'svc' THEN 'DealerRepair'
+                            ELSE t.ticket_type
+                        END as type,
+                        COALESCE(t.problem_summary, t.problem_description) as summary,
+                        t.status, t.created_at as date,
+                        COALESCE(a.name, c.name, t.reporter_name) as customer_name
+                    FROM tickets t
+                    LEFT JOIN accounts a ON t.account_id = a.id
+                    LEFT JOIN contacts c ON t.contact_id = c.id
+                    WHERE t.product_id = ?
+                    ORDER BY t.created_at DESC
+                `).all(pId);
+            } else {
+                // Device not in catalog - query by serial_number directly
+                tickets = db.prepare(`
+                    SELECT 
+                        t.id, t.ticket_number, 
+                        CASE t.ticket_type
+                            WHEN 'inquiry' THEN 'Inquiry'
+                            WHEN 'rma' THEN 'RMA'
+                            WHEN 'svc' THEN 'DealerRepair'
+                            ELSE t.ticket_type
+                        END as type,
+                        COALESCE(t.problem_summary, t.problem_description) as summary,
+                        t.status, t.created_at as date,
+                        COALESCE(a.name, c.name, t.reporter_name) as customer_name
+                    FROM tickets t
+                    LEFT JOIN accounts a ON t.account_id = a.id
+                    LEFT JOIN contacts c ON t.contact_id = c.id
+                    WHERE t.serial_number = ?
+                    ORDER BY t.created_at DESC
+                `).all(serial_number);
             }
-
-            const pId = device.id;
-
-            // 2. Fetch Service History for this Device
-            const tickets = db.prepare(`
-                SELECT 
-                    t.id, t.ticket_number, 
-                    CASE t.ticket_type
-                        WHEN 'inquiry' THEN 'Inquiry'
-                        WHEN 'rma' THEN 'RMA'
-                        WHEN 'svc' THEN 'DealerRepair'
-                        ELSE t.ticket_type
-                    END as type,
-                    COALESCE(t.problem_summary, t.problem_description) as summary,
-                    t.status, t.created_at as date,
-                    COALESCE(a.name, c.name, t.reporter_name) as customer_name
-                FROM tickets t
-                LEFT JOIN accounts a ON t.account_id = a.id
-                LEFT JOIN contacts c ON t.contact_id = c.id
-                WHERE t.product_id = ?
-                ORDER BY t.created_at DESC
-            `).all(pId);
 
             const history = tickets;
 
@@ -406,7 +426,7 @@ module.exports = (db, authenticate) => {
             // 4. Fetch Parts Catalog based on product family (resilient to missing table)
             let parts = [];
             try {
-                if (device.product_family) {
+                if (device?.product_family) {
                     parts = db.prepare(`
                         SELECT * FROM parts_catalog 
                         WHERE category IN ('Module', 'PCB', 'Cooling', 'Mechanical')
@@ -420,14 +440,27 @@ module.exports = (db, authenticate) => {
                 console.log('[Context] parts_catalog not available:', e.message);
             }
 
-            // Technician View Desensitization for Device
-            if (!hasGlobalAccess(req.user)) {
-                delete device.purchase_price;
-                delete device.sold_to_account_id;
-                delete device.dealer_id;
-                delete device.original_order_id;
-                delete device.invoice_date;
-                delete device.quote_total;
+            // If device not found in catalog, create a placeholder device object
+            if (!device) {
+                device = {
+                    id: null,
+                    serial_number: serial_number,
+                    model_name: '未知型号 (未入库)',
+                    product_family: null,
+                    firmware_version: null,
+                    warranty_status: 'Unknown',
+                    is_unregistered: true  // Flag to indicate this is a placeholder
+                };
+            } else {
+                // Technician View Desensitization for Device
+                if (!hasGlobalAccess(req.user)) {
+                    delete device.purchase_price;
+                    delete device.sold_to_account_id;
+                    delete device.dealer_id;
+                    delete device.original_order_id;
+                    delete device.invoice_date;
+                    delete device.quote_total;
+                }
             }
 
             res.json({

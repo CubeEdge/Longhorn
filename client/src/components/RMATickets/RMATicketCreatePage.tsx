@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { ProductWarrantyRegistrationModal } from '../Service/ProductWarrantyRegistrationModal';
 
 interface Product {
     id: number;
@@ -23,6 +24,11 @@ const RMATicketCreatePage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [dealers, setDealers] = useState<Dealer[]>([]);
+
+    // Warranty check state
+    const [showWarrantyModal, setShowWarrantyModal] = useState(false);
+    const [warrantyCheckStatus, setWarrantyCheckStatus] = useState<'unchecked' | 'valid' | 'needs_registration'>('unchecked');
+    const [checkingWarranty, setCheckingWarranty] = useState(false);
 
     // Form fields
     const [channelCode, setChannelCode] = useState('D');
@@ -64,11 +70,62 @@ const RMATicketCreatePage: React.FC = () => {
         fetchData();
     }, [token]);
 
+    // Check warranty status when serial number changes
+    useEffect(() => {
+        const checkWarranty = async () => {
+            if (!serialNumber || serialNumber.length < 5) {
+                setWarrantyCheckStatus('unchecked');
+                return;
+            }
+
+            setCheckingWarranty(true);
+            try {
+                const res = await axios.get(`/api/v1/products/check-warranty?serial_number=${serialNumber}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.success) {
+                    const { has_warranty_basis } = res.data.data;
+                    setWarrantyCheckStatus(has_warranty_basis ? 'valid' : 'needs_registration');
+                    
+                    // Auto-fill product info if found
+                    if (res.data.data.product) {
+                        setProductId(res.data.data.product.id);
+                    }
+                    
+                    // Show registration modal if needed
+                    if (!has_warranty_basis) {
+                        setShowWarrantyModal(true);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check warranty:', err);
+            } finally {
+                setCheckingWarranty(false);
+            }
+        };
+
+        const debounceTimer = setTimeout(checkWarranty, 500);
+        return () => clearTimeout(debounceTimer);
+    }, [serialNumber, token]);
+
+    const handleWarrantyRegistered = () => {
+        setShowWarrantyModal(false);
+        setWarrantyCheckStatus('valid');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!problemDescription.trim()) {
             alert(t('rma_ticket.error.problem_required'));
+            return;
+        }
+
+        // Check warranty status before submission
+        if (warrantyCheckStatus === 'needs_registration') {
+            alert('请先完成产品保修注册');
+            setShowWarrantyModal(true);
             return;
         }
 
@@ -197,13 +254,42 @@ const RMATicketCreatePage: React.FC = () => {
                         </div>
                         <div>
                             <label className="form-label">{t('rma_ticket.field.serial_number')}</label>
-                            <input
-                                type="text"
-                                value={serialNumber}
-                                onChange={(e) => setSerialNumber(e.target.value)}
-                                className="form-control"
-                                placeholder="ME_XXXXXX"
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    value={serialNumber}
+                                    onChange={(e) => setSerialNumber(e.target.value)}
+                                    className="form-control"
+                                    placeholder="ME_XXXXXX"
+                                    style={{
+                                        borderColor: warrantyCheckStatus === 'needs_registration' ? '#F59E0B' :
+                                            warrantyCheckStatus === 'valid' ? '#10B981' : undefined
+                                    }}
+                                />
+                                {checkingWarranty && (
+                                    <Loader2 size={16} className="animate-spin" style={{
+                                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                        color: '#666'
+                                    }} />
+                                )}
+                                {!checkingWarranty && warrantyCheckStatus === 'valid' && (
+                                    <span style={{
+                                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                        color: '#10B981', fontSize: 12
+                                    }}>✓ 已注册</span>
+                                )}
+                                {!checkingWarranty && warrantyCheckStatus === 'needs_registration' && (
+                                    <span style={{
+                                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                        color: '#F59E0B', fontSize: 12, cursor: 'pointer'
+                                    }} onClick={() => setShowWarrantyModal(true)}>⚠ 需注册</span>
+                                )}
+                            </div>
+                            {warrantyCheckStatus === 'needs_registration' && (
+                                <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 4 }}>
+                                    该产品未注册保修信息，<span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowWarrantyModal(true)}>点击注册</span>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="form-label">{t('rma_ticket.field.firmware_version')}</label>
@@ -266,6 +352,15 @@ const RMATicketCreatePage: React.FC = () => {
                     </div>
                 </div>
             </form>
+
+            {/* Warranty Registration Modal */}
+            <ProductWarrantyRegistrationModal
+                isOpen={showWarrantyModal}
+                onClose={() => setShowWarrantyModal(false)}
+                serialNumber={serialNumber}
+                productName={products.find(p => p.id === productId)?.name}
+                onRegistered={handleWarrantyRegistered}
+            />
         </div>
     );
 };

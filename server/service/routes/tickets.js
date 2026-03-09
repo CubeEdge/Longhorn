@@ -1417,8 +1417,9 @@ module.exports = function (db, authenticate, serviceUpload) {
     /**
      * POST /api/v1/tickets
      * Create new ticket
+     * Supports both JSON and multipart/form-data (with attachments)
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, serviceUpload.array('attachments', 10), (req, res) => {
         try {
             const {
                 ticket_type,
@@ -1517,11 +1518,23 @@ module.exports = function (db, authenticate, serviceUpload) {
                 )
             `;
 
+            // Handle reporter_snapshot - could be a JSON string from frontend or an object
+            let processedSnapshot = null;
+            if (reporter_snapshot) {
+                if (typeof reporter_snapshot === 'string') {
+                    // Already a JSON string from frontend
+                    processedSnapshot = reporter_snapshot;
+                } else {
+                    // Object, need to stringify
+                    processedSnapshot = JSON.stringify(reporter_snapshot);
+                }
+            }
+
             const result = db.prepare(insertSql).run(
                 ticketNumber, ticket_type, initialNode, mapNodeToStatus(initialNode),
                 priority, now, slaDueStr,
                 channel_code,
-                reporter_snapshot ? JSON.stringify(reporter_snapshot) : null,
+                processedSnapshot,
                 account_id || null, contact_id || null, dealer_id || null, reporter_name || null, reporter_type || null, region || null,
                 product_id || null, serial_number || null, firmware_version || null, hardware_version || null,
                 issue_type || null, issue_category || null, issue_subcategory || null, severity || 3,
@@ -1618,7 +1631,10 @@ module.exports = function (db, authenticate, serviceUpload) {
                 'external_link',
                 // RMA Shipping Methods (P2 Phase 2)
                 'shipping_method', 'forwarder_domestic_tracking', 'forwarder_name',
-                'forwarder_final_tracking', 'pickup_person', 'associated_order_ref'
+                'forwarder_final_tracking', 'pickup_person', 'associated_order_ref',
+                // Warranty Assessment Fields (P2)
+                'technical_damage_status', 'technical_warranty_suggestion',
+                'warranty_calculation', 'ms_review', 'final_settlement'
             ];
 
             // 1. 检测所有变更的字段 (normalize null/undefined/'' as equivalent)

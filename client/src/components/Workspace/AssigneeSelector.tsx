@@ -133,7 +133,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         try {
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 assigned_to: confirmModal.targetUser.id,
-                change_reason: `指派流转: 指派给 ${confirmModal.targetUser.name}。理由: ${confirmModal.reason}`
+                change_reason: `对接流转: 对接给 ${confirmModal.targetUser.name}。理由: ${confirmModal.reason}`
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -141,7 +141,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
             setConfirmModal({ isOpen: false, targetUser: null, reason: '', countdown: 5 });
             setSearchQuery('');
         } catch (e: any) {
-            alert(e.response?.data?.error || '配置指派人失败');
+            alert(e.response?.data?.error || '配置对接人失败');
         }
     };
 
@@ -317,7 +317,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                             <textarea
                                 value={confirmModal.reason}
                                 onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
-                                placeholder="输入为什么修改指派人..."
+                                placeholder="输入为什么修改对接人..."
                                 style={{
                                     width: '100%', padding: '10px 12px', background: 'var(--card-bg-light)',
                                     border: '1px solid var(--card-border)', color: 'var(--text-main)', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical'

@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useTicketStore, type TicketType } from '../../store/useTicketStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import { ProductWarrantyRegistrationModal } from './ProductWarrantyRegistrationModal';
 
 // ---- Internal Components ----
 
@@ -209,6 +210,11 @@ const TicketCreationModal: React.FC = () => {
     const [snLoading, setSnLoading] = useState(false);
     const [machineInfo, setMachineInfo] = useState<any>(null);
 
+    // Warranty check state (for RMA tickets)
+    const [warrantyCheckStatus, setWarrantyCheckStatus] = useState<'unchecked' | 'valid' | 'needs_registration'>('unchecked');
+    const [showWarrantyModal, setShowWarrantyModal] = useState(false);
+    const [, setCheckingWarranty] = useState(false);
+
     // AI Assist State
     const [aiInput, setAiInput] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
@@ -249,6 +255,7 @@ const TicketCreationModal: React.FC = () => {
         const validateSN = async () => {
             if (!draft.serial_number || draft.serial_number.length < 5) {
                 setMachineInfo(null);
+                setWarrantyCheckStatus('unchecked');
                 return;
             }
             setSnLoading(true);
@@ -279,6 +286,41 @@ const TicketCreationModal: React.FC = () => {
         const timer = setTimeout(validateSN, 1000);
         return () => clearTimeout(timer);
     }, [draft.serial_number, token, products]);
+
+    // Warranty Check Logic (for RMA tickets only)
+    useEffect(() => {
+        const checkWarranty = async () => {
+            // Only check warranty for RMA tickets
+            if (initialType !== 'RMA' || !draft.serial_number || draft.serial_number.length < 5) {
+                setWarrantyCheckStatus('unchecked');
+                return;
+            }
+
+            setCheckingWarranty(true);
+            try {
+                const res = await axios.get(`/api/v1/products/check-warranty?serial_number=${encodeURIComponent(draft.serial_number)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.success) {
+                    const { has_warranty_basis, needs_registration } = res.data.data;
+                    setWarrantyCheckStatus(has_warranty_basis ? 'valid' : 'needs_registration');
+
+                    // Show registration modal if needed
+                    if (needs_registration) {
+                        setShowWarrantyModal(true);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check warranty:', err);
+            } finally {
+                setCheckingWarranty(false);
+            }
+        };
+
+        const timer = setTimeout(checkWarranty, 500);
+        return () => clearTimeout(timer);
+    }, [draft.serial_number, token, initialType]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -375,11 +417,31 @@ const TicketCreationModal: React.FC = () => {
 
         try {
             const formData = new FormData();
+
+            // Build reporter_snapshot if account_id is not set but customer info exists
+            // This follows PRD §5.7 - Dual Identity Model
+            let reporterSnapshot = null;
+            if (!draft.account_id && (draft.customer_name || draft.customer_contact)) {
+                reporterSnapshot = {
+                    name: draft.customer_name || '',
+                    contact: draft.customer_contact || '',
+                    type: 'individual',
+                    source: 'manual_entry',
+                    created_at: new Date().toISOString()
+                };
+            }
+
+            // Append all draft fields
             Object.keys(draft).forEach(key => {
                 if (draft[key] !== undefined && draft[key] !== null) {
                     formData.append(key, draft[key]);
                 }
             });
+
+            // Append reporter_snapshot as JSON string if exists
+            if (reporterSnapshot) {
+                formData.append('reporter_snapshot', JSON.stringify(reporterSnapshot));
+            }
 
             attachments.forEach(file => {
                 formData.append('attachments', file);
@@ -418,7 +480,7 @@ const TicketCreationModal: React.FC = () => {
 
     const typeOptions: { key: TicketType, icon: any, label: string, color: string }[] = [
         { key: 'Inquiry', icon: MessageSquare, label: t('ticket.type.inquiry') || 'Inquiry', color: '#3b82f6' },
-        { key: 'RMA', icon: ShieldCheck, label: t('ticket.type.rma') || 'RMA', color: '#f97316' },
+        { key: 'RMA', icon: ShieldCheck, label: t('ticket.type.rma') || 'RMA', color: '#FFD700' },
         { key: 'DealerRepair', icon: Wrench, label: t('ticket.type.svc') || 'SVC', color: '#10B981' }
     ];
 
@@ -566,7 +628,7 @@ const TicketCreationModal: React.FC = () => {
                                 }}
                             >
                                 {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                                {t('action.autofill') || 'Auto-Fill'}
+                                {t('action.autofill') || '智能填充'}
                             </button>
                         </div>
 
@@ -610,7 +672,7 @@ const TicketCreationModal: React.FC = () => {
                                 <currentTypeOption.icon size={24} />
                             </div>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fff' }}>{t('ticket.type.' + initialType.toLowerCase()) || currentTypeOption.label} Draft</h2>
+                                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fff' }}>{t('ticket.type.' + initialType.toLowerCase()) || currentTypeOption.label} {t('ticket.creation.draft') || 'Draft'}</h2>
                                 <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>{t('ticket.creation.validated_structure') || 'Validated structure in the production system.'}</p>
                             </div>
                         </div>
@@ -723,25 +785,40 @@ const TicketCreationModal: React.FC = () => {
                                 {/* Machine Detail Card */}
                                 {machineInfo && (
                                     <div style={{
-                                        marginTop: 16, padding: 16, background: 'rgba(16, 185, 129, 0.05)',
-                                        border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 12,
-                                        display: 'flex', alignItems: 'flex-start', gap: 12
+                                        marginTop: 16, padding: 16,
+                                        background: warrantyCheckStatus === 'needs_registration' ? 'rgba(255, 215, 0, 0.05)' : 'rgba(16, 185, 129, 0.05)',
+                                        border: `1px solid ${warrantyCheckStatus === 'needs_registration' ? 'rgba(255, 215, 0, 0.3)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                        borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12
                                     }}>
                                         <div style={{
-                                            padding: 8, background: 'rgba(16, 185, 129, 0.1)', borderRadius: 8,
-                                            color: '#10B981'
+                                            padding: 8, borderRadius: 8,
+                                            background: warrantyCheckStatus === 'needs_registration' ? 'rgba(255, 215, 0, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                            color: warrantyCheckStatus === 'needs_registration' ? '#FFD700' : '#10B981'
                                         }}>
                                             <ShieldCheck size={20} />
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <span style={{ fontWeight: 700, color: '#fff' }}>{machineInfo.model_name || 'Generic Product'}</span>
-                                                <span style={{ fontSize: 11, color: '#10B981', fontWeight: 700 }}>VALID DEVICE</span>
+                                                <span style={{ fontWeight: 700, color: '#fff' }}>{machineInfo.model_name || t('ticket.creation.generic_product') || '未知型号'}</span>
+                                                <span style={{
+                                                    fontSize: 11,
+                                                    color: warrantyCheckStatus === 'needs_registration' ? '#FFD700' : '#10B981',
+                                                    fontWeight: 700
+                                                }}>
+                                                    {warrantyCheckStatus === 'needs_registration' ? '需注册保修' : (t('ticket.creation.valid_device') || '有效设备')}
+                                                </span>
                                             </div>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-                                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Configuration: <span style={{ color: 'rgba(255,255,255,0.7)' }}>{machineInfo.config || 'Standard'}</span></span>
-                                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Warranty: <span style={{ color: '#10B981' }}>Active</span></span>
+                                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>{t('ticket.creation.configuration') || '配置'}: <span style={{ color: 'rgba(255,255,255,0.7)' }}>{machineInfo.config || t('ticket.creation.standard') || '标准版'}</span></span>
+                                                <span style={{ color: 'rgba(255,255,255,0.4)' }}>{t('ticket.creation.warranty') || '保修状态'}: <span style={{ color: warrantyCheckStatus === 'needs_registration' ? '#FFD700' : '#10B981' }}>
+                                                    {warrantyCheckStatus === 'needs_registration' ? '未注册' : (t('ticket.creation.active') || '有效')}
+                                                </span></span>
                                             </div>
+                                            {warrantyCheckStatus === 'needs_registration' && (
+                                                <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(255, 215, 0, 0.1)', borderRadius: 6, fontSize: 12, color: '#FFD700' }}>
+                                                    该产品未注册保修信息，<span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowWarrantyModal(true)}>点击注册</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -878,6 +955,20 @@ const TicketCreationModal: React.FC = () => {
                         {t('status.processing_ticket') || 'Initializing Workflow...'}
                     </div>
                 </div>
+            )}
+
+            {/* Warranty Registration Modal (for RMA tickets) */}
+            {initialType === 'RMA' && (
+                <ProductWarrantyRegistrationModal
+                    isOpen={showWarrantyModal}
+                    onClose={() => setShowWarrantyModal(false)}
+                    serialNumber={draft.serial_number || ''}
+                    productName={products.find(p => p.id === draft.product_id)?.name}
+                    onRegistered={() => {
+                        setShowWarrantyModal(false);
+                        setWarrantyCheckStatus('valid');
+                    }}
+                />
             )}
 
             <style>{`

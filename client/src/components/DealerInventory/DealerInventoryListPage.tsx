@@ -137,7 +137,7 @@ const DealerInventoryListPage: React.FC = () => {
                     </button>
                     <button
                         className="btn-primary"
-                        onClick={() => navigate('/service/inventory/restock/new')}
+                        onClick={() => navigate('/service/dealer-operations/restock/new')}
                         style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                     >
                         <Plus size={16} />
@@ -233,7 +233,7 @@ const DealerInventoryListPage: React.FC = () => {
                         border: '1px solid var(--glass-border)',
                         cursor: 'pointer'
                     }}
-                    onClick={() => navigate('/service/inventory/restock')}
+                    onClick={() => navigate('/service/dealer-operations/restock')}
                 >
                     <div className="hint" style={{ fontSize: '0.75rem', marginBottom: 8 }}>{t('inventory.restock_orders') || '补货订单'}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -81,11 +81,18 @@ function initService(app, db, options = {}) {
     // Phase 7: Department settings and dispatch rules
     const departmentRoutes = require('./routes/departments')(db, authenticate);
 
+    // Warranty Calculation Engine (PRD §5.5)
+    const warrantyRoutes = require('./routes/warranty')(db, authenticate);
+
+    // RMA Documents: PI and Repair Report workflow
+    const rmaDocumentsRoutes = require('./routes/rma-documents')(db, authenticate);
+
     // Mount routes under /api/v1 prefix (new API version)
     app.use('/api/v1/auth', authRoutes);
     app.use('/api/v1/issues', issueRoutes);  // Legacy, kept for backward compatibility
     app.use('/api/v1/dealers', dealerRoutes);
     app.use('/api/v1/departments', departmentRoutes);
+    app.use('/api/v1/warranty', warrantyRoutes);
     app.use('/api/v1/stats', statsRoutes);
     app.use('/api/v1/system', systemRoutes);
 
@@ -131,11 +138,35 @@ function initService(app, db, options = {}) {
     app.use('/api/v1/bokeh', bokehRoutes);
     app.use('/api/v1/internal/tickets', bokehRoutes); // Internal ticket indexing APIs
 
+    // RMA Documents routes
+    app.use('/api/v1/rma-documents', rmaDocumentsRoutes);
+
+    // Parts Master routes (配件主数据)
+    const partsMasterRoutes = require('./routes/parts-master')(db, authenticate);
+    app.use('/api/v1/parts-master', partsMasterRoutes);
+
+    // Parts Inventory routes (配件库存)
+    const partsInventoryRoutes = require('./routes/parts-inventory')(db, authenticate);
+    app.use('/api/v1/parts-inventory', partsInventoryRoutes);
+
+    // Parts Consumption routes (配件消耗记录)
+    const partsConsumptionRoutes = require('./routes/parts-consumption')(db, authenticate);
+    app.use('/api/v1/parts-consumption', partsConsumptionRoutes);
+
+    // Parts Settlement routes (经销商配件结算)
+    const partsSettlementRoutes = require('./routes/parts-settlement')(db, authenticate);
+    app.use('/api/v1/parts-settlements', partsSettlementRoutes);
+
+    // File Upload route for warranty invoices and other service attachments
+    const uploadRoutes = require('./routes/upload')(db, authenticate, multer, attachmentsDir);
+    app.use('/api/v1/upload', uploadRoutes);
 
     console.log('[Service] Module initialized with routes:');
     console.log('  - /api/v1/auth');
     console.log('  - /api/v1/issues (legacy)');
     console.log('  - /api/v1/dealers');
+    console.log('  - /api/v1/departments');
+    console.log('  - /api/v1/warranty (保修计算引擎)');
     console.log('  - /api/v1/stats');
     console.log('  - /api/v1/system');
     console.log('  - /api/v1/service-records (legacy)');
@@ -159,6 +190,12 @@ function initService(app, db, options = {}) {
     console.log('  - /api/v1/bokeh (Bokeh AI工单检索)');
     console.log('  - /api/v1/internal/tickets (工单索引化)');
     console.log('  - /api/v1/synonyms (同义词字典管理)');
+    console.log('  - /api/v1/rma-documents (RMA PI和维修报告工作流)');
+    console.log('  - /api/v1/parts-master (配件主数据管理)');
+    console.log('  - /api/v1/parts-inventory (配件库存管理)');
+    console.log('  - /api/v1/parts-consumption (配件消耗记录)');
+    console.log('  - /api/v1/parts-settlements (经销商配件结算)');
+    console.log('  - /api/v1/upload (文件上传: 保修发票等)');
 
     // Start background tasks
     const slaService = require('./sla_service');

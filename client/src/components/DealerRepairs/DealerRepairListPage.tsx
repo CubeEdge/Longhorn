@@ -52,7 +52,7 @@ const statusColors: Record<string, string> = {
     Received: 'var(--accent-blue)',
     Confirming: '#f59e0b',
     Diagnosing: '#8b5cf6',
-    AwaitingParts: '#f97316',
+    AwaitingParts: '#FFD700',
     InRepair: '#3b82f6',
     Completed: '#10B981',
     Returned: '#06b6d4',
@@ -60,7 +60,7 @@ const statusColors: Record<string, string> = {
     // P2 Unified statuses
     open: 'var(--accent-blue)',
     in_progress: '#8b5cf6',
-    waiting: '#f97316',
+    waiting: '#FFD700',
     resolved: '#10B981',
     closed: '#10B981',
     cancelled: '#6b7280'
@@ -451,7 +451,7 @@ const DealerRepairListPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0 }}>
-                        <Wrench size={28} color="#FFD700" />
+                        <Wrench size={28} color="var(--text-secondary)" />
                         SVC经销商维修
                     </h2>
                     <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.9rem' }}>
