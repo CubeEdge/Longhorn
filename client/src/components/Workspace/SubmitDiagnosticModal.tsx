@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
-import { X, Save, FileText, Wrench, AlertTriangle, Paperclip, Loader2 } from 'lucide-react';
+import { X, Save, FileText, Wrench, AlertTriangle, Paperclip, Loader2, Search, Trash2, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+
+interface PartOption {
+    id: number;
+    sku: string;
+    name: string;
+    category: string;
+    price_cny: number;
+}
+
+interface EstimatedPart {
+    part_id: number;
+    name: string;
+    sku: string;
+    quantity: number;
+    price: number;
+}
 
 interface SubmitDiagnosticModalProps {
     isOpen: boolean;
@@ -22,6 +38,12 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
     const [warrantySuggestion, setWarrantySuggestion] = useState<'suggest_in_warranty' | 'suggest_out_warranty' | 'needs_verification' | ''>('');
     const [attachments, setAttachments] = useState<File[]>([]);
 
+    // Estimated Parts & Labor
+    const [estimatedLaborHours, setEstimatedLaborHours] = useState<number>(0);
+    const [estimatedParts, setEstimatedParts] = useState<EstimatedPart[]>([]);
+    const [partSearchTerm, setPartSearchTerm] = useState('');
+    const [partOptions, setPartOptions] = useState<PartOption[]>([]);
+
     if (!isOpen) return null;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +55,49 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
 
     const removeFile = (index: number) => {
         setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const searchParts = async (term: string) => {
+        if (!term || term.length < 2) {
+            setPartOptions([]);
+            return;
+        }
+        try {
+            const res = await axios.get('/api/v1/parts-master', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { search: term, status: 'active', page_size: 10 }
+            });
+            if (res.data?.success) {
+                setPartOptions(res.data.data);
+            }
+        } catch (err) {
+            console.error('Failed to search parts', err);
+        }
+    };
+
+    const addPart = (part: PartOption) => {
+        const existing = estimatedParts.find(p => p.part_id === part.id);
+        if (existing) {
+            setEstimatedParts(prev => prev.map(p => p.part_id === part.id ? { ...p, quantity: p.quantity + 1 } : p));
+        } else {
+            setEstimatedParts(prev => [...prev, {
+                part_id: part.id,
+                name: part.name,
+                sku: part.sku,
+                quantity: 1,
+                price: part.price_cny
+            }]);
+        }
+        setPartSearchTerm('');
+        setPartOptions([]);
+    };
+
+    const removePart = (partId: number) => {
+        setEstimatedParts(prev => prev.filter(p => p.part_id !== partId));
+    };
+
+    const updatePartQuantity = (partId: number, qty: number) => {
+        setEstimatedParts(prev => prev.map(p => p.part_id === partId ? { ...p, quantity: Math.max(1, qty) } : p));
     };
 
     const handleSubmit = async () => {
@@ -55,7 +120,9 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                 repair_advice: repairAdvice.trim(),
                 technical_damage_status: damageStatus,
                 technical_warranty_suggestion: warrantySuggestion,
-                submission_type: 'technical_diagnosis'
+                submission_type: 'technical_diagnosis',
+                estimated_labor_hours: estimatedLaborHours,
+                estimated_parts: estimatedParts
             };
             formData.append('metadata', JSON.stringify(metadata));
 
@@ -75,8 +142,24 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                 current_node: 'ms_review',
                 technical_damage_status: damageStatus,
                 technical_warranty_suggestion: warrantySuggestion || null,
+                estimated_labor_hours: estimatedLaborHours,
+                estimated_parts_json: JSON.stringify(estimatedParts), // Store as well for easy access
                 change_reason: '完成技术诊断，流向商务审核 (MS Review)'
             }, { headers: { Authorization: `Bearer ${token}` } });
+
+            // 3. Create pre-consumption records marked as 'estimated'
+            if (estimatedParts.length > 0) {
+                const promises = estimatedParts.map(part =>
+                    axios.post('/api/v1/parts-consumption', {
+                        ticket_id: ticketId,
+                        part_id: part.part_id,
+                        quantity: part.quantity,
+                        source_type: 'hq_inventory',
+                        notes: `[诊断预估] ${diagnosis.substring(0, 20)}...`
+                    }, { headers: { Authorization: `Bearer ${token}` } })
+                );
+                await Promise.allSettled(promises);
+            }
 
             onSuccess();
         } catch (err: any) {
@@ -176,6 +259,88 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                             onFocus={e => e.target.style.borderColor = '#3B82F6'}
                             onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
                         />
+                    </div>
+
+                    {/* Estimated Parts & Labor */}
+                    <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: 12, padding: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#3B82F6', fontWeight: 600, marginBottom: 12 }}>
+                            <Package size={14} /> 配件与工时预估 (Estimate)
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 16, marginBottom: 16 }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 11, color: '#888', marginBottom: 6 }}>预估工时 (小时)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0"
+                                    value={estimatedLaborHours}
+                                    onChange={e => setEstimatedLaborHours(parseFloat(e.target.value) || 0)}
+                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 14 }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 11, color: '#888', marginBottom: 6 }}>添加预估配件</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="输入型号或 SKU..."
+                                        value={partSearchTerm}
+                                        onChange={e => {
+                                            setPartSearchTerm(e.target.value);
+                                            searchParts(e.target.value);
+                                        }}
+                                        style={{ width: '100%', padding: '8px 12px 8px 32px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                                    />
+                                    {partOptions.length > 0 && (
+                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2c2c2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 4, zIndex: 100, maxHeight: 150, overflowY: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
+                                            {partOptions.map(p => (
+                                                <div
+                                                    key={p.id}
+                                                    onClick={() => addPart(p)}
+                                                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                >
+                                                    <div>
+                                                        <div style={{ fontSize: 12, color: '#eee' }}>{p.name}</div>
+                                                        <div style={{ fontSize: 10, color: '#888' }}>{p.sku}</div>
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: '#3B82F6' }}>¥{p.price_cny}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {estimatedParts.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {estimatedParts.map(p => (
+                                    <div key={p.part_id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: 8 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 12, color: '#eee' }}>{p.name}</div>
+                                            <div style={{ fontSize: 10, color: '#666' }}>{p.sku}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 11, color: '#888' }}>x</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={p.quantity}
+                                                onChange={e => updatePartQuantity(p.part_id, parseInt(e.target.value) || 1)}
+                                                style={{ width: 44, padding: '2px 4px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#FFD700', textAlign: 'center', fontSize: 12 }}
+                                            />
+                                        </div>
+                                        <button onClick={() => removePart(p.part_id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}>
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Technical Damage Assessment */}

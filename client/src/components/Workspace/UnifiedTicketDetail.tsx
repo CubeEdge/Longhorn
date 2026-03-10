@@ -24,7 +24,9 @@ import { ParticipantsSidebar } from './ParticipantsSidebar';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useViewAs } from './ViewAsComponents';
 import { useUIStore } from '../../store/useUIStore';
-import { TicketPartsPanel } from '../PartsManagement';
+import { DocumentReviewModal } from './DocumentReviewModal';
+import { RepairReportEditor } from './RepairReportEditor';
+import { Search } from 'lucide-react';
 
 // ==============================
 // Types
@@ -172,6 +174,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
     const [isActionBufferModalOpen, setIsActionBufferModalOpen] = useState(false);
     const [actionBufferTarget, setActionBufferTarget] = useState({ nextNode: '', label: '' });
+    const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
+    const [isRepairReportEditorOpen, setIsRepairReportEditorOpen] = useState(false);
+    const [viewingDocument, setViewingDocument] = useState<{ type: 'pi' | 'repair_report', id: number, number: string } | null>(null);
 
     // System settings for workflow control
     const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
@@ -224,12 +229,62 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
     // Fetch products when editing starts
     useEffect(() => {
-        if (isEditing && products.length === 0) {
+        if ((isEditing || isAuditModalOpen) && products.length === 0) {
             axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } })
                 .then(res => { if (res.data.success) setProducts(res.data.data); })
                 .catch(err => console.error(err));
         }
-    }, [isEditing, token, products.length]);
+    }, [isEditing, isAuditModalOpen, token, products.length]);
+
+    const handleQuickFixProduct = async (correctModelName: string) => {
+        if (!ticket) return;
+
+        // 1. Fetch products if not loaded
+        let currentProducts = products;
+        if (currentProducts.length === 0) {
+            try {
+                const res = await axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.data.success) {
+                    currentProducts = res.data.data;
+                    setProducts(currentProducts);
+                }
+            } catch (err) {
+                console.error('Failed to fetch products for quick fix', err);
+                return;
+            }
+        }
+
+        // 2. Find matching product
+        const match = currentProducts.find(p => p.name === correctModelName);
+        if (!match) {
+            alert(`系统产品库中未找到型号: ${correctModelName}`);
+            return;
+        }
+
+        // 3. Prepare edit form
+        const newForm = {
+            ...editForm,
+            product_id: match.id,
+            product_name: match.name // This is for display in diff
+        };
+        setEditForm(newForm);
+
+        // 4. Calculate diff and open audit modal
+        const diffs = [
+            {
+                field: 'product_id',
+                label: '产品型号',
+                oldVal: ticket.product_name || '(空)',
+                newVal: match.name,
+                isRisk: true
+            }
+        ];
+
+        setAuditDiffs(diffs);
+        setChangeReason('一键修正：根据实物 SN 关联的系统型号进行修正。');
+        setAuditCountdown(3);
+        setIsAuditModalOpen(true);
+    };
 
     const FIELD_LABELS: Record<string, string> = {
         serial_number: '序列号',
@@ -317,55 +372,55 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         padding: 4, minWidth: 160, zIndex: 100,
                         boxShadow: 'var(--glass-shadow-lg)'
                     }}>
-                    {/* 编辑工单 */}
-                    {showEdit && ticket && (
+                        {/* 编辑工单 */}
+                        {showEdit && ticket && (
+                            <button
+                                onClick={() => {
+                                    setShowMoreMenu(false);
+                                    setEditForm({
+                                        priority: ticket!.priority,
+                                        status: ticket!.status,
+                                        problem_summary: ticket!.problem_summary,
+                                        problem_description: ticket!.problem_description,
+                                        resolution: ticket!.resolution,
+                                        serial_number: ticket!.serial_number,
+                                        repair_content: ticket!.repair_content,
+                                        payment_amount: ticket!.payment_amount,
+                                        is_warranty: ticket!.is_warranty,
+                                        product_id: ticket!.product_id as number
+                                    });
+                                    setIsEditing(true);
+                                }}
+                                style={{
+                                    width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
+                                    background: 'transparent', border: 'none', color: 'var(--text-main)',
+                                    fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 4
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <Edit2 size={14} /> 编辑工单
+                            </button>
+                        )}
+                        {/* 删除工单 */}
                         <button
                             onClick={() => {
                                 setShowMoreMenu(false);
-                                setEditForm({
-                                    priority: ticket!.priority,
-                                    status: ticket!.status,
-                                    problem_summary: ticket!.problem_summary,
-                                    problem_description: ticket!.problem_description,
-                                    resolution: ticket!.resolution,
-                                    serial_number: ticket!.serial_number,
-                                    repair_content: ticket!.repair_content,
-                                    payment_amount: ticket!.payment_amount,
-                                    is_warranty: ticket!.is_warranty,
-                                    product_id: ticket!.product_id as number
-                                });
-                                setIsEditing(true);
+                                setIsDeleteModalOpen(true);
+                                setDeleteCountdown(10);
+                                setDeleteReason('');
                             }}
                             style={{
                                 width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                                background: 'transparent', border: 'none', color: 'var(--text-main)',
+                                background: 'transparent', border: 'none', color: '#EF4444',
                                 fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 4
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                            <Edit2 size={14} /> 编辑工单
+                            <Trash2 size={14} /> 废弃/删除工单
                         </button>
-                    )}
-                    {/* 删除工单 */}
-                    <button
-                        onClick={() => {
-                            setShowMoreMenu(false);
-                            setIsDeleteModalOpen(true);
-                            setDeleteCountdown(10);
-                            setDeleteReason('');
-                        }}
-                        style={{
-                            width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                            background: 'transparent', border: 'none', color: '#EF4444',
-                            fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 4
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                        <Trash2 size={14} /> 废弃/删除工单
-                    </button>
-                </div>
+                    </div>
                 </>
             )}
         </>
@@ -703,9 +758,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 </button>
 
                 <span style={{
-                    fontSize: 18,
+                    fontSize: 22,
                     fontWeight: 700,
-                    color: (viewContext === 'archive' || viewContext === 'search') ? 'var(--text-tertiary)' : 'var(--text-main)'
+                    color: (viewContext === 'archive' || viewContext === 'search') ? 'var(--text-tertiary)' : 'var(--text-main)',
+                    letterSpacing: '-0.02em'
                 }}>
                     {ticket.ticket_number}
                 </span>
@@ -713,7 +769,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 {/* Context Status Badge: [ Node · Dept · Assignee / Claim ] */}
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '4px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    padding: '6px 14px', borderRadius: 10, fontSize: 14, fontWeight: 700,
                     background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
                     color: '#60A5FA',
                 }}>
@@ -843,124 +899,125 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
                     {/* Basic Info Card - Collapsible, elevated z-index for dropdown */}
                     <div style={{ position: 'relative', zIndex: 10 }}>
-                    <CollapsiblePanel
-                        title={
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span>{t('ticket.basic_info') || '基本信息'}</span>
-                            </div>
-                        }
-                        icon={
-                            <span style={{
-                                padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 900,
-                                background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#FFD700' : '#FFFFFF',
-                                color: (ticket.priority === 'P1' || ticket.priority === 'P2') ? '#000' : '#fff',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                                border: ticket.priority === 'P2' ? '1px solid rgba(0,0,0,0.1)' : 'none'
-                            }}>
-                                {ticket.priority}
-                            </span>
-                        }
-                        defaultOpen={true}
-                    >
-                        <div style={{ padding: '12px 20px 16px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                <InfoRow label={t('ticket.product') || '产品型号'}
-                                    value={String(ticket.product_name || '-')} />
-                                <InfoRow label={t('ticket.serial') || '序列号'}
-                                    value={String(ticket.serial_number || '-')} />
+                        <CollapsiblePanel
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span>{t('ticket.basic_info') || '基本信息'}</span>
+                                </div>
+                            }
+                            icon={
+                                <span style={{
+                                    padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 900,
+                                    background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#FFD700' : '#FFFFFF',
+                                    color: (ticket.priority === 'P1' || ticket.priority === 'P2') ? '#000' : '#fff',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                    border: ticket.priority === 'P2' ? '1px solid rgba(0,0,0,0.1)' : 'none'
+                                }}>
+                                    {ticket.priority}
+                                </span>
+                            }
+                            defaultOpen={true}
+                        >
+                            <div style={{ padding: '20px 24px 24px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+                                    <InfoRow label={t('ticket.product') || '产品型号'}
+                                        value={String(ticket.product_name || '-')} />
+                                    <InfoRow label={t('ticket.serial') || '序列号'}
+                                        value={String(ticket.serial_number || '-')} />
 
-                                <InfoRow label={t('ticket.customer') || '客户'}
-                                    value={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {(() => {
-                                                const acc = String(ticket.account_name || '--') || '';
-                                                const rep = String(ticket.contact_name || ticket.reporter_snapshot?.name || ticket.reporter_name || '') || '';
-                                                let text = acc;
-                                                if (rep && rep !== acc && rep !== '-') {
-                                                    text += ` · ${rep}`;
-                                                }
-                                                return text;
-                                            })()}
-                                            {ticket.account_service_tier && (
-                                                <span style={{
-                                                    fontSize: 10, padding: '1px 6px', borderRadius: 4,
-                                                    background: (ticket.account_service_tier as string) === 'DIAMOND' ? 'linear-gradient(135deg, #b9f2ff, #29abe2)' : 'rgba(255,255,255,0.1)',
-                                                    color: (ticket.account_service_tier as string) === 'DIAMOND' ? '#000' : '#888',
-                                                    fontWeight: 800
-                                                }}>
-                                                    {String(ticket.account_service_tier)}
-                                                </span>
-                                            )}
+                                    <InfoRow label={t('ticket.customer') || '客户'}
+                                        value={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {(() => {
+                                                    const acc = String(ticket.account_name || '--') || '';
+                                                    const rep = String(ticket.contact_name || ticket.reporter_snapshot?.name || ticket.reporter_name || '') || '';
+                                                    let text = acc;
+                                                    if (rep && rep !== acc && rep !== '-') {
+                                                        text += ` · ${rep}`;
+                                                    }
+                                                    return text;
+                                                })()}
+                                                {ticket.account_service_tier && (
+                                                    <span style={{
+                                                        fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                                                        background: (ticket.account_service_tier as string) === 'DIAMOND' ? 'linear-gradient(135deg, #b9f2ff, #29abe2)' : 'rgba(255,255,255,0.1)',
+                                                        color: (ticket.account_service_tier as string) === 'DIAMOND' ? '#000' : '#888',
+                                                        fontWeight: 800
+                                                    }}>
+                                                        {String(ticket.account_service_tier)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        } />
+                                    <InfoRow label="销售渠道"
+                                        value={ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'} />
+
+                                    <InfoRow label={t('ticket.created_at') || '创建时间'}
+                                        value={formatDateMinute(ticket.created_at)} />
+                                    <InfoRow label={t('ticket.submitted_by') || '提交者'}
+                                        value={ticket.submitted_name ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {ticket.submitted_dept && <span style={{ color: '#888', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
+                                                {ticket.submitted_name}
+                                            </span>
+                                        ) : '-'} />
+
+                                    {ticket.parent_ticket_number && (
+                                        <InfoRow label={t('ticket.parent') || '关联工单'}
+                                            value={String(ticket.parent_ticket_number)} />
+                                    )}
+                                </div>
+
+                                {/* Problem summary */}
+                                {(ticket.problem_summary || ticket.problem_description) && (
+                                    <div style={{
+                                        marginTop: 14, padding: '14px 16px', borderRadius: 8,
+                                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                                        cursor: 'pointer', transition: 'background 0.2s', position: 'relative'
+                                    }}
+                                        onClick={() => setIsDescriptionDrawerOpen(true)}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                <FileText size={14} />
+                                                问题概要 / Description
+                                                {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
+                                                    <span style={{ color: '#FFD700', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>· 已折叠部分</span>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', fontSize: 13, fontWeight: 600 }}>
+                                                <span>更多详情</span>
+                                                <ExternalLink size={14} />
+                                            </div>
                                         </div>
-                                    } />
-                                <InfoRow label="销售渠道"
-                                    value={ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'} />
+                                        <div style={{
+                                            fontSize: 16, color: '#eee', lineHeight: 1.7,
+                                            display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                            fontWeight: 500
+                                        }}>
+                                            {(ticket.problem_summary as string) || (ticket.problem_description as string)}
+                                        </div>
+                                    </div>
+                                )}
 
-                                <InfoRow label={t('ticket.created_at') || '创建时间'}
-                                    value={formatDateMinute(ticket.created_at)} />
-                                <InfoRow label={t('ticket.submitted_by') || '提交者'}
-                                    value={ticket.submitted_name ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {ticket.submitted_dept && <span style={{ color: '#888', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
-                                            {ticket.submitted_name}
-                                        </span>
-                                    ) : '-'} />
-
-                                {ticket.parent_ticket_number && (
-                                    <InfoRow label={t('ticket.parent') || '关联工单'}
-                                        value={String(ticket.parent_ticket_number)} />
+                                {/* Resolution */}
+                                {ticket.resolution && (
+                                    <div style={{
+                                        marginTop: 10, padding: 12, borderRadius: 8,
+                                        background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)',
+                                    }}>
+                                        <div style={{ fontSize: 11, color: '#10B981', marginBottom: 4 }}>
+                                            处理结果
+                                        </div>
+                                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                            {ticket.resolution}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-
-                            {/* Problem summary */}
-                            {(ticket.problem_summary || ticket.problem_description) && (
-                                <div style={{
-                                    marginTop: 14, padding: '14px 16px', borderRadius: 8,
-                                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
-                                    cursor: 'pointer', transition: 'background 0.2s', position: 'relative'
-                                }}
-                                    onClick={() => setIsDescriptionDrawerOpen(true)}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                        <div style={{ fontSize: 11, color: '#888', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <FileText size={12} />
-                                            问题概要
-                                            {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
-                                                <span style={{ color: '#FFD700', marginLeft: 4 }}>· 已折叠部分</span>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#888', fontSize: 11 }}>
-                                            <span>更多详情和附件</span>
-                                            <ExternalLink size={13} />
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        fontSize: 13, color: '#ddd', lineHeight: 1.6,
-                                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-                                    }}>
-                                        {(ticket.problem_summary as string) || (ticket.problem_description as string)}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Resolution */}
-                            {ticket.resolution && (
-                                <div style={{
-                                    marginTop: 10, padding: 12, borderRadius: 8,
-                                    background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)',
-                                }}>
-                                    <div style={{ fontSize: 11, color: '#10B981', marginBottom: 4 }}>
-                                        处理结果
-                                    </div>
-                                    <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                        {ticket.resolution}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </CollapsiblePanel>
+                        </CollapsiblePanel>
                     </div>
 
                     {/* Node Progress Bar (RMA / SVC only) */}
@@ -1043,6 +1100,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 setIsMSReviewPanelOpen(true);
                                             } else if (ticket.current_node === 'ms_closing') {
                                                 setIsFinalSettlementOpen(true);
+                                            } else if (ticket.current_node === 'op_repairing') {
+                                                setIsRepairReportEditorOpen(true);
                                             } else {
                                                 handleAction(footerAction.action);
                                             }
@@ -1082,67 +1141,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 </div>
 
                 {/* ====== RIGHT COLUMN (Context) ====== */}
-                <div style={{ flex: '0 0 300px', minWidth: 280, position: 'sticky', top: 16 }}>
+                <div style={{ flex: '0 0 320px', minWidth: 280, position: 'sticky', top: 16, height: 'calc(100vh - 100px)', overflowY: 'auto', paddingRight: 4 }}>
                     <ParticipantsSidebar
                         ticketId={ticketId}
                         participants={participants}
                         onUpdate={fetchDetail}
                     />
 
-                    {/* 产品信息卡片 - 仅当存在产品信息时显示 */}
-                    {(ticket.product_name || ticket.serial_number) && (
-                        <div style={{
-                            background: 'var(--glass-border)',
-                            borderRadius: '12px',
-                            padding: '16px',
-                            border: '1px solid var(--glass-border)',
-                            marginBottom: '12px'
-                        }}>
-                            <div style={{
-                                fontSize: '0.7rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                                color: 'var(--text-tertiary)',
-                                marginBottom: '12px',
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <Package size={12} /> 产品信息
-                            </div>
-                            {ticket.product_name && (
-                                <div style={{ marginBottom: '10px' }}>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '2px' }}>产品型号</div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>{ticket.product_name}</div>
-                                </div>
-                            )}
-                            {ticket.serial_number && (
-                                <div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '2px' }}>序列号 (S/N)</div>
-                                    <div style={{
-                                        fontFamily: 'Monaco, monospace',
-                                        fontSize: '0.85rem',
-                                        color: 'var(--accent-blue)',
-                                        background: 'rgba(255, 210, 0, 0.1)',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        letterSpacing: '0.05em',
-                                        display: 'inline-block'
-                                    }}>{ticket.serial_number}</div>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
-                    {/* 配件使用记录面板 */}
-                    <TicketPartsPanel
-                        ticketId={ticket.id}
-                        dealerId={ticket.dealer_id as number | undefined}
-                        isWarranty={ticket.is_warranty}
-                    />
-
-                    {/* CustomerContextSidebar — 与「所有工单」详情页完全一致 */}
+                    {/* CustomerContextSidebar (Linked Asset Card) */}
                     <CustomerContextSidebar
                         ticketId={ticket.id}
                         accountId={ticket.account_id as number | undefined}
@@ -1157,7 +1164,134 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         dealerContactName={ticket.contact_name}
                         dealerContactTitle={ticket.reporter_name}
                         onCleanComplete={fetchDetail}
+                        ticketProductName={ticket.product_name}
+                        onRequestEdit={handleQuickFixProduct}
                     />
+
+                    {/* Service Document Center - Refined aesthetics */}
+                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', padding: '0 4px', fontWeight: 600 }}>服务成果中心</div>
+
+                        {/* 1. Diagnostic Summary (Public) */}
+                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Search size={16} color="#3B82F6" />
+                                </div>
+                                <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>诊断成果</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+                                {ticket.current_node === 'submitted' || ticket.current_node === 'op_receiving' ? '待诊断...' : '诊断已完成。包含故障判定、建议方案及初始見積。'}
+                            </div>
+                            {(() => {
+                                const diagActivity = activities.find(a => a.action_type === 'diagnose' || a.node_to === 'ms_review');
+                                return (
+                                    <button
+                                        disabled={!diagActivity}
+                                        onClick={() => diagActivity && setSelectedActivity(diagActivity)}
+                                        style={{
+                                            width: '100%', padding: '10px 0',
+                                            background: diagActivity ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${diagActivity ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                            borderRadius: 8, color: diagActivity ? '#3B82F6' : '#666',
+                                            cursor: diagActivity ? 'pointer' : 'not-allowed',
+                                            fontSize: 13, fontWeight: 500, transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {diagActivity ? '查看诊断报告与预估' : '暂无诊断报告'}
+                                    </button>
+                                );
+                            })()}
+                        </div>
+
+                        {/* 2. Repair Execution (Public) */}
+                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Edit2 size={16} color="#10B981" />
+                                </div>
+                                <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>维修成果</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+                                {['resolved', 'op_shipping', 'ms_closing'].includes(ticket.current_node) ? '维修已完成。包含实物更换记录及 QC 测试结果。' : '维修进行中或尚未开始。'}
+                            </div>
+                            {(() => {
+                                const repairActivity = activities.find(a => a.action_type === 'repair_complete' || a.node_to === 'ms_closing');
+                                return (
+                                    <button
+                                        disabled={!repairActivity}
+                                        onClick={() => repairActivity && setSelectedActivity(repairActivity)}
+                                        style={{
+                                            width: '100%', padding: '10px 0',
+                                            background: repairActivity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${repairActivity ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.05)'}`,
+                                            borderRadius: 8, color: repairActivity ? '#10B981' : '#666',
+                                            cursor: repairActivity ? 'pointer' : 'not-allowed',
+                                            fontSize: 13, fontWeight: 500, transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {repairActivity ? '查看维修确认单' : '暂无维修执行记录'}
+                                    </button>
+                                );
+                            })()}
+                        </div>
+
+                        {/* 3. Settlement & Reports (MS/Admin Only) */}
+                        {hasPrivilege && (
+                            <div style={{ background: 'rgba(255, 215, 0, 0.03)', border: '1px solid rgba(255, 215, 0, 0.1)', borderRadius: 12, padding: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255, 215, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <FileText size={16} color="#FFD700" />
+                                    </div>
+                                    <span style={{ fontSize: 15, fontWeight: 600, color: '#FFD700' }}>结算与报表</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const res = await axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                if (res.data.success && res.data.data.length > 0) {
+                                                    const pi = res.data.data[0];
+                                                    setViewingDocument({ type: 'pi', id: pi.id, number: pi.pi_number });
+                                                    setIsDocumentReviewOpen(true);
+                                                } else {
+                                                    alert('未找到已生成的 PI (Proforma Invoice)。');
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to fetch PI', err);
+                                            }
+                                        }}
+                                        style={{ width: '100%', padding: '10px 0', background: 'rgba(255, 215, 0, 0.08)', border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: 8, color: '#FFD700', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.08)'}
+                                    >
+                                        内览查看 Proforma Invoice
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const res = await axios.get(`/api/v1/rma-documents/repair-reports?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                if (res.data.success && res.data.data.length > 0) {
+                                                    const rr = res.data.data[0];
+                                                    setViewingDocument({ type: 'repair_report', id: rr.id, number: rr.report_number });
+                                                    setIsDocumentReviewOpen(true);
+                                                } else {
+                                                    alert('未找到已生成的维修报告。');
+                                                }
+                                            } catch (err) {
+                                                console.error('Failed to fetch repair report', err);
+                                            }
+                                        }}
+                                        style={{ width: '100%', padding: '10px 0', background: 'rgba(255, 215, 0, 0.08)', border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: 8, color: '#FFD700', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.08)'}
+                                    >
+                                        内览查看维修报告
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1165,174 +1299,174 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             {
                 isEditing && (
                     <>
-                    {/* Overlay - click to close */}
-                    <div 
-                        onClick={() => setIsEditing(false)}
-                        style={{
-                            position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
-                            background: 'rgba(0,0,0,0.4)', zIndex: 199
-                        }}
-                    />
-                    <div style={{
-                        position: 'fixed', top: 60, right: 0, bottom: 0, width: 400,
-                        background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)',
-                        borderLeft: '1px solid rgba(255,255,255,0.1)',
-                        zIndex: 200, display: 'flex', flexDirection: 'column',
-                        boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <ShieldAlert size={18} color="#FFD700" />
+                        {/* Overlay - click to close */}
+                        <div
+                            onClick={() => setIsEditing(false)}
+                            style={{
+                                position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
+                                background: 'rgba(0,0,0,0.4)', zIndex: 199
+                            }}
+                        />
+                        <div style={{
+                            position: 'fixed', top: 60, right: 0, bottom: 0, width: 400,
+                            background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)',
+                            borderLeft: '1px solid rgba(255,255,255,0.1)',
+                            zIndex: 200, display: 'flex', flexDirection: 'column',
+                            boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <ShieldAlert size={18} color="#FFD700" />
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>编辑工单信息</h3>
+                                        <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                                {/* ---- 分组 1: 时效与状态 ---- */}
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>编辑工单信息</h3>
-                                    <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-                            {/* ---- 分组 1: 时效与状态 ---- */}
-                            <div>
-                                <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>时效与状态</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>优先级</label>
-                                        <select
-                                            value={editForm.priority as string || ''}
-                                            onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                        >
-                                            <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>状态</label>
-                                        <select
-                                            value={editForm.status as string || ''}
-                                            onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                        >
-                                            {Object.keys(statusLabels).map(k => <option key={k} value={k}>{statusLabels[k].zh}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ---- 分组 2: 内容与诊断 ---- */}
-                            <div>
-                                <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>内容与诊断</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
-                                        <input
-                                            value={editForm.problem_summary as string || ''}
-                                            onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
-                                        <textarea
-                                            value={editForm.problem_description as string || ''}
-                                            onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
-                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ---- 分组 3: 设备标识 (RMA/SVC 特有) ---- */}
-                            {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
-                                <div>
-                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>核心资产标识</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
-                                                <ShieldAlert size={12} /> 序列号 (S/N)
-                                            </label>
-                                            <input
-                                                value={editForm.serial_number as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, serial_number: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                            />
-                                            <p style={{ margin: '6px 0 0', fontSize: 10, color: '#777' }}>警告：修改此项将影响设备服务记录与审计体系</p>
-                                        </div>
-                                        <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
-                                                <Package size={12} /> 产品型号
-                                            </label>
+                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>时效与状态</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>优先级</label>
                                             <select
-                                                value={editForm.product_id as number || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, product_id: e.target.value ? Number(e.target.value) : undefined }))}
-                                                style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                value={editForm.priority as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
                                             >
-                                                <option value="">{ticket.product_name || '选择型号...'}</option>
-                                                {products.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
+                                                <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>状态</label>
+                                            <select
+                                                value={editForm.status as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                            >
+                                                {Object.keys(statusLabels).map(k => <option key={k} value={k}>{statusLabels[k].zh}</option>)}
                                             </select>
                                         </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* ---- 分组 4: 核心判定 (RMA/SVC 特有) ---- */}
-                            {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
-                                <div style={{ paddingBottom: 20 }}>
-                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>服务判定</div>
+                                {/* ---- 分组 2: 内容与诊断 ---- */}
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>内容与诊断</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>保修判定</label>
-                                                <select
-                                                    value={editForm.is_warranty !== undefined ? String(editForm.is_warranty) : (ticket.is_warranty !== undefined ? String(ticket.is_warranty) : '')}
-                                                    onChange={e => setEditForm(prev => ({ ...prev, is_warranty: e.target.value === 'true' ? true : e.target.value === 'false' ? false : undefined }))}
-                                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                                >
-                                                    <option value="">未判定</option>
-                                                    <option value="true">在保</option>
-                                                    <option value="false">过保</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>金额 (¥)</label>
-                                                <input
-                                                    type="number"
-                                                    value={editForm.payment_amount as number || ''}
-                                                    onChange={e => setEditForm(prev => ({ ...prev, payment_amount: e.target.value ? Number(e.target.value) : undefined }))}
-                                                    placeholder="0.00"
-                                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                                />
-                                            </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
+                                            <input
+                                                value={editForm.problem_summary as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                            />
                                         </div>
                                         <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>维修内容</label>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
                                             <textarea
-                                                value={editForm.repair_content as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, repair_content: e.target.value }))}
-                                                placeholder="更换零件、固件升级、压力测试等细节..."
+                                                value={editForm.problem_description as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
                                                 style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
                                             />
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* STICKY FOOTER */}
-                        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(30,30,30,0.8)', backdropFilter: 'blur(10px)', display: 'flex', gap: 12 }}>
-                            <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
-                            <button
-                                onClick={handlePreSave}
-                                style={{ flex: 1.5, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
-                            >
-                                <Save size={16} /> 保存变更
-                            </button>
+                                {/* ---- 分组 3: 设备标识 (RMA/SVC 特有) ---- */}
+                                {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
+                                    <div>
+                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>核心资产标识</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                            <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                                    <ShieldAlert size={12} /> 序列号 (S/N)
+                                                </label>
+                                                <input
+                                                    value={editForm.serial_number as string || ''}
+                                                    onChange={e => setEditForm(prev => ({ ...prev, serial_number: e.target.value }))}
+                                                    style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                />
+                                                <p style={{ margin: '6px 0 0', fontSize: 10, color: '#777' }}>警告：修改此项将影响设备服务记录与审计体系</p>
+                                            </div>
+                                            <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                                    <Package size={12} /> 产品型号
+                                                </label>
+                                                <select
+                                                    value={editForm.product_id as number || ''}
+                                                    onChange={e => setEditForm(prev => ({ ...prev, product_id: e.target.value ? Number(e.target.value) : undefined }))}
+                                                    style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                >
+                                                    <option value="">{ticket.product_name || '选择型号...'}</option>
+                                                    {products.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ---- 分组 4: 核心判定 (RMA/SVC 特有) ---- */}
+                                {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
+                                    <div style={{ paddingBottom: 20 }}>
+                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>服务判定</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>保修判定</label>
+                                                    <select
+                                                        value={editForm.is_warranty !== undefined ? String(editForm.is_warranty) : (ticket.is_warranty !== undefined ? String(ticket.is_warranty) : '')}
+                                                        onChange={e => setEditForm(prev => ({ ...prev, is_warranty: e.target.value === 'true' ? true : e.target.value === 'false' ? false : undefined }))}
+                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                    >
+                                                        <option value="">未判定</option>
+                                                        <option value="true">在保</option>
+                                                        <option value="false">过保</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>金额 (¥)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editForm.payment_amount as number || ''}
+                                                        onChange={e => setEditForm(prev => ({ ...prev, payment_amount: e.target.value ? Number(e.target.value) : undefined }))}
+                                                        placeholder="0.00"
+                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>维修内容</label>
+                                                <textarea
+                                                    value={editForm.repair_content as string || ''}
+                                                    onChange={e => setEditForm(prev => ({ ...prev, repair_content: e.target.value }))}
+                                                    placeholder="更换零件、固件升级、压力测试等细节..."
+                                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* STICKY FOOTER */}
+                            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(30,30,30,0.8)', backdropFilter: 'blur(10px)', display: 'flex', gap: 12 }}>
+                                <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
+                                <button
+                                    onClick={handlePreSave}
+                                    style={{ flex: 1.5, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
+                                >
+                                    <Save size={16} /> 保存变更
+                                </button>
+                            </div>
                         </div>
-                    </div>
                     </>
                 )
             }
@@ -1417,119 +1551,134 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 )
             }
 
+            {/* ====== Document Review/Preview Modal ====== */}
+            {isDocumentReviewOpen && viewingDocument && (
+                <DocumentReviewModal
+                    isOpen={isDocumentReviewOpen}
+                    onClose={() => setIsDocumentReviewOpen(false)}
+                    documentType={viewingDocument.type}
+                    documentId={viewingDocument.id}
+                    documentNumber={viewingDocument.number}
+                    onSuccess={() => {
+                        setIsDocumentReviewOpen(false);
+                        fetchDetail();
+                    }}
+                />
+            )}
+
             {/* ====== Details Drawer ====== */}
             {
                 isDescriptionDrawerOpen && (
                     <>
-                    {/* Overlay - click to close */}
-                    <div 
-                        onClick={() => setIsDescriptionDrawerOpen(false)}
-                        style={{
-                            position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
-                            background: 'rgba(0,0,0,0.4)', zIndex: 299
-                        }}
-                    />
-                    <div style={{
-                        position: 'fixed', top: 60, right: 0, bottom: 0, width: 400, zIndex: 300,
-                        background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
-                        borderLeft: '1px solid rgba(255,255,255,0.1)',
-                        boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
-                        display: 'flex', flexDirection: 'column',
-                        animation: 'drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                    }}>
-                        <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <FileText size={16} color="#FFD700" />
+                        {/* Overlay - click to close */}
+                        <div
+                            onClick={() => setIsDescriptionDrawerOpen(false)}
+                            style={{
+                                position: 'fixed', top: 60, left: 0, right: 0, bottom: 0,
+                                background: 'rgba(0,0,0,0.4)', zIndex: 299
+                            }}
+                        />
+                        <div style={{
+                            position: 'fixed', top: 60, right: 0, bottom: 0, width: 400, zIndex: 300,
+                            background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
+                            borderLeft: '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
+                            display: 'flex', flexDirection: 'column',
+                            animation: 'drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}>
+                            <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <FileText size={16} color="#FFD700" />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
+                                        <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>{ticket.ticket_number}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
-                                    <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>{ticket.ticket_number}</p>
-                                </div>
+                                <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
-                                <X size={20} />
-                            </button>
+                            <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
+                                {ticket.problem_summary && (
+                                    <div style={{ marginBottom: 24 }}>
+                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>摘要</h4>
+                                        <div style={{ fontSize: 14, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                            {ticket.problem_summary}
+                                        </div>
+                                    </div>
+                                )}
+                                {ticket.problem_description && (
+                                    <div style={{ marginBottom: 24 }}>
+                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>详细描述</h4>
+                                        <div style={{ fontSize: 14, color: '#ccc', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                            {ticket.problem_description}
+                                        </div>
+                                    </div>
+                                )}
+                                {ticket.resolution && (
+                                    <div style={{ marginBottom: 24 }}>
+                                        <h4 style={{ fontSize: 12, color: '#10B981', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>处理记录</h4>
+                                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 12, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
+                                            {ticket.resolution}
+                                        </div>
+                                    </div>
+                                )}
+                                {Number(ticket.attachments_count || 0) > 0 && (
+                                    <div>
+                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>附件文件</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+                                            {ticketAttachments.map(att => (
+                                                <a
+                                                    key={att.id}
+                                                    href={att.file_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        padding: '10px 12px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                        borderRadius: 8,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 10,
+                                                        textDecoration: 'none',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (att.file_type.startsWith('image/')) {
+                                                            e.preventDefault();
+                                                            setLightboxMedia({ url: att.file_url + '?inline=true' + (token ? `&token=${token}` : ''), type: att.file_type?.startsWith('video/') ? 'video' : 'image' });
+                                                        }
+                                                    }}
+                                                >
+                                                    <div style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        {att.thumbnail_url ? (
+                                                            <img src={att.thumbnail_url + (token ? `?token=${token}` : '')} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} alt="" />
+                                                        ) : (
+                                                            <Paperclip size={16} color="#888" />
+                                                        )}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</div>
+                                                        <div style={{ fontSize: 10, color: '#666' }}>{(att.file_size / 1024).toFixed(1)} KB</div>
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
-                            {ticket.problem_summary && (
-                                <div style={{ marginBottom: 24 }}>
-                                    <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>摘要</h4>
-                                    <div style={{ fontSize: 14, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                        {ticket.problem_summary}
-                                    </div>
-                                </div>
-                            )}
-                            {ticket.problem_description && (
-                                <div style={{ marginBottom: 24 }}>
-                                    <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>详细描述</h4>
-                                    <div style={{ fontSize: 14, color: '#ccc', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                        {ticket.problem_description}
-                                    </div>
-                                </div>
-                            )}
-                            {ticket.resolution && (
-                                <div style={{ marginBottom: 24 }}>
-                                    <h4 style={{ fontSize: 12, color: '#10B981', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>处理记录</h4>
-                                    <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 12, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
-                                        {ticket.resolution}
-                                    </div>
-                                </div>
-                            )}
-                            {Number(ticket.attachments_count || 0) > 0 && (
-                                <div>
-                                    <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>附件文件</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-                                        {ticketAttachments.map(att => (
-                                            <a
-                                                key={att.id}
-                                                href={att.file_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    padding: '10px 12px',
-                                                    background: 'rgba(255,255,255,0.03)',
-                                                    border: '1px solid rgba(255,255,255,0.08)',
-                                                    borderRadius: 8,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 10,
-                                                    textDecoration: 'none',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                                onMouseEnter={e => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                                }}
-                                                onMouseLeave={e => {
-                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                                }}
-                                                onClick={(e) => {
-                                                    if (att.file_type.startsWith('image/')) {
-                                                        e.preventDefault();
-                                                        setLightboxMedia({ url: att.file_url + '?inline=true' + (token ? `&token=${token}` : ''), type: att.file_type?.startsWith('video/') ? 'video' : 'image' });
-                                                    }
-                                                }}
-                                            >
-                                                <div style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    {att.thumbnail_url ? (
-                                                        <img src={att.thumbnail_url + (token ? `?token=${token}` : '')} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} alt="" />
-                                                    ) : (
-                                                        <Paperclip size={16} color="#888" />
-                                                    )}
-                                                </div>
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</div>
-                                                    <div style={{ fontSize: 10, color: '#666' }}>{(att.file_size / 1024).toFixed(1)} KB</div>
-                                                </div>
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                     </>
                 )
             }
@@ -1672,6 +1821,18 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     fetchDetail();
                 }}
             />
+            <RepairReportEditor
+                isOpen={isRepairReportEditorOpen}
+                onClose={() => setIsRepairReportEditorOpen(false)}
+                ticketId={ticketId}
+                ticketNumber={ticket.ticket_number || ''}
+                onSuccess={() => {
+                    setIsRepairReportEditorOpen(false);
+                    // After report is submitted/saved, ticket usually transitions or stays for review.
+                    // The editor handle its own transition logic if integrated.
+                    fetchDetail();
+                }}
+            />
             <ActionBufferModal
                 isOpen={isActionBufferModalOpen}
                 onClose={() => setIsActionBufferModalOpen(false)}
@@ -1693,10 +1854,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 // ==============================
 
 const InfoRow: React.FC<{ icon?: any; label: string; value: React.ReactNode }> = ({ icon: Icon, label, value }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-        {Icon && <Icon size={14} color="#666" />}
-        <span style={{ fontSize: 14, color: '#888', minWidth: 60 }}>{label}:</span>
-        <span style={{ fontSize: 15, color: '#eee', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>{value}</span>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '6px 0' }}>
+        {Icon && <Icon size={16} color="#666" style={{ marginTop: 2 }} />}
+        <span style={{ fontSize: 15, color: 'var(--text-tertiary)', minWidth: 80, fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 17, color: 'var(--text-main)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>{value}</span>
     </div>
 );
 

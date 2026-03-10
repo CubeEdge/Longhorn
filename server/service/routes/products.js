@@ -48,16 +48,16 @@ module.exports = function (db, authenticate) {
             // Find product by serial number with dealer and owner info
             const product = db.prepare(`
                 SELECT 
-                    p.id, p.model_name, p.serial_number, p.warranty_months,
-                    p.activation_date, p.sales_invoice_date, p.registration_date,
-                    p.sales_channel, p.ship_to_dealer_date,
-                    p.product_sku, p.product_type,
-                    p.sold_to_dealer_id, p.current_owner_id,
+                    p.*,
                     d.name as dealer_name,
-                    c.name as owner_name
+                    c.name as owner_name,
+                    ps.sku_code, ps.display_name as sku_name, ps.sku_image, ps.spec_label,
+                    pm.name_zh as model_display_name, pm.name_en as model_name_en, pm.hero_image, pm.brand
                 FROM products p
                 LEFT JOIN accounts d ON p.sold_to_dealer_id = d.id
                 LEFT JOIN accounts c ON p.current_owner_id = c.id
+                LEFT JOIN product_skus ps ON p.sku_id = ps.id
+                LEFT JOIN product_models pm ON ps.model_id = pm.id
                 WHERE p.serial_number = ?
             `).get(serial_number);
 
@@ -135,9 +135,9 @@ module.exports = function (db, authenticate) {
      */
     router.post('/register-warranty', authenticate, (req, res) => {
         try {
-            const { 
-                serial_number, 
-                sale_source, 
+            const {
+                serial_number,
+                sale_source,
                 sale_date,
                 warranty_months = 24,
                 sales_invoice_proof,
@@ -170,18 +170,39 @@ module.exports = function (db, authenticate) {
             }
 
             // Find product
-            const product = db.prepare('SELECT id, model_name FROM products WHERE serial_number = ?').get(serial_number);
+            let product = db.prepare('SELECT id, model_name FROM products WHERE serial_number = ?').get(serial_number);
             if (!product) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Product not found'
-                });
-            }
+                // If product doesn't exist, create it if model_name is provided
+                const { model_name, product_sku, sku_id } = req.body;
+                if (!model_name) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Product not found and model_name not provided for auto-creation'
+                    });
+                }
 
-            // Calculate warranty dates
-            const warrantyStartDate = sale_date;
-            const warrantyEndDate = calculateWarrantyEndDate(sale_date, warranty_months);
-            const warrantySource = sale_source === 'invoice' ? 'INVOICE_PROOF' : 'REGISTRATION';
+                // Create product inline
+                const insertRes = db.prepare(`
+                    INSERT INTO products (
+                        model_name, serial_number, product_sku, sku_id, status,
+                        sales_channel, sold_to_dealer_id, current_owner_id,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?, ?, datetime('now'), datetime('now'))
+                `).run(
+                    model_name,
+                    serial_number,
+                    product_sku || null,
+                    sku_id || null,
+                    sold_to_dealer_id ? 'DEALER' : 'DIRECT',
+                    sold_to_dealer_id || null,
+                    current_owner_id || null
+                );
+
+                product = {
+                    id: insertRes.lastInsertRowid,
+                    model_name: model_name
+                };
+            }
 
             // Update product with warranty registration info
             const updateField = sale_source === 'invoice' ? 'sales_invoice_date' : 'registration_date';
@@ -208,7 +229,19 @@ module.exports = function (db, authenticate) {
                 updateValues.push(warranty_months);
             }
 
-            // Add warranty calculation fields
+            // Use new Waterfall logic from §5.5
+            const { startDate: warrantyStartDate, endDate: warrantyEndDate, source: warrantySource } = calculateWarrantyInfo({
+                activation_date: product.activation_date, // Original might be null, it's fine
+                sales_invoice_date: updateField === 'sales_invoice_date' ? sale_date : product.sales_invoice_date,
+                registration_date: updateField === 'registration_date' ? sale_date : product.registration_date,
+                sales_channel: product.sales_channel || (sold_to_dealer_id ? 'DEALER' : 'DIRECT'),
+                ship_to_dealer_date: product.ship_to_dealer_date
+            }, warranty_months);
+
+            const now = new Date();
+            const end = new Date(warrantyEndDate);
+            const status = end > now ? 'ACTIVE' : 'EXPIRED';
+
             updateFields.push('warranty_start_date = ?');
             updateValues.push(warrantyStartDate);
             updateFields.push('warranty_end_date = ?');
@@ -216,7 +249,7 @@ module.exports = function (db, authenticate) {
             updateFields.push('warranty_source = ?');
             updateValues.push(warrantySource);
             updateFields.push('warranty_status = ?');
-            updateValues.push('ACTIVE');
+            updateValues.push(status);
             updateFields.push('updated_at = datetime(\'now\')');
 
             // Add product id for WHERE clause
@@ -272,15 +305,55 @@ module.exports = function (db, authenticate) {
     });
 
     /**
-     * Calculate warranty end date based on start date and months
+     * Service PRD P2 §5.5 - Warranty Calculation Engine (Waterfall)
      */
-    function calculateWarrantyEndDate(startDateStr, months) {
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(startDate);
-        endDate.setMonth(endDate.getMonth() + months);
-        // Subtract one day to get the last day of warranty
-        endDate.setDate(endDate.getDate() - 1);
-        return endDate.toISOString().split('T')[0];
+    function calculateWarrantyInfo(data, months = 24) {
+        let startDate = null;
+        let source = 'DEALER_FALLBACK';
+
+        // P1: IoT Activation
+        if (data.activation_date) {
+            startDate = data.activation_date;
+            source = 'IOT_ACTIVATION';
+        }
+        // P2: Sales Invoice
+        else if (data.sales_invoice_date) {
+            startDate = data.sales_invoice_date;
+            source = 'INVOICE_PROOF';
+        }
+        // P3: Manual Registration
+        else if (data.registration_date) {
+            startDate = data.registration_date;
+            source = 'REGISTRATION';
+        }
+        // P4: Direct Sales (Ship + 7 days)
+        else if (data.sales_channel === 'DIRECT' && data.ship_to_dealer_date) {
+            const shipDate = new Date(data.ship_to_dealer_date);
+            shipDate.setDate(shipDate.getDate() + 7);
+            startDate = shipDate.toISOString().split('T')[0];
+            source = 'DIRECT_SHIPMENT';
+        }
+        // P5: Dealer Fallback (Ship + 90 days)
+        else if (data.ship_to_dealer_date) {
+            const shipDate = new Date(data.ship_to_dealer_date);
+            shipDate.setDate(shipDate.getDate() + 90);
+            startDate = shipDate.toISOString().split('T')[0];
+            source = 'DEALER_FALLBACK';
+        }
+
+        if (!startDate) return { startDate: null, endDate: null, source: 'NONE' };
+
+        // Calculate End Date
+        const start = new Date(startDate);
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + months);
+        end.setDate(end.getDate() - 1); // Last day of warranty
+
+        return {
+            startDate,
+            endDate: end.toISOString().split('T')[0],
+            source
+        };
     }
 
     return router;

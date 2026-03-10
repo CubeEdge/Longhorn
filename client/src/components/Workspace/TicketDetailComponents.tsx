@@ -83,7 +83,7 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
         }}
       >
         {icon}
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>
+        <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{title}</span>
         {count !== undefined && (
           <span style={{ fontSize: 12, color: '#666', marginLeft: 'auto', marginRight: 8 }}>
             {count}
@@ -371,7 +371,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       >
         {/* Meta: Time & Icon */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
-          <span style={{ fontSize: '11px', color: '#444', fontFamily: 'monospace', minWidth: '70px', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
             {formattedDate}
           </span>
           <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
@@ -380,9 +380,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         </div>
 
         {/* Main Body */}
-        <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: '15px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-            <span style={{ fontWeight: 600, color: isSystemEvent ? '#666' : '#999', flexShrink: 0 }}>{actorName}</span>
+            <span style={{ fontWeight: 700, color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-main)', flexShrink: 0, fontSize: 14 }}>{actorName}</span>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
               {getVisibilityBadge(activity.visibility)}
@@ -716,7 +716,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   return (
     <>
       {/* Overlay - click to close */}
-      <div 
+      <div
         onClick={onClose}
         style={{
           position: 'fixed',

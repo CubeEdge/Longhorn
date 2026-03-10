@@ -99,9 +99,24 @@ module.exports = function (db, authenticate) {
             }
 
             if (search) {
-                conditions.push('(a.name LIKE ? OR a.email LIKE ? OR a.phone LIKE ? OR a.account_number LIKE ?)');
+                // 穿透式搜索：同时匹配 Account 本身字段，以及其名下的任意有效 Contact 的字段
+                conditions.push(`(
+                    a.name LIKE ? OR 
+                    a.email LIKE ? OR 
+                    a.phone LIKE ? OR 
+                    a.account_number LIKE ? OR
+                    EXISTS (
+                        SELECT 1 FROM contacts cx 
+                        WHERE cx.account_id = a.id 
+                        AND cx.status != 'INACTIVE'
+                        AND (cx.name LIKE ? OR cx.email LIKE ? OR cx.phone LIKE ?)
+                    )
+                )`);
                 const searchPattern = `%${search}%`;
-                params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+                params.push(
+                    searchPattern, searchPattern, searchPattern, searchPattern, // Account fields
+                    searchPattern, searchPattern, searchPattern  // Contact fields
+                );
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

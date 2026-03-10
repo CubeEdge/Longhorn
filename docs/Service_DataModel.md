@@ -53,24 +53,67 @@
 
 ## 1. 核心实体
 
-### 1.1 产品 (products) - 已安装资产 (Installed Base)
+### 1.1 产品体系模型 (Product Hierarchy)
+
+Longhorn 采用三层产品体系结构，实现从内部研发分级到外部销售规格，再到客户手中具体实物资产的完整追溯。
+
+#### 1.1.1 产品型号 (product_models)
+*研发/产品系列层。定义产品的核心属性、品牌与族群。*
 
 ```sql
-products (产品资产)
+product_models (产品型号/系列)
 ├── id: SERIAL PRIMARY KEY
-├── model_name: VARCHAR(255) NOT NULL -- 产品型号 (如 C181, MAVO Edge 8K)
-├── internal_name: VARCHAR(255) -- 内部代号
+├── name_zh: VARCHAR(255) NOT NULL -- 中文名称 (如 MAVO Edge 8K)
+├── name_en: VARCHAR(255) -- 英文名称
+├── brand: VARCHAR(100) DEFAULT 'Kinefinity' -- 品牌
+├── model_code: VARCHAR(100) UNIQUE -- 型号短码 (如 ME8K)
+├── material_id_prefix: VARCHAR(50) -- ERP 9系列前缀 (如 9-010)
+├── product_family: ENUM('A', 'B', 'C', 'D') -- 产品族群 (见 PRD 1.5.2)
+├── product_type: VARCHAR(50) DEFAULT 'CAMERA' -- 设备类型
+├── description: TEXT -- 描述
+├── hero_image: TEXT -- 形象图/封面图 URL
+├── is_active: BOOLEAN DEFAULT true
+├── created_at: TIMESTAMP
+└── updated_at: TIMESTAMP
+```
+
+#### 1.1.2 产品规格 (product_skus)
+*销售/套装层。定义面向市场的销售规格（SKU），如单机、基础套装、进阶套装。*
+
+```sql
+product_skus (产品规格/套装 SKU)
+├── id: SERIAL PRIMARY KEY
+├── model_id: INT NOT NULL -- 关联产品型号
+├── sku_code: VARCHAR(100) UNIQUE NOT NULL -- A系列 SKU 编码 (如 A010-001-01)
+├── erp_code: VARCHAR(100) -- ERP 9系列完整编码
+├── display_name: VARCHAR(255) NOT NULL -- 套装显示名称 (如 MAVO Edge 8K 基础套装)
+├── display_name_en: VARCHAR(255) -- 英文显示名称
+├── spec_label: VARCHAR(255) -- 规格描述 (如 Space Grey / E Mount)
+├── sku_image: TEXT -- 套装图片 URL
+├── is_active: BOOLEAN DEFAULT true
+├── created_at: TIMESTAMP
+└── updated_at: TIMESTAMP
+```
+
+FOREIGN KEY (model_id) REFERENCES product_models(id)
+
+#### 1.1.3 产品资产 (products) - 已安装资产 (Installed Base)
+*实物/序列号层。记录每一台从工厂产出并销往全球的实物设备。*
+
+```sql
+products (产品资产/序列号实例)
+├── id: SERIAL PRIMARY KEY
+├── sku_id: INT -- 关联规格 SKU (P2 扩展)
+├── model_name: VARCHAR(255) NOT NULL -- 产品型号 (冗余，对应 product_models.name_zh)
 ├── serial_number: VARCHAR(100) UNIQUE -- 序列号 (符合 SNSKU.md 规范)
 │   -- 摄影机: [简写][代数]_[规格][填充批次][顺序号] (如 ME_107649)
 │   -- 附件: [简写][代数]_[规格][批次][顺序号] (如 KB3_101001)
-├── product_sku: VARCHAR(100) -- 商品 SKU (如 A010-001-01)
-├── product_family: ENUM('A', 'B', 'C', 'D') -- 产品族群
-│   -- A: 在售电影机, B: 历史机型, C: 电子寻像器, D: 通用配件
-├── product_line: VARCHAR(100) -- 产品线 (Camera, EVF, Accessory)
-├── product_type: VARCHAR(50) -- 设备类型 (CAMERA, ACCESSORY, etc.)
-├── firmware_version: VARCHAR(20) -- 固件版本
-├── description: TEXT -- 设备描述
-├── is_active: BOOLEAN DEFAULT true -- 是否在保/活跃
+├── product_sku: VARCHAR(100) -- 商品 SKU (冗余，对应 product_skus.sku_code)
+├── grade: ENUM('A', 'B', 'C') DEFAULT 'A' -- 品级: A(全新), B(官翻/认证二手机), C(维修备机)
+├── specification: TEXT -- 冗余规格描述 (用于快速展示)
+├── warehouse: VARCHAR(100) -- 物理仓库/当前位置
+├── entry_channel: VARCHAR(100) -- 入库渠道 (FACTORY, RETURN, TRADE_IN)
+├── status: ENUM('ACTIVE', 'IN_REPAIR', 'STOLEN', 'SCRAPPED') DEFAULT 'ACTIVE'
 │
 ├── // 归属与状态
 ├── current_owner_id: INT -- 当前物主账号 (Account ID)
@@ -89,13 +132,14 @@ products (产品资产)
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
+FOREIGN KEY (sku_id) REFERENCES product_skus(id)
 FOREIGN KEY (current_owner_id) REFERENCES accounts(id)
 
 **索引**：
 - PRIMARY KEY (id)
-- INDEX idx_model (model)
-- INDEX idx_category (category)
-- INDEX idx_series (series)
+- INDEX idx_sku_id (sku_id)
+- INDEX idx_serial_number (serial_number)
+- INDEX idx_warranty_status (warranty_status)
 
 ---
 

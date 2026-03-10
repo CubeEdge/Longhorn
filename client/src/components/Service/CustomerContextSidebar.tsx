@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    User, Smartphone, Package, X, MapPin, Building, ChevronDown, ChevronUp, Ticket, Info, Hash, ChevronRight, Search, UserPlus, Trash2
+    User, Smartphone, Package, MapPin, Building, ChevronDown, ChevronUp, Ticket, Hash, ChevronRight, Search, UserPlus, Trash2
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -9,6 +9,7 @@ import ContactCleaningModal from './ContactCleaningModal';
 import ConvertIndividualModal from './ConvertIndividualModal';
 import ConfirmModal from './ConfirmModal';
 import LinkCorporateModal from './LinkCorporateModal';
+import { ProductWarrantyRegistrationModal } from './ProductWarrantyRegistrationModal';
 
 interface CustomerContextSidebarProps {
     ticketId?: number;
@@ -25,13 +26,15 @@ interface CustomerContextSidebarProps {
     dealerContactTitle?: string;
     onCleanComplete?: () => void;
     onClose?: () => void;
+    ticketProductName?: string;
+    onRequestEdit?: (correctModelName: string) => void;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     ticketId, accountId, contactId, reporterSnapshot,
     serialNumber, customerName, contactName,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
-    onCleanComplete, onClose
+    onCleanComplete, onClose, ticketProductName, onRequestEdit
 }) => {
     // const { t } = useLanguage();
     const { token } = useAuthStore();
@@ -39,6 +42,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [partsExpanded, setPartsExpanded] = useState(false);
+    const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
     const [contactsExpanded, setContactsExpanded] = useState(false);
     const [showCleanModal, setShowCleanModal] = useState(false);
     const [showConvertModal, setShowConvertModal] = useState(false);
@@ -152,18 +156,12 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const sidebarStyle: React.CSSProperties = {
         background: 'transparent',
         width: '100%',
-        height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden'
+        overflow: 'visible'
     };
 
-    const headerStyle: React.CSSProperties = {
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-    };
+
 
     const contentStyle: React.CSSProperties = {
         flex: 1,
@@ -259,24 +257,9 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
-            {/* Header - 标题放在顶部 */}
-            <div style={headerStyle}>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Info size={16} style={{ color: 'var(--accent-blue)' }} />
-                    本工单关联的信息
-                </div>
-                {onClose && (
-                    <button
-                        onClick={onClose}
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}
-                    >
-                        <X size={18} />
-                    </button>
-                )}
-            </div>
 
             {/* Content - Three Cards Layout */}
-            <div style={contentStyle}>
+            <div style={{ ...contentStyle, padding: onClose ? '0 16px 16px' : '16px 0' }}>
                 {/* ===== Card 1: 经销商卡片 ===== */}
                 {(dealerId || dealerName) && (
                     <div style={{
@@ -379,47 +362,47 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         {(() => {
                             const user = useAuthStore.getState().user as any;
                             const deptName = user?.department_name || user?.department_code || '';
-                            const isMsDept = deptName === 'MS' || deptName === '市场部' || deptName.includes('市场') || 
-                                             user?.role === 'Admin' || user?.role === 'Exec';
+                            const isMsDept = deptName === 'MS' || deptName === '市场部' || deptName.includes('市场') ||
+                                user?.role === 'Admin' || user?.role === 'Exec';
                             if (!isMsDept) return null;
                             return (
-                            <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
-                                <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
-                                    建议操作
+                                <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
+                                        建议操作
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <button
+                                            onClick={() => setShowLinkModal(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                                background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                            }}
+                                        >
+                                            <Search size={14} /> 关联到企业
+                                        </button>
+                                        <button
+                                            onClick={() => setShowConvertModal(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                                background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
+                                                borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                            }}
+                                        >
+                                            <UserPlus size={14} /> 添加为新客户
+                                        </button>
+                                        <button
+                                            onClick={() => setShowSpamModal(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                                background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                            }}
+                                        >
+                                            <Trash2 size={14} /> 标记为垃圾
+                                        </button>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <button
-                                        onClick={() => setShowLinkModal(true)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                            background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
-                                            borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                        }}
-                                    >
-                                        <Search size={14} /> 关联到企业
-                                    </button>
-                                    <button
-                                        onClick={() => setShowConvertModal(true)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                            background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
-                                            borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                        }}
-                                    >
-                                    <UserPlus size={14} /> 添加为新客户
-                                    </button>
-                                    <button
-                                        onClick={() => setShowSpamModal(true)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                                            borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
-                                        }}
-                                    >
-                                        <Trash2 size={14} /> 标记为垃圾
-                                    </button>
-                                </div>
-                            </div>
                             );
                         })()}
                     </div>
@@ -620,7 +603,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         )}
 
                         {/* 所属经销商 */}
-                        {customerExpanded && data.account.parent_dealer_name && (
+                        {customerExpanded && data?.account?.parent_dealer_name && (
                             <div style={rowStyle}>
                                 <div style={iconColStyle}><Building size={12} /></div>
                                 <div style={textColStyle}>
@@ -662,7 +645,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             style={{ ...cardTitleStyle, cursor: 'pointer', justifyContent: 'space-between' }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Smartphone size={12} /> 设备详情
+                                <Smartphone size={12} /> 关联资产 / Asset
                                 {data.device.is_unregistered && (
                                     <span style={{
                                         fontSize: '0.65rem',
@@ -685,9 +668,27 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                     <div style={{
                                         fontWeight: 600,
                                         color: data.device.is_unregistered ? '#FFD700' : 'var(--text-main)',
-                                        marginBottom: '4px'
+                                        marginBottom: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
                                     }}>
                                         {data.device.model_name}
+                                        {!data.device.is_unregistered && ticketProductName && ticketProductName === data.device.model_name && (
+                                            <span style={{
+                                                fontSize: '0.65rem',
+                                                padding: '1px 6px',
+                                                borderRadius: '4px',
+                                                background: 'rgba(16, 185, 129, 0.15)',
+                                                color: '#10B981',
+                                                fontWeight: 500,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '2px'
+                                            }}>
+                                                ✓ 已核验
+                                            </span>
+                                        )}
                                     </div>
                                     <div style={{
                                         display: 'inline-block',
@@ -723,24 +724,55 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             const user = useAuthStore.getState().user as any;
                                             const deptName = user?.department_name || user?.department_code || '';
                                             const isMsDept = deptName === 'MS' || deptName === '市场部' || deptName.includes('市场') ||
-                                                             user?.role === 'Admin' || user?.role === 'Exec';
+                                                user?.role === 'Admin' || user?.role === 'Exec';
                                             if (!isMsDept) return null;
                                             return (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,215,0,0.1)' }}>
                                                     <div style={{ fontSize: '0.7rem', color: '#FFD700', fontWeight: 500 }}>建议操作</div>
                                                     <button
-                                                        onClick={() => navigate('/service/products')}
-                                                        style={{
-                                                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                            background: 'rgba(255, 215, 0, 0.1)', border: '1px solid rgba(255, 215, 0, 0.3)',
-                                                            borderRadius: 6, color: '#FFD700', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setIsRegisterModalOpen(true);
                                                         }}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                                                            background: 'rgba(255, 215, 0, 0.1)', border: '1px solid rgba(255, 215, 0, 0.4)',
+                                                            borderRadius: 8, color: '#FFD700', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)'}
                                                     >
-                                                        <Package size={14} /> 录入新产品
+                                                        <Package size={14} /> 录入新产品 / Register Product
                                                     </button>
                                                 </div>
                                             );
                                         })()}
+                                    </div>
+                                )}
+
+                                {/* discrepancy check */}
+                                {!data.device.is_unregistered && ticketProductName && ticketProductName !== data.device.model_name && (
+                                    <div style={{
+                                        background: 'rgba(245, 158, 11, 0.08)',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginBottom: '12px',
+                                        border: '1px solid rgba(245, 158, 11, 0.3)'
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginBottom: '8px', fontWeight: 500, lineHeight: 1.4 }}>
+                                            ⚠️ 声明型号 ({ticketProductName}) 与实物型号 ({data.device.model_name}) 不符
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onRequestEdit && onRequestEdit(data.device.model_name); }}
+                                            style={{
+                                                width: '100%', padding: '6px 0',
+                                                background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                borderRadius: 6, color: '#F59E0B', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600
+                                            }}
+                                        >
+                                            一键修正型号
+                                        </button>
                                     </div>
                                 )}
 
@@ -893,6 +925,18 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     countdown={5}
                 />
             )}
+            {/* 注册保修模态框 */}
+            <ProductWarrantyRegistrationModal
+                isOpen={isRegisterModalOpen}
+                onClose={() => setIsRegisterModalOpen(false)}
+                serialNumber={data?.device?.serial_number || serialNumber}
+                productName={ticketProductName}
+                onRegistered={() => {
+                    setIsRegisterModalOpen(false);
+                    fetchContext(); // 刷新设备信息
+                    onCleanComplete && onCleanComplete(); // 同步上层
+                }}
+            />
         </div>
     );
 };

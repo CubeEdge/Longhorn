@@ -1,4 +1,110 @@
 # Prompt Log
+ 
+ ## 2026-03-10 22:15 (耗时: 3h 45m)
+ 
+ **User Prompt**:
+ Refine Ticket UI: increase font sizes for readability, remove unnecessary sidebar title, fix sidebar spacing gaps, and implement "Service Document Center" UI improvements with empty state handling. Fix product registration 500 error and pre-fill product info when adding new products from ticket.
+ 
+ **Agent Response**:
+ 1. **侧边栏结构精修**: 移除了 `CustomerContextSidebar` 中冗余的标题，并修正了内容区域的 `padding` 和 `overflow` 属性，消除了卡片间的异常巨大空白。
+ 2. **服务成果中心 (Service Document Center)**: 
+     - 标题简化为单语言版本，字号增大至 `15px` (标题) / `13px` (描述)，对齐全局美学。
+     - **状态感知交互**: 实现了对诊断报告和维修记录的预核。若当前阶段无成果，按钮将自动禁用并显示“暂无报告”，优化了用户预期管理。
+ 3. **关联资产注册流**: 
+     - 将“录入新产品”按钮逻辑从页面跳转重构为原地弹出 `ProductWarrantyRegistrationModal`。
+     - **智能预填**: 弹窗会自动带入当前工单的 **序列号** 和 **机型名称**，极大缩短了录入路径。
+ 4. **数据库健壮性 (Critical Fix)**: 
+     - 识别并解决了保修注册接口返回 500 错误的问题。原因是 `products` 表缺失了保修核算引擎依赖的 17 个核心字段。
+     - 编写并执行了 `036_add_missing_product_fields.sql` 迁移脚本，补齐了 `activation_date`, `warranty_status`, `sales_invoice_proof` 等关键列。
+ 5. **版本迭代 (v12.3.144)**: 完成全量构建并利用 `./scripts/deploy.sh` 同步至远程服务器 `mini`。
+
+## 2026-03-10 19:25 (耗时: 8m 0s)
+
+**User Prompt**:
+工单详情页字体太小。合并资产卡片、服务成果中心等改动在远程未看到。
+
+**Agent Response**:
+1. **排查与修复**: 发现远程服务器未正确检测到前端 `dist` 变更，导致之前的 UI 改动未生效。通过删除部署缓存并执行全量同步解决了该问题。
+2. **易用性提升 (Typography)**: 
+    - 显著增大了工单主体（问题概要）的字体至 `16px`。
+    - 调整了 `InfoRow` 的标签/数值字体（Label 15px, Value 17px/18px），并增加了行间距和外间距，提升视觉呼吸感。
+    - 增大了活动时间轴（Activity Timeline）的内容字体至 `15px`，强化了操作者名字的显著度。
+3. **版本迭代 (v12.3.143)**: 完成构建部署，确保统一资产卡片、成果中心及大字体设计在远程环境上线。
+
+## 2026-03-10 19:15 (耗时: 4m 0s)
+
+**User Prompt**:
+Implement Warranty Calculation Engine (Waterfall) in `products.js` as per PRD P2 §5.5.
+
+**Agent Response**:
+1. **逻辑重构**: 在 `products.js` 中实现了符合 §5.5 规范的 Waterfall 保修计算引擎，优先级：激活时间 > 销售发票 > 手动注册 > 直销发货(+7d) > 渠道发货(+90d)。
+2. **版本迭代 (v12.3.141)**: 递增版本并执行 `/upd` 流程。
+3. **自动化部署**: 完成构建校验并同步至远程服务器 `mini`，PM2 重载成功。
+
+## 2026-03-10 19:10 (耗时: 12m 30s)
+
+**User Prompt**:
+Refining ticket workflow by restructuring the display of diagnostic, repair, and financial information. Replacement of download buttons with in-app modals.
+
+**Agent Response**:
+1. **统一资产管理**: 重构 `UnifiedTicketDetail` 右侧边栏，将产品与设备信息融合为“关联资产”卡片，并实现型号不符时的一键修正功能。
+2. **服务成果中心**: 新增 `Service Document Center`，按诊断、维修、结算三个阶段结构化展示成果。
+3. **流程化数据捕获**: 在诊断弹窗中集成配件与工时预估；在维修中集成维修报告编辑器，实现配件消耗自动同步。
+4. **内览化文档预览**: 将 PI 及维修报告的下载改为应用内 Modal 预览，保持与 MS 审核界面一致。
+5. **版本交付 (v12.3.140)**: 执行 `/upd` 流程，通过构建校验并完成全量远程部署。
+
+## 2026-03-10 18:05 (耗时: 9m 0s)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.139`，`server` 版本至 `1.8.10`。
+2. **构建验证**: 在 `client` 目录下成功执行 `npm run build`，产出最新前端编译产物。
+3. **自动化部署**: 运行 `./scripts/deploy.sh` (Fast Mode) 同步前端 `dist` 和后端核心代码至远程服务器 `mini`。
+4. **服务重载**: 远程验证 `pm2 reload longhorn` 顺利执行，生产环境已平滑升级至最新版本。
+
+
+
+## 2026-03-10 15:10 (耗时: 8m 40s)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.138`，`server` 版本至 `1.8.9`。
+2. **构建验证**: 在 `client` 目录下成功执行 `npm run build`，产出最新前端编译产物。
+3. **自动化部署**: 运行 `./scripts/deploy.sh` (Fast Mode) 同步前端 `dist` 和后端核心代码至远程服务器 `mini`。
+4. **服务重载**: 远程验证 `pm2 reload longhorn` 顺利执行，生产环境已平滑升级至最新版本。
+
+
+
+## 2026-03-10 13:38 (耗时: 6m 0s)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.137`，`server` 版本至 `1.8.8`。
+2. **构建验证**: 在 `client` 目录下成功执行 `npm run build`，产出前端编译产物。
+3. **自动化部署**: 运行 `./scripts/deploy.sh` (Fast Mode) 同步前端 `dist` 和最新后端代码至远程服务器 `mini`。
+4. **服务重载**: 远程验证 `pm2 reload longhorn` 成功执行，确保生产环境已更新至最新状态。
+
+
+
+## 2026-03-10 12:48 (耗时: 37m 0s)
+
+**User Prompt**:
+@[/upd]
+
+**Agent Response**:
+1. **版本迭代**: 递增 `client` 版本至 `12.3.136`，`server` 版本至 `1.8.7`。
+2. **依赖修复**: 识别并修复了 `client` 端缺失 `jspdf` 和 `html2canvas` 导致构建失败的问题，成功执行 `npm install`。
+3. **构建验证**: 在 `client` 目录下成功执行 `npm run build`，确保前端产物编译无误。
+4. **自动化部署**: 运行 `./scripts/deploy.sh` (Fast Mode) 将最新的后端代码与前端 `dist` 全量同步至远程服务器 `mini`。
+5. **服务重载**: 验证远程 `pm2 reload longhorn` 成功执行，生产环境已平滑升级至最新版本。
+
+
 
 ## 2026-03-07 22:42 (耗时: 18m 29s)
 

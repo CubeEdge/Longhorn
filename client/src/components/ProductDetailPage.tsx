@@ -144,7 +144,8 @@ const ProductDetailPage: React.FC = () => {
         setExpandedSections(newSet);
     };
 
-    const getWarrantyStatusColor = (status: string) => {
+    const getWarrantyStatusColor = (status: string, daysRemain: number) => {
+        if (daysRemain <= 0 && status === 'ACTIVE') return '#EF4444'; // Force red if expired
         switch (status) {
             case 'ACTIVE': return '#10B981';
             case 'EXPIRED': return '#EF4444';
@@ -153,7 +154,8 @@ const ProductDetailPage: React.FC = () => {
         }
     };
 
-    const getWarrantyStatusText = (status: string) => {
+    const getWarrantyStatusText = (status: string, daysRemain: number) => {
+        if (daysRemain <= 0 && status === 'ACTIVE') return '已过保'; // Force text change
         switch (status) {
             case 'ACTIVE': return '在保';
             case 'EXPIRED': return '已过保';
@@ -191,30 +193,30 @@ const ProductDetailPage: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '16px 20px',
+                padding: '20px 24px',
                 background: 'rgba(255,255,255,0.02)',
                 borderBottom: expandedSections.has(section) ? '1px solid var(--glass-border)' : 'none',
                 cursor: 'pointer'
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ color: '#3B82F6' }}>{icon}</span>
-                <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)' }}>{title}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <span style={{ color: '#3B82F6' }}>{React.cloneElement(icon as React.ReactElement<any>, { size: 24 })}</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{title}</span>
             </div>
-            {expandedSections.has(section) ? <ChevronUp size={20} color="var(--text-secondary)" /> : <ChevronDown size={20} color="var(--text-secondary)" />}
+            {expandedSections.has(section) ? <ChevronUp size={24} color="var(--text-secondary)" /> : <ChevronDown size={24} color="var(--text-secondary)" />}
         </div>
     );
 
     const InfoGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px 24px', padding: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px 32px', padding: 24 }}>
             {children}
         </div>
     );
 
     const InfoItem: React.FC<{ label: string; value: React.ReactNode; valueColor?: string }> = ({ label, value, valueColor }) => (
         <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 500, color: valueColor || 'var(--text-main)' }}>{value}</div>
+            <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>{label}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600, color: valueColor || 'var(--text-main)', letterSpacing: '-0.01em' }}>{value}</div>
         </div>
     );
 
@@ -241,13 +243,13 @@ const ProductDetailPage: React.FC = () => {
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                        <h1 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>
                             {product.model_name}
                         </h1>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                            <span style={{ fontFamily: 'monospace' }}>{product.serial_number}</span>
-                            <span style={{ margin: '0 8px', color: 'var(--glass-border)' }}>|</span>
-                            <span style={{ color: familyInfo.color }}>{familyInfo.label}</span>
+                        <div style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.05em' }}>{product.serial_number}</span>
+                            <span style={{ margin: '0 12px', color: 'var(--glass-border)' }}>|</span>
+                            <span style={{ color: familyInfo.color, fontWeight: 700 }}>{familyInfo.label}</span>
                         </div>
                     </div>
                 </div>
@@ -347,8 +349,9 @@ const ProductDetailPage: React.FC = () => {
                                             border: 'none',
                                             color: '#F59E0B',
                                             cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            textAlign: 'left'
+                                            fontSize: '1rem',
+                                            textAlign: 'left',
+                                            fontWeight: 600
                                         }}
                                     >
                                         <AlertCircle size={16} /> 设为维修中
@@ -367,8 +370,9 @@ const ProductDetailPage: React.FC = () => {
                                             border: 'none',
                                             color: '#EF4444',
                                             cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            textAlign: 'left'
+                                            fontSize: '1rem',
+                                            textAlign: 'left',
+                                            fontWeight: 600
                                         }}
                                     >
                                         <AlertCircle size={16} /> 设为失窃
@@ -387,8 +391,9 @@ const ProductDetailPage: React.FC = () => {
                                         border: 'none',
                                         color: '#EF4444',
                                         cursor: 'pointer',
-                                        fontSize: '0.9rem',
-                                        textAlign: 'left'
+                                        fontSize: '1rem',
+                                        textAlign: 'left',
+                                        fontWeight: 600
                                     }}
                                 >
                                     <Trash2 size={16} /> 删除
@@ -477,26 +482,26 @@ const ProductDetailPage: React.FC = () => {
                                     padding: 20,
                                     background: 'rgba(0,0,0,0.2)',
                                     borderRadius: 12,
-                                    border: `2px solid ${getWarrantyStatusColor(product.warranty_status)}`
+                                    border: `2px solid ${getWarrantyStatusColor(product.warranty_status, remainingDays)}`
                                 }}>
                                     <div style={{
                                         width: 60,
                                         height: 60,
                                         borderRadius: '50%',
-                                        background: `${getWarrantyStatusColor(product.warranty_status)}20`,
+                                        background: `${getWarrantyStatusColor(product.warranty_status, remainingDays)}20`,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         marginRight: 20
                                     }}>
-                                        <Shield size={28} color={getWarrantyStatusColor(product.warranty_status)} />
+                                        <Shield size={28} color={getWarrantyStatusColor(product.warranty_status, remainingDays)} />
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getWarrantyStatusColor(product.warranty_status) }}>
-                                            {getWarrantyStatusText(product.warranty_status)}
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: getWarrantyStatusColor(product.warranty_status, remainingDays) }}>
+                                            {getWarrantyStatusText(product.warranty_status, remainingDays)}
                                         </div>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                                            剩余 {remainingDays > 0 ? remainingDays : 0} 天
+                                        <div style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginTop: 8, fontWeight: 500 }}>
+                                            {remainingDays > 0 ? `剩余 ${remainingDays} 天` : '保修已结束'}
                                         </div>
                                     </div>
                                 </div>
@@ -515,17 +520,17 @@ const ProductDetailPage: React.FC = () => {
                         <SectionHeader icon={<History size={18} />} title="服务历史" section="history" />
                         {expandedSections.has('history') && (
                             <div style={{ display: 'flex', gap: 16, padding: 20 }}>
-                                <div style={{ flex: 1, textAlign: 'center', padding: 16, background: 'rgba(59,130,246,0.1)', borderRadius: 8, border: '1px solid rgba(59,130,246,0.3)' }}>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#3B82F6' }}>{product.inquiry_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>咨询工单</div>
+                                <div style={{ flex: 1, textAlign: 'center', padding: '20px 16px', background: 'rgba(59,130,246,0.1)', borderRadius: 12, border: '1px solid rgba(59,130,246,0.3)' }}>
+                                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#3B82F6', letterSpacing: '-0.02em' }}>{product.inquiry_count || 0}</div>
+                                    <div style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: 8, fontWeight: 600 }}>咨询工单</div>
                                 </div>
-                                <div style={{ flex: 1, textAlign: 'center', padding: 16, background: 'rgba(245,158,11,0.1)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.3)' }}>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F59E0B' }}>{product.rma_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>RMA返厂</div>
+                                <div style={{ flex: 1, textAlign: 'center', padding: '20px 16px', background: 'rgba(245,158,11,0.1)', borderRadius: 12, border: '1px solid rgba(245,158,11,0.3)' }}>
+                                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#F59E0B', letterSpacing: '-0.02em' }}>{product.rma_count || 0}</div>
+                                    <div style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: 8, fontWeight: 600 }}>RMA返厂</div>
                                 </div>
-                                <div style={{ flex: 1, textAlign: 'center', padding: 16, background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)' }}>
-                                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#EF4444' }}>{product.repair_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4 }}>维修记录</div>
+                                <div style={{ flex: 1, textAlign: 'center', padding: '20px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)' }}>
+                                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#EF4444', letterSpacing: '-0.02em' }}>{product.repair_count || 0}</div>
+                                    <div style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: 8, fontWeight: 600 }}>维修记录</div>
                                 </div>
                             </div>
                         )}

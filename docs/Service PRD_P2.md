@@ -243,9 +243,14 @@ JSON
     // ==========================================
     "id": "ib_uuid_v4",
     "serial_number": "KD8K-2501-0099",
-    "product_sku": "K2-8K-BODY",
+    "sku_id": "uuid",                // [NEW v2.0] 关联具体 SKU
+    "grade": "Enum",                 // [NEW v2.0] 品质等级: A (全新), B (官翻), C (维修级)
+    "specification": "String",       // [NEW v2.0] 规格描述 (如: 深空灰, E卡口版)
+    "product_sku": "K2-8K-BODY",     // 冗余 SKU 编码
     "product_type": "CAMERA",
     "production_date": "2025-12-01",
+    "warehouse": "String",           // [NEW v2.0] 物理位置/仓库
+    "entry_channel": "Enum",         // [NEW v2.0] 入库渠道 (FACTORY, RETURN, TRADE_IN)
 
     // ==========================================
     // 2. 联网状态 (IoT Status - Future Proof)
@@ -701,41 +706,66 @@ UI 刷新，状态从“状态 2”变为“状态 1”。
     * 在 审批 按钮旁显示微型标签：[Permission: TICKET_APPROVE]。  
     * 在 客户电话 字段旁显示：[Mask: OP_VIEW]。  
   
-# 7. 产品管理与配件库存整合方案
+# 7. 产品管理与配件库存整合方案 (v2.0 升级)
 
-## 7.1 产品命名重构
+## 7.1 三层产品架构 (Three-Layer Architecture) [COMPLETED v2.0]
 
 ### 问题背景
-当前系统中存在命名混淆问题：
-- "产品管理" 实际管理的是 **Installed Base（设备台账）**，即每一台出厂的具体设备（带唯一SN）
-- "产品型号" 管理的是 **Product Catalog（产品目录）**，即产品型号定义
+为了与内部 ERP 系统的 9 系列（物料代码）和 A 系列（商品 SKU）深度对齐，我们将“产品管理”从单一层级升级为三层架构，以解决“相同型号多种配置”和“硬件品质等级”的管理难题。
 
-两者界面相似但用途完全不同，导致用户困惑。
+### 架构定义
+1.  **产品目录 (Product Model/Catalog)**：定义基础平台（如：MAVO Edge 8K）。主要存储 **产品型号 (Model Code, 如 C181)**、**产品名称 (Product Name)**、品牌信息、**主视觉图片 (Hero Image)**。
+2.  **商品规格 (Product SKU)**：定义具体的销售形态（如：MAVO Edge 8K - 深空灰、EF套装）。主要存储 **商品编码 (SKU ID, 如 A010-001-01)**、**物料 ID (Material ID, 如 9-010-001-01)**、全家福图片。
+3.  **设备台账 (Product Instance/Ledger)**：定义每一台出厂的具体设备。主要存储 SN、品质等级（Grade）、实时仓库位置。
 
-### 重构方案
+### 重置与 UI 实现
+*   **统一入口**: “产品目录”作为主入口。
+*   **双页签管理**: 在“产品目录”编辑界面，通过 **[ 基本信息 ]** 和 **[ SKU 体系 ]** 双页签进行管理。
+*   **视觉支持**: 支持产品型号的 Hero Image 上传与 SKU 的专属图片上传。
 
-**重命名明确区分**：
+### 重命名与映射
+| 当前名称 | 建议名称 | 对应层级 | 核心 ID 标识 |
+|---------|---------|---------|-------------|
+| 产品型号 | **产品目录** / Model | 型号层 (Model) | **产品型号 (Model Code)**: C181 |
+| (新概念) | **商品规格** / SKU | 商品层 (SKU) | **商品编码 (SKU ID)**: A0xx |
+| 产品管理 | **设备台账** / Ledger | 实例层 (Instance) | **序列号 (SN)**: KD8K... |
+| (新概念) | **物料 ID** / Material | 制造层 (Material)| **物料 ID (Material ID)**: 9-0xx |
 
-| 当前名称 | 建议名称 | 说明 |
-|---------|---------|------|
-| 产品管理 | **设备台账** / Installed Base | 管理具体出厂设备，含SN、客户、保修信息 |
-| 产品型号 | **产品目录** / 型号管理 | 管理产品型号定义、规格参数 |
+### 7.1.1 核心数据结构 (v2.0)
 
-**导航结构调整**：
+**A. 产品目录 (product_models)**
+```json
+{
+  "model_code": "C181",           // 产品型号 (Model Code)
+  "name_zh": "MAVO Edge 8K",      // 产品名称 (中文)
+  "name_en": "MAVO Edge 8K",       // 产品名称 (英文)
+  "brand": "Kinefinity",
+  "material_id_prefix": "9-010-001", // 物料 ID 前缀
+  "hero_image": "url_to_image",
+  "sku_count": 5,
+  "is_active": true
+}
 ```
-服务管理
-├── 设备台账（原产品管理）- 管理出厂设备SN
-├── 产品目录（原产品型号）- 管理型号定义
-└── 配件管理
+
+**B. 商品规格 (product_skus)**
+```json
+{
+  "id": "uuid",
+  "model_id": "model_uuid",
+  "sku_code": "A010-001-01",       // 商品编码 (SKU ID)
+  "material_id": "9-010-001-01",   // 物料 ID (Material ID / 原SaaS ID)
+  "display_name": "MAVO Edge 8K 基础套装",
+  "display_name_en": "MAVO Edge 8K Basic Kit",
+  "spec_label": "深空灰 / E卡口",
+  "sku_image": "url_to_bundle_image",
+  "is_active": true
+}
 ```
 
-**界面差异化**：
-- **设备台账**：突出SN、客户信息、保修状态、维修历史
-- **产品目录**：突出规格参数、图片、文档
-
-**双向关联入口**：
-- 设备台账页面：添加 [管理型号定义] 快捷入口
-- 产品目录页面：添加 [查看此型号设备] 统计链接
+**C. 设备台账 (products)**
+参考 §4.3，增加 `sku_id` 和 `grade` 核心字段。
+- **Grade 标识**: 列表页通过彩色微缩标签展示 (🟢A / 🟡B / 🔴C)。
+- **视觉确认**: 在详情页录入 SN 后，自动拉取 `sku_image` 进行视觉对齐。
 
 ## 7.2 配件管理整合方案
 

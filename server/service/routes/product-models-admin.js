@@ -10,10 +10,10 @@ module.exports = function (db, authenticate) {
     // Check if user can manage product models (Admin, Exec, or MS Lead)
     const requireModelAdmin = (req, res, next) => {
         const user = req.user;
-        const canManage = user.role === 'Admin' || 
-                          user.role === 'Exec' || 
-                          (user.role === 'Lead' && user.department_code === 'MS');
-        
+        const canManage = user.role === 'Admin' ||
+            user.role === 'Exec' ||
+            (user.role === 'Lead' && user.department_code === 'MS');
+
         if (!canManage) {
             return res.status(403).json({
                 success: false,
@@ -42,8 +42,8 @@ module.exports = function (db, authenticate) {
 
             // Keyword filtering
             if (keyword) {
-                conditions.push('(model_name LIKE ? OR internal_name LIKE ?)');
-                params.push(`%${keyword}%`, `%${keyword}%`);
+                conditions.push('(name_zh LIKE ? OR name_en LIKE ? OR model_code LIKE ?)');
+                params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -52,10 +52,11 @@ module.exports = function (db, authenticate) {
             const models = db.prepare(`
                 SELECT 
                     pm.*,
-                    (SELECT COUNT(*) FROM products p WHERE p.model_name = pm.model_name) as instance_count
+                    (SELECT COUNT(*) FROM products p WHERE p.model_name = pm.name_zh) as instance_count,
+                    (SELECT COUNT(*) FROM product_skus ps WHERE ps.model_id = pm.id) as sku_count
                 FROM product_models pm
                 ${whereClause}
-                ORDER BY pm.created_at DESC
+                ORDER BY pm.is_active DESC, pm.created_at DESC
             `).all(...params);
 
             res.json({
@@ -72,48 +73,93 @@ module.exports = function (db, authenticate) {
     });
 
     /**
+     * GET /api/v1/admin/product-models/:id
+     * Get a single product model detail
+     */
+    router.get('/:id', authenticate, requireModelAdmin, (req, res) => {
+        try {
+            const { id } = req.params;
+            const model = db.prepare(`
+                SELECT 
+                    pm.*,
+                    (SELECT COUNT(*) FROM products p WHERE p.model_name = pm.name_zh) as instance_count,
+                    (SELECT COUNT(*) FROM product_skus ps WHERE ps.model_id = pm.id) as sku_count
+                FROM product_models pm
+                WHERE pm.id = ?
+            `).get(id);
+
+            if (!model) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: 'Product model not found' }
+                });
+            }
+
+            res.json({
+                success: true,
+                data: model
+            });
+        } catch (err) {
+            console.error('Failed to fetch product model details:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'DB_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
      * POST /api/v1/admin/product-models
      * Create a new product model
      */
     router.post('/', authenticate, requireModelAdmin, (req, res) => {
         try {
             const {
-                model_name,
-                internal_name,
+                name_zh,
+                name_en,
+                model_code,
+                material_id_prefix,
                 product_family,
                 product_type,
                 description,
-                is_active
+                is_active,
+                hero_image,
+                brand
             } = req.body;
 
             // Validation
-            if (!model_name || !product_family) {
+            if (!name_zh || !product_family) {
                 return res.status(400).json({
                     success: false,
-                    error: { code: 'VALIDATION_ERROR', message: 'Model name and product family are required' }
+                    error: { code: 'VALIDATION_ERROR', message: 'Name (ZH) and product family are required' }
                 });
             }
 
-            // Check for duplicate model name
-            const existing = db.prepare('SELECT id FROM product_models WHERE model_name = ?').get(model_name);
+            // Check for duplicate model code or name
+            const existing = db.prepare('SELECT id FROM product_models WHERE name_zh = ? OR (model_code IS NOT NULL AND model_code = ?)').get(name_zh, model_code);
             if (existing) {
                 return res.status(409).json({
                     success: false,
-                    error: { code: 'DUPLICATE', message: 'Product model with this name already exists' }
+                    error: { code: 'DUPLICATE', message: 'Product model with this name or code already exists' }
                 });
             }
 
             const result = db.prepare(`
                 INSERT INTO product_models (
-                    model_name, internal_name, product_family, product_type,
-                    description, is_active, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                    name_zh, name_en, brand, model_code, material_id_prefix,
+                    product_family, product_type, description, hero_image,
+                    is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             `).run(
-                model_name,
-                internal_name || null,
+                name_zh,
+                name_en || null,
+                brand || 'Kinefinity',
+                model_code || null,
+                material_id_prefix || null,
                 product_family,
                 product_type || 'CAMERA',
                 description || null,
+                hero_image || null,
                 is_active !== false ? 1 : 0
             );
 
@@ -140,12 +186,16 @@ module.exports = function (db, authenticate) {
         try {
             const { id } = req.params;
             const {
-                model_name,
-                internal_name,
+                name_zh,
+                name_en,
+                model_code,
+                material_id_prefix,
                 product_family,
                 product_type,
                 description,
-                is_active
+                is_active,
+                hero_image,
+                brand
             } = req.body;
 
             // Check if model exists
@@ -158,8 +208,8 @@ module.exports = function (db, authenticate) {
             }
 
             // Check for duplicate name (excluding current model)
-            if (model_name) {
-                const duplicate = db.prepare('SELECT id FROM product_models WHERE model_name = ? AND id != ?').get(model_name, id);
+            if (name_zh) {
+                const duplicate = db.prepare('SELECT id FROM product_models WHERE name_zh = ? AND id != ?').get(name_zh, id);
                 if (duplicate) {
                     return res.status(409).json({
                         success: false,
@@ -167,23 +217,40 @@ module.exports = function (db, authenticate) {
                     });
                 }
             }
+            if (model_code) {
+                const duplicate = db.prepare('SELECT id FROM product_models WHERE model_code = ? AND id != ?').get(model_code, id);
+                if (duplicate) {
+                    return res.status(409).json({
+                        success: false,
+                        error: { code: 'DUPLICATE', message: 'Another product model with this code already exists' }
+                    });
+                }
+            }
 
             db.prepare(`
                 UPDATE product_models SET
-                    model_name = COALESCE(?, model_name),
-                    internal_name = ?,
+                    name_zh = COALESCE(?, name_zh),
+                    name_en = COALESCE(?, name_en),
+                    brand = COALESCE(?, brand),
+                    model_code = ?,
+                    material_id_prefix = ?,
                     product_family = COALESCE(?, product_family),
                     product_type = COALESCE(?, product_type),
                     description = ?,
+                    hero_image = ?,
                     is_active = COALESCE(?, is_active),
                     updated_at = datetime('now')
                 WHERE id = ?
             `).run(
-                model_name,
-                internal_name !== undefined ? internal_name : null,
+                name_zh,
+                name_en,
+                brand,
+                model_code !== undefined ? model_code : null,
+                material_id_prefix !== undefined ? material_id_prefix : null,
                 product_family,
                 product_type,
                 description !== undefined ? description : null,
+                hero_image !== undefined ? hero_image : null,
                 is_active !== undefined ? (is_active ? 1 : 0) : null,
                 id
             );
@@ -212,7 +279,7 @@ module.exports = function (db, authenticate) {
             const { id } = req.params;
 
             // Check if model exists
-            const model = db.prepare('SELECT model_name FROM product_models WHERE id = ?').get(id);
+            const model = db.prepare('SELECT name_zh FROM product_models WHERE id = ?').get(id);
             if (!model) {
                 return res.status(404).json({
                     success: false,
@@ -221,7 +288,7 @@ module.exports = function (db, authenticate) {
             }
 
             // Check if any products use this model
-            const instanceCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE model_name = ?').get(model.model_name);
+            const instanceCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE model_name = ?').get(model.name_zh);
             if (instanceCount.count > 0) {
                 return res.status(409).json({
                     success: false,
@@ -237,6 +304,35 @@ module.exports = function (db, authenticate) {
             });
         } catch (err) {
             console.error('Failed to delete product model:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'DB_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/admin/product-models/:id/skus
+     * List SKUs for a specific product model
+     */
+    router.get('/:id/skus', authenticate, requireModelAdmin, (req, res) => {
+        try {
+            const { id } = req.params;
+            const skus = db.prepare(`
+                SELECT 
+                    ps.*,
+                    (SELECT COUNT(*) FROM products p WHERE p.sku_id = ps.id) as instance_count
+                FROM product_skus ps
+                WHERE ps.model_id = ?
+                ORDER BY ps.is_active DESC, ps.sku_code ASC
+            `).all(id);
+
+            res.json({
+                success: true,
+                data: skus
+            });
+        } catch (err) {
+            console.error('Failed to fetch model SKUs:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'DB_ERROR', message: err.message }

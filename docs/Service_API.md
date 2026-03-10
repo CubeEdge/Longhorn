@@ -2505,107 +2505,65 @@
 
 ---
 
-## 11. 产品 API
+## 11. 产品体系管理 API (Admin)
 
-### 11.1 获取产品列表
+> **权限**: 所有子模块均要求 Admin / Exec / MS Lead 角色。
+> **入口**: `/api/v1/admin/product-models`, `/api/v1/admin/product-skus`, `/api/v1/admin/products`
 
-**GET** `/api/v1/products`
+### 11.1 产品型号管理 (Product Models)
 
-```json
-// Response
-{
-  "success": true,
-  "data": [
-    {
-      "id": "prod_edge8k",
-      "name": "MAVO Edge 8K",
-      "model": "Edge 8K",
-      "category": "电影机",
-      "series": "Edge",
-      "current_firmware_version": "8025"
-    }
-  ]
-}
-```
+#### 11.1.1 获取型号列表
+**GET** `/api/v1/admin/product-models`
 
-### 11.2 获取产品详情
+**参数**: `product_family` (A/B/C/D), `keyword` (名称/编码)
 
-**GET** `/api/v1/products/{id}`
+#### 11.1.2 获取型号详情
+**GET** `/api/v1/admin/product-models/{id}`
 
-### 11.3 产品管理 CRUD (Admin)
+#### 11.1.3 创建/更新型号
+**POST/PUT** `/api/v1/admin/product-models[/{id}]`
 
-> **权限**: Admin / Lead 角色专用。挂载路径：`/api/v1/admin/products`
+#### 11.1.4 获取型号关联 SKUs
+**GET** `/api/v1/admin/product-models/{id}/skus`
 
-#### 11.3.1 产品列表（分页筛选）
 
+### 11.2 产品规格管理 (Product SKUs)
+
+#### 11.2.1 获取 SKU 列表
+**GET** `/api/v1/admin/product-skus`
+
+**参数**: `model_id`, `keyword` (SKU编码/名称)
+
+#### 11.2.2 获取 SKU 详情
+**GET** `/api/v1/admin/product-skus/{id}`
+
+#### 11.2.3 创建/更新 SKU
+**POST/PUT** `/api/v1/admin/product-skus[/{id}]`
+
+
+### 11.3 产品资产管理 (Product Instances / Installed Base)
+
+> 即 PRD 中的 “已安装资产 (Installed Base)”，代表具体序列号的实物。
+
+#### 11.3.1 获取资产列表 (带分页)
 **GET** `/api/v1/admin/products`
 
-**查询参数**:
+**参数**: 
+- `page`, `page_size`
+- `status` (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED)
+- `product_family`
+- `keyword` (SN/型号/名称)
 
-| 参数 | 类型 | 说明 |
-|-----|------|------|
-| page | int | 页码，默认1 |
-| page_size | int | 每页数量，默认20 |
-| product_family | string | 产品族群筛选：A/B/C/D |
-| is_active | bool | 是否在售 |
-| keyword | string | 关键词搜索（名称/型号/系列） |
+#### 11.3.2 获取资产详情 (含归属与保修)
+**GET** `/api/v1/admin/products/{id}/detail`
 
-```json
-// Response
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "model_name": "MAVO Edge 8K",
-      "product_family": "A",
-      "category": "camera",
-      "series": "Edge",
-      "is_active": true,
-      "ticket_count": 45
-    }
-  ],
-  "meta": { "page": 1, "page_size": 20, "total": 11 }
-}
-```
+#### 11.3.3 创建/更新资产
+**POST/PUT** `/api/v1/admin/products[/{id}]`
 
-#### 11.3.2 产品详情
+**核心字段**: `model_name`, `serial_number`, `sku_id`, `current_owner_id`, `warranty_start_date`, `grade`, `warehouse`.
 
-**GET** `/api/v1/admin/products/{id}`
-
-#### 11.3.3 创建产品
-
-**POST** `/api/v1/admin/products`
-
-```json
-// Request
-{
-  "model_name": "MAVO Edge 8K",
-  "product_family": "A",   // A/B/C/D
-  "category": "camera",    // camera/viewfinder/accessory/cable
-  "series": "Edge",
-  "current_firmware_version": "8025",
-  "is_active": true
-}
-```
-
-#### 11.3.4 更新产品
-
-**PUT** `/api/v1/admin/products/{id}`
-
-> 请求体字段同创建，全量替换。
-
-#### 11.3.5 删除产品
-
-**DELETE** `/api/v1/admin/products/{id}`
-
-> 软删除：存在关联工单时仅设置 `is_active = false`，无关联时才物理删除。
-
-#### 11.3.6 查看产品关联工单
-
+#### 11.3.4 获取资产关联工单
 **GET** `/api/v1/admin/products/{id}/tickets`
-
-**查询参数**: `page`, `page_size`, `ticket_type` (inquiry/rma/svc)
 
 ---
 

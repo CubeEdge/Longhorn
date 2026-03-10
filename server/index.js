@@ -18,6 +18,7 @@ const BackupService = require('./service/backup_service');
 const products = require('./service/routes/products');
 const productsAdmin = require('./service/routes/products-admin');
 const productModelsAdmin = require('./service/routes/product-models-admin');
+const productSkusAdmin = require('./service/routes/product-skus');
 const settings = require('./service/routes/settings');
 
 dotenv.config();
@@ -897,6 +898,7 @@ app.use('/api/admin', settings(db, authenticate, backupService));
 app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/admin/products', productsAdmin(db, authenticate));
 app.use('/api/v1/admin/product-models', productModelsAdmin(db, authenticate));
+app.use('/api/v1/admin/product-skus', productSkusAdmin(db, authenticate));
 
 // Health Check Route
 // Batch Vocabulary Fetch (Optimized for Updates) - MOVED TO TOP to prevent shadowing

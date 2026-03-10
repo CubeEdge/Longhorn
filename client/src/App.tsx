@@ -56,6 +56,9 @@ import DealerManagement from './components/DealerManagement';
 import ProductManagement from './components/ProductManagement';
 import ProductDetailPage from './components/ProductDetailPage';
 import ProductModelsManagement from './components/ProductModelsManagement';
+import ProductModelDetailPage from './components/ProductModelDetailPage';
+import ProductSkusManagement from './components/ProductSkusManagement';
+import ProductSkuDetailPage from './components/ProductSkuDetailPage';
 import { PartsManagementPage, PartsCatalogPage, PartsInventoryPage, PartsConsumptionPage, PartsSettlementPage } from './components/PartsManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
 
@@ -252,6 +255,15 @@ const App: React.FC = () => {
           <Route path="/service/product-models" element={
             ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelsManagement /> : <Navigate to="/" />
           } />
+          <Route path="/service/product-models/:id" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelDetailPage /> : <Navigate to="/" />
+          } />
+          <Route path="/service/product-skus" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductSkusManagement /> : <Navigate to="/" />
+          } />
+          <Route path="/service/product-skus/:id" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductSkuDetailPage /> : <Navigate to="/" />
+          } />
           <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 
           {/* Knowledge Audit Log - Internal Staff Only (Admin) */}
@@ -305,18 +317,18 @@ const App: React.FC = () => {
           {/* ==================== ADMIN ROUTES ==================== */}
           <Route path="/root" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <RootDirectoryView /> : <Navigate to="/" />} />
           <Route path="/members" element={(user?.role === 'Admin' || user?.role === 'Exec') ? <MemberSpacePage /> : <Navigate to="/" />} />
-          
+
           {/* Unified Settings Panel (统一系统设置) - Admin/Exec/Lead */}
           <Route path="/settings/*" element={
-            ['Admin', 'Exec', 'Lead'].includes(user?.role || '') 
-              ? <AdminPanel /> 
+            ['Admin', 'Exec', 'Lead'].includes(user?.role || '')
+              ? <AdminPanel />
               : <Navigate to="/" />
           } />
-          
+
           {/* Legacy Admin Routes - Redirect to unified settings */}
           <Route path="/admin/*" element={<Navigate to="/settings" replace />} />
           <Route path="/service/admin/*" element={<Navigate to="/settings" replace />} />
-          
+
           <Route path="/department-dashboard" element={(user?.role === 'Lead' || user?.role === 'Exec') ? <DepartmentDashboard /> : <Navigate to="/" />} />
 
           {/* ==================== BACKWARD COMPATIBILITY REDIRECTS ==================== */}
@@ -675,6 +687,10 @@ const Sidebar: React.FC<{
                     <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
                       <Layers size={18} />
                       <span>{t('sidebar.product_catalog')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/product-skus')} className={`sidebar-item ${location.pathname.startsWith('/service/product-skus') ? 'active' : ''}`} onClick={onClose}>
+                      <Package size={18} />
+                      <span>{t('sidebar.product_skus')}</span>
                     </Link>
                     <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
                       <Box size={18} />

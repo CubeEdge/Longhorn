@@ -32,6 +32,7 @@ module.exports = function (db, authenticate, multerModule, attachmentsDir) {
             // Map upload types to correct directories
             const typeDirMap = {
                 'warranty_invoice': 'Products/WarrantyInvoices',
+                'product_photo': 'Products/Photos',
                 'ticket_attachment': 'Tickets/General',
                 'general': 'Temp/Uploads'
             };
@@ -79,7 +80,7 @@ module.exports = function (db, authenticate, multerModule, attachmentsDir) {
      * Body (multipart/form-data):
      *   - file: The file to upload (required)
      *   - type: Upload type/category (optional, default: 'general')
-     *           Options: 'warranty_invoice', 'general', 'ticket_attachment'
+     *           Options: 'warranty_invoice', 'product_photo', 'general', 'ticket_attachment'
      *
      * Response:
      *   {
@@ -105,6 +106,7 @@ module.exports = function (db, authenticate, multerModule, attachmentsDir) {
             // Map upload types to URL paths
             const typeUrlMap = {
                 'warranty_invoice': '/service/products/warranty-invoices',
+                'product_photo': '/service/products/photos',
                 'ticket_attachment': '/service/tickets/attachments',
                 'general': '/service/temp/uploads'
             };

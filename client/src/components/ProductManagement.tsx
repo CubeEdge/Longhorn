@@ -18,7 +18,7 @@ interface Product {
     product_type: string;
     product_family: 'A' | 'B' | 'C' | 'D';
     production_date: string;
-    
+
     // IoT Status
     is_iot_device: boolean;
     is_activated: boolean;
@@ -26,38 +26,52 @@ interface Product {
     last_connected_at: string;
     firmware_version: string;
     ip_address: string;
-    
+
     // Sales Trace
     sales_channel: 'DIRECT' | 'DEALER';
     original_order_id: string;
     sold_to_dealer_id: number;
     ship_to_dealer_date: string;
-    
+
     // Ownership
     current_owner_id: number;
     current_owner_name?: string;
     registration_date: string;
     sales_invoice_date: string;
     sales_invoice_proof: string;
-    
+
     // Warranty
     warranty_source: 'IOT_ACTIVATION' | 'INVOICE_PROOF' | 'DIRECT_SHIPMENT' | 'DEALER_FALLBACK';
     warranty_start_date: string;
     warranty_months: number;
     warranty_end_date: string;
     warranty_status: 'ACTIVE' | 'EXPIRED' | 'PENDING';
-    
+
     // Status - IB Status: ACTIVE/IN_REPAIR/STOLEN/SCRAPPED
     status: 'ACTIVE' | 'IN_REPAIR' | 'STOLEN' | 'SCRAPPED';
     description: string;
     created_at: string;
     updated_at: string;
-    
+
     // Stats
     inquiry_count: number;
     rma_count: number;
     repair_count: number;
     ticket_count: number;
+    sku_id?: number | null;
+}
+
+interface ProductModel {
+    id: number;
+    name_zh: string;
+    model_code: string;
+}
+
+interface ProductSku {
+    id: number;
+    model_id: number;
+    sku_code: string;
+    display_name: string;
 }
 
 const PRODUCT_FAMILY_MAP = {
@@ -85,6 +99,8 @@ const ProductManagement: React.FC = () => {
     const statusFilter = (searchParams.get('status') || 'ALL') as ProductStatus;
 
     const [products, setProducts] = useState<Product[]>([]);
+    const [models, setModels] = useState<ProductModel[]>([]);
+    const [skus, setSkus] = useState<ProductSku[]>([]);
     const [loading, setLoading] = useState(false);
     const [, setTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -127,7 +143,8 @@ const ProductManagement: React.FC = () => {
         sales_invoice_date: '',
         sales_invoice_proof: '',
         warranty_start_date: '',
-        warranty_months: 24
+        warranty_months: 24,
+        sku_id: undefined
     });
 
     const updateParams = (newParams: Record<string, string>) => {
@@ -185,8 +202,24 @@ const ProductManagement: React.FC = () => {
         }
     };
 
+    const fetchOptions = async () => {
+        try {
+            const [modelsRes, skusRes] = await Promise.all([
+                axios.get('/api/v1/admin/product-models', { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } })
+            ]);
+            if (modelsRes.data.success) setModels(modelsRes.data.data);
+            if (skusRes.data.success) setSkus(skusRes.data.data);
+        } catch (err) {
+            console.error('Failed to fetch product options', err);
+        }
+    };
+
     useEffect(() => {
-        if (token) fetchProducts();
+        if (token) {
+            fetchProducts();
+            fetchOptions();
+        }
     }, [token, productFamily, page, searchQuery, sortBy, sortOrder, statusFilter]);
 
     // Click outside to close dropdowns
@@ -222,7 +255,8 @@ const ProductManagement: React.FC = () => {
                 sales_invoice_date: product.sales_invoice_date,
                 sales_invoice_proof: product.sales_invoice_proof,
                 warranty_start_date: product.warranty_start_date,
-                warranty_months: product.warranty_months
+                warranty_months: product.warranty_months,
+                sku_id: product.sku_id
             });
         } else {
             setEditingProduct(null);
@@ -242,7 +276,8 @@ const ProductManagement: React.FC = () => {
                 sales_invoice_date: '',
                 sales_invoice_proof: '',
                 warranty_start_date: '',
-                warranty_months: 24
+                warranty_months: 24,
+                sku_id: undefined
             });
         }
         setIsModalOpen(true);
@@ -321,8 +356,8 @@ const ProductManagement: React.FC = () => {
     const canManage = user?.role === 'Admin' || user?.role === 'Lead';
 
     // Check if user can manage product models (MS Lead, Exec, Admin)
-    const canManageModels = user?.role === 'Admin' || user?.role === 'Exec' || 
-                            (user?.role === 'Lead' && user?.department_code === 'MS');
+    const canManageModels = user?.role === 'Admin' || user?.role === 'Exec' ||
+        (user?.role === 'Lead' && user?.department_code === 'MS');
 
     // Family tabs configuration
     const familyTabs: { key: ProductFamily; label: string }[] = [
@@ -566,14 +601,14 @@ const ProductManagement: React.FC = () => {
 
             {/* Family Filter Tabs - macOS26 Segmented Control Style */}
             <div style={{ marginBottom: 20 }}>
-                <div className="tabs" style={{ 
-                    display: 'flex', 
-                    gap: 2, 
-                    background: 'var(--glass-bg-light)', 
-                    padding: 3, 
-                    borderRadius: 8, 
-                    height: '36px', 
-                    alignItems: 'center', 
+                <div className="tabs" style={{
+                    display: 'flex',
+                    gap: 2,
+                    background: 'var(--glass-bg-light)',
+                    padding: 3,
+                    borderRadius: 8,
+                    height: '36px',
+                    alignItems: 'center',
                     width: 'fit-content',
                     border: '1px solid var(--glass-border)'
                 }}>
@@ -974,15 +1009,15 @@ const ProductManagement: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button 
-                                onClick={handleCloseModal} 
-                                style={{ 
+                            <button
+                                onClick={handleCloseModal}
+                                style={{
                                     width: 36,
                                     height: 36,
                                     borderRadius: 8,
                                     background: 'rgba(255,255,255,0.05)',
-                                    border: 'none', 
-                                    cursor: 'pointer', 
+                                    border: 'none',
+                                    cursor: 'pointer',
                                     color: '#888',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1031,195 +1066,221 @@ const ProductManagement: React.FC = () => {
                         <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                             {activeTab === 'basic' ? (
                                 <>
-                            {/* Section: Physical Identity */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
-                                物理身份
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    型号名称 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.model_name}
-                                    onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: MAVO Edge 8K"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    序列号
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.serial_number || ''}
-                                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: ME_107649"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    产品SKU
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.product_sku || ''}
-                                    onChange={(e) => setFormData({ ...formData, product_sku: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: A010-001-01"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    生产日期
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.production_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    固件版本
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.firmware_version || ''}
-                                    onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: 8.0.123"
-                                />
-                            </div>
+                                    {/* Section: Physical Identity */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
+                                        物理身份
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            型号名称 <span style={{ color: '#EF4444' }}>*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            value={formData.model_name || ''}
+                                            onChange={(e) => {
+                                                const modelName = e.target.value;
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    model_name: modelName,
+                                                    product_sku: '', // Reset SKU when model changes
+                                                    sku_id: undefined
+                                                }));
+                                            }}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        >
+                                            <option value="" disabled>请选择型号</option>
+                                            {models.map(m => (
+                                                <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            产品SKU
+                                        </label>
+                                        <select
+                                            value={formData.sku_id || ''}
+                                            onChange={(e) => {
+                                                const skuId = e.target.value;
+                                                const selectedSku = skus.find(s => s.id.toString() === skuId);
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    sku_id: selectedSku ? selectedSku.id : undefined,
+                                                    product_sku: selectedSku ? selectedSku.sku_code : ''
+                                                }));
+                                            }}
+                                            disabled={!formData.model_name}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', opacity: !formData.model_name ? 0.5 : 1 }}
+                                        >
+                                            <option value="">{formData.model_name ? '请选择 SKU' : '请先选择型号'}</option>
+                                            {skus.filter(s => {
+                                                const model = models.find(m => m.name_zh === formData.model_name);
+                                                return model && s.model_id === model.id;
+                                            }).map(s => (
+                                                <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            序列号
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.serial_number || ''}
+                                            onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                            placeholder="例如: ME_107649"
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            生产日期
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.production_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            固件版本
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.firmware_version || ''}
+                                            onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                            placeholder="例如: 8.0.123"
+                                        />
+                                    </div>
 
-                            {/* Section: Description */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                其他
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    描述
-                                </label>
-                                <textarea
-                                    value={formData.description || ''}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    rows={3}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
-                                    placeholder="设备描述..."
-                                />
-                            </div>
+                                    {/* Section: Description */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                        其他
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            描述
+                                        </label>
+                                        <textarea
+                                            value={formData.description || ''}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            rows={3}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
+                                            placeholder="设备描述..."
+                                        />
+                                    </div>
                                 </>
                             ) : (
                                 <>
-                            {/* Section: Status */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
-                                业务状态
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    设备状态 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <select
-                                    required
-                                    value={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                >
-                                    <option value="ACTIVE">在役</option>
-                                    <option value="IN_REPAIR">维修中</option>
-                                    <option value="STOLEN">失窃</option>
-                                    <option value="SCRAPPED">报废</option>
-                                </select>
-                            </div>
+                                    {/* Section: Status */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
+                                        业务状态
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            设备状态 <span style={{ color: '#EF4444' }}>*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        >
+                                            <option value="ACTIVE">在役</option>
+                                            <option value="IN_REPAIR">维修中</option>
+                                            <option value="STOLEN">失窃</option>
+                                            <option value="SCRAPPED">报废</option>
+                                        </select>
+                                    </div>
 
-                            {/* Section: Sales Trace */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                销售溯源
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    销售渠道
-                                </label>
-                                <select
-                                    value={formData.sales_channel}
-                                    onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                >
-                                    <option value="DIRECT">直销</option>
-                                    <option value="DEALER">经销商</option>
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    发货日期
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.ship_to_dealer_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, ship_to_dealer_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
+                                    {/* Section: Sales Trace */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                        销售溯源
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            销售渠道
+                                        </label>
+                                        <select
+                                            value={formData.sales_channel}
+                                            onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        >
+                                            <option value="DIRECT">直销</option>
+                                            <option value="DEALER">经销商</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            发货日期
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.ship_to_dealer_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, ship_to_dealer_date: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
 
-                            {/* Section: Ownership */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                终端归属
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    注册日期
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.registration_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    发票日期
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.sales_invoice_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, sales_invoice_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
+                                    {/* Section: Ownership */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                        终端归属
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            注册日期
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.registration_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            发票日期
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.sales_invoice_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, sales_invoice_date: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
 
-                            {/* Section: Warranty */}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                保修信息
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    保修起始日期
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.warranty_start_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, warranty_start_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    保修时长（月）
-                                </label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={120}
-                                    value={formData.warranty_months || 24}
-                                    onChange={(e) => setFormData({ ...formData, warranty_months: parseInt(e.target.value) })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                />
-                            </div>
+                                    {/* Section: Warranty */}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                        保修信息
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            保修起始日期
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.warranty_start_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, warranty_start_date: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            保修时长（月）
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={120}
+                                            value={formData.warranty_months || 24}
+                                            onChange={(e) => setFormData({ ...formData, warranty_months: parseInt(e.target.value) })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                        />
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -1301,10 +1362,10 @@ const ProductManagement: React.FC = () => {
                             background: 'rgba(239,68,68,0.08)'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ 
+                                <div style={{
                                     width: 40,
                                     height: 40,
-                                    background: 'rgba(239,68,68,0.15)', 
+                                    background: 'rgba(239,68,68,0.15)',
                                     borderRadius: 10,
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1321,15 +1382,15 @@ const ProductManagement: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button 
-                                onClick={handleCloseDeleteModal} 
-                                style={{ 
+                            <button
+                                onClick={handleCloseDeleteModal}
+                                style={{
                                     width: 36,
                                     height: 36,
                                     borderRadius: 8,
                                     background: 'rgba(255,255,255,0.05)',
-                                    border: 'none', 
-                                    cursor: 'pointer', 
+                                    border: 'none',
+                                    cursor: 'pointer',
                                     color: '#888',
                                     display: 'flex',
                                     alignItems: 'center',

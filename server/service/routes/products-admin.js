@@ -47,9 +47,9 @@ module.exports = function (db, authenticate) {
                 params.push(status);
             }
 
-            // Keyword filtering (model_name or internal_name or serial_number)
+            // Keyword filtering (model_name or model_code or serial_number)
             if (keyword) {
-                conditions.push(`(p.model_name LIKE ? OR p.internal_name LIKE ? OR p.serial_number LIKE ?)`);
+                conditions.push(`(p.model_name LIKE ? OR pm.model_code LIKE ? OR p.serial_number LIKE ?)`);
                 const term = `%${keyword}%`;
                 params.push(term, term, term);
             }
@@ -58,7 +58,11 @@ module.exports = function (db, authenticate) {
 
             // Count total
             const countResult = db.prepare(`
-                SELECT COUNT(*) as total FROM products p ${whereClause}
+                SELECT COUNT(*) as total 
+                FROM products p 
+                LEFT JOIN product_skus ps ON p.sku_id = ps.id
+                LEFT JOIN product_models pm ON ps.model_id = pm.id
+                ${whereClause}
             `).get(...params);
 
             // Paginate
@@ -66,10 +70,14 @@ module.exports = function (db, authenticate) {
             const products = db.prepare(`
                 SELECT 
                     p.*,
+                    ps.sku_code, ps.display_name as sku_name, ps.sku_image,
+                    pm.hero_image, pm.brand,
                     (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'inquiry') as inquiry_count,
                     (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'rma') as rma_count,
                     (SELECT COUNT(*) FROM tickets WHERE product_id = p.id AND ticket_type = 'svc') as repair_count
                 FROM products p
+                LEFT JOIN product_skus ps ON p.sku_id = ps.id
+                LEFT JOIN product_models pm ON ps.model_id = pm.id
                 ${whereClause}
                 ORDER BY 
                     CASE p.product_family 
@@ -79,7 +87,8 @@ module.exports = function (db, authenticate) {
                         WHEN 'D' THEN 4 
                         ELSE 5 
                     END,
-                    p.model_name ASC
+                    p.model_name ASC,
+                    p.created_at DESC
                 LIMIT ? OFFSET ?
             `).all(...params, parseInt(page_size), offset);
 
@@ -139,10 +148,24 @@ module.exports = function (db, authenticate) {
                 SELECT COUNT(*) as count FROM tickets WHERE product_id = ? AND ticket_type = 'svc'
             `).get(productId);
 
+            // Real-time warranty status correction logic
+            let currentStatus = product.warranty_status;
+            if (currentStatus === 'ACTIVE' && product.warranty_end_date) {
+                const now = new Date();
+                const end = new Date(product.warranty_end_date);
+                if (end < now) {
+                    currentStatus = 'EXPIRED';
+                    // Auto-sync back to DB
+                    db.prepare('UPDATE products SET warranty_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                        .run('EXPIRED', productId);
+                }
+            }
+
             res.json({
                 success: true,
                 data: {
                     ...product,
+                    warranty_status: currentStatus,
                     status: product.status || 'ACTIVE',
                     ticket_summary: {
                         inquiry: inquiryCount.count,
@@ -186,7 +209,13 @@ module.exports = function (db, authenticate) {
                 sales_invoice_date,
                 // Warranty
                 warranty_start_date,
-                warranty_months = 24
+                warranty_months = 24,
+                // [v2.0] New fields
+                sku_id,
+                grade = 'A',
+                specification,
+                warehouse,
+                entry_channel
             } = req.body;
 
             if (!model_name) {
@@ -211,7 +240,7 @@ module.exports = function (db, authenticate) {
                 const end = new Date(start);
                 end.setMonth(end.getMonth() + parseInt(warranty_months));
                 warranty_end_date = end.toISOString().split('T')[0];
-                
+
                 // Determine warranty status
                 const now = new Date();
                 warranty_status = end > now ? 'ACTIVE' : 'EXPIRED';
@@ -224,8 +253,9 @@ module.exports = function (db, authenticate) {
                     sales_channel, sold_to_dealer_id, ship_to_dealer_date,
                     current_owner_id, registration_date, sales_invoice_date,
                     warranty_start_date, warranty_months, warranty_end_date, warranty_status,
+                    sku_id, grade, specification, warehouse, entry_channel,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `).run(
                 model_name,
                 serial_number || null,
@@ -243,7 +273,12 @@ module.exports = function (db, authenticate) {
                 warranty_start_date || null,
                 warranty_months,
                 warranty_end_date,
-                warranty_status
+                warranty_status,
+                sku_id || null,
+                grade,
+                specification || null,
+                warehouse || null,
+                entry_channel || null
             );
 
             // Auto-upgrade account to ACTIVE if owner is provided
@@ -297,7 +332,13 @@ module.exports = function (db, authenticate) {
                 sales_invoice_proof,
                 // Warranty
                 warranty_start_date,
-                warranty_months
+                warranty_months,
+                // [v2.0] New fields
+                sku_id,
+                grade,
+                specification,
+                warehouse,
+                entry_channel
             } = req.body;
 
             // Check if product exists
@@ -359,6 +400,13 @@ module.exports = function (db, authenticate) {
                 updates.push('warranty_months = ?');
                 params.push(warranty_months);
             }
+
+            // [v2.0] Add updates for new fields
+            addUpdate('sku_id', sku_id);
+            addUpdate('grade', grade);
+            addUpdate('specification', specification);
+            addUpdate('warehouse', warehouse);
+            addUpdate('entry_channel', entry_channel);
 
             // Recalculate warranty end date if start date or months changed
             if (warranty_start_date !== undefined || warranty_months !== undefined) {
@@ -490,10 +538,14 @@ module.exports = function (db, authenticate) {
                 SELECT 
                     p.*,
                     d.name as sold_to_dealer_name,
-                    c.name as current_owner_name
+                    c.name as current_owner_name,
+                    ps.sku_code, ps.display_name as sku_name, ps.sku_image, ps.spec_label, ps.display_name_en as sku_name_en,
+                    pm.name_zh as model_display_name, pm.name_en as model_name_en, pm.hero_image, pm.brand
                 FROM products p
                 LEFT JOIN accounts d ON p.sold_to_dealer_id = d.id
                 LEFT JOIN accounts c ON p.current_owner_id = c.id
+                LEFT JOIN product_skus ps ON p.sku_id = ps.id
+                LEFT JOIN product_models pm ON ps.model_id = pm.id
                 WHERE p.id = ?
             `).get(productId);
 

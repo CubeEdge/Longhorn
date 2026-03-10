@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
 import {
     Search, Plus, Layers, MoreHorizontal,
-    Edit2, AlertCircle, X, Save, Trash2, ArrowLeft
+    Edit2, AlertCircle, X, Save, Trash2, ArrowLeft, Package
 } from 'lucide-react';
 
 // Top bar height constant for drawer positioning
@@ -14,16 +14,34 @@ const TOP_BAR_HEIGHT = 64;
 // Types - Product Model (Product Line definition)
 interface ProductModel {
     id: number;
-    model_name: string;
-    internal_name: string;
+    name_zh: string;
+    name_en?: string;
+    brand?: string;
+    model_code?: string;
+    material_id_prefix?: string;
     product_family: 'A' | 'B' | 'C' | 'D';
     product_type: string;
     description: string;
+    hero_image?: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;
     // Stats
     instance_count: number;
+    sku_count: number;
+}
+
+interface ProductSku {
+    id: number;
+    model_id: number;
+    sku_code: string;
+    material_id?: string;
+    display_name: string;
+    display_name_en?: string;
+    spec_label?: string;
+    sku_image?: string;
+    is_active: boolean;
+    created_at: string;
 }
 
 const PRODUCT_FAMILY_MAP = {
@@ -34,16 +52,17 @@ const PRODUCT_FAMILY_MAP = {
 };
 
 const PRODUCT_TYPE_OPTIONS = [
-    { value: 'CAMERA', label: '摄影机' },
-    { value: 'VIEWFINDER', label: '寻像器' },
-    { value: 'LENS', label: '镜头' },
-    { value: 'BATTERY', label: '电池' },
-    { value: 'CHARGER', label: '充电器' },
-    { value: 'CABLE', label: '线缆' },
-    { value: 'MOUNT', label: '卡口/转接环' },
-    { value: 'MONITOR', label: '监视器' },
-    { value: 'STORAGE', label: '存储介质' },
-    { value: 'ACCESSORY', label: '配件/其他' }
+    { value: 'CAMERA', label: 'product.type.CAMERA' },
+    { value: 'VIEWFINDER', label: 'product.type.VIEWFINDER' },
+    { value: 'LENS', label: 'product.type.LENS' },
+    { value: 'BATTERY', label: 'product.type.BATTERY' },
+    { value: 'CHARGER', label: 'product.type.CHARGER' },
+    { value: 'CABLE', label: 'product.type.CABLE' },
+    { value: 'MOUNT', label: 'product.type.MOUNT' },
+    { value: 'MONITOR', label: 'product.type.MONITOR' },
+    { value: 'STORAGE', label: 'product.type.STORAGE' },
+    { value: 'ACCESSORY', label: 'product.type.ACCESSORY' },
+    { value: 'OTHER', label: 'product.type.OTHER' }
 ];
 
 type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
@@ -74,14 +93,24 @@ const ProductModelsManagement: React.FC = () => {
     // Search expand state
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Active Drawer Tab
+    const [activeTab, setActiveTab] = useState<'info' | 'skus'>('info');
+    const [skus, setSkus] = useState<ProductSku[]>([]);
+    const [loadingSkus, setLoadingSkus] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<Partial<ProductModel>>({
-        model_name: '',
-        internal_name: '',
+        name_zh: '',
+        name_en: '',
+        brand: 'Kinefinity',
+        model_code: '',
+        material_id_prefix: '',
         product_family: 'A',
         product_type: 'CAMERA',
         description: '',
+        hero_image: '',
         is_active: true
     });
 
@@ -123,28 +152,78 @@ const ProductModelsManagement: React.FC = () => {
     }, []);
 
     const handleOpenDrawer = (model?: ProductModel) => {
+        setActiveTab('info');
         if (model) {
             setEditingModel(model);
             setFormData({
-                model_name: model.model_name,
-                internal_name: model.internal_name,
+                name_zh: model.name_zh,
+                name_en: model.name_en || '',
+                brand: model.brand || 'Kinefinity',
+                model_code: model.model_code || '',
+                material_id_prefix: model.material_id_prefix || '',
                 product_family: model.product_family,
                 product_type: model.product_type,
-                description: model.description,
-                is_active: model.is_active
+                description: model.description || '',
+                hero_image: model.hero_image || '',
+                is_active: !!model.is_active
             });
+            fetchSkus(model.id);
         } else {
             setEditingModel(null);
             setFormData({
-                model_name: '',
-                internal_name: '',
+                name_zh: '',
+                name_en: '',
+                brand: 'Kinefinity',
+                model_code: '',
+                material_id_prefix: '',
                 product_family: 'A',
                 product_type: 'CAMERA',
                 description: '',
+                hero_image: '',
                 is_active: true
             });
+            setSkus([]);
         }
         setIsDrawerOpen(true);
+    };
+
+    const fetchSkus = async (modelId: number) => {
+        setLoadingSkus(true);
+        try {
+            const res = await axios.get(`/api/v1/admin/product-models/${modelId}/skus`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setSkus(res.data.data || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch SKUs', err);
+        } finally {
+            setLoadingSkus(false);
+        }
+    };
+
+    const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        formDataUpload.append('type', 'product_photo'); // Based on modified upload.js
+
+        try {
+            const res = await axios.post('/api/v1/upload', formDataUpload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.data.success) {
+                setFormData(prev => ({ ...prev, hero_image: res.data.file.url }));
+            }
+        } catch (err: any) {
+            alert('上传图片失败: ' + (err.response?.data?.error?.message || err.message));
+        }
     };
 
     const handleCloseDrawer = () => {
@@ -203,8 +282,8 @@ const ProductModelsManagement: React.FC = () => {
     };
 
     // Permission check - only MS Lead, Exec, or Admin can manage product models
-    const canManage = user?.role === 'Admin' || user?.role === 'Exec' || 
-                      (user?.role === 'Lead' && user?.department_code === 'MS');
+    const canManage = user?.role === 'Admin' || user?.role === 'Exec' ||
+        (user?.role === 'Lead' && user?.department_code === 'MS');
 
     const familyTabs: { key: ProductFamily; label: string }[] = [
         { key: 'ALL', label: '全部' },
@@ -341,14 +420,14 @@ const ProductModelsManagement: React.FC = () => {
 
             {/* Family Filter Tabs - macOS26 Segmented Control Style */}
             <div style={{ marginBottom: 20 }}>
-                <div className="tabs" style={{ 
-                    display: 'flex', 
-                    gap: 2, 
-                    background: 'var(--glass-bg-light)', 
-                    padding: 3, 
-                    borderRadius: 8, 
-                    height: '36px', 
-                    alignItems: 'center', 
+                <div className="tabs" style={{
+                    display: 'flex',
+                    gap: 2,
+                    background: 'var(--glass-bg-light)',
+                    padding: 3,
+                    borderRadius: 8,
+                    height: '36px',
+                    alignItems: 'center',
                     width: 'fit-content',
                     border: '1px solid var(--glass-border)'
                 }}>
@@ -360,13 +439,13 @@ const ProductModelsManagement: React.FC = () => {
                                 padding: '0 16px', height: '30px',
                                 background: productFamily === tab.key ? 'var(--glass-bg-hover)' : 'transparent',
                                 color: productFamily === tab.key ? 'var(--text-main)' : 'var(--text-secondary)',
-                                borderRadius: 6, 
+                                borderRadius: 6,
                                 fontWeight: productFamily === tab.key ? 500 : 400,
-                                fontSize: '0.9rem', 
-                                border: 'none', 
+                                fontSize: '0.9rem',
+                                border: 'none',
                                 cursor: 'pointer',
-                                transition: 'all 0.15s ease', 
-                                display: 'flex', 
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
                                 alignItems: 'center',
                                 boxShadow: productFamily === tab.key ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
                             }}
@@ -390,11 +469,11 @@ const ProductModelsManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>型号名称</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>内部名称</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>类型</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>实例数</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.model_code')}</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.model_name_zh')}</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>型号特征</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群/类型</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>SKU/实例</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>状态</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>操作</th>
                         </tr>
@@ -415,33 +494,56 @@ const ProductModelsManagement: React.FC = () => {
                                     key={model.id}
                                     className="row-hover"
                                     style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                    onClick={() => navigate(`/service/product-models/${model.id}`)}
                                 >
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{model.model_name}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{
+                                                width: 40, height: 40, borderRadius: 8,
+                                                background: 'var(--glass-bg-hover)',
+                                                overflow: 'hidden', border: '1px solid var(--glass-border)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0
+                                            }}>
+                                                {model.hero_image ? (
+                                                    <img src={model.hero_image} alt={model.name_zh} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <Layers size={18} opacity={0.3} />
+                                                )}
+                                            </div>
+                                            <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--accent-blue)', fontVariantNumeric: 'tabular-nums' }}>
+                                                {model.model_code}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{model.internal_name || '-'}</span>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{model.name_zh}</div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.name_en || '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRODUCT_FAMILY_MAP[model.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}`}>
-                                            {PRODUCT_FAMILY_MAP[model.product_family]?.label || model.product_family}
-                                        </span>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{model.brand}</div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.material_id_prefix ? `${_t('product.material_id_prefix')}: ${model.material_id_prefix}` : '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                                            {PRODUCT_TYPE_OPTIONS.find(t => t.value === model.product_type)?.label || model.product_type}
-                                        </span>
+                                        <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRODUCT_FAMILY_MAP[model.product_family]?.color || 'bg-gray-500/10 text-gray-400'}`} style={{ marginBottom: 4 }}>
+                                            {model.product_family}{_t('product.series')}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                                            {_t(PRODUCT_TYPE_OPTIONS.find(t => t.value === model.product_type)?.label || model.product_type)}
+                                        </div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{model.instance_count || 0}</span>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{model.sku_count || 0} {_t('product.sku_count_label')}</div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.instance_count || 0} {_t('product.instances')}</div>
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
                                         <span style={{
-                                            fontSize: '0.8rem', padding: '4px 10px', borderRadius: 12,
-                                            background: model.is_active ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
-                                            color: model.is_active ? '#10B981' : '#9CA3AF'
+                                            fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6,
+                                            background: model.is_active ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)',
+                                            color: model.is_active ? '#10B981' : '#9CA3AF',
+                                            border: `1px solid ${model.is_active ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.2)'}`
                                         }}>
-                                            {model.is_active ? '启用' : '停用'}
+                                            {model.is_active ? _t('product.active') : _t('product.inactive')}
                                         </span>
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
@@ -487,13 +589,13 @@ const ProductModelsManagement: React.FC = () => {
                     }}>
                         {/* Drawer Header */}
                         <div style={{
-                            padding: '20px 24px', borderBottom: '1px solid var(--glass-border)',
+                            padding: '16px 24px', borderBottom: '1px solid var(--glass-border)',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                {editingModel ? <Edit2 size={18} color="#3B82F6" /> : <Plus size={18} color="#3B82F6" />}
-                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
-                                    {editingModel ? '编辑型号' : '添加型号'}
+                                {editingModel ? <Edit2 size={18} color="#FFD700" /> : <Plus size={18} color="#FFD700" />}
+                                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                    {editingModel ? formData.name_zh : _t('sidebar.product_catalog')}
                                 </span>
                             </div>
                             <button onClick={handleCloseDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
@@ -501,87 +603,223 @@ const ProductModelsManagement: React.FC = () => {
                             </button>
                         </div>
 
+                        {/* Drawer Tabs */}
+                        {editingModel && (
+                            <div style={{ display: 'flex', padding: '12px 24px', borderBottom: '1px solid var(--glass-border)', gap: 24 }}>
+                                <button
+                                    onClick={() => setActiveTab('info')}
+                                    style={{
+                                        background: 'transparent', border: 'none', borderBottom: `2px solid ${activeTab === 'info' ? 'var(--accent-blue)' : 'transparent'}`,
+                                        color: activeTab === 'info' ? 'var(--text-main)' : 'var(--text-secondary)',
+                                        padding: '4px 0', fontSize: '0.95rem', fontWeight: activeTab === 'info' ? 600 : 400,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {_t('product.base_info')}
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('skus')}
+                                    style={{
+                                        background: 'transparent', border: 'none', borderBottom: `2px solid ${activeTab === 'skus' ? 'var(--accent-blue)' : 'transparent'}`,
+                                        color: activeTab === 'skus' ? 'var(--text-main)' : 'var(--text-secondary)',
+                                        padding: '4px 0', fontSize: '0.95rem', fontWeight: activeTab === 'skus' ? 600 : 400,
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                                    }}
+                                >
+                                    {_t('product.sku_list')} ({skus.length})
+                                </button>
+                            </div>
+                        )}
+
                         {/* Drawer Body */}
-                        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    型号名称 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.model_name}
-                                    onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: MAVO Edge 8K"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    内部名称
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.internal_name || ''}
-                                    onChange={(e) => setFormData({ ...formData, internal_name: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: MAVO Edge 8K (内部代号)"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <select
-                                    required
-                                    value={formData.product_family}
-                                    onChange={(e) => setFormData({ ...formData, product_family: e.target.value as 'A' | 'B' | 'C' | 'D' })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                >
-                                    {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
-                                        <option key={code} value={code}>{code} - {info.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    产品类型 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <select
-                                    required
-                                    value={formData.product_type}
-                                    onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                >
-                                    {PRODUCT_TYPE_OPTIONS.map((type) => (
-                                        <option key={type.value} value={type.value}>{type.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    描述
-                                </label>
-                                <textarea
-                                    value={formData.description || ''}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    rows={3}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
-                                    placeholder="产品型号描述..."
-                                />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: 'var(--glass-bg-light)', borderRadius: 8 }}>
-                                <input
-                                    type="checkbox"
-                                    id="is_active"
-                                    checked={formData.is_active}
-                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                    style={{ width: 18, height: 18, accentColor: '#10B981' }}
-                                />
-                                <label htmlFor="is_active" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
-                                    启用此型号
-                                </label>
-                            </div>
+                        <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                            {activeTab === 'info' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {/* Hero Image Section */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.image')}</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                            <div
+                                                onClick={() => fileInputRef.current?.click()}
+                                                style={{
+                                                    width: 100, height: 100, borderRadius: 12, background: 'var(--glass-bg-hover)', border: '2px dashed var(--glass-border)',
+                                                    cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                {formData.hero_image ? (
+                                                    <img src={formData.hero_image} alt="Hero" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <Plus size={24} opacity={0.3} />
+                                                )}
+                                                <input ref={fileInputRef} type="file" hidden accept="image/*" onChange={handleUploadImage} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ fontSize: '0.75rem', opacity: 0.6, marginBottom: 8 }}>
+                                                    建议尺寸: 800x600, 支持 JPG/PNG/WEBP.
+                                                </p>
+                                                {formData.hero_image && (
+                                                    <button onClick={() => setFormData(p => ({ ...p, hero_image: '' }))} style={{ fontSize: '0.75rem', color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                        移除图片
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.model_name_zh')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <input
+                                                type="text" required value={formData.name_zh}
+                                                onChange={(e) => setFormData({ ...formData, name_zh: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder={_t('product.name_zh_hint')}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.model_name_en')}</label>
+                                            <input
+                                                type="text" value={formData.name_en || ''}
+                                                onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder="Model Name (EN)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.model_code')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <input
+                                                type="text" required value={formData.model_code}
+                                                onChange={(e) => setFormData({ ...formData, model_code: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder={_t('product.model_code_hint')}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.material_id_prefix')}</label>
+                                            <input
+                                                type="text" value={formData.material_id_prefix || ''}
+                                                onChange={(e) => setFormData({ ...formData, material_id_prefix: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder={_t('product.material_id_hint')}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('parts.category')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <select
+                                                required value={formData.product_family}
+                                                onChange={(e) => setFormData({ ...formData, product_family: e.target.value as any })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            >
+                                                {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
+                                                    <option key={code} value={code}>{code} - {info.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('customer.type.internal')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <select
+                                                required value={formData.product_type}
+                                                onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            >
+                                                {PRODUCT_TYPE_OPTIONS.map((type) => (
+                                                    <option key={type.value} value={type.value}>{_t(type.label)}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.brand')}</label>
+                                        <input
+                                            type="text" value={formData.brand || 'Kinefinity'}
+                                            onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.description')}</label>
+                                        <textarea
+                                            value={formData.description || ''}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            rows={2}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', resize: 'none' }}
+                                            placeholder={_t('product.description_hint')}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: 'var(--glass-bg-light)', borderRadius: 8 }}>
+                                        <input
+                                            type="checkbox" id="is_active" checked={formData.is_active}
+                                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                            style={{ width: 18, height: 18, accentColor: '#10B981' }}
+                                        />
+                                        <label htmlFor="is_active" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>{_t('product.active_this_model')}</label>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{_t('product.sku_list')}</h3>
+                                        <button
+                                            className="btn-kine-lowkey"
+                                            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                            onClick={() => navigate('/admin/product-skus')}
+                                        >
+                                            <Plus size={14} /> {_t('product.add_sku')}
+                                        </button>
+                                    </div>
+
+                                    {loadingSkus ? (
+                                        <div style={{ textAlign: 'center', padding: 20, opacity: 0.5 }}>{_t('product.loading')}</div>
+                                    ) : skus.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: 40, background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px dashed var(--glass-border)' }}>
+                                            <Layers size={32} opacity={0.2} style={{ margin: '0 auto 8px' }} />
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{_t('product.no_records')}</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {skus.map(sku => (
+                                                <div
+                                                    key={sku.id}
+                                                    style={{
+                                                        padding: 12, background: 'var(--glass-bg-hover)', borderRadius: 10, border: '1px solid var(--glass-border)',
+                                                        display: 'flex', alignItems: 'center', gap: 12
+                                                    }}
+                                                >
+                                                    <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg-main)', border: '1px solid var(--glass-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {sku.sku_image ? (
+                                                            <img src={sku.sku_image} alt={sku.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <Package size={16} opacity={0.3} />
+                                                        )}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sku.display_name}</div>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                                            {_t('product.sku_id')}: {sku.sku_code} | {_t('product.material_id')}: {sku.material_id || '-'}
+                                                        </div>
+                                                        {sku.spec_label && <div style={{ fontSize: '0.7rem', opacity: 0.5 }}>{sku.spec_label}</div>}
+                                                    </div>
+                                                    {!sku.is_active && (
+                                                        <span style={{ fontSize: '0.7rem', color: '#9CA3AF', background: 'rgba(107,114,128,0.1)', padding: '2px 6px', borderRadius: 4 }}>{_t('product.off_shelf_label')}</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--glass-bg-hover)', padding: '8px 12px', borderRadius: 8, marginTop: 12 }}>
+                                        {_t('product.sku_list_hint')}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Drawer Footer */}
@@ -597,7 +835,7 @@ const ProductModelsManagement: React.FC = () => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                                     }}
                                 >
-                                    <Trash2 size={15} /> 删除型号
+                                    <Trash2 size={15} /> {_t('product.delete_model')}
                                 </button>
                             )}
                             <button
@@ -612,8 +850,8 @@ const ProductModelsManagement: React.FC = () => {
                                 }}
                             >
                                 {editingModel
-                                    ? <><Save size={15} /> {saving ? '保存中...' : '保存更改'}</>
-                                    : <><Plus size={15} /> {saving ? '创建中...' : '创建型号'}</>
+                                    ? <><Save size={15} /> {saving ? _t('product.saving') : _t('action.save')}</>
+                                    : <><Plus size={15} /> {saving ? _t('product.saving') : _t('action.create')}</>
                                 }
                             </button>
                         </div>
@@ -655,7 +893,7 @@ const ProductModelsManagement: React.FC = () => {
                         </div>
                         <div style={{ flex: 1, padding: 24 }}>
                             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                确定要删除产品型号 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{deleteConfirm.model_name}</span> 吗？
+                                确定要删除产品型号 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{deleteConfirm.name_zh}</span> 吗？
                                 {deleteConfirm.instance_count > 0 && (
                                     <span style={{ display: 'block', marginTop: 12, color: '#EF4444' }}>
                                         注意：此型号有 {deleteConfirm.instance_count} 个实例，无法删除。

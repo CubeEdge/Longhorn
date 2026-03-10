@@ -1,5 +1,70 @@
 # 开发会话日志 (Development Session Log)
 
+## [2026-03-10] 工单详情页易用性、侧边栏逻辑与数据库一致性优化 (v12.3.144)
+### UI/UX & Typography
+- **侧边栏结构优化**: 移除了 CustomerContextSidebar 中冗余的 “本工单关联的信息” 标题；修复了内容区域的 `padding` 与 `overflow` 属性，消除了关联资产卡片与下方报告之间的异常空白，使排版更紧凑。
+- **服务成果中心 (Service Document Center)**: 
+  - 简化标题为单语言“服务成果中心”，提升视觉纯净度。
+  - 显著增大了模块内标题（15px）与描述文字（13px）的字号，对齐产品/客户卡片的阅读体验。
+  - **状态感知提示**: 实现了诊断与维修报告的预校验逻辑，若无对应数据则按钮自动禁用并显示“暂无报告”，避免无效点击。
+- **关联资产注册流**: 重构了“录入新产品”按钮逻辑。点击后不再单纯导航，而是直接拉起 `ProductWarrantyRegistrationModal` 详情弹窗，并自动透传当前工单的序列号与型号信息，实现一键预填。
+### Backend & Infrastructure
+- **数据库架构修复**: 发现并修复了 `products` 资产表缺失保修核算核心字段（`activation_date`, `warranty_status`, `sales_invoice_proof` 等）的问题。通过新增 `036_add_missing_product_fields.sql` 迁移脚本完成存量数据库补齐，彻底解决了保修注册接口的 500 崩溃错误。
+- **版本迭代**: 递增至 `client` v12.3.144 / `server` v1.8.15。
+
+
+## [2026-03-10] 保修计算引擎 (Waterfall) 实现 (v12.3.141)
+### Server & Warranty
+- **引擎重构**: 依照 PRD P2 §5.5 实现了 `calculateWarrantyInfo` 函数。
+- **级联优先级**: 明确了 IoT 激活 > 销售发票 > 手动注册 > 直销(+7) > 渠道(+90) 的核算逻辑。
+- **数据流**: 在产品信息更新与注册环节对接到新的核算引擎。
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.141 / `server` v1.8.12。
+- **全量部署**: 已同步至远程服务器 `mini`，服务重启成功。
+
+## [2026-03-10] 工单成果中心化与内览化优化 (v12.3.140)
+### Workspace & Service
+- **资产重构**: 在 `UnifiedTicketDetail` 引入“关联资产”卡片，通过 `CustomerContextSidebar` 实现声明型号与实物型号的冲突检测与一键更正。
+- **成果中心**: 增加 `Service Document Center` 模块，明确“诊断、维修、结算”三个阶段成果的可见性（按角色过滤）。
+- **流程整合**: 修改 `SubmitDiagnosticModal` 支持诊断阶段的配件/工时预估；在 `op_repairing` 环节集成 `RepairReportEditor` 完成维修闭环。
+- **内览预览**: 替换文档下载为 `DocumentReviewModal`，实现在系统内直接查看 PI 与维修报告。
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.140 / `server` v1.8.11。
+- **自动部署**: 已完成构建并同步至远程服务器 `mini`。
+
+## [2026-03-10] 版本迭代与全量远程部署 (v12.3.139)
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.139 / `server` v1.8.10。
+- **构建校验**: 在 `client` 目录下成功运行 `npm run build`。
+- **自动化部署**: 利用 `deploy.sh` (Fast Mode) 完成前端 `dist` 与后端代码全量同步至远程服务器 `mini`。
+- **服务重载**: 远程验证 `pm2 reload longhorn` 成功。
+
+
+## [2026-03-10] 版本迭代与全量远程部署 (v12.3.138)
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.138 / `server` v1.8.9。
+- **构建校验**: 在 `client` 目录下成功运行 `npm run build`。
+- **自动化部署**: 利用 `deploy.sh` (Fast Mode) 完成前端 `dist` 与后端代码全量同步至远程服务器 `mini`。
+- **服务重载**: 远程验证 `pm2 reload longhorn` 成功。
+
+
+## [2026-03-10] 版本迭代与全量远程部署 (v12.3.137)
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.137 / `server` v1.8.8。
+- **构建校验**: 在 `client` 目录下成功运行 `npm run build` 生成前端资产。
+- **自动化部署**: 利用 `deploy.sh` (Fast Mode) 完成前端 `dist` 与后端代码全量同步至远程服务器 `mini`。
+- **服务重载**: 远程验证 `pm2 reload longhorn` 成功执行。
+
+
+## [2026-03-10] 版本迭代与全量远程部署 (v12.3.136)
+### Infrastructure
+- **交付版本迭代**: 递增版本至 `client` v12.3.136 / `server` v1.8.7。
+- **依赖修复**: 补全 `client` 目录下缺失的 `jspdf` 和 `html2canvas` 宏包依赖，执行 `npm install` 确保编译通过。
+- **构建校验**: 在 `client` 目录下成功运行 `npm run build` 生成前端资产。
+- **自动化部署**: 利用 `deploy.sh` (Fast Mode) 完成前端 `dist` 与后端代码全量同步至远程服务器 `mini`。
+- **服务重载**: 远程验证 `pm2 reload longhorn` 成功执行，确保生产环境环境平滑升级。
+
+
 ## [2026-03-07] 版本迭代与快速部署 (v12.3.95)
 ### Infrastructure
 - 执行了 `/upd` 交付流水线，递增各模块版本号。
