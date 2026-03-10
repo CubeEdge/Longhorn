@@ -340,13 +340,14 @@ const DealerDetailPage: React.FC = () => {
                             style={{
                                 background: 'var(--glass-bg-light)',
                                 border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                padding: '8px 12px',
+                                borderRadius: '50%',
+                                width: 36,
+                                height: 36,
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 6,
+                                justifyContent: 'center',
                                 transition: 'all 0.2s'
                             }}
                             onMouseEnter={(e) => {
@@ -356,8 +357,7 @@ const DealerDetailPage: React.FC = () => {
                                 e.currentTarget.style.background = 'var(--glass-bg-light)';
                             }}
                         >
-                            <MoreHorizontal size={18} />
-                            <span style={{ fontSize: '0.85rem' }}>更多</span>
+                            <MoreHorizontal size={20} />
                         </button>
                         
                         {/* Dropdown Menu */}

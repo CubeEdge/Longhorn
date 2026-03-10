@@ -415,18 +415,17 @@ const DealerManagement: React.FC = () => {
                             style={{
                                 background: 'var(--glass-border)',
                                 border: '1px solid var(--glass-border)',
-                                borderRadius: 8,
-                                padding: '0 16px',
-                                height: '40px',
+                                borderRadius: '50%',
+                                width: 40,
+                                height: 40,
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 8
+                                justifyContent: 'center'
                             }}
                         >
-                            <MoreHorizontal size={18} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>更多</span>
+                            <MoreHorizontal size={20} />
                         </button>
                         {isMoreDropdownOpen && (
                             <div style={{

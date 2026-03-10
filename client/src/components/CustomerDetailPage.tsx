@@ -486,37 +486,37 @@ const CustomerDetailPage: React.FC = () => {
                                 <RotateCcw size={16} /> 升级为正式客户
                             </button>
                         )}
-                        <button
-                            onClick={() => setShowMoreMenu(!showMoreMenu)}
-                            style={{
-                                background: 'var(--glass-bg-hover)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                padding: '8px 12px',
-                                color: 'var(--text-secondary)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                position: 'relative'
-                            }}
-                        >
-                            <MoreHorizontal size={18} />
-                            <span style={{ fontSize: '0.85rem' }}>更多</span>
-                        </button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                                style={{
+                                    background: 'var(--glass-bg-hover)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '50%',
+                                    width: 36,
+                                    height: 36,
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <MoreHorizontal size={20} />
+                            </button>
 
-                        {/* Dropdown Menu */}
-                        {showMoreMenu && (
-                            <>
-                                <div
-                                    style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-                                    onClick={() => setShowMoreMenu(false)}
-                                />
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        right: 0,
-                                        top: '100%',
+                            {/* Dropdown Menu */}
+                            {showMoreMenu && (
+                                <>
+                                    <div
+                                        style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                                        onClick={() => setShowMoreMenu(false)}
+                                    />
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            right: 0,
+                                            top: '100%',
                                         marginTop: 8,
                                         background: 'rgba(40, 40, 42, 0.98)',
                                         backdropFilter: 'blur(20px)',
@@ -638,9 +638,10 @@ const CustomerDetailPage: React.FC = () => {
                                             停用经销商
                                         </button>
                                     )}
-                                </div>
-                            </>
-                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', marginTop: 8 }}>

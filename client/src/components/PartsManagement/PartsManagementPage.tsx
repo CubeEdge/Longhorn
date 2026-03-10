@@ -74,11 +74,11 @@ const PartsManagementPage: React.FC = () => {
         <div className="fade-in" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ marginBottom: 24 }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, letterSpacing: '-0.02em' }}>
                     <Package size={28} color="#FFD700" />
                     配件管理
                 </h2>
-                <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
+                <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '13px', letterSpacing: '-0.01em' }}>
                     统一配件目录、库存、消耗及结算管理
                 </p>
             </div>
@@ -115,9 +115,9 @@ const PartsManagementPage: React.FC = () => {
                             <stat.icon size={24} color={stat.alert ? '#EF4444' : '#FFD700'} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{stat.label}</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-main)' }}>{stat.value}</div>
-                            <div style={{ fontSize: 11, color: stat.trend.startsWith('+') ? '#10B981' : '#888' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '-0.01em' }}>{stat.label}</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{stat.value}</div>
+                            <div style={{ fontSize: 10, color: stat.trend.startsWith('+') ? '#10B981' : '#888', letterSpacing: '-0.01em' }}>
                                 {stat.trend}
                             </div>
                         </div>
@@ -170,14 +170,15 @@ const PartsManagementPage: React.FC = () => {
 
                             <div>
                                 <div style={{
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: 600,
                                     color: isActive ? tab.color : 'var(--text-main)',
-                                    marginBottom: 4
+                                    marginBottom: 4,
+                                    letterSpacing: '-0.01em'
                                 }}>
                                     {tab.label}
                                 </div>
-                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>
                                     {tab.description}
                                 </div>
                             </div>
@@ -188,8 +189,9 @@ const PartsManagementPage: React.FC = () => {
                                 alignItems: 'center',
                                 gap: 4,
                                 color: tab.color,
-                                fontSize: 13,
-                                fontWeight: 500
+                                fontSize: 12,
+                                fontWeight: 500,
+                                letterSpacing: '-0.01em'
                             }}>
                                 进入管理 <ChevronRight size={16} />
                             </div>
@@ -206,7 +208,7 @@ const PartsManagementPage: React.FC = () => {
                 border: '1px solid var(--glass-border)',
                 borderRadius: 12
             }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>快速操作</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '-0.01em' }}>快速操作</div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <button style={{
                         padding: '8px 16px',
@@ -214,11 +216,12 @@ const PartsManagementPage: React.FC = () => {
                         border: 'none',
                         borderRadius: 6,
                         color: '#fff',
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6
+                        gap: 6,
+                        letterSpacing: '-0.01em'
                     }}>
                         <Package size={16} /> 新增配件SKU
                     </button>
@@ -228,11 +231,12 @@ const PartsManagementPage: React.FC = () => {
                         border: '1px solid var(--glass-border)',
                         borderRadius: 6,
                         color: 'var(--text-main)',
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6
+                        gap: 6,
+                        letterSpacing: '-0.01em'
                     }}>
                         <Warehouse size={16} /> 入库操作
                     </button>
@@ -242,11 +246,12 @@ const PartsManagementPage: React.FC = () => {
                         border: '1px solid var(--glass-border)',
                         borderRadius: 6,
                         color: 'var(--text-main)',
-                        fontSize: 13,
+                        fontSize: 12,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6
+                        gap: 6,
+                        letterSpacing: '-0.01em'
                     }}>
                         <Calculator size={16} /> 生成结算单
                     </button>

@@ -243,10 +243,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ productI
                             <div style={{ ...warrantyStatusStyle, borderColor: getWarrantyStatusColor(product.warranty_status) }}>
                                 <CheckCircle size={32} color={getWarrantyStatusColor(product.warranty_status)} />
                                 <div style={{ marginLeft: 16 }}>
-                                    <div style={{ fontSize: 24, fontWeight: 700, color: getWarrantyStatusColor(product.warranty_status) }}>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: getWarrantyStatusColor(product.warranty_status), letterSpacing: '-0.02em' }}>
                                         {getWarrantyStatusText(product.warranty_status)}
                                     </div>
-                                    <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                                    <div style={{ fontSize: 12, color: '#888', marginTop: 4, letterSpacing: '-0.01em' }}>
                                         剩余 {remainingDays > 0 ? remainingDays : 0} 天
                                     </div>
                                 </div>
@@ -344,15 +344,17 @@ const headerLeftStyle: React.CSSProperties = {
 
 const titleStyle: React.CSSProperties = {
     margin: 0,
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: 600,
-    color: '#fff'
+    color: '#fff',
+    letterSpacing: '-0.01em'
 };
 
 const subtitleStyle: React.CSSProperties = {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888',
-    marginTop: 4
+    marginTop: 4,
+    letterSpacing: '-0.01em'
 };
 
 const closeBtnStyle: React.CSSProperties = {
@@ -396,9 +398,10 @@ const sectionIconStyle: React.CSSProperties = {
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 600,
-    color: '#fff'
+    color: '#fff',
+    letterSpacing: '-0.01em'
 };
 
 const sectionContentStyle: React.CSSProperties = {
@@ -418,13 +421,15 @@ const infoItemStyle: React.CSSProperties = {
 };
 
 const infoLabelStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: '#666'
+    fontSize: 11,
+    color: '#666',
+    letterSpacing: '-0.01em'
 };
 
 const infoValueStyle: React.CSSProperties = {
-    fontSize: 14,
-    fontWeight: 500
+    fontSize: 13,
+    fontWeight: 500,
+    letterSpacing: '-0.01em'
 };
 
 const warrantyCardStyle: React.CSSProperties = {
@@ -457,14 +462,16 @@ const statCardStyle: React.CSSProperties = {
 };
 
 const statValueStyle: React.CSSProperties = {
-    fontSize: 28,
-    fontWeight: 700
+    fontSize: 24,
+    fontWeight: 700,
+    letterSpacing: '-0.02em'
 };
 
 const statLabelStyle: React.CSSProperties = {
-    fontSize: 12,
+    fontSize: 11,
     color: '#888',
-    marginTop: 4
+    marginTop: 4,
+    letterSpacing: '-0.01em'
 };
 
 const closeButtonStyle: React.CSSProperties = {

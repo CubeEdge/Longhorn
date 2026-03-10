@@ -171,7 +171,7 @@ const RMATicketCreatePage: React.FC = () => {
                 <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm">
                     <ArrowLeft size={18} />
                 </button>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{t('rma_ticket.create')}</h1>
+                <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em' }}>{t('rma_ticket.create')}</h1>
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -182,7 +182,7 @@ const RMATicketCreatePage: React.FC = () => {
                     border: '1px solid var(--border-color)'
                 }}>
                     {/* Channel & Issue Info */}
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>
                         {t('rma_ticket.section.classification')}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
@@ -239,7 +239,7 @@ const RMATicketCreatePage: React.FC = () => {
                     </div>
 
                     {/* Product Info */}
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>
                         {t('rma_ticket.section.product')}
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
@@ -275,18 +275,18 @@ const RMATicketCreatePage: React.FC = () => {
                                 {!checkingWarranty && warrantyCheckStatus === 'valid' && (
                                     <span style={{
                                         position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                                        color: '#10B981', fontSize: 12
+                                        color: '#10B981', fontSize: 11, letterSpacing: '-0.01em'
                                     }}>✓ 已注册</span>
                                 )}
                                 {!checkingWarranty && warrantyCheckStatus === 'needs_registration' && (
                                     <span style={{
                                         position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                                        color: '#F59E0B', fontSize: 12, cursor: 'pointer'
+                                        color: '#F59E0B', fontSize: 11, cursor: 'pointer', letterSpacing: '-0.01em'
                                     }} onClick={() => setShowWarrantyModal(true)}>⚠ 需注册</span>
                                 )}
                             </div>
                             {warrantyCheckStatus === 'needs_registration' && (
-                                <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 4 }}>
+                                <div style={{ fontSize: 11, color: '#F59E0B', marginTop: 4, letterSpacing: '-0.01em' }}>
                                     该产品未注册保修信息，<span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowWarrantyModal(true)}>点击注册</span>
                                 </div>
                             )}

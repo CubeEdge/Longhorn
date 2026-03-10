@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
-import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Save, Trash2, Info } from 'lucide-react';
-import { ProductDetailModal } from './ProductDetailModal';
+import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Save, Trash2, Info, Power, PowerOff } from 'lucide-react';
 
-// Top bar height constant for drawer positioning
-const TOP_BAR_HEIGHT = 64;
+// macOS 26 Modal Style - Device Ledger uses centered modal instead of drawer
 
 // Types - Installed Base (PRD Service PRD_P2.md lines 209-265)
 interface Product {
@@ -49,9 +47,9 @@ interface Product {
     warranty_end_date: string;
     warranty_status: 'ACTIVE' | 'EXPIRED' | 'PENDING';
     
-    // Basic
+    // Status - IB Status: ACTIVE/IN_REPAIR/STOLEN/SCRAPPED
+    status: 'ACTIVE' | 'IN_REPAIR' | 'STOLEN' | 'SCRAPPED';
     description: string;
-    is_active: boolean;
     created_at: string;
     updated_at: string;
     
@@ -70,10 +68,12 @@ const PRODUCT_FAMILY_MAP = {
 };
 
 type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
+type ProductStatus = 'ALL' | 'ACTIVE' | 'IN_REPAIR' | 'STOLEN' | 'SCRAPPED';
 
 const ProductManagement: React.FC = () => {
     const { t } = useLanguage();
     const { token, user } = useAuthStore();
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // State from URL
@@ -82,28 +82,29 @@ const ProductManagement: React.FC = () => {
     const page = parseInt(searchParams.get('page') || '1');
     const sortBy = searchParams.get('sort_by') || 'model_name';
     const sortOrder = (searchParams.get('sort_order') || 'asc') as 'asc' | 'desc';
-    const statusFilter = searchParams.get('status') || 'active';
+    const statusFilter = (searchParams.get('status') || 'ALL') as ProductStatus;
 
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [, setTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
-    // Drawer State (replacing Modal)
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    // Modal State (macOS 26 style)
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
-    const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'basic' | 'business'>('basic');
 
-    // Product Detail Modal State
-    const [detailModalOpen, setDetailModalOpen] = useState(false);
-    const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-
-    // More dropdown state
+    // More dropdown state (for header filter)
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
     const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Row-level action dropdown state
+    const [rowDropdownOpen, setRowDropdownOpen] = useState<number | null>(null);
+    const rowDropdownRef = useRef<HTMLDivElement>(null);
 
     // Search expand state
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -112,11 +113,21 @@ const ProductManagement: React.FC = () => {
     // Form State
     const [formData, setFormData] = useState<Partial<Product>>({
         model_name: '',
-        internal_name: '',
-        product_family: 'A',
+        serial_number: '',
+        product_sku: '',
         firmware_version: '',
+        production_date: '',
         description: '',
-        is_active: true
+        status: 'ACTIVE',
+        sales_channel: 'DIRECT',
+        sold_to_dealer_id: undefined,
+        ship_to_dealer_date: '',
+        current_owner_id: undefined,
+        registration_date: '',
+        sales_invoice_date: '',
+        sales_invoice_proof: '',
+        warranty_start_date: '',
+        warranty_months: 24
     });
 
     const updateParams = (newParams: Record<string, string>) => {
@@ -158,7 +169,7 @@ const ProductManagement: React.FC = () => {
                     page_size: 20,
                     sort_by: sortBy,
                     sort_order: sortOrder,
-                    status: statusFilter
+                    status: statusFilter === 'ALL' ? undefined : statusFilter
                 },
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -178,11 +189,14 @@ const ProductManagement: React.FC = () => {
         if (token) fetchProducts();
     }, [token, productFamily, page, searchQuery, sortBy, sortOrder, statusFilter]);
 
-    // Click outside to close dropdown
+    // Click outside to close dropdowns
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (moreDropdownRef.current && !moreDropdownRef.current.contains(event.target as Node)) {
                 setIsMoreDropdownOpen(false);
+            }
+            if (rowDropdownRef.current && !rowDropdownRef.current.contains(event.target as Node)) {
+                setRowDropdownOpen(null);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -194,28 +208,48 @@ const ProductManagement: React.FC = () => {
             setEditingProduct(product);
             setFormData({
                 model_name: product.model_name,
-                internal_name: product.internal_name,
-                product_family: product.product_family,
+                serial_number: product.serial_number,
+                product_sku: product.product_sku,
                 firmware_version: product.firmware_version,
+                production_date: product.production_date,
                 description: product.description,
-                is_active: product.is_active
+                status: product.status || 'ACTIVE',
+                sales_channel: product.sales_channel,
+                sold_to_dealer_id: product.sold_to_dealer_id,
+                ship_to_dealer_date: product.ship_to_dealer_date,
+                current_owner_id: product.current_owner_id,
+                registration_date: product.registration_date,
+                sales_invoice_date: product.sales_invoice_date,
+                sales_invoice_proof: product.sales_invoice_proof,
+                warranty_start_date: product.warranty_start_date,
+                warranty_months: product.warranty_months
             });
         } else {
             setEditingProduct(null);
             setFormData({
                 model_name: '',
-                internal_name: '',
-                product_family: 'A',
+                serial_number: '',
+                product_sku: '',
                 firmware_version: '',
+                production_date: '',
                 description: '',
-                is_active: true
+                status: 'ACTIVE',
+                sales_channel: 'DIRECT',
+                sold_to_dealer_id: undefined,
+                ship_to_dealer_date: '',
+                current_owner_id: undefined,
+                registration_date: '',
+                sales_invoice_date: '',
+                sales_invoice_proof: '',
+                warranty_start_date: '',
+                warranty_months: 24
             });
         }
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
-    const handleCloseDrawer = () => {
-        setIsDrawerOpen(false);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
         setEditingProduct(null);
     };
 
@@ -232,7 +266,7 @@ const ProductManagement: React.FC = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
-            handleCloseDrawer();
+            handleCloseModal();
             fetchProducts();
         } catch (err: any) {
             console.error('Failed to save product', err);
@@ -244,11 +278,25 @@ const ProductManagement: React.FC = () => {
 
     const handleDeleteClick = (product: Product) => {
         setDeleteConfirm(product);
-        setIsDeleteDrawerOpen(true);
+        setIsDeleteModalOpen(true);
     };
 
-    const handleCloseDeleteDrawer = () => {
-        setIsDeleteDrawerOpen(false);
+    const handleStatusChange = async (product: Product, newStatus: Product['status']) => {
+        try {
+            await axios.put(`/api/v1/admin/products/${product.id}`, {
+                status: newStatus
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchProducts();
+        } catch (err: any) {
+            console.error('Failed to update status', err);
+            alert(err.response?.data?.error?.message || 'Failed to update status');
+        }
+    };
+
+    const handleCloseDeleteModal = () => {
+        setIsDeleteModalOpen(false);
         setDeleteConfirm(null);
     };
 
@@ -259,7 +307,7 @@ const ProductManagement: React.FC = () => {
             await axios.delete(`/api/v1/admin/products/${deleteConfirm.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            handleCloseDeleteDrawer();
+            handleCloseDeleteModal();
             fetchProducts();
         } catch (err: any) {
             console.error('Failed to delete product', err);
@@ -401,43 +449,97 @@ const ProductManagement: React.FC = () => {
                                     boxShadow: '0 8px 32px var(--glass-shadow)'
                                 }}>
                                     <div style={{ padding: '6px 12px', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)' }}>
-                                        查看列表
+                                        筛选状态
                                     </div>
                                     <button
-                                        onClick={() => setStatusFilter('active')}
+                                        onClick={() => setStatusFilter('ALL')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 8,
                                             width: '100%',
                                             padding: '10px 12px',
-                                            background: statusFilter === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                                            background: statusFilter === 'ALL' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                                             border: 'none',
-                                            color: statusFilter === 'active' ? '#10B981' : 'var(--text-main)',
+                                            color: statusFilter === 'ALL' ? '#3B82F6' : 'var(--text-main)',
                                             fontSize: '0.9rem',
                                             cursor: 'pointer',
                                             textAlign: 'left'
                                         }}
                                     >
-                                        启用中
+                                        全部
                                     </button>
                                     <button
-                                        onClick={() => setStatusFilter('inactive')}
+                                        onClick={() => setStatusFilter('ACTIVE')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 8,
                                             width: '100%',
                                             padding: '10px 12px',
-                                            background: statusFilter === 'inactive' ? 'rgba(156, 163, 175, 0.1)' : 'transparent',
+                                            background: statusFilter === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
                                             border: 'none',
-                                            color: statusFilter === 'inactive' ? 'var(--text-secondary)' : 'var(--text-main)',
+                                            color: statusFilter === 'ACTIVE' ? '#10B981' : 'var(--text-main)',
                                             fontSize: '0.9rem',
                                             cursor: 'pointer',
                                             textAlign: 'left'
                                         }}
                                     >
-                                        已停用
+                                        在役
+                                    </button>
+                                    <button
+                                        onClick={() => setStatusFilter('IN_REPAIR')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: statusFilter === 'IN_REPAIR' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                            border: 'none',
+                                            color: statusFilter === 'IN_REPAIR' ? '#F59E0B' : 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        维修中
+                                    </button>
+                                    <button
+                                        onClick={() => setStatusFilter('STOLEN')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: statusFilter === 'STOLEN' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                                            border: 'none',
+                                            color: statusFilter === 'STOLEN' ? '#EF4444' : 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        失窃
+                                    </button>
+                                    <button
+                                        onClick={() => setStatusFilter('SCRAPPED')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: statusFilter === 'SCRAPPED' ? 'rgba(107, 114, 128, 0.1)' : 'transparent',
+                                            border: 'none',
+                                            color: statusFilter === 'SCRAPPED' ? '#6B7280' : 'var(--text-main)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        报废
                                     </button>
                                 </div>
                             </>
@@ -563,8 +665,7 @@ const ProductManagement: React.FC = () => {
                                         cursor: 'pointer'
                                     }}
                                     onClick={() => {
-                                        setSelectedProductId(product.id);
-                                        setDetailModalOpen(true);
+                                        navigate(`/service/products/${product.id}`);
                                     }}
                                 >
                                     <td style={{ padding: 16 }}>
@@ -591,30 +692,196 @@ const ProductManagement: React.FC = () => {
                                         <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.ticket_count || 0}</span>
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleOpenDrawer(product);
-                                            }}
-                                            title="编辑"
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                padding: '8px',
-                                                color: 'var(--accent-blue)',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.2s',
-                                                borderRadius: '6px',
-                                                margin: '0 auto'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.1)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
+                                        <div ref={rowDropdownOpen === product.id ? rowDropdownRef : null} style={{ position: 'relative', display: 'inline-block' }}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setRowDropdownOpen(rowDropdownOpen === product.id ? null : product.id);
+                                                }}
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: '50%',
+                                                    background: rowDropdownOpen === product.id ? 'var(--glass-bg-hover)' : 'transparent',
+                                                    border: '1.5px solid var(--glass-border)',
+                                                    color: 'var(--text-secondary)',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'all 0.15s'
+                                                }}
+                                            >
+                                                <MoreHorizontal size={18} />
+                                            </button>
+                                            {rowDropdownOpen === product.id && (
+                                                <>
+                                                    <div
+                                                        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setRowDropdownOpen(null);
+                                                        }}
+                                                    />
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        right: 0,
+                                                        marginTop: 4,
+                                                        background: 'var(--bg-sidebar)',
+                                                        border: '1px solid var(--glass-border)',
+                                                        borderRadius: 8,
+                                                        padding: '4px 0',
+                                                        minWidth: 120,
+                                                        zIndex: 100,
+                                                        boxShadow: '0 8px 32px var(--glass-shadow)'
+                                                    }}>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setRowDropdownOpen(null);
+                                                                handleOpenDrawer(product);
+                                                            }}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 8,
+                                                                width: '100%',
+                                                                padding: '10px 12px',
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: 'var(--text-main)',
+                                                                fontSize: '0.9rem',
+                                                                cursor: 'pointer',
+                                                                textAlign: 'left'
+                                                            }}
+                                                        >
+                                                            <Edit2 size={14} /> 编辑
+                                                        </button>
+                                                        <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
+                                                        {product.status !== 'ACTIVE' && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setRowDropdownOpen(null);
+                                                                    handleStatusChange(product, 'ACTIVE');
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    width: '100%',
+                                                                    padding: '10px 12px',
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: '#10B981',
+                                                                    fontSize: '0.9rem',
+                                                                    cursor: 'pointer',
+                                                                    textAlign: 'left'
+                                                                }}
+                                                            >
+                                                                <Power size={14} /> 设为在役
+                                                            </button>
+                                                        )}
+                                                        {product.status !== 'IN_REPAIR' && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setRowDropdownOpen(null);
+                                                                    handleStatusChange(product, 'IN_REPAIR');
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    width: '100%',
+                                                                    padding: '10px 12px',
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: '#F59E0B',
+                                                                    fontSize: '0.9rem',
+                                                                    cursor: 'pointer',
+                                                                    textAlign: 'left'
+                                                                }}
+                                                            >
+                                                                <AlertCircle size={14} /> 设为维修中
+                                                            </button>
+                                                        )}
+                                                        {product.status !== 'STOLEN' && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setRowDropdownOpen(null);
+                                                                    handleStatusChange(product, 'STOLEN');
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    width: '100%',
+                                                                    padding: '10px 12px',
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: '#EF4444',
+                                                                    fontSize: '0.9rem',
+                                                                    cursor: 'pointer',
+                                                                    textAlign: 'left'
+                                                                }}
+                                                            >
+                                                                <AlertCircle size={14} /> 设为失窃
+                                                            </button>
+                                                        )}
+                                                        {product.status !== 'SCRAPPED' && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setRowDropdownOpen(null);
+                                                                    handleStatusChange(product, 'SCRAPPED');
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    width: '100%',
+                                                                    padding: '10px 12px',
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: '#6B7280',
+                                                                    fontSize: '0.9rem',
+                                                                    cursor: 'pointer',
+                                                                    textAlign: 'left'
+                                                                }}
+                                                            >
+                                                                <PowerOff size={14} /> 设为报废
+                                                            </button>
+                                                        )}
+                                                        <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setRowDropdownOpen(null);
+                                                                handleDeleteClick(product);
+                                                            }}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 8,
+                                                                width: '100%',
+                                                                padding: '10px 12px',
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: '#EF4444',
+                                                                fontSize: '0.9rem',
+                                                                cursor: 'pointer',
+                                                                textAlign: 'left'
+                                                            }}
+                                                        >
+                                                            <Trash2 size={14} /> 删除
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -645,55 +912,129 @@ const ProductManagement: React.FC = () => {
                 </button>
             </div>
 
-            {/* Add/Edit Drawer - positioned below top bar */}
-            {isDrawerOpen && (
+            {/* Add/Edit Modal - macOS 26 Style */}
+            {isModalOpen && (
                 <>
                     <div
-                        onClick={handleCloseDrawer}
+                        onClick={handleCloseModal}
                         style={{
                             position: 'fixed',
-                            top: TOP_BAR_HEIGHT,
+                            top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0,0,0,0.6)',
+                            background: 'rgba(0,0,0,0.8)',
+                            backdropFilter: 'blur(10px)',
                             zIndex: 1000
                         }}
                     />
                     <div style={{
                         position: 'fixed',
-                        top: TOP_BAR_HEIGHT,
-                        right: 0,
-                        bottom: 0,
-                        width: 400,
-                        background: '#0a0a0a',
-                        borderLeft: '1px solid var(--glass-border)',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: 560,
+                        maxHeight: '85vh',
+                        background: '#1c1c1e',
+                        borderRadius: 16,
+                        border: '1px solid rgba(255,255,255,0.1)',
                         zIndex: 1001,
                         display: 'flex',
                         flexDirection: 'column',
-                        boxShadow: '-8px 0 32px rgba(0,0,0,0.5)'
+                        boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                        overflow: 'hidden'
                     }}>
-                        {/* Drawer Header */}
+                        {/* Modal Header */}
                         <div style={{
                             padding: '20px 24px',
-                            borderBottom: '1px solid var(--glass-border)',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between'
+                            justifyContent: 'space-between',
+                            background: 'rgba(0,0,0,0.2)'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                {editingProduct ? <Edit2 size={18} color="#3B82F6" /> : <Plus size={18} color="#3B82F6" />}
-                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
-                                    {editingProduct ? '编辑产品' : '添加产品'}
-                                </span>
+                                <div style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 10,
+                                    background: editingProduct ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {editingProduct ? <Edit2 size={20} color="#3B82F6" /> : <Plus size={20} color="#10B981" />}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: 17, color: '#fff', letterSpacing: '-0.01em' }}>
+                                        {editingProduct ? '编辑产品' : '添加产品'}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#888', marginTop: 2, letterSpacing: '-0.01em' }}>
+                                        {editingProduct ? '修改设备台账信息' : '录入新设备到台账'}
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={handleCloseDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <button 
+                                onClick={handleCloseModal} 
+                                style={{ 
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 8,
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: 'none', 
+                                    cursor: 'pointer', 
+                                    color: '#888',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
                                 <X size={20} />
                             </button>
                         </div>
 
-                        {/* Drawer Body */}
+                        {/* Tab Navigation */}
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '0 24px' }}>
+                            <button
+                                onClick={() => setActiveTab('basic')}
+                                style={{
+                                    padding: '12px 20px',
+                                    background: 'none',
+                                    border: 'none',
+                                    borderBottom: `2px solid ${activeTab === 'basic' ? '#3B82F6' : 'transparent'}`,
+                                    color: activeTab === 'basic' ? '#3B82F6' : 'var(--text-secondary)',
+                                    fontWeight: 600,
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                基本信息
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('business')}
+                                style={{
+                                    padding: '12px 20px',
+                                    background: 'none',
+                                    border: 'none',
+                                    borderBottom: `2px solid ${activeTab === 'business' ? '#3B82F6' : 'transparent'}`,
+                                    color: activeTab === 'business' ? '#3B82F6' : 'var(--text-secondary)',
+                                    fontWeight: 600,
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                业务信息
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
                         <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {activeTab === 'basic' ? (
+                                <>
+                            {/* Section: Physical Identity */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
+                                物理身份
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                     型号名称 <span style={{ color: '#EF4444' }}>*</span>
@@ -709,32 +1050,38 @@ const ProductManagement: React.FC = () => {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    内部名称
+                                    序列号
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.internal_name || ''}
-                                    onChange={(e) => setFormData({ ...formData, internal_name: e.target.value })}
+                                    value={formData.serial_number || ''}
+                                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
                                     style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                    placeholder="例如: MAVO Edge 8K (内部代号)"
+                                    placeholder="例如: ME_107649"
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
+                                    产品SKU
                                 </label>
-                                <select
-                                    required
-                                    value={formData.product_family}
-                                    onChange={(e) => setFormData({ ...formData, product_family: e.target.value as 'A' | 'B' | 'C' | 'D' })}
+                                <input
+                                    type="text"
+                                    value={formData.product_sku || ''}
+                                    onChange={(e) => setFormData({ ...formData, product_sku: e.target.value })}
                                     style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                >
-                                    {Object.entries(PRODUCT_FAMILY_MAP).map(([code, info]) => (
-                                        <option key={code} value={code}>
-                                            {code} - {info.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    placeholder="例如: A010-001-01"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    生产日期
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.production_date || ''}
+                                    onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
@@ -748,6 +1095,11 @@ const ProductManagement: React.FC = () => {
                                     placeholder="例如: 8.0.123"
                                 />
                             </div>
+
+                            {/* Section: Description */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                其他
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                                     描述
@@ -757,25 +1109,123 @@ const ProductManagement: React.FC = () => {
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     rows={3}
                                     style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
-                                    placeholder="产品描述..."
+                                    placeholder="设备描述..."
                                 />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: 'var(--glass-bg-light)', borderRadius: 8 }}>
-                                <input
-                                    type="checkbox"
-                                    id="is_active"
-                                    checked={formData.is_active}
-                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                    style={{ width: 18, height: 18, accentColor: '#10B981' }}
-                                />
-                                <label htmlFor="is_active" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
-                                    启用此产品
+                                </>
+                            ) : (
+                                <>
+                            {/* Section: Status */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
+                                业务状态
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    设备状态 <span style={{ color: '#EF4444' }}>*</span>
                                 </label>
+                                <select
+                                    required
+                                    value={formData.status}
+                                    onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                >
+                                    <option value="ACTIVE">在役</option>
+                                    <option value="IN_REPAIR">维修中</option>
+                                    <option value="STOLEN">失窃</option>
+                                    <option value="SCRAPPED">报废</option>
+                                </select>
                             </div>
+
+                            {/* Section: Sales Trace */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                销售溯源
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    销售渠道
+                                </label>
+                                <select
+                                    value={formData.sales_channel}
+                                    onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                >
+                                    <option value="DIRECT">直销</option>
+                                    <option value="DEALER">经销商</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    发货日期
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.ship_to_dealer_date || ''}
+                                    onChange={(e) => setFormData({ ...formData, ship_to_dealer_date: e.target.value })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            </div>
+
+                            {/* Section: Ownership */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                终端归属
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    注册日期
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.registration_date || ''}
+                                    onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    发票日期
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.sales_invoice_date || ''}
+                                    onChange={(e) => setFormData({ ...formData, sales_invoice_date: e.target.value })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            </div>
+
+                            {/* Section: Warranty */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
+                                保修信息
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    保修起始日期
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.warranty_start_date || ''}
+                                    onChange={(e) => setFormData({ ...formData, warranty_start_date: e.target.value })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    保修时长（月）
+                                </label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={120}
+                                    value={formData.warranty_months || 24}
+                                    onChange={(e) => setFormData({ ...formData, warranty_months: parseInt(e.target.value) })}
+                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            </div>
+                                </>
+                            )}
                         </div>
 
-                        {/* Drawer Footer */}
-                        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {/* Modal Footer */}
+                        <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(0,0,0,0.2)' }}>
                             {editingProduct && (
                                 <button
                                     onClick={() => handleDeleteClick(editingProduct)}
@@ -811,66 +1261,97 @@ const ProductManagement: React.FC = () => {
                 </>
             )}
 
-            {/* Delete Confirmation Drawer */}
-            {isDeleteDrawerOpen && deleteConfirm && (
+            {/* Delete Confirmation Modal - macOS 26 Style */}
+            {isDeleteModalOpen && deleteConfirm && (
                 <>
                     <div
-                        onClick={handleCloseDeleteDrawer}
+                        onClick={handleCloseDeleteModal}
                         style={{
                             position: 'fixed',
-                            top: TOP_BAR_HEIGHT,
+                            top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0,0,0,0.6)',
+                            background: 'rgba(0,0,0,0.8)',
+                            backdropFilter: 'blur(10px)',
                             zIndex: 1000
                         }}
                     />
                     <div style={{
                         position: 'fixed',
-                        top: TOP_BAR_HEIGHT,
-                        right: 0,
-                        bottom: 0,
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
                         width: 400,
-                        background: '#0a0a0a',
-                        borderLeft: '1px solid var(--glass-border)',
+                        background: '#1c1c1e',
+                        borderRadius: 16,
+                        border: '1px solid rgba(255,255,255,0.1)',
                         zIndex: 1001,
                         display: 'flex',
                         flexDirection: 'column',
-                        boxShadow: '-8px 0 32px rgba(0,0,0,0.5)'
+                        boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                        overflow: 'hidden'
                     }}>
                         <div style={{
                             padding: '20px 24px',
-                            borderBottom: '1px solid var(--glass-border)',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between'
+                            justifyContent: 'space-between',
+                            background: 'rgba(239,68,68,0.08)'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ padding: 8, background: 'rgba(239,68,68,0.2)', borderRadius: '50%' }}>
-                                    <AlertCircle size={18} color="#EF4444" />
+                                <div style={{ 
+                                    width: 40,
+                                    height: 40,
+                                    background: 'rgba(239,68,68,0.15)', 
+                                    borderRadius: 10,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <AlertCircle size={20} color="#EF4444" />
                                 </div>
-                                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>
-                                    确认删除
-                                </span>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: 17, color: '#fff', letterSpacing: '-0.01em' }}>
+                                        确认删除
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#888', marginTop: 2, letterSpacing: '-0.01em' }}>
+                                        此操作不可撤销
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={handleCloseDeleteDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <button 
+                                onClick={handleCloseDeleteModal} 
+                                style={{ 
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 8,
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: 'none', 
+                                    cursor: 'pointer', 
+                                    color: '#888',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
                                 <X size={20} />
                             </button>
                         </div>
                         <div style={{ flex: 1, padding: 24 }}>
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                确定要删除产品 <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{deleteConfirm.model_name}</span> 吗？
+                            <p style={{ color: '#aaa', lineHeight: 1.6, fontSize: 14, letterSpacing: '-0.01em' }}>
+                                确定要删除产品 <span style={{ color: '#fff', fontWeight: 600 }}>{deleteConfirm.model_name}</span> 吗？
                                 {deleteConfirm.ticket_count > 0 && (
-                                    <span style={{ display: 'block', marginTop: 12, color: '#EF4444' }}>
+                                    <span style={{ display: 'block', marginTop: 12, color: '#EF4444', fontSize: 13 }}>
                                         注意：此产品有 {deleteConfirm.ticket_count} 个关联工单，无法删除。
                                     </span>
                                 )}
                             </p>
                         </div>
-                        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 12 }}>
+                        <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 12, background: 'rgba(0,0,0,0.2)' }}>
                             <button
-                                onClick={handleCloseDeleteDrawer}
+                                onClick={handleCloseDeleteModal}
                                 style={{
                                     flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600,
                                     background: 'transparent', color: 'var(--text-secondary)',
@@ -898,16 +1379,6 @@ const ProductManagement: React.FC = () => {
                 </>
             )}
 
-            {/* Product Detail Modal */}
-            {detailModalOpen && selectedProductId && (
-                <ProductDetailModal
-                    productId={selectedProductId}
-                    onClose={() => {
-                        setDetailModalOpen(false);
-                        setSelectedProductId(null);
-                    }}
-                />
-            )}
         </div>
     );
 };

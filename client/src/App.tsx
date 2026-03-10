@@ -54,6 +54,7 @@ import { DealerInventoryListPage, RestockOrderListPage, RestockOrderDetailPage, 
 import CustomerManagement from './components/CustomerManagement';
 import DealerManagement from './components/DealerManagement';
 import ProductManagement from './components/ProductManagement';
+import ProductDetailPage from './components/ProductDetailPage';
 import ProductModelsManagement from './components/ProductModelsManagement';
 import { PartsManagementPage, PartsCatalogPage, PartsInventoryPage, PartsConsumptionPage, PartsSettlementPage } from './components/PartsManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
@@ -244,6 +245,9 @@ const App: React.FC = () => {
           {/* 3. 资产和物料 (第三入口) */}
           <Route path="/service/products" element={
             ['Admin', 'Lead'].includes(user?.role || '') ? <ProductManagement /> : <Navigate to="/" />
+          } />
+          <Route path="/service/products/:id" element={
+            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductDetailPage /> : <Navigate to="/" />
           } />
           <Route path="/service/product-models" element={
             ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelsManagement /> : <Navigate to="/" />

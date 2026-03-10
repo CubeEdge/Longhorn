@@ -29,7 +29,7 @@ module.exports = function (db, authenticate) {
                 page_size = 20,
                 product_family,
                 keyword,
-                is_active
+                status
             } = req.query;
 
             let conditions = [];
@@ -41,17 +41,17 @@ module.exports = function (db, authenticate) {
                 params.push(product_family);
             }
 
-            // Active status filtering
-            if (is_active !== undefined) {
-                conditions.push('p.is_active = ?');
-                params.push(is_active === 'true' || is_active === '1' ? 1 : 0);
+            // Status filtering (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED)
+            if (status && status !== 'all') {
+                conditions.push('p.status = ?');
+                params.push(status);
             }
 
-            // Keyword filtering (model_name or internal_name)
+            // Keyword filtering (model_name or internal_name or serial_number)
             if (keyword) {
-                conditions.push(`(p.model_name LIKE ? OR p.internal_name LIKE ?)`);
+                conditions.push(`(p.model_name LIKE ? OR p.internal_name LIKE ? OR p.serial_number LIKE ?)`);
                 const term = `%${keyword}%`;
-                params.push(term, term);
+                params.push(term, term, term);
             }
 
             const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -87,7 +87,7 @@ module.exports = function (db, authenticate) {
                 success: true,
                 data: products.map(p => ({
                     ...p,
-                    is_active: !!p.is_active,
+                    status: p.status || 'ACTIVE',
                     ticket_count: (p.inquiry_count || 0) + (p.rma_count || 0) + (p.repair_count || 0)
                 })),
                 meta: {
@@ -143,7 +143,7 @@ module.exports = function (db, authenticate) {
                 success: true,
                 data: {
                     ...product,
-                    is_active: !!product.is_active,
+                    status: product.status || 'ACTIVE',
                     ticket_summary: {
                         inquiry: inquiryCount.count,
                         rma: rmaCount.count,
@@ -170,17 +170,12 @@ module.exports = function (db, authenticate) {
             const {
                 // Basic info
                 model_name,
-                internal_name,
-                product_family,
-                product_line,
                 serial_number,
                 product_sku,
-                product_type = 'CAMERA',
                 firmware_version,
+                production_date,
                 description,
-                is_active = true,
-                // IoT
-                is_iot_device = false,
+                status = 'ACTIVE',
                 // Sales trace
                 sales_channel = 'DIRECT',
                 sold_to_dealer_id,
@@ -191,8 +186,7 @@ module.exports = function (db, authenticate) {
                 sales_invoice_date,
                 // Warranty
                 warranty_start_date,
-                warranty_months = 24,
-                warranty_status = 'ACTIVE'
+                warranty_months = 24
             } = req.body;
 
             if (!model_name) {
@@ -202,44 +196,44 @@ module.exports = function (db, authenticate) {
                 });
             }
 
-            if (!product_family || !['A', 'B', 'C', 'D'].includes(product_family)) {
+            if (!['ACTIVE', 'IN_REPAIR', 'STOLEN', 'SCRAPPED'].includes(status)) {
                 return res.status(400).json({
                     success: false,
-                    error: { code: 'VALIDATION_ERROR', message: 'Valid product family (A/B/C/D) is required' }
+                    error: { code: 'VALIDATION_ERROR', message: 'Valid status (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED) is required' }
                 });
             }
 
             // Calculate warranty end date if start date provided
             let warranty_end_date = null;
+            let warranty_status = 'PENDING';
             if (warranty_start_date && warranty_months) {
                 const start = new Date(warranty_start_date);
                 const end = new Date(start);
                 end.setMonth(end.getMonth() + parseInt(warranty_months));
                 warranty_end_date = end.toISOString().split('T')[0];
+                
+                // Determine warranty status
+                const now = new Date();
+                warranty_status = end > now ? 'ACTIVE' : 'EXPIRED';
             }
 
             const result = db.prepare(`
                 INSERT INTO products (
-                    model_name, internal_name, product_family, product_line,
-                    serial_number, product_sku, product_type,
-                    firmware_version, description, is_active,
-                    is_iot_device, sales_channel, sold_to_dealer_id, ship_to_dealer_date,
+                    model_name, serial_number, product_sku,
+                    firmware_version, production_date, description, status,
+                    sales_channel, sold_to_dealer_id, ship_to_dealer_date,
                     current_owner_id, registration_date, sales_invoice_date,
                     warranty_start_date, warranty_months, warranty_end_date, warranty_status,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `).run(
                 model_name,
-                internal_name || model_name,
-                product_family,
-                product_line || '',
                 serial_number || null,
                 product_sku || null,
-                product_type,
-                firmware_version || '',
-                description || '',
-                is_active ? 1 : 0,
-                is_iot_device ? 1 : 0,
+                firmware_version || null,
+                production_date || null,
+                description || null,
+                status,
                 sales_channel,
                 sold_to_dealer_id || null,
                 ship_to_dealer_date || null,
@@ -263,8 +257,7 @@ module.exports = function (db, authenticate) {
                 success: true,
                 data: {
                     ...newProduct,
-                    is_active: !!newProduct.is_active,
-                    is_iot_device: !!newProduct.is_iot_device
+                    status: newProduct.status || 'ACTIVE'
                 }
             });
         } catch (err) {
@@ -286,19 +279,12 @@ module.exports = function (db, authenticate) {
             const {
                 // Basic info
                 model_name,
-                internal_name,
-                product_family,
-                product_line,
                 serial_number,
                 product_sku,
-                product_type,
                 firmware_version,
+                production_date,
                 description,
-                is_active,
-                // IoT
-                is_iot_device,
-                is_activated,
-                activation_date,
+                status,
                 // Sales trace
                 sales_channel,
                 original_order_id,
@@ -310,10 +296,8 @@ module.exports = function (db, authenticate) {
                 sales_invoice_date,
                 sales_invoice_proof,
                 // Warranty
-                warranty_source,
                 warranty_start_date,
-                warranty_months,
-                warranty_status
+                warranty_months
             } = req.body;
 
             // Check if product exists
@@ -339,42 +323,23 @@ module.exports = function (db, authenticate) {
 
             // Basic fields
             addUpdate('model_name', model_name);
-            addUpdate('internal_name', internal_name);
             addUpdate('serial_number', serial_number);
             addUpdate('product_sku', product_sku);
-            addUpdate('product_type', product_type);
-            addUpdate('product_line', product_line);
             addUpdate('firmware_version', firmware_version);
+            addUpdate('production_date', production_date);
             addUpdate('description', description);
 
-            if (is_active !== undefined) {
-                updates.push('is_active = ?');
-                params.push(is_active ? 1 : 0);
-            }
-
-            // Product family with cascade
-            if (product_family !== undefined) {
-                if (!['A', 'B', 'C', 'D'].includes(product_family)) {
+            // Status field (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED)
+            if (status !== undefined) {
+                if (!['ACTIVE', 'IN_REPAIR', 'STOLEN', 'SCRAPPED'].includes(status)) {
                     return res.status(400).json({
                         success: false,
-                        error: { code: 'VALIDATION_ERROR', message: 'Valid product family (A/B/C/D) is required' }
+                        error: { code: 'VALIDATION_ERROR', message: 'Valid status (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED) is required' }
                     });
                 }
-                updates.push('product_family = ?');
-                params.push(product_family);
-                db.prepare(`UPDATE tickets SET product_family = ? WHERE product_id = ?`).run(product_family, productId);
+                updates.push('status = ?');
+                params.push(status);
             }
-
-            // IoT fields
-            if (is_iot_device !== undefined) {
-                updates.push('is_iot_device = ?');
-                params.push(is_iot_device ? 1 : 0);
-            }
-            if (is_activated !== undefined) {
-                updates.push('is_activated = ?');
-                params.push(is_activated ? 1 : 0);
-            }
-            addUpdate('activation_date', activation_date);
 
             // Sales trace
             addUpdate('sales_channel', sales_channel);
@@ -389,13 +354,11 @@ module.exports = function (db, authenticate) {
             addUpdate('sales_invoice_proof', sales_invoice_proof);
 
             // Warranty
-            addUpdate('warranty_source', warranty_source);
             addUpdate('warranty_start_date', warranty_start_date);
             if (warranty_months !== undefined) {
                 updates.push('warranty_months = ?');
                 params.push(warranty_months);
             }
-            addUpdate('warranty_status', warranty_status);
 
             // Recalculate warranty end date if start date or months changed
             if (warranty_start_date !== undefined || warranty_months !== undefined) {
@@ -437,9 +400,7 @@ module.exports = function (db, authenticate) {
                 success: true,
                 data: {
                     ...updated,
-                    is_active: !!updated.is_active,
-                    is_iot_device: !!updated.is_iot_device,
-                    is_activated: !!updated.is_activated
+                    status: updated.status || 'ACTIVE'
                 }
             });
         } catch (err) {

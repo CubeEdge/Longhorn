@@ -77,8 +77,8 @@ const ServiceRecordCreatePage: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '4px' }}>{t('service_record.create')}</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px', letterSpacing: '-0.01em' }}>{t('service_record.create')}</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', letterSpacing: '-0.01em' }}>
             {t('service_record.record_customer_issue')}
           </p>
         </div>
@@ -106,7 +106,7 @@ const ServiceRecordCreatePage: React.FC = () => {
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
         }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.service_mode')}</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>{t('service_record.service_mode')}</h3>
           <div style={{ display: 'flex', gap: '12px' }}>
             <label style={{
               flex: 1,
@@ -128,8 +128,8 @@ const ServiceRecordCreatePage: React.FC = () => {
                 style={{ display: 'none' }}
               />
               <div>
-                <div style={{ fontWeight: 500 }}>{t('service_record.mode.customer_service')}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t('service_record.mode.customer_service_desc')}</div>
+                <div style={{ fontWeight: 500, fontSize: '13px', letterSpacing: '-0.01em' }}>{t('service_record.mode.customer_service')}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>{t('service_record.mode.customer_service_desc')}</div>
               </div>
             </label>
             <label style={{
@@ -152,8 +152,8 @@ const ServiceRecordCreatePage: React.FC = () => {
                 style={{ display: 'none' }}
               />
               <div>
-                <div style={{ fontWeight: 500 }}>{t('service_record.mode.quick_query')}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{t('service_record.mode.quick_query_desc')}</div>
+                <div style={{ fontWeight: 500, fontSize: '13px', letterSpacing: '-0.01em' }}>{t('service_record.mode.quick_query')}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>{t('service_record.mode.quick_query_desc')}</div>
               </div>
             </label>
           </div>
@@ -167,10 +167,10 @@ const ServiceRecordCreatePage: React.FC = () => {
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
         }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.customer_info')}</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>{t('service_record.customer_info')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.customer_name')}
               </label>
               <input
@@ -183,7 +183,7 @@ const ServiceRecordCreatePage: React.FC = () => {
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.customer_contact')}
               </label>
               <input
@@ -206,10 +206,10 @@ const ServiceRecordCreatePage: React.FC = () => {
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
         }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.product_info')}</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>{t('service_record.product_info')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.product_model')}
               </label>
               <input
@@ -222,7 +222,7 @@ const ServiceRecordCreatePage: React.FC = () => {
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.serial_number')}
               </label>
               <input
@@ -235,7 +235,7 @@ const ServiceRecordCreatePage: React.FC = () => {
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.firmware_version')}
               </label>
               <input
@@ -258,10 +258,10 @@ const ServiceRecordCreatePage: React.FC = () => {
           marginBottom: '16px',
           border: '1px solid var(--border-color)'
         }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>{t('service_record.service_details')}</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', letterSpacing: '-0.01em' }}>{t('service_record.service_details')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.problem_category')}
               </label>
               <select
@@ -279,7 +279,7 @@ const ServiceRecordCreatePage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.service_type')} *
               </label>
               <select
@@ -297,7 +297,7 @@ const ServiceRecordCreatePage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
                 {t('service_record.channel')} *
               </label>
               <select
@@ -315,7 +315,7 @@ const ServiceRecordCreatePage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', letterSpacing: '-0.01em' }}>
               {t('service_record.problem_description')} *
             </label>
             <textarea
