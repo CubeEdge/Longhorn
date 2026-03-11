@@ -1142,8 +1142,12 @@ repair_invoices (维修发票/PI)
 ├── product_model: VARCHAR(255)
 ├── serial_number: VARCHAR(100)
 ├── warranty_status: ENUM('in_warranty', 'out_of_warranty')
-├── items: JSON -- [{sku, name, quantity, unit_price, subtotal}]
-├── parts_total: DECIMAL(10,2)
+├── content: JSON -- 核心动态内容 (v12.3.171 增强：强制 deep-merge 防御结构)
+│   ├── header: { date, seller_info, bank_details }
+│   ├── customer_info: { name, address, contact }
+│   ├── items: [{ description, quantity, unit_price, total }]
+│   └── terms: TEXT
+├── parts_total: DECIMAL(10,2) -- 所有计算遵循 Number(val || 0).toFixed(2)
 ├── labor_fee: DECIMAL(10,2)
 ├── shipping_fee: DECIMAL(10,2)
 ├── other_fee: DECIMAL(10,2)

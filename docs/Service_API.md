@@ -7,13 +7,10 @@
 **关联场景**: Service_UserScenarios.md v0.7.0
 **关联数据模型**: Service_DataModel.md v0.9.0 (P2)
 
-> **P2 架构升级 (2026-02-28)**：
-> - 新增统一工单 API (`/api/v1/tickets`) - 整合 inquiry/rma/svc 三种工单类型
-> - 新增工单活动时间轴 API - 支持 Commercial View / Technician View
-> - 增强通知系统 API - 支持 SLA 预警、@Mention、工单状态变更
-> - 新增 SLA 管理 API - 支持优先级、超时计算、breach 统计
-> - 新增 @Mention API - 支持协作机制和参与者管理
-> - 新增保修计算 API - 支持瀑布流保修判定逻辑
+> **v0.9.6 更新 (2026-03-12)**：
+> - **安全性增强**: 在 `/api/v1/rma-tickets/{id}` 和 `/api/v1/pi/{id}` 接口中实施强制的 `ID` 类型校验，预防非法请求。
+> - **计算防护**: 文档明确所有费用计算需遵循 `Number(val || 0)` 规范，防止 `toFixed` 崩溃。
+> - **鉴权修正**: 修正了后端部门代码映射逻辑，确保 `checkMSDepartmentAccess` 鉴权精准。
 >
 > **重要更新（2026-02-10）**：
 > - 拆分 Files 模块：核心文件操作路由迁移至独立模块，`server/index.js` 已精简。
@@ -892,6 +889,10 @@
 ### 6.4 获取RMA返厂单详情
 
 **GET** `/api/v1/rma-tickets/{id}`
+
+**安全性说明 (v12.3.171)**:
+- 强制校验 `{id}` 必须为正整数。
+- 后端实施 `checkMSDepartmentAccess` 权限拦截，依据 `department_code` 进行确权。
 
 ```json
 // Response
@@ -4338,3 +4339,76 @@ Success (200 OK) or Validation Error (400 if reason missing).
 ---
 
 **下一步**: 确认待确认问题后，可开始代码实现。
+
+---
+
+## 26. PI 编辑器 API (Proforma Invoice) [P4 后期增强]
+
+> 用于生成和管理维修结算相关的形式发票（PI）。
+> 基准路径: `/api/v1/rma-documents`
+
+### 26.1 获取 PI 详情
+
+**GET** `/api/v1/rma-documents/pi/:id`
+
+**安全性说明 (v12.3.171)**:
+- 强制校验 `{id}` 必须为正整数，否则返回 400。
+- 后端实施 `checkMSDepartmentAccess` 鉴权，仅限 MS 部门或管理员访问。
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "ticket_id": 456,
+    "pi_number": "PI-20260312-001",
+    "content": {
+      "header": { "date": "2026-03-12", "seller_info": "..." },
+      "customer_info": { "name": "...", "address": "..." },
+      "items": [
+        { "description": "Edge Mainboard", "quantity": 1, "unit_price": 799, "total": 799 }
+      ],
+      "terms": "..."
+    },
+    "subtotal": 799.00,
+    "tax_amount": 0.00,
+    "total_amount": 799.00,
+    "status": "draft"
+  }
+}
+```
+
+### 26.2 更新 PI 草稿
+
+**PATCH** `/api/v1/rma-documents/pi/:id`
+
+**Request Body**:
+```json
+{
+  "content": { ... },
+  "subtotal": 799.0,
+  "tax_amount": 0.0,
+  "total_amount": 799.0
+}
+```
+
+### 26.3 提交 PI 审核
+
+**POST** `/api/v1/rma-documents/pi/:id/submit`
+
+### 26.4 审核 PI (Finance/MS)
+
+**POST** `/api/v1/rma-documents/pi/:id/review`
+
+### 26.5 发布 PI (生成正式 PDF)
+
+**POST** `/api/v1/rma-documents/pi/:id/publish`
+
+**说明**: 发布后 PI 进入只读状态，触发后台 PDF 生成流程。
+
+### 26.6 获取 PI PDF 预览
+
+**GET** `/api/v1/rma-documents/pi/:id/pdf`
+
+---
