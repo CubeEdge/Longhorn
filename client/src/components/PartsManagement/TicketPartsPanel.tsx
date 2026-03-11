@@ -51,12 +51,12 @@ interface Props {
 const sourceTypeMap: Record<string, { label: string; color: string }> = {
     hq_inventory: { label: '总部库存', color: '#3B82F6' },
     dealer_inventory: { label: '经销商库存', color: '#10B981' },
-    external_purchase: { label: '外部采购', color: '#F59E0B' },
+    external_purchase: { label: '外部采购', color: '#FFD200' },
     warranty_free: { label: '保修免费', color: '#8B5CF6' }
 };
 
 const settlementStatusMap: Record<string, { label: string; color: string }> = {
-    pending: { label: '待结算', color: '#F59E0B' },
+    pending: { label: '待结算', color: '#FFD200' },
     included: { label: '已结算', color: '#10B981' },
     waived: { label: '已豁免', color: '#6B7280' },
     disputed: { label: '有争议', color: '#EF4444' }

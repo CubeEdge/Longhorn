@@ -109,7 +109,7 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
         const map: Record<string, { text: string; color: string; bg: string }> = {
             'no_damage': { text: '无人为损坏 / 正常故障', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
             'physical_damage': { text: '人为损坏 / 物理损伤', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-            'uncertain': { text: '无法判定', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' }
+            'uncertain': { text: '无法判定', color: '#FFD200', bg: 'rgba(245,158,11,0.15)' }
         };
         return map[status || ''] || { text: status || '未填写', color: '#888', bg: 'rgba(255,255,255,0.05)' };
     };
@@ -142,7 +142,7 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
             'warranty_expired': {
                 icon: <AlertTriangle size={24} />,
                 title: '⚠️ 已过保 - 付费维修',
-                color: '#F59E0B',
+                color: '#FFD200',
                 bg: 'rgba(245,158,11,0.1)',
                 border: 'rgba(245,158,11,0.3)'
             }
@@ -261,14 +261,14 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                                 marginTop: 2
                                             }}>
-                                                <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 700 }}>3</span>
+                                                <span style={{ fontSize: 12, color: '#FFD200', fontWeight: 700 }}>3</span>
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: 13, color: '#aaa', marginBottom: 4 }}>当前日期对比</div>
                                                 <div style={{ fontSize: 14, color: '#fff' }}>
                                                     当前日期: {new Date().toISOString().split('T')[0]}
                                                 </div>
-                                                <div style={{ fontSize: 12, color: warrantyCalc.is_in_warranty ? '#10B981' : '#F59E0B', marginTop: 4 }}>
+                                                <div style={{ fontSize: 12, color: warrantyCalc.is_in_warranty ? '#10B981' : '#FFD200', marginTop: 4 }}>
                                                     {warrantyCalc.is_in_warranty ? '✓ 在保修期内' : '✗ 保修期已结束'}
                                                 </div>
                                             </div>

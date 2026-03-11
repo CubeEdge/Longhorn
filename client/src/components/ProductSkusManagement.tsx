@@ -84,6 +84,7 @@ const ProductSkusManagement: React.FC = () => {
 
             if (skusRes.data.success) setSkus(skusRes.data.data || []);
             if (modelsRes.data.success) setModels(modelsRes.data.data || []);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('Failed to fetch data', err);
             setError(err.response?.data?.error?.message || 'Failed to fetch data');
@@ -149,6 +150,7 @@ const ProductSkusManagement: React.FC = () => {
             }
             handleCloseDrawer();
             fetchData();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             alert(err.response?.data?.error?.message || '保存失败');
         } finally {
@@ -174,7 +176,9 @@ const ProductSkusManagement: React.FC = () => {
             if (res.data.success) {
                 setFormData(prev => ({ ...prev, sku_image: res.data.file.url }));
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
+            console.error(err);
             alert('上传图片失败');
         }
     };

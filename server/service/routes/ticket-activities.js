@@ -498,7 +498,7 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.patch('/:ticketId/activities/:activityId', authenticate, (req, res) => {
         try {
             const { ticketId, activityId } = req.params;
-            const { content, content_html } = req.body;
+            const { content, content_html, metadata } = req.body;
             const user = req.user;
 
             const activity = db.prepare(`
@@ -514,21 +514,30 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(403).json({ success: false, error: '只能编辑自己的评论' });
             }
 
-            // Only comments can be edited
-            if (!['comment', 'internal_note'].includes(activity.activity_type)) {
+            // Only comments and certain reports can be edited
+            if (!['comment', 'internal_note', 'op_repair_report'].includes(activity.activity_type)) {
                 return res.status(400).json({ success: false, error: '该类型活动不可编辑' });
             }
 
             const now = new Date().toISOString();
 
-            db.prepare(`
+            let updateSql = `
                 UPDATE ticket_activities SET
                     content = ?,
                     content_html = ?,
                     is_edited = 1,
                     edited_at = ?
-                WHERE id = ?
-            `).run(content, content_html || null, now, activityId);
+            `;
+            let params = [content || null, content_html || null, now];
+
+            if (metadata !== undefined) {
+                updateSql += `, metadata = ?`;
+                params.push(typeof metadata === 'string' ? metadata : (metadata ? JSON.stringify(metadata) : null));
+            }
+            updateSql += ` WHERE id = ?`;
+            params.push(activityId);
+
+            db.prepare(updateSql).run(...params);
 
             res.json({ success: true, message: '更新成功' });
         } catch (err) {

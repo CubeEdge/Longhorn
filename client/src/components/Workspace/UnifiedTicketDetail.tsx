@@ -8,7 +8,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -24,11 +25,10 @@ import { ParticipantsSidebar } from './ParticipantsSidebar';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useViewAs } from './ViewAsComponents';
 import { useUIStore } from '../../store/useUIStore';
-import { DocumentReviewModal } from './DocumentReviewModal';
 import { RepairReportEditor } from './RepairReportEditor';
-import { Search } from 'lucide-react';
-
-// ==============================
+import { OpRepairReportEditor } from './OpRepairReportEditor';
+import { PIEditor } from './PIEditor';
+import { ClosingHandoverModal } from './ClosingHandoverModal';
 // Types
 // ==============================
 
@@ -106,7 +106,7 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
 const statusLabels: Record<string, { zh: string; en: string; color: string }> = {
     draft: { zh: '草稿', en: 'Draft', color: '#666' },
     in_progress: { zh: '处理中', en: 'In Progress', color: '#3B82F6' },
-    waiting: { zh: '等待中', en: 'Waiting', color: '#F59E0B' },
+    waiting: { zh: '等待中', en: 'Waiting', color: '#FFD200' },
     resolved: { zh: '已解决', en: 'Resolved', color: '#10B981' },
     closed: { zh: '已关闭', en: 'Closed', color: '#666' },
 };
@@ -130,6 +130,7 @@ function formatDateMinute(dateStr: string): string {
 const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext }) => {
     const { token, user } = useAuthStore();
     const { language, t } = useLanguage();
+    const navigate = useNavigate();
     const lang = language === 'zh' || language === 'ja' ? 'zh' : 'en';
     const { setContextLabel } = useUIStore();
 
@@ -153,6 +154,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [error, setError] = useState<string | null>(null);
     const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
+    const [warrantyCalc, setWarrantyCalc] = useState<any>(null);
+    const [showCalculationModal, setShowCalculationModal] = useState(false);
 
     // Edit logic
     const [isEditing, setIsEditing] = useState(false);
@@ -174,9 +177,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
     const [isActionBufferModalOpen, setIsActionBufferModalOpen] = useState(false);
     const [actionBufferTarget, setActionBufferTarget] = useState({ nextNode: '', label: '' });
-    const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
     const [isRepairReportEditorOpen, setIsRepairReportEditorOpen] = useState(false);
-    const [viewingDocument, setViewingDocument] = useState<{ type: 'pi' | 'repair_report', id: number, number: string } | null>(null);
+    const [isOpRepairReportEditorOpen, setIsOpRepairReportEditorOpen] = useState(false);
+    const [isPIEditorOpen, setIsPIEditorOpen] = useState(false);
+    const [isClosingHandoverOpen, setIsClosingHandoverOpen] = useState(false);
+    const [activePIInfo, setActivePIInfo] = useState<{ id?: number; number?: string } | null>(null);
+    const [activeReportInfo, setActiveReportInfo] = useState<{ id?: number, number?: string } | null>(null);
+    const [hasPI, setHasPI] = useState(false);
+    const [hasRepairReport, setHasRepairReport] = useState(false);
 
     // System settings for workflow control
     const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
@@ -226,6 +234,36 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [auditDiffs, setAuditDiffs] = useState<any[]>([]);
     const [auditCountdown, setAuditCountdown] = useState(0);
     const [isDescriptionDrawerOpen, setIsDescriptionDrawerOpen] = useState(false);
+    const [assetData, setAssetData] = useState<any>(null);
+
+    // Fetch Asset data (Warranty, History) when SN is available
+    useEffect(() => {
+        if (ticket?.serial_number) {
+            axios.get(`/api/v1/context/by-serial-number?serial_number=${ticket.serial_number}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                if (res.data.success) {
+                    setAssetData(res.data.data);
+                }
+            }).catch(err => console.error('[AssetFetch] Failed', err));
+        }
+    }, [ticket?.serial_number, token]);
+
+    useEffect(() => {
+        if (ticket?.id) {
+            // Fetch true warranty engine calculation
+            axios.post('/api/v1/warranty/calculate', {
+                ticket_id: ticket.id,
+                technical_damage_status: 'no_damage' // default assumption until MS Review changes it
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                if (res.data.success) {
+                    setWarrantyCalc(res.data.data);
+                }
+            }).catch(err => console.error('[WarrantyFetch] Failed', err));
+        }
+    }, [ticket?.id, token]);
 
     // Fetch products when editing starts
     useEffect(() => {
@@ -237,45 +275,27 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     }, [isEditing, isAuditModalOpen, token, products.length]);
 
     const handleQuickFixProduct = async (correctModelName: string) => {
-        if (!ticket) return;
-
-        // 1. Fetch products if not loaded
-        let currentProducts = products;
-        if (currentProducts.length === 0) {
-            try {
-                const res = await axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } });
-                if (res.data.success) {
-                    currentProducts = res.data.data;
-                    setProducts(currentProducts);
-                }
-            } catch (err) {
-                console.error('Failed to fetch products for quick fix', err);
-                return;
-            }
-        }
-
-        // 2. Find matching product
-        const match = currentProducts.find(p => p.name === correctModelName);
-        if (!match) {
-            alert(`系统产品库中未找到型号: ${correctModelName}`);
+        if (!ticket || !assetData?.device?.id) {
+            alert("无法获取实物设备的系统关联 ID，修正失败。");
             return;
         }
 
-        // 3. Prepare edit form
+        // 直接使用 assetData 中的确切物理设备 ID
+        const finalProductId = assetData.device.id;
+
         const newForm = {
             ...editForm,
-            product_id: match.id,
-            product_name: match.name // This is for display in diff
+            product_id: finalProductId,
+            product_name: correctModelName // This is for display in diff
         };
         setEditForm(newForm);
 
-        // 4. Calculate diff and open audit modal
         const diffs = [
             {
                 field: 'product_id',
                 label: '产品型号',
                 oldVal: ticket.product_name || '(空)',
-                newVal: match.name,
+                newVal: correctModelName,
                 isRisk: true
             }
         ];
@@ -446,10 +466,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         setLoading(true);
         setError(null);
         try {
-            // Parallel fetch: ticket detail + system settings
-            const [res, settingsRes] = await Promise.all([
+            // Parallel fetch: ticket detail + system settings + document exists checks
+            const [res, settingsRes, piRes, rrRes] = await Promise.all([
                 axios.get(`/api/v1/tickets/${ticketId}`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/v1/system/public-settings').catch(() => ({ data: { success: false } }))
+                axios.get('/api/v1/system/public-settings').catch(() => ({ data: { success: false } })),
+                axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticketId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { success: false } })),
+                axios.get(`/api/v1/rma-documents/repair-reports?ticket_id=${ticketId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { success: false } }))
             ]);
             if (res.data.success) {
                 setTicket(res.data.data);
@@ -460,6 +482,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             if (settingsRes.data.success) {
                 setSystemSettings(settingsRes.data.data || {});
             }
+            const pRes = piRes.data.success && piRes.data.data ? piRes.data.data : [];
+            const rRes = rrRes.data.success && rrRes.data.data ? rrRes.data.data : [];
+
+            if (pRes.length > 0) setActivePIInfo({ id: pRes[0].id, number: pRes[0].pi_number });
+            else setActivePIInfo(null);
+
+            if (rRes.length > 0) setActiveReportInfo({ id: rRes[0].id, number: rRes[0].report_number });
+            else setActiveReportInfo(null);
+
+            setHasPI(pRes.length > 0);
+            setHasRepairReport(rRes.length > 0);
         } catch (err: any) {
             setError(err.response?.data?.error || err.message);
         } finally {
@@ -485,7 +518,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         switch (viewContext) {
             case 'my_tasks':
                 text = `工作空间 › 我的任务`;
-                color = '#FFD700';
+                color = '#FFD200';
                 pulsing = true;
                 break;
             case 'team_queue':
@@ -623,7 +656,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     /**
      * Handle Node Action (Transition)
      */
-    const handleAction = async (actionLabel: string) => {
+    const handleAction = async (action: string) => {
         if (!ticket || loading) return;
 
         // Logic to determine next node based on current node and ticket type
@@ -665,11 +698,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 // Keep direct patch for warranty
             } else if (ticket.current_node === 'ms_closing' && ticket.is_warranty) {
                 // For ms_closing, warranty means we still want a confirmation to push to OP Shipping cleanly
-                setActionBufferTarget({ nextNode, label: actionLabel });
+                setActionBufferTarget({ nextNode, label: action });
                 setIsActionBufferModalOpen(true);
                 return;
             } else {
-                setActionBufferTarget({ nextNode, label: actionLabel });
+                setActionBufferTarget({ nextNode, label: action });
                 setIsActionBufferModalOpen(true);
                 return;
             }
@@ -679,7 +712,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             setLoading(true);
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 current_node: nextNode,
-                change_reason: `执行主流程动作: ${actionLabel}`
+                change_reason: `执行主流程动作: ${action}`
             }, { headers: { Authorization: `Bearer ${token}` } });
             fetchDetail();
         } catch (err: any) {
@@ -840,7 +873,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(245,158,11,0.15)', color: '#F59E0B',
+                        background: 'rgba(245,158,11,0.15)', color: '#FFD200',
                     }}>
                         <AlertTriangle size={13} /> SLA Warning
                     </span>
@@ -908,7 +941,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             icon={
                                 <span style={{
                                     padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 900,
-                                    background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#FFD700' : '#FFFFFF',
+                                    background: ticket.priority === 'P0' ? '#EF4444' : ticket.priority === 'P1' ? '#FFD200' : '#FFFFFF',
                                     color: (ticket.priority === 'P1' || ticket.priority === 'P2') ? '#000' : '#fff',
                                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                                     border: ticket.priority === 'P2' ? '1px solid rgba(0,0,0,0.1)' : 'none'
@@ -919,15 +952,102 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             defaultOpen={true}
                         >
                             <div style={{ padding: '20px 24px 24px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
-                                    <InfoRow label={t('ticket.product') || '产品型号'}
-                                        value={String(ticket.product_name || '-')} />
-                                    <InfoRow label={t('ticket.serial') || '序列号'}
-                                        value={String(ticket.serial_number || '-')} />
+                                {/* New 3-Row Compact Layout */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                                    <InfoRow label={t('ticket.customer') || '客户'}
-                                        value={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {/* Row 1: Product & SN & Tags */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+                                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>产品型号</span>
+                                                <span style={{ fontSize: 14, color: '#fff' }}>{String(ticket.product_name || '-')}</span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                                    onClick={() => ticket.product_id && navigate(`/service/products/${ticket.product_id}`)}
+                                                >
+                                                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
+                                                    <span style={{ fontSize: 14, color: '#fff', fontFamily: 'Monaco, monospace' }}>
+                                                        {String(ticket.serial_number || '-')}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                {/* Warranty Box - Unified Style */}
+                                                <div
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 12, padding: '4px 12px', borderRadius: 8,
+                                                        background: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                        border: `1px solid ${(warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                                        cursor: 'pointer', transition: 'all 0.2s'
+                                                    }}
+                                                    onClick={() => setShowCalculationModal(true)}
+                                                    onMouseEnter={e => e.currentTarget.style.background = (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <Shield size={14} color={(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444'} />
+                                                        <span style={{ fontSize: 13, fontWeight: 700, color: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444' }}>
+                                                            {(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '在保' : '过保'}
+                                                        </span>
+                                                    </div>
+                                                    <Calculator size={12} color="rgba(255,255,255,0.4)" />
+                                                </div>
+
+                                                {/* History Tag (Aligned visually as uniform badge) */}
+                                                {assetData?.service_history && assetData.service_history.length > 0 && (
+                                                    <div
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8,
+                                                            background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                            color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                                            transition: 'all 0.2s', height: '100%'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                                        onClick={() => ticket.product_id && window.open(`/service/products/${ticket.product_id}`, '_blank')}
+                                                    >
+                                                        <Clock size={13} style={{ opacity: 0.6 }} />
+                                                        <span>关联工单数: {assetData.service_history.length}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Mismatch Warning & Quick Fix - Left aligned and single line */}
+                                        {assetData?.device && !assetData.device.is_unregistered && ticket.product_name !== assetData.device.model_name && (
+                                            <div style={{ display: 'flex', marginTop: 4 }}>
+                                                <div style={{
+                                                    display: 'flex', alignItems: 'center', gap: 10, padding: '4px 12px',
+                                                    background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)',
+                                                    borderRadius: 8
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#FFD200', fontWeight: 600 }}>
+                                                        <AlertTriangle size={14} />
+                                                        声明型号 ({ticket.product_name}) 与实物 ({assetData.device.model_name}) 不符
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleQuickFixProduct(assetData.device.model_name)}
+                                                        style={{
+                                                            padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                            borderRadius: 4, color: '#FFD200', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        一键修正
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Row 2: Customer & Channel */}
+                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.customer') || '客户'}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600 }}>
                                                 {(() => {
                                                     const acc = String(ticket.account_name || '--') || '';
                                                     const rep = String(ticket.contact_name || ticket.reporter_snapshot?.name || ticket.reporter_name || '') || '';
@@ -948,24 +1068,35 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                     </span>
                                                 )}
                                             </div>
-                                        } />
-                                    <InfoRow label="销售渠道"
-                                        value={ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'} />
+                                        </div>
 
-                                    <InfoRow label={t('ticket.created_at') || '创建时间'}
-                                        value={formatDateMinute(ticket.created_at)} />
-                                    <InfoRow label={t('ticket.submitted_by') || '提交者'}
-                                        value={ticket.submitted_name ? (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                {ticket.submitted_dept && <span style={{ color: '#888', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
-                                                {ticket.submitted_name}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>销售渠道</span>
+                                            <span style={{ fontSize: 14, color: '#ccc' }}>
+                                                {ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'}
                                             </span>
-                                        ) : '-'} />
+                                        </div>
+                                    </div>
 
-                                    {ticket.parent_ticket_number && (
-                                        <InfoRow label={t('ticket.parent') || '关联工单'}
-                                            value={String(ticket.parent_ticket_number)} />
-                                    )}
+                                    {/* Row 3: Time & Submitter */}
+                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.created_at') || '创建时间'}</span>
+                                            <span style={{ fontSize: 14, color: '#ccc' }}>{formatDateMinute(ticket.created_at)}</span>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('ticket.submitted_by') || '提交者'}</span>
+                                            <span style={{ fontSize: 14, color: '#ccc' }}>
+                                                {ticket.submitted_name ? (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        {ticket.submitted_dept && <span style={{ color: '#666', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
+                                                        {ticket.submitted_name}
+                                                    </span>
+                                                ) : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Problem summary */}
@@ -982,9 +1113,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                 <FileText size={14} />
-                                                问题概要 / Description
+                                                问题概要
                                                 {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
-                                                    <span style={{ color: '#FFD700', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>· 已折叠部分</span>
+                                                    <span style={{ color: '#FFD200', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>· 已折叠部分</span>
                                                 )}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', fontSize: 13, fontWeight: 600 }}>
@@ -993,7 +1124,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             </div>
                                         </div>
                                         <div style={{
-                                            fontSize: 16, color: '#eee', lineHeight: 1.7,
+                                            fontSize: 14, color: '#ccc', lineHeight: 1.7,
                                             display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                                             fontWeight: 500
                                         }}>
@@ -1011,8 +1142,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         <div style={{ fontSize: 11, color: '#10B981', marginBottom: 4 }}>
                                             处理结果
                                         </div>
-                                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                                            {ticket.resolution}
+                                        <div style={{ fontSize: 16, color: '#ddd', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                                            {ticket.resolution || '暂无详细处理记录'}
                                         </div>
                                     </div>
                                 )}
@@ -1033,7 +1164,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     {/* Activity Timeline - Collapsible */}
                     <CollapsiblePanel
                         title={t('ticket.activity_timeline') || '活动时间轴'}
-                        icon={<Clock size={14} color="#FFD700" />}
+                        icon={<Clock size={14} color="#FFD200" />}
                         count={activities.filter(a => a.activity_type !== 'mention').length}
                         defaultOpen={true}
                     >
@@ -1099,9 +1230,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             } else if (ticket.current_node === 'ms_review') {
                                                 setIsMSReviewPanelOpen(true);
                                             } else if (ticket.current_node === 'ms_closing') {
-                                                setIsFinalSettlementOpen(true);
+                                                setIsClosingHandoverOpen(true);
                                             } else if (ticket.current_node === 'op_repairing') {
-                                                setIsRepairReportEditorOpen(true);
+                                                setIsOpRepairReportEditorOpen(true); // Changed to OpRepairReportEditor
                                             } else {
                                                 handleAction(footerAction.action);
                                             }
@@ -1114,9 +1245,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         gap: 8,
                                         padding: '10px 24px',
                                         borderRadius: 10,
-                                        background: isAssignedToActingUser ? '#FFD700' : 'rgba(255,215,0,0.15)',
-                                        color: isAssignedToActingUser ? '#000' : '#FFD700',
-                                        border: isAssignedToActingUser ? 'none' : '1px solid rgba(255,215,0,0.4)',
+                                        background: isAssignedToActingUser ? '#FFD200' : 'rgba(255,210,0,0.15)',
+                                        color: isAssignedToActingUser ? '#000' : '#FFD200',
+                                        border: isAssignedToActingUser ? 'none' : '1px solid rgba(255,210,0,0.4)',
                                         fontSize: 14,
                                         fontWeight: 700,
                                         cursor: 'pointer',
@@ -1125,11 +1256,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     }}
                                     onMouseEnter={e => {
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#ffdf33';
+                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD200';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.transform = 'none';
-                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD700';
+                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD200';
                                     }}
                                 >
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
@@ -1166,131 +1297,132 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         onCleanComplete={fetchDetail}
                         ticketProductName={ticket.product_name}
                         onRequestEdit={handleQuickFixProduct}
+                        hideDeviceCard={true}
                     />
 
-                    {/* Service Document Center - Refined aesthetics */}
-                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', padding: '0 4px', fontWeight: 600 }}>服务成果中心</div>
-
-                        {/* 1. Diagnostic Summary (Public) */}
-                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Search size={16} color="#3B82F6" />
-                                </div>
-                                <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>诊断成果</span>
-                            </div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
-                                {ticket.current_node === 'submitted' || ticket.current_node === 'op_receiving' ? '待诊断...' : '诊断已完成。包含故障判定、建议方案及初始見積。'}
-                            </div>
-                            {(() => {
-                                const diagActivity = activities.find(a => a.action_type === 'diagnose' || a.node_to === 'ms_review');
-                                return (
-                                    <button
-                                        disabled={!diagActivity}
-                                        onClick={() => diagActivity && setSelectedActivity(diagActivity)}
-                                        style={{
-                                            width: '100%', padding: '10px 0',
-                                            background: diagActivity ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.02)',
-                                            border: `1px solid ${diagActivity ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                            borderRadius: 8, color: diagActivity ? '#3B82F6' : '#666',
-                                            cursor: diagActivity ? 'pointer' : 'not-allowed',
-                                            fontSize: 13, fontWeight: 500, transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {diagActivity ? '查看诊断报告与预估' : '暂无诊断报告'}
-                                    </button>
-                                );
-                            })()}
+                    {/* Service Document Center - Consolidated Card (macOS26 Style) */}
+                    <div style={{
+                        background: 'var(--glass-border)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        border: '1px solid var(--glass-border)',
+                        marginBottom: '12px',
+                        marginTop: '4px'
+                    }}>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: 'var(--text-tertiary)',
+                            marginBottom: '16px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}>
+                            <Wrench size={12} /> {language === 'zh' ? '服务成果' : 'Service Center'}
                         </div>
 
-                        {/* 2. Repair Execution (Public) */}
-                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Edit2 size={16} color="#10B981" />
-                                </div>
-                                <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>维修成果</span>
-                            </div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
-                                {['resolved', 'op_shipping', 'ms_closing'].includes(ticket.current_node) ? '维修已完成。包含实物更换记录及 QC 测试结果。' : '维修进行中或尚未开始。'}
-                            </div>
-                            {(() => {
-                                const repairActivity = activities.find(a => a.action_type === 'repair_complete' || a.node_to === 'ms_closing');
-                                return (
-                                    <button
-                                        disabled={!repairActivity}
-                                        onClick={() => repairActivity && setSelectedActivity(repairActivity)}
-                                        style={{
-                                            width: '100%', padding: '10px 0',
-                                            background: repairActivity ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.02)',
-                                            border: `1px solid ${repairActivity ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.05)'}`,
-                                            borderRadius: 8, color: repairActivity ? '#10B981' : '#666',
-                                            cursor: repairActivity ? 'pointer' : 'not-allowed',
-                                            fontSize: 13, fontWeight: 500, transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {repairActivity ? '查看维修确认单' : '暂无维修执行记录'}
-                                    </button>
-                                );
-                            })()}
-                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {/* Row 1: Technical Details (Parallel) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                {(() => {
+                                    const diagActivity = activities.find(a => a.activity_type === 'diagnostic_report');
+                                    return (
+                                        <button
+                                            disabled={!diagActivity}
+                                            onClick={() => diagActivity && setSelectedActivity(diagActivity)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
+                                                background: diagActivity ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${diagActivity ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                                borderRadius: '10px', transition: 'all 0.2s',
+                                                cursor: diagActivity ? 'pointer' : 'not-allowed',
+                                                opacity: diagActivity ? 1 : 0.6
+                                            }}
+                                        >
+                                            <Search size={14} color={diagActivity ? '#3B82F6' : '#666'} />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: diagActivity ? '#3B82F6' : '#666' }}>
+                                                {language === 'zh' ? '诊断成果' : 'Diagnostics'}
+                                            </span>
+                                        </button>
+                                    );
+                                })()}
 
-                        {/* 3. Settlement & Reports (MS/Admin Only) */}
-                        {hasPrivilege && (
-                            <div style={{ background: 'rgba(255, 215, 0, 0.03)', border: '1px solid rgba(255, 215, 0, 0.1)', borderRadius: 12, padding: 12 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255, 215, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <FileText size={16} color="#FFD700" />
+                                <button
+                                    onClick={() => setIsOpRepairReportEditorOpen(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
+                                        background: 'rgba(255, 210, 0, 0.08)',
+                                        border: '1px solid rgba(255, 210, 0, 0.2)',
+                                        borderRadius: '10px', transition: 'all 0.2s',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Wrench size={14} color="#FFD200" />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FFD200' }}>
+                                        {language === 'zh' ? '维修内容' : 'Repair Info'}
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Row 2: Repair Report Action */}
+                            <button
+                                onClick={() => {
+                                    setIsRepairReportEditorOpen(true);
+                                }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                    background: hasRepairReport ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)',
+                                    border: `1px solid ${hasRepairReport ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                    borderRadius: '8px', cursor: 'pointer',
+                                    transition: 'all 0.2s', color: hasRepairReport ? '#3B82F6' : '#666'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FileText size={14} />
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                                        {hasRepairReport ? (language === 'zh' ? '查看/修改维修报告' : 'View/Edit Report') : (language === 'zh' ? '生成维修报告' : 'Create Report')}
+                                    </span>
+                                </div>
+                                {!hasRepairReport && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>}
+                            </button>
+
+                            {/* Row 3: PI Action (Privileged) */}
+                            {hasPrivilege && (
+                                <button
+                                    onClick={async () => {
+                                        if (!hasPI) {
+                                            setIsPIEditorOpen(true);
+                                            return;
+                                        }
+                                        try {
+                                            const res = await axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                            if (res.data.success && res.data.data.length > 0) {
+                                                const pi = res.data.data[0];
+                                                setActivePIInfo({ id: pi.id });
+                                                setIsPIEditorOpen(true);
+                                            }
+                                        } catch (err) { console.error('Failed to fetch PI', err); }
+                                    }}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                        background: hasPI ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${hasPI ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
+                                        borderRadius: '8px', cursor: 'pointer',
+                                        transition: 'all 0.2s', color: hasPI ? '#10B981' : '#666'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <BadgeDollarSign size={14} />
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                                            {hasPI ? (language === 'zh' ? '查看/修改 PI' : 'View/Edit PI') : (language === 'zh' ? '生成 PI' : 'Create PI')}
+                                        </span>
                                     </div>
-                                    <span style={{ fontSize: 15, fontWeight: 600, color: '#FFD700' }}>结算与报表</span>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                const res = await axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                                                if (res.data.success && res.data.data.length > 0) {
-                                                    const pi = res.data.data[0];
-                                                    setViewingDocument({ type: 'pi', id: pi.id, number: pi.pi_number });
-                                                    setIsDocumentReviewOpen(true);
-                                                } else {
-                                                    alert('未找到已生成的 PI (Proforma Invoice)。');
-                                                }
-                                            } catch (err) {
-                                                console.error('Failed to fetch PI', err);
-                                            }
-                                        }}
-                                        style={{ width: '100%', padding: '10px 0', background: 'rgba(255, 215, 0, 0.08)', border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: 8, color: '#FFD700', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.08)'}
-                                    >
-                                        内览查看 Proforma Invoice
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                const res = await axios.get(`/api/v1/rma-documents/repair-reports?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                                                if (res.data.success && res.data.data.length > 0) {
-                                                    const rr = res.data.data[0];
-                                                    setViewingDocument({ type: 'repair_report', id: rr.id, number: rr.report_number });
-                                                    setIsDocumentReviewOpen(true);
-                                                } else {
-                                                    alert('未找到已生成的维修报告。');
-                                                }
-                                            } catch (err) {
-                                                console.error('Failed to fetch repair report', err);
-                                            }
-                                        }}
-                                        style={{ width: '100%', padding: '10px 0', background: 'rgba(255, 215, 0, 0.08)', border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: 8, color: '#FFD700', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.15)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.08)'}
-                                    >
-                                        内览查看维修报告
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                                    {!hasPI && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1316,7 +1448,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <ShieldAlert size={18} color="#FFD700" />
+                                    <ShieldAlert size={18} color="#FFD200" />
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>编辑工单信息</h3>
                                         <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
@@ -1384,7 +1516,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>核心资产标识</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                             <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#FFD200', marginBottom: 6 }}>
                                                     <ShieldAlert size={12} /> 序列号 (S/N)
                                                 </label>
                                                 <input
@@ -1395,7 +1527,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 <p style={{ margin: '6px 0 0', fontSize: 10, color: '#777' }}>警告：修改此项将影响设备服务记录与审计体系</p>
                                             </div>
                                             <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F59E0B', marginBottom: 6 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#FFD200', marginBottom: 6 }}>
                                                     <Package size={12} /> 产品型号
                                                 </label>
                                                 <select
@@ -1461,7 +1593,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
                                 <button
                                     onClick={handlePreSave}
-                                    style={{ flex: 1.5, padding: '10px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
+                                    style={{ flex: 1.5, padding: '10px', background: '#FFD200', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
                                 >
                                     <Save size={16} /> 保存变更
                                 </button>
@@ -1481,13 +1613,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     }}>
                         <div style={{
                             width: 500, background: '#1c1c1e', borderRadius: 16,
-                            border: '1px solid #FFD700', overflow: 'hidden',
+                            border: '1px solid #FFD200', overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(255, 215, 0, 0.15)',
                             animation: 'modalIn 0.2s ease-out'
                         }}>
                             <div style={{ padding: 24, textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                    <AlertTriangle size={24} color="#FFD700" />
+                                    <AlertTriangle size={24} color="#FFD200" />
                                 </div>
                                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>核心数据变更声明</h3>
                                 <p style={{ margin: 0, fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
@@ -1510,7 +1642,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             <div style={{ fontSize: 13, color: '#ddd', display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 <span style={{ textDecoration: 'line-through', color: '#666' }}>{diff.oldVal}</span>
                                                 <span style={{ color: '#888' }}>➔</span>
-                                                <span style={{ color: diff.isRisk ? '#FFD700' : '#10B981', fontWeight: 500 }}>{diff.newVal}</span>
+                                                <span style={{ color: diff.isRisk ? '#FFD200' : '#10B981', fontWeight: 500 }}>{diff.newVal}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -1538,7 +1670,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     disabled={auditCountdown > 0 || !changeReason.trim() || isSaving}
                                     style={{
                                         flex: 1, padding: 16, background: 'transparent', border: 'none',
-                                        color: (auditCountdown > 0 || !changeReason.trim()) ? '#666' : '#FFD700',
+                                        color: (auditCountdown > 0 || !changeReason.trim()) ? '#666' : '#FFD200',
                                         fontSize: 14, fontWeight: 600,
                                         cursor: (auditCountdown > 0 || !changeReason.trim()) ? 'not-allowed' : 'pointer'
                                     }}
@@ -1551,20 +1683,6 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 )
             }
 
-            {/* ====== Document Review/Preview Modal ====== */}
-            {isDocumentReviewOpen && viewingDocument && (
-                <DocumentReviewModal
-                    isOpen={isDocumentReviewOpen}
-                    onClose={() => setIsDocumentReviewOpen(false)}
-                    documentType={viewingDocument.type}
-                    documentId={viewingDocument.id}
-                    documentNumber={viewingDocument.number}
-                    onSuccess={() => {
-                        setIsDocumentReviewOpen(false);
-                        fetchDetail();
-                    }}
-                />
-            )}
 
             {/* ====== Details Drawer ====== */}
             {
@@ -1589,7 +1707,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <FileText size={16} color="#FFD700" />
+                                        <FileText size={16} color="#FFD200" />
                                     </div>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
@@ -1604,7 +1722,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 {ticket.problem_summary && (
                                     <div style={{ marginBottom: 24 }}>
                                         <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>摘要</h4>
-                                        <div style={{ fontSize: 14, color: '#fff', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                        <div style={{
+                                            fontSize: 16,
+                                            color: '#fff',
+                                            lineHeight: 1.6,
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word',
+                                            letterSpacing: '0.01em'
+                                        }}>
                                             {ticket.problem_summary}
                                         </div>
                                     </div>
@@ -1612,7 +1737,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 {ticket.problem_description && (
                                     <div style={{ marginBottom: 24 }}>
                                         <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>详细描述</h4>
-                                        <div style={{ fontSize: 14, color: '#ccc', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                        <div style={{
+                                            fontSize: 16,
+                                            color: (ticket.problem_summary) ? 'rgba(255,255,255,0.7)' : '#fff',
+                                            lineHeight: 1.6,
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word',
+                                            marginTop: (ticket.problem_summary) ? 16 : 0,
+                                            letterSpacing: '0.01em'
+                                        }}>
                                             {ticket.problem_description}
                                         </div>
                                     </div>
@@ -1821,18 +1954,68 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     fetchDetail();
                 }}
             />
-            <RepairReportEditor
-                isOpen={isRepairReportEditorOpen}
-                onClose={() => setIsRepairReportEditorOpen(false)}
-                ticketId={ticketId}
-                ticketNumber={ticket.ticket_number || ''}
-                onSuccess={() => {
-                    setIsRepairReportEditorOpen(false);
-                    // After report is submitted/saved, ticket usually transitions or stays for review.
-                    // The editor handle its own transition logic if integrated.
-                    fetchDetail();
-                }}
-            />
+            {isOpRepairReportEditorOpen && (
+                <OpRepairReportEditor
+                    isOpen={isOpRepairReportEditorOpen}
+                    onClose={() => setIsOpRepairReportEditorOpen(false)}
+                    ticketId={ticketId}
+                    ticketNumber={ticket?.ticket_number || ''}
+                    onSuccess={() => {
+                        setIsOpRepairReportEditorOpen(false);
+                        fetchDetail();
+                    }}
+                    warrantyCalc={warrantyCalc}
+                />
+            )}
+
+            {isRepairReportEditorOpen && (
+                <RepairReportEditor
+                    isOpen={isRepairReportEditorOpen}
+                    onClose={() => setIsRepairReportEditorOpen(false)}
+                    ticketId={ticketId}
+                    ticketNumber={ticket?.ticket_number || ''}
+                    reportId={activeReportInfo?.id}
+                    currentNode={ticket?.current_node || ''}
+                    onSuccess={() => {
+                        setIsRepairReportEditorOpen(false);
+                        fetchDetail();
+                    }}
+                />
+            )}
+
+            {isPIEditorOpen && (
+                <PIEditor
+                    isOpen={isPIEditorOpen}
+                    onClose={() => setIsPIEditorOpen(false)}
+                    ticketId={ticketId}
+                    ticketNumber={ticket?.ticket_number || ''}
+                    piId={activePIInfo?.id}
+                    onSuccess={() => {
+                        setIsPIEditorOpen(false);
+                        fetchDetail();
+                    }}
+                />
+            )}
+
+            {isClosingHandoverOpen && ticket && (
+                <ClosingHandoverModal
+                    isOpen={isClosingHandoverOpen}
+                    onClose={() => setIsClosingHandoverOpen(false)}
+                    ticket={ticket}
+                    onSuccess={() => {
+                        setIsClosingHandoverOpen(false);
+                        fetchDetail();
+                    }}
+                    onOpenRepairReport={() => {
+                        setIsClosingHandoverOpen(false);
+                        setIsRepairReportEditorOpen(true);
+                    }}
+                    onOpenPI={() => {
+                        setIsClosingHandoverOpen(false);
+                        setIsPIEditorOpen(true);
+                    }}
+                />
+            )}
             <ActionBufferModal
                 isOpen={isActionBufferModalOpen}
                 onClose={() => setIsActionBufferModalOpen(false)}
@@ -1845,6 +2028,129 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             />
             <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
             <ActivityDetailDrawer activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
+
+            {showCalculationModal && warrantyCalc && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#1c1c1e', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', width: 500, overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.6)' }}>
+                        {/* Header */}
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255, 210, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Calculator size={20} color="#FFD200" />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>产品保修计算引擎</h3>
+                                    <p style={{ margin: 0, fontSize: 12, color: '#888', marginTop: 4 }}>序列号：{ticket?.serial_number || '-'}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowCalculationModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {/* Rules Section */}
+                            <div style={{ padding: '0 4px' }}>
+                                <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', fontWeight: 600 }}>保修计算说明</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: '#888' }}>
+                                    {[
+                                        { p: 1, basis: 'IOT_ACTIVATION', label: 'IoT', detail: '若 activation_date 存在，以此为准' },
+                                        { p: 2, basis: 'INVOICE_PROOF', label: '人工', detail: '若 sales_invoice_date 存在（有发票），以此为准' },
+                                        { p: 3, basis: 'REGISTRATION', label: '注册', detail: '若 registration_date 存在，以此为准' },
+                                        { p: 4, basis: 'DIRECT_SHIPMENT', label: '直销', detail: '若为 DIRECT，按 ship_date + 7 天' },
+                                        { p: 5, basis: 'DEALER_FALLBACK', label: '兜底', detail: '按 ship_to_dealer_date + 90 天' }
+                                    ].map((rule) => {
+                                        const isActive = warrantyCalc?.calculation_basis?.toUpperCase() === rule.basis;
+                                        return (
+                                            <div key={rule.p} style={{
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                gap: 8,
+                                                padding: '8px 12px',
+                                                background: isActive ? 'rgba(255, 210, 0, 0.1)' : 'transparent',
+                                                borderRadius: 8,
+                                                border: isActive ? '1px solid rgba(255, 210, 0, 0.3)' : '1px solid transparent'
+                                            }}>
+                                                <span style={{ color: '#FFD200', fontWeight: 700, whiteSpace: 'nowrap' }}>{rule.p}.</span>
+                                                <div>
+                                                    <span style={{ color: isActive ? '#FFD200' : '#ccc', fontWeight: 600, marginRight: 4 }}>
+                                                        优先级 {rule.p} ({rule.label}):
+                                                        {isActive && <span style={{ marginLeft: 8, fontSize: '0.75rem', padding: '2px 6px', background: '#FFD200', color: '#000', borderRadius: 4 }}>当前采用</span>}
+                                                    </span>
+                                                    <div style={{ marginTop: 2 }}>{rule.detail}</div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
+
+                            {/* Result Section */}
+                            <div style={{
+                                padding: 16, borderRadius: 12,
+                                background: warrantyCalc.final_warranty_status === 'warranty_valid' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                border: `1px solid ${warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444'}`,
+                                display: 'flex', flexDirection: 'column', gap: 12
+                            }}>
+                                <h4 style={{ margin: 0, fontSize: 12, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444', opacity: 0.8, textTransform: 'uppercase', letterSpacing: 0.5 }}>本机计算结果</h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {warrantyCalc.final_warranty_status === 'warranty_valid'
+                                        ? <CheckCircle size={22} color="#10B981" />
+                                        : <AlertTriangle size={22} color="#EF4444" />}
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444' }}>
+                                        {warrantyCalc.final_warranty_status === 'warranty_valid' ? '在保期内 - 免费维修' : '已过保 - 付费维修'}
+                                    </span>
+                                </div>
+                                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+                                    {[
+                                        { label: '生效日期', value: warrantyCalc.start_date || '-' },
+                                        { label: '截止日期', value: warrantyCalc.end_date || '-' },
+                                        {
+                                            label: '计算依据', value: (
+                                                {
+                                                    'iot_activation': 'IoT激活日期',
+                                                    'invoice': '销售发票日期',
+                                                    'registration': '官网注册日期',
+                                                    'direct_ship': '直销发货日期+7天',
+                                                    'dealer_fallback': '经销商发货日期+90天',
+                                                    'damage_void': '人为损坏（保修失效）',
+                                                    'ticket_created': '工单创建日期（兜底）'
+                                                } as any
+                                            )[warrantyCalc.calculation_basis] || warrantyCalc.calculation_basis || '-', fullWidth: true
+                                        }
+                                    ].map((item, idx) => (
+                                        <div key={idx} style={{ gridColumn: item.fullWidth ? '1/-1' : 'span 1' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{item.label}</div>
+                                            <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{item.value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '16px 24px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'right' }}>
+                            <button
+                                onClick={() => setShowCalculationModal(false)}
+                                style={{
+                                    padding: '10px 24px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontWeight: 600,
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            >
+                                确认关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div >
     );
 };
@@ -1852,13 +2158,5 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 // ==============================
 // Sub-Components
 // ==============================
-
-const InfoRow: React.FC<{ icon?: any; label: string; value: React.ReactNode }> = ({ icon: Icon, label, value }) => (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '6px 0' }}>
-        {Icon && <Icon size={16} color="#666" style={{ marginTop: 2 }} />}
-        <span style={{ fontSize: 15, color: 'var(--text-tertiary)', minWidth: 80, fontWeight: 500 }}>{label}</span>
-        <span style={{ fontSize: 17, color: 'var(--text-main)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>{value}</span>
-    </div>
-);
 
 export default UnifiedTicketDetail;

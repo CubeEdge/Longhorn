@@ -128,6 +128,7 @@ const ProductModelsManagement: React.FC = () => {
             if (res.data.success) {
                 setProductModels(res.data.data || []);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('Failed to fetch product models', err);
             setError(err.response?.data?.error?.message || 'Failed to fetch product models');
@@ -221,6 +222,7 @@ const ProductModelsManagement: React.FC = () => {
             if (res.data.success) {
                 setFormData(prev => ({ ...prev, hero_image: res.data.file.url }));
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             alert('上传图片失败: ' + (err.response?.data?.error?.message || err.message));
         }
@@ -246,6 +248,7 @@ const ProductModelsManagement: React.FC = () => {
             }
             handleCloseDrawer();
             fetchProductModels();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('Failed to save product model', err);
             alert(err.response?.data?.error?.message || 'Failed to save product model');
@@ -273,6 +276,7 @@ const ProductModelsManagement: React.FC = () => {
             });
             handleCloseDeleteDrawer();
             fetchProductModels();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error('Failed to delete product model', err);
             alert(err.response?.data?.error?.message || 'Failed to delete product model');
@@ -714,6 +718,7 @@ const ProductModelsManagement: React.FC = () => {
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('parts.category')} <span style={{ color: '#EF4444' }}>*</span></label>
                                             <select
                                                 required value={formData.product_family}
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 onChange={(e) => setFormData({ ...formData, product_family: e.target.value as any })}
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                             >

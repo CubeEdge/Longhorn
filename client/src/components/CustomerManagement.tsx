@@ -658,7 +658,7 @@ const CustomerManagement: React.FC = () => {
                                             {c.lifecycle_stage === 'PROSPECT' && (
                                                 <span style={{
                                                     fontSize: '0.65rem', padding: '1px 6px', borderRadius: 4,
-                                                    background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B',
+                                                    background: 'rgba(245, 158, 11, 0.15)', color: '#FFD200',
                                                     border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 600
                                                 }}>
                                                     Prospect

@@ -1,5 +1,172 @@
 # 开发会话日志 (Development Session Log)
 
+ ## [2026-03-12] MS 结案流程稳定性增强与黑屏崩溃修复 (v12.3.171)
+ ### Bug Fixes & Stability
+ - **黑屏崩溃根除**: 针对 `RepairReportEditor` 和 `PIEditor` 中所有可能导致 `TypeError` 的 `toFixed` 调用进行了数值安全处理 (`Number(val || 0)`), 彻底解决了 MS 操作员在特定场景下查看报告时组件崩溃的问题。
+ - **初始数据安全加载**: 为所有文档编辑器引入了深度防御合并 (Defensive Deep Merge) 机制，确保旧版本或不完整的数据在加载时能自动补充 `DEFAULT_CONTENT` 缺失字段，预防对象属性未定义导致的渲染异常。
+ - **UI 稳定性优化**: 将 `ClosingHandoverModal.tsx` 内容容器的最小高度由 `460px` 提升至 `520px`，消除了在不同 Tab 切换时可能产生的垂直跳变与布局抖动。
+ ### Backend & Security
+ - **鉴权逻辑纠正**: 修复了 `server/index.js` 中用户部门代码映射错误的问题 (将映射源由错误的 `name` 改为 `code`)，确保了 `rma-documents.js` 权限检查逻辑能够准确识别 MS/OP 部门标识。
+ - **接口鲁棒性加固**: 在 `rma-documents.js` 的详情接口中强制实施了 ID 参数的合法性校验，增强了 API 的防错能力，降低了非法请求触发 500 错误的风险。
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.171 / 服务端 `server` v1.8.41。
+ - **全量部署**: 执行 `./scripts/deploy.sh` 完成生产环境热更新。
+
+ ## [2026-03-12] MS 结案流程彻底重构与 OP 工作流对齐 (v12.3.170)
+ ### Workflow & UI Restructure
+ - **OP 维修全量对齐**: 针对 OP 的汇报流程重装上阵，彻底废弃冗余的 `repair_reports` 数据关联，利用原生的 `ticket-activities` 作为储存媒介，让每次填报如 `comment` 般融入时间流。
+ - **只读漫游模式**: 开放底层 `UnifiedTicketDetail` 对 `OpRepairReportEditor` 的拦截控制。赋予所有权限仅能浏览，真正控制对编辑状态的确权 (Admin 或当前节点执行人)。
+ - **保修判定最高优先级**: 重修了 `ClosingHandoverModal.tsx`，将 `ticket.is_warranty` 直接奉为圭臬，替代系统预测得出的结果，预防机器误算。
+ - **紧凑结算面板**: 大刀阔斧替换旧式弹窗体堆叠，将文档审核、金钱校对与物流承接剥离为横置 Tabs。遇到未发布的情况时提供捷径：`去编辑/发布`，斩断跨层级跳级的繁琐操作障碍。
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.170 / 服务端 `server` v1.8.40。
+ - **无感热更**: 执行 `./scripts/deploy.sh` 同步最新成果至生产线，即刻生效。 ## [2026-03-11] 部署无缝升级补丁与稳定版本推送 (v12.3.169)
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.169 / 服务端 `server` v1.8.39，响应 `/upd` 指令。
+ - **全量热更**: 执行 `./scripts/deploy.sh` 稳健部署修复补丁至生产环境 `mini`，并重启 PM2 服务。
+
+ ## [2026-03-11] 财务文档编辑器异常与 UI 细节修复 (v12.3.168)
+ ### Backend && Data Handling
+ - **计算防护 (NaN / Undefined)**: 在 `PIEditor.tsx` 处理“从维修报告导入收费项”的逻辑中注入了安全解包机制 (`Number(value) || 0`)，根除了由服务端可选字段 `tax_rate` 与 `discount_amount` 缺失导致的 PI 账单条目保存异常。
+ - **渲染侧链式重排修复**: 修复 `RepairReportEditor.tsx` 中总价和物料费为 `undefined` 时强制调用 `.toFixed(2)` 引发的严重组件崩溃（白屏现象），补充了空值条件下的稳定落底显示 (`toLocaleString`)。
+ ### UI/UX
+ - **文案精准度**: 响应业务侧诉求，将 `PIEditor` 头部组件及入口界面的“新建 PI”更改为明确的“制作PI发票”。
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.168 / 服务端 `server` v1.8.38。
+ - **全量热更**: 执行 `./scripts/deploy.sh` 同步至生产环境 `mini`。
+
+ ## [2026-03-11] OP 编辑器深度抛光与保修判定引擎对齐 (v12.3.164)
+ ### UX & Workflow Integration
+ - **填报体验升级**: 针对 OP 技师反馈，将“填写维修报告”窗口的输入区高度提升至 `200px` (支持垂直伸缩)，并支持 `actions_taken` 的多行文本输入。
+ - **Header 降噪与规范化**: 标题统一为“填写维修报告”，移除了草稿状态、编辑按钮及自动保存文字提示。
+ - **自动化流转**: 替换“保存草稿”为“提交进入下一步”，在保存报告元数据的同时，自动触发工单节点切换接口，将流程推动至 `ms_closing` (待结案) 节点。
+ - **保修判定一致性**: 修复了编辑器表头与工单详情页保修状态不一致的问题。通过在 `UnifiedTicketDetail` 中提取计算引擎的 `warrantyCalc` 结果并透传至 `OpRepairReportEditor`，确保了“在保/过保”结论在系统全局的强一致性对齐。
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.164 / 服务端 `server` v1.8.35。
+ - **全量热更**: 执行 `./scripts/deploy.sh` 同步至生产环境 `mini`。
+
+
+ ## [2026-03-11] 产品详情页“基本信息”面板优化与数据对齐 (v12.3.162)
+ ### UI/UX & Data Integration
+ - **语义化重命名**: 将 `ProductDetailPage` 中的 `物理身份` Section 重命名为 `基本信息`，使其更符合用户导向。
+ - **数据穿透与映射**: 修复了 SKU 和型号在详情页展示不全的 Bug。通过利用后端 `/:id/detail` 接口返回的关联数据，优先展示 `sku_name` 和 `model_display_name`，确保“基本信息”能够如实反映在 Modal 编辑器中录入的复杂信息。
+ - **信息密度增强**: 面板内字段由 5 个扩展至 7 个，新增了“产品族群”和更精确的“型号名称”，提升了管理员对单一设备台账的审阅效率。
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.162 / 服务端 `server` v1.8.33。
+ - **全量热更**: 执行 `./scripts/deploy.sh` 同步至生产环境 `mini`。
+
+ 
+ ## [2026-03-11] 产品详情视图微调及工单组件解耦交互优化 (v12.3.159)
+ ### UX & Editor Workflow
+ - **字距与字号调优**: 全面缩减了 `ProductDetailPage` 内部的信息展示基准字号 (如 `1.25rem` -> `1.1rem`, `1.05rem` -> `0.95rem`)，使页面布局更适合密集信息环境。
+ - **摘要卡片降噪**: 移除了针对布尔数值化 (`is_iot_device`) 解析错误导致的幽灵 `0`，并赋予 `ProductSummaryCard` 动态隐藏右侧保修徽标的功能 (`hideBadges`)，避免信息在流转节点上的冗余堆叠。
+ - **新窗比对**: 修改产品履历标签 (`关联工单数: X`) 的点击行为，通过 `window.open` 取代原有 React Router 原地导航，允许维修员在当前浏览器标签页不断审视正在处理的工单的同时，在独立标签页详查设备履历。
+ 
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增前端版本至 `client` v12.3.159 / 服务端 `server` v1.8.30。发布至 `mini` 服务节点。
+
+ ## [2026-03-11] 维修节点无感保存与台账交互升级 (v12.3.158)
+ ### UX & Editor Workflow
+ - **无跳转台账编辑**: 改造 `ProductDetailPage.tsx`，废弃点击编辑后跳转列表再跳转编辑的繁复流程，引入 `ProductModal` 原地高亮编辑并支持保存回调自动刷新。
+ - **降噪维修车间**: 为 `RepairReportEditor.tsx` 追加场景判断。如果是 `op_repairing`，则只显示最核心的“技术诊断”和“维修过程”输入区。当角色转交至 MS 审查时才开放所有内容。
+ - **防丢失护航**: 为在线填写增配 5 秒 Debounce 的自动补注保存引擎，免去技师离开页面遗失进展的恐慌。
+ 
+ ### Infrastructure & Delivery
+ - **语法树修复与清理**: 修正了由于大范围替换带来的 `JSX` 断裂报错，并移除所有未使用的图表和组件。
+ - **版本发布**: 递增版本至 `client` v12.3.158 / `server` v1.8.29。发布至 `mini`。
+
+ ## [2026-03-11] 统一步伐：保修状态计算引擎与UI修正 (v12.3.153)
+ ### Data Visualization & Alignment
+ - **实物数据强校验**: 修复了“一键修正”的底层逻辑，去除了因旧有 `axios.get('/api/v1/system/products')` 抓取不可用默认编号带来的异常数据绑定，直接使用前端 `assetData.device.id` 赋予修改对象参数，一键生效。
+ - **保修状态强同步**: 在服务端 `server/service/routes/warranty.js` 开发了 `GET /api/v1/warranty/product/:product_id` ，使无工单关联的产品档案页面也能调取保修计算引擎；工单页面 `UnifiedTicketDetail` 同步改为在组件挂载时隐蔽执行 `/api/v1/warranty/calculate`，全系统真正做到了判定逻辑与保修结论严丝合缝对齐。
+ - **保修详情溯源**: 为 `UnifiedTicketDetail` 内的保修标签配置了独立的溯源 Modal，管理员点击计算器图标即可调取该设备的出保日与起保日计算详情。
+ 
+ ### UIUX & Layout
+ - **跨组件界面降压**: 在 `UnifiedTicketDetail.tsx`, `ProductDetailPage.tsx` 同步降低了计量与标题相关的默认字号，提升数据密度，削弱厚重的视觉挤压效应。
+ 
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增版本至 `client` v12.3.153 / `server` v1.8.24。并发布至 mini。
+
+ ## [2026-03-11] 关联工单数字对齐与终端归属排版调整 (v12.3.152)
+ ### Data Visualization & Alignment
+ - **底层接口数据洁净度提升**: 修改了提供详情依赖数据的 `server/service/routes/context.js` ，强制在抓取 Ticket 时应用 `is_deleted = 0 OR is_deleted IS NULL` 鉴权与物理删除屏障，彻底解决了因后端返回脏数据导致的前端打卡标签提示数目与后端不符（面板数字大，渲染列表少）的错觉。
+ - **工单内部保修动态推演**: 升级了 `client/src/components/Workspace/UnifiedTicketDetail.tsx` 内的保修渲染流。废弃直接读取产品 `warranty_status` 字符串判断过期的方法，新增了运行时 `isDeviceWarrantyActive` 检测，一旦检测到设备的 `warranty_end_date` 小于当前日期即判定为过期，使得工单详情模块与外部产品详情模块表现完美一致（Kine Green / Kine Red 规范同步）。
+ 
+ ### UIUX & Layout
+ - **核心业务数据提权**: 依循交互习惯，调整 `ProductDetailPage` 将右侧列排布优先级重新定义为 `保修信息 > 关联服务工单 > 终端归属`，终端归属被平稳迁移至底层；对 `ProductDetailModal` 同步执行降级移动。
+ - **统计卡片减压**: 将 `Associated Service Tickets` 面板下直观呈现“咨询工单”、“RMA 返厂”和“维修记录”个数的超大字号进行瘦身（从 `2.2rem`/`24px` 压缩为 `1.8rem`/`20px`），视觉收敛且降低压迫感。
+ 
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增版本至 `client` v12.3.152 / `server` v1.8.23。并发布至 mini。
+ 
+ ## [2026-03-11] 保修状态准确度修复与数字穿透 (v12.3.151)
+ ### Data Visualization & Alignment
+ - **统计数字穿透**: 修复了 `ProductDetailPage` 和 `ProductDetailModal` 关联服务工单展板的计票问题。通过抛弃后端直出的 `rma_count` 等未加跨部门/删除状态鉴权的总数，改为直接取下发的受限 `tickets.filter(t => t.type === '...').length` 变量，消灭了 “显示只有1个工单，标题文字却写着4个” 的数据错配感。
+ - **状态色值与文字严谨化**: 继续肃清状态映射字段。将 `ProductCard` 从 “在保”和“在保内” 规整为唯一的严格词语 “保内” (Kine Green)，过期全部映射至严格词语 “过保” (Kine Red)。同步修改了展板上的相应字体处理逻辑，解决了图2展示效果遗留的问题。
+ - **上下文映射修正**: 修复了 `UnifiedTicketDetail` 原本工单“保修状态”标签展示的错乱感。当我们在查看 RMA 详情时，系统现在会强优先渲染 `assetData.device.warranty_status` (即产品本体的保修状态)，只有在设备本体缺失时才会回退去显示工单内自身的 `ticket.is_warranty`，达成了工单详情展示与产品台账展示的完美一致（不再出现图2提示“已过保”但图3内却显示“保内”的怪异视觉撕裂）。
+ 
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增版本至 `client` v12.3.151 / `server` v1.8.22。
+ - **自动化发布**: 再次部署，完成流水线同步。
+
+ ## [2026-03-11] 资产联保体验补齐与服务工单展板映射 (v12.3.150)
+ ### Data Visualization & Alignment
+ - **保修状态清晰化**: 在 `UnifiedTicketDetail` 和 `ProductCard` 中抛弃了含混的 ✅/❌，重新定义并采用明确的中文短语（“在保内”和“已过保”），大幅降低客服识别保修状态的歧义率。
+ - **英文枚举转换**: 修复了资产台账卡片对 API 返回的 `EXPIRED`/`ACTIVE` 缺乏汉化的展示问题，增加与新中文相匹配的语义色。
+ - **展板范式对齐**: 全面打散并重构了 `ProductDetailPage` 与 `ProductDetailModal` 的「服务历史」模块。废除原先只能静态显示数字的 StatCard，迁移了类似 `CustomerDetailPage` 的互动打卡列表面板（按工单类别动态显隐并采用 `TicketCard` 的标准渲染），完美响应“一字不错，一格不漏”的对齐诉求。
+ 
+ ### Infrastructure & Delivery
+ - **版本发布**: 递增版本至 `client` v12.3.150 / `server` v1.8.21。
+ - **自动化运维**: 本地重载构建后，借助 `/upd` 流水线中的差量发版，一键热更推流至生产服务器 `mini`，实现无感热上盘。
+
+ ## [2026-03-11] 成果内容下钻与侧滑交互闭环 (v12.3.148)
+ ### Outcome & Detail Drawer
+ - **结构化成果详情 (Structured Outcome Details)**: 重构了 `ActivityDetailDrawer`，使其能够识别并专门渲染 `diagnostic_report` (诊断报告) 和 `repair_complete` (维修结案) 类型的活动。
+ - **UI 动态渲染**: 在抽屉内根据 JSON 元数据渲染配件列表、工时、保修判定、维修说明等，采用网格化紧凑排版，对齐 macOS 26 拟物感。
+ - **交互闭环**: 修复了 `UnifiedTicketDetail` 中“服务中心”按钮的寻址逻辑，使其能精准定位历史活动并触发详情抽屉。
+ 
+ ### Infrastructure
+ - **交付版本迭代**: 递增版本至 `client` v12.3.148 / `server` v1.8.19。
+ - **全量部署**: 通过 `./scripts/deploy.sh` 同步至生产服务器 `mini`。
+ ## [2026-03-11] 资产信息融合与型号不符智能修正 (v12.3.147)
+ ### Integration & Data Flow
+ - **资产数据异步补全**: `UnifiedTicketDetail` 新增 `assetData` 状态，在组件加载时根据 `serial_number` 异步请求 `/api/v1/context/by-serial-number`。
+ - **三行流式布局**: 重构“基本信息”面板，采用 `flex-column` + `flex-wrap` 适应多标签显示（保修、关联工单、渠道、提交者）。
+ - **型号一致性校验**: 在前端实时对比 `ticket.product_name` 与 `assetData.device.model_name`。
+ - **一键修正驱动**: `handleQuickFixProduct` 复用现有的 `products` 缓存，匹配成功后自动预填 `editForm` 并弹出审计确认窗口。
+ 
+ ### UI/UX Optimization
+ - **警示视觉**: SN 右侧新增 `AlertTriangle` 警示条，采用 `rgba(245, 158, 11, 0.12)` 柔和醒目背景。
+ - **移除重复锚点**: 为避免认知干扰，隐藏了右侧边栏的 `Device` 卡片，使核心实物信息集中于工单头部。
+ 
+ ## [2026-03-11] 服务成果中心卡片整合与 macOS 26 视觉对齐 (v12.3.146)
+ ### Workspace & UI/UX
+ - **服务中心 (Service Center) 整合**: 在 `UnifiedTicketDetail.tsx` 中彻底重构了右下角的“服务成果中心”。将原本松散的三个大卡片（诊断、维修、结算）合并为一个统一的玻璃拟态卡片。
+ - **栅格化按钮交互**: 
+   - 顶部 2x1 技术区：提供“诊断成果”与“维修记录”入口。
+   - 底部列表商务区：仅针对 MS Lead 等特权角色展示“PI”和“维修报告”列表。
+ - **状态感应 (State-Aware)**: 实现了与 `activities` 及后端文件的实时联动，按钮仅在有数据时呈鲜艳主题色，无数据时则呈现半透明禁用态。
+ ### Infrastructure
+ - **交付版本迭代**: 递增版本至 `client` v12.3.146 / `server` v1.8.17。
+ - **自动化部署**: 执行 `/upd` 流水线，完成本地构建及生产环境 `mini` 的全量同步。
+
+ 
+ ## [2026-03-11] 产线目录详情化、权限增强与系统稳定性加固 (v12.3.145)
+ ### Product Catalog & Governance
+ - **详情页下钻逻辑**: 统一重构了 `ProductModelsManagement` 和 `ProductSkusManagement` 的点击行为。列表项点击现已从抽屉模式切换为 `navigate` 至专门的详情路由，与 `CustomerManagement` 逻辑保持高度一致。
+ - **产品型号详情页 (ProductModelDetailPage)**: 显著缩减了头部标题字号（20px -> 18px），优化了信息密度，移除了不必要的装饰性元素。
+ - **SKU 详情页 (ProductSkuDetailPage)**: 将标题改为更紧凑的 `18px`，并同步了统计指标（SKU 数量、设备总数）的布局风格。
+ ### Permissions (Front-to-Back)
+ - **后端权限解耦**: 修改 `product-models-admin.js` 与 `product-skus.js` 中的权限逻辑。引入 `req.method === 'GET'` 的宽容模式，授权 MS 部门全员只读访问权；POST/PUT/DELETE 仍保留高阶角色限制。
+ - **路由守卫放宽**: 在 `App.tsx` 中扩充了针对 `/service/product*` 路由的鉴权条件，允许 `department_code === 'MS'` 获取页面组件挂载权限。
+ ### Component Resiliency & Linting
+ - **稳定性修复**: 针对 `ProductWarrantyRegistrationModal` 出现的由于编译副作用（损坏的模板字符串）导致的 React 崩溃黑屏进行了深度修复和回归测试。
+ - **ESLint 规范落地**: 对产品相关的 5 个基础组件（详情页、管理页、注册弹窗）进行了 lint 清理，通过大量添加 `// eslint-disable-next-line @typescript-eslint/no-explicit-any` 并标注异常原由，大幅降低了控制台警告数量。
+ ### UI/UX Enhancements
+ - **工单阅读模式**: 在 `UnifiedTicketDetail` 中将工单核心描述文字字号统一提升至 `16px` (Line height: 1.6)，极大地提升了处理人员查阅问题时的感官体验。
+ - **Service Document Center**: 完成了对“服务成果中心”的单语言重塑。移除了中英混排，减小了标题行边距，并同步提升了字号及边距美感。
+ - **版本版本迭代**: 递增至 `client` v12.3.145 / `server` v1.8.16。
+
 ## [2026-03-10] 工单详情页易用性、侧边栏逻辑与数据库一致性优化 (v12.3.144)
 ### UI/UX & Typography
 - **侧边栏结构优化**: 移除了 CustomerContextSidebar 中冗余的 “本工单关联的信息” 标题；修复了内容区域的 `padding` 与 `overflow` 属性，消除了关联资产卡片与下方报告之间的异常空白，使排版更紧凑。
@@ -1708,6 +1875,20 @@
 ## 会话: 2026-01-22
 
 ### 任务: 修复 Uploader Unknown 问题
+
+## 会话: 2026-03-11
+### 任务: MS 结案流程重构与 OP 编辑器优化
+- **MS 结案三阶段工作流**：
+    - 集成 `RepairReportEditor` 与 `PIEditor` 至服务成果面板，支持 MS 精修文档。
+    - 实现 `ClosingHandoverModal`，涵盖收款确认、物流地址变更及预计发货期设定。
+    - 自动化 Handover 准入逻辑：强制付费单据确认收款。
+- **OP 维修编辑器扁平化**：
+    - 移除 `Section` 嵌套容器，改为流式布局，优化滚动体验。
+    - 统一标题为“填写维修报告”，按钮对齐为“提交进入下一步”。
+- **基础修复与 UI 优化**：
+    - 修复数据库 `report_sequences` / `pi_sequences` 缺失问题。
+    - 优化“关联工单数”徽标样式，对齐保修状态框高度并采用中性色调。
+- **部署版本**: v12.3.165
 - **预估耗时 (Effort)**: ~10 轮对话
 - **变更内容**:
     - 排查后端 `index.js` 中 `api/thumbnail` 的逻辑。
@@ -1717,3 +1898,10 @@
 - [2026-02-03] Phase 6 Completed: Added 'Scope Bar' (Time/Product Filters). Created 'products.js' API, updated backend query logic, and replaced frontend Tabs.
 - [2026-02-03] Fixed Empty Ticket List: Adjusted date filter logic (YYYY-MM-DD) and fixed TypeScript syntax error in InquiryTicketListPage. Added 'product_id' column to DB.
 - [2026-02-03] Fixed Date Formatting: Updated Backend to return ISO Date Strings for better compatibility with Frontend date parsing.
+
+## 2026-03-11 MS Closing Bug Fixes & Pre-requisite Harden
+- Fixed draft save errors by adding ID tracking in UnifiedTicketDetail.
+- Resolved Warranty status discrepancy in Handover Modal by checking backend calculation + explicit token.
+- Enforced Prerequisite logic: Documents must be 'published' before allowed to confirm payment & logic.
+- Improved Preview Cost Calculation timing in RepairReportEditor.
+- Executed  successfully to client 12.3.167.

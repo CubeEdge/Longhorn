@@ -663,7 +663,7 @@ const WorkspacePage: React.FC = () => {
     const d = Math.floor(hours / 24);
     const h = hours % 24;
     const valText = d > 0 ? `${d}${isZh ? '天' : 'd'} ${h}${isZh ? '小时' : 'h'}` : `${h}${isZh ? '小时' : 'h'}`;
-    return { text: `${isZh ? '还剩' : 'Remaining'} ${valText}`, color: hours < 4 ? '#EF4444' : (hours < 24 ? '#F59E0B' : '#10B981') };
+    return { text: `${isZh ? '还剩' : 'Remaining'} ${valText}`, color: hours < 4 ? '#EF4444' : (hours < 24 ? '#FFD200' : '#10B981') };
   };
 
   // Get status display
@@ -673,8 +673,8 @@ const WorkspacePage: React.FC = () => {
       submitted: { label: '已提交', color: '#3B82F6' },
       in_progress: { label: '处理中', color: '#3B82F6' },
       waiting_customer: { label: '待反馈', color: '#D946EF' },
-      ms_review: { label: 'MS审阅', color: '#F59E0B' },
-      op_receiving: { label: '待收货', color: '#FFD700' },
+      ms_review: { label: 'MS审阅', color: '#FFD200' },
+      op_receiving: { label: '待收货', color: '#FFD200' },
       op_diagnosing: { label: '诊断中', color: '#8B5CF6' },
       op_repairing: { label: '维修中', color: '#3B82F6' },
       op_shipping: { label: '待发货', color: '#06B6D4' },
@@ -688,7 +688,7 @@ const WorkspacePage: React.FC = () => {
 
   const priorityColors: Record<string, string> = {
     P0: '#EF4444',
-    P1: '#FFD700',
+    P1: '#FFD200',
     P2: '#3B82F6'
   };
 
@@ -700,9 +700,9 @@ const WorkspacePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px 20px 20px' }}>
           <div>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12, margin: 0, color: 'inherit' }}>
-              {currentView === 'my-tasks' && <CheckSquare size={28} color="#FFD700" />}
+              {currentView === 'my-tasks' && <CheckSquare size={28} color="#FFD200" />}
               {currentView === 'mentioned' && <MessageSquare size={28} color="#3B82F6" />}
-              {currentView === 'team-hub' && <Users size={28} color="#FFD700" />}
+              {currentView === 'team-hub' && <Users size={28} color="#FFD200" />}
               {currentView === 'my-tasks' && t('workspace.page_title')}
               {currentView === 'mentioned' && (t('sidebar.mentioned') || '协作')}
               {currentView === 'team-hub' && (t('sidebar.team_hub') || '部门工单')}
@@ -1020,9 +1020,9 @@ const WorkspacePage: React.FC = () => {
                             {/* Star icon - always rendered; visible when starred or row hovered */}
                             <Star
                               size={14}
-                              fill={isStarred ? '#FFD700' : 'none'}
+                              fill={isStarred ? '#FFD200' : 'none'}
                               className={`workspace-star-icon${isStarred ? ' starred' : ''}`}
-                              style={{ color: isStarred ? '#FFD700' : 'var(--text-tertiary)', flexShrink: 0, transition: 'opacity 0.15s, color 0.15s' }}
+                              style={{ color: isStarred ? '#FFD200' : 'var(--text-tertiary)', flexShrink: 0, transition: 'opacity 0.15s, color 0.15s' }}
                             />
                             {/* Flame for critical/P0 */}
                             {isCritical && (
@@ -1146,17 +1146,17 @@ const WorkspacePage: React.FC = () => {
                                 onClick={e => { e.stopPropagation(); pickUpTicket(ticket.id); }}
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                  borderRadius: 6, border: '1px solid #FFD700', background: 'transparent',
-                                  color: '#FFD700', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                                  borderRadius: 6, border: '1px solid #FFD200', background: 'transparent',
+                                  color: '#FFD200', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
                                   transition: 'all 0.15s'
                                 }}
                                 onMouseEnter={e => {
-                                  e.currentTarget.style.background = '#FFD700';
+                                  e.currentTarget.style.background = '#FFD200';
                                   e.currentTarget.style.color = '#000';
                                 }}
                                 onMouseLeave={e => {
                                   e.currentTarget.style.background = 'transparent';
-                                  e.currentTarget.style.color = '#FFD700';
+                                  e.currentTarget.style.color = '#FFD200';
                                 }}
                               >
                                 <Hand size={14} /> {t('workspace.claim', { defaultValue: '认领' })}
@@ -1226,7 +1226,7 @@ const WorkspacePage: React.FC = () => {
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <Star size={14} style={{ color: '#FFD700' }} />
+              <Star size={14} style={{ color: '#FFD200' }} />
               {starredMap[contextMenu.ticketId] ? t('workspace.unstar') : t('workspace.starred')}
             </button>
             {tickets.find(t => t.id === contextMenu.ticketId)?.priority !== 'P0' && (

@@ -127,6 +127,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                     const accountsData = Array.isArray(res.data.data)
                         ? res.data.data
                         : (res.data.data.list || []);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     setCustomers(accountsData.map((acc: any) => ({
                         id: acc.id,
                         name: acc.name,
@@ -197,9 +198,15 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } })
             ]);
             if (modelsRes.data.success) {
-                setModels(modelsRes.data.data || []);
+                const modelsData = modelsRes.data.data || [];
+                setModels(modelsData);
                 if (productName) {
-                    const matched = resResData(modelsRes, productName);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const matched = modelsData.find((p: any) =>
+                        p.name_zh.toLowerCase() === productName.toLowerCase() ||
+                        p.model_code.toLowerCase() === productName.toLowerCase() ||
+                        productName.toLowerCase().includes(p.name_zh.toLowerCase())
+                    );
                     if (matched) setSelectedModelName(matched.name_zh);
                 }
             }
@@ -211,20 +218,18 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
         }
     };
 
-    const resResData = (res: any, queryName: string) => {
-        return res.data.data.find((p: any) => p.name_zh.toLowerCase() === queryName.toLowerCase() || p.model_code.toLowerCase() === queryName.toLowerCase());
-    };
 
     const fetchReferenceData = async () => {
         try {
             // Fetch dealers
             const dealersRes = await axios.get('/api/v1/accounts?account_type=DEALER&page_size=100', {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token} ` }
             });
             if (dealersRes.data.success) {
                 const accountsData = Array.isArray(dealersRes.data.data)
                     ? dealersRes.data.data
                     : (dealersRes.data.data.list || []);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setDealers(accountsData.map((acc: any) => ({
                     id: acc.id,
                     name: acc.name
@@ -233,12 +238,13 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
 
             // Fetch customers (end users and organizations)
             const customersRes = await axios.get('/api/v1/accounts?account_type=END_USER,ORGANIZATION&page_size=100', {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token} ` }
             });
             if (customersRes.data.success) {
                 const accountsData = Array.isArray(customersRes.data.data)
                     ? customersRes.data.data
                     : (customersRes.data.data.list || []);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setCustomers(accountsData.map((acc: any) => ({
                     id: acc.id,
                     name: acc.name
@@ -305,7 +311,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
 
                 const uploadRes = await axios.post('/api/v1/upload', formData, {
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `Bearer ${token} `,
                         'Content-Type': 'multipart/form-data'
                     }
                 });
@@ -330,7 +336,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 sold_to_dealer_id: selectedDealerId || null,
                 current_owner_id: selectedOwnerId || null
             }, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token} ` }
             });
 
             if (res.data.success) {
@@ -340,15 +346,18 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                     onRegistered();
                 }, 1500);
             } else {
-                setError(res.data.error || '注册失败');
+                const errData = res.data.error;
+                const errorMsg = typeof errData === 'string' ? errData : (errData?.message || '注册失败');
+                setError(errorMsg);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             // 防御性提取错误信息：防止返回对象导致 React 崩溃（黑屏原因）
             const errData = err.response?.data?.error;
             let errorMsg = '网络错误或无权限执行此操作';
             if (typeof errData === 'string') {
                 errorMsg = errData;
-            } else if (errData && typeof errData === 'object' && errData.message) {
+            } else if (errData?.message) {
                 errorMsg = errData.message;
             } else if (err.message) {
                 errorMsg = err.message;
@@ -385,7 +394,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                             background: 'rgba(245,158,11,0.2)', display: 'flex',
                             alignItems: 'center', justifyContent: 'center'
                         }}>
-                            <AlertTriangle size={32} color="#F59E0B" />
+                            <AlertTriangle size={32} color="#FFD200" />
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
@@ -449,7 +458,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 }}
                                                 style={{
                                                     width: '100%', height: 56, padding: '0 20px', paddingLeft: 52,
-                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
                                                     borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
                                                     cursor: 'pointer', appearance: 'none'
                                                 }}
@@ -475,7 +484,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 disabled={!selectedModelName}
                                                 style={{
                                                     width: '100%', height: 56, padding: '0 20px',
-                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
                                                     borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
                                                     cursor: 'pointer', appearance: 'none', opacity: !selectedModelName ? 0.5 : 1
                                                 }}
@@ -557,7 +566,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                             placeholder="输入客户名称关键词搜索..."
                                             style={{
                                                 width: '100%', height: 56, padding: '0 20px', paddingLeft: 52, paddingRight: 40,
-                                                background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedOwnerId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                                                background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedOwnerId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
                                                 borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none'
                                             }}
                                         />
@@ -633,8 +642,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                                                             }}>
                                                                 {customer.primary_contact_name ? `联系人: ${customer.primary_contact_name} ` : ''}
-                                                                {customer.email ? `| 邮箱: ${customer.email} ` : (customer.primary_contact_email ? `| 联系人邮箱: ${customer.primary_contact_email} ` : '')}
-                                                                {customer.country ? `| 地区: ${customer.country}` : ''}
+                                                                {customer.email ? `| 邮箱: ${customer.email} ` : (customer.primary_contact_email ? ` | 联系人邮箱: ${customer.primary_contact_email} ` : '')}
+                                                                {customer.country ? `| 地区: ${customer.country} ` : ''}
                                                             </div>
                                                         )}
                                                     </div>
@@ -669,7 +678,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         onClick={() => setSaleSource('invoice')}
                                         style={{
                                             flex: 1, height: 52, borderRadius: 12,
-                                            border: `2px solid ${saleSource === 'invoice' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
+                                            border: `2px solid ${saleSource === 'invoice' ? '#3B82F6' : 'rgba(255,255,255,0.1)'} `,
                                             background: saleSource === 'invoice' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
                                             color: saleSource === 'invoice' ? '#3B82F6' : '#fff',
                                             cursor: 'pointer', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em',
@@ -683,7 +692,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         onClick={() => setSaleSource('customer_statement')}
                                         style={{
                                             flex: 1, height: 52, borderRadius: 12,
-                                            border: `2px solid ${saleSource === 'customer_statement' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
+                                            border: `2px solid ${saleSource === 'customer_statement' ? '#3B82F6' : 'rgba(255,255,255,0.1)'} `,
                                             background: saleSource === 'customer_statement' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
                                             color: saleSource === 'customer_statement' ? '#3B82F6' : '#fff',
                                             cursor: 'pointer', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em',
@@ -735,7 +744,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                     <div
                                         onClick={() => document.getElementById('invoice-upload')?.click()}
                                         style={{
-                                            border: `1px dashed ${invoiceFile ? '#10B981' : 'rgba(255,255,255,0.2)'}`,
+                                            border: `1px dashed ${invoiceFile ? '#10B981' : 'rgba(255,255,255,0.2)'} `,
                                             borderRadius: 8, padding: 16,
                                             background: invoiceFile ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)',
                                             cursor: 'pointer', textAlign: 'center'
@@ -851,11 +860,11 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 )}
             </div>
             <style>{`
-                @keyframes modalScaleIn {
+@keyframes modalScaleIn {
                     from { opacity: 0; transform: scale(0.95); }
                     to { opacity: 1; transform: scale(1); }
-                }
-            `}</style>
+}
+`}</style>
         </div>
     );
 };

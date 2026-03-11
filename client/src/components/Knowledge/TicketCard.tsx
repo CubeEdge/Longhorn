@@ -29,7 +29,7 @@ const ticketTypeConfig = {
     dealer_repair: {
         label: '维修',
         icon: MessageSquare,
-        color: '#F59E0B',
+        color: '#FFD200',
         bgColor: 'rgba(245, 158, 11, 0.1)'
     }
 };

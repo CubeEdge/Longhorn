@@ -190,11 +190,11 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                             <div style={{
                                 padding: 16, borderRadius: 12,
                                 background: isWarranty ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                                border: `1px solid ${isWarranty ? '#10B981' : '#F59E0B'}`
+                                border: `1px solid ${isWarranty ? '#10B981' : '#FFD200'}`
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                    <CheckCircle size={20} color={isWarranty ? '#10B981' : '#F59E0B'} />
-                                    <span style={{ fontSize: 16, fontWeight: 600, color: isWarranty ? '#10B981' : '#F59E0B' }}>
+                                    <CheckCircle size={20} color={isWarranty ? '#10B981' : '#FFD200'} />
+                                    <span style={{ fontSize: 16, fontWeight: 600, color: isWarranty ? '#10B981' : '#FFD200' }}>
                                         {isWarranty ? '✅ 保内维修 - 免费' : '⚠️ 保外维修 - 付费'}
                                     </span>
                                 </div>

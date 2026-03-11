@@ -263,28 +263,8 @@ module.exports = function (db, authenticate) {
 
             db.prepare(updateQuery).run(...updateValues);
 
-            // Log the registration activity
-            db.prepare(`
-                INSERT INTO activities (user_id, action, target_type, target_id, details, created_at)
-                VALUES (?, 'warranty_registered', 'product', ?, ?, datetime('now'))
-            `).run(
-                req.user.id,
-                product.id,
-                JSON.stringify({
-                    serial_number,
-                    model_name: product.model_name,
-                    sale_source,
-                    sale_date,
-                    warranty_months,
-                    warranty_start_date: warrantyStartDate,
-                    warranty_end_date: warrantyEndDate,
-                    warranty_source: warrantySource,
-                    sold_to_dealer_id,
-                    current_owner_id,
-                    remarks,
-                    registered_by: req.user.name || req.user.email
-                })
-            );
+            // NOTE: The activities table does not exist.
+            // Temporarily skipping logging since we use ticket_activities bounded to tickets.
 
             res.json({
                 success: true,

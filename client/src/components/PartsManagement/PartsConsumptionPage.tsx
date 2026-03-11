@@ -71,12 +71,12 @@ interface ConsumptionSummary {
 const sourceTypeMap: Record<string, { label: string; color: string }> = {
     hq_inventory: { label: '总部库存', color: '#3B82F6' },
     dealer_inventory: { label: '经销商库存', color: '#10B981' },
-    external_purchase: { label: '外部采购', color: '#F59E0B' },
+    external_purchase: { label: '外部采购', color: '#FFD200' },
     warranty_free: { label: '保修免费', color: '#8B5CF6' }
 };
 
 const settlementStatusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending: { label: '待结算', color: '#F59E0B', icon: <Clock size={14} /> },
+    pending: { label: '待结算', color: '#FFD200', icon: <Clock size={14} /> },
     included: { label: '已结算', color: '#10B981', icon: <CheckCircle size={14} /> },
     waived: { label: '已豁免', color: '#6B7280', icon: <XCircle size={14} /> },
     disputed: { label: '有争议', color: '#EF4444', icon: <AlertCircle size={14} /> }
@@ -292,7 +292,7 @@ const PartsConsumptionPage: React.FC = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <Clock size={20} color="#F59E0B" />
+                                <Clock size={20} color="#FFD200" />
                             </div>
                             <span style={{ color: '#6B7280', fontSize: '14px' }}>待结算</span>
                         </div>

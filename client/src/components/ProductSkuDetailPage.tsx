@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { useLanguage } from '../i18n/useLanguage';
 import {
     ArrowLeft, Package, Layers, Info, Tag,
-    Edit2, ChevronDown, ChevronUp, AlertCircle,
-    CheckCircle2, XCircle, Box
+    Edit2, ChevronDown, ChevronUp, AlertCircle, Box
 } from 'lucide-react';
 
 interface ProductSku {
@@ -30,7 +28,6 @@ interface ProductSku {
 const ProductSkuDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { t } = useLanguage();
     const { token, user } = useAuthStore();
 
     const [sku, setSku] = useState<ProductSku | null>(null);
@@ -189,19 +186,19 @@ const ProductSkuDetailPage: React.FC = () => {
                                 )}
                             </div>
 
-                            <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>{sku.display_name}</h3>
-                            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: 24 }}>{sku.display_name_en || '-'}</p>
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 8 }}>{sku.display_name}</h3>
+                            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 24 }}>{sku.display_name_en || '-'}</p>
 
                             <div style={{ display: 'flex', gap: 40 }}>
                                 <div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{sku.instance_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备数量</div>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{sku.instance_count || 0}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备</div>
                                 </div>
                                 <Link
                                     to={`/service/product-models/${sku.model_id}`}
                                     style={{ textDecoration: 'none', color: 'inherit' }}
                                 >
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                         {sku.name_zh}
                                         <Layers size={18} />
                                     </div>

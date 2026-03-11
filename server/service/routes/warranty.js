@@ -81,6 +81,50 @@ module.exports = function (db, authenticate) {
     });
 
     /**
+     * Calculate intrinsic warranty status for a product (without a ticket)
+     * GET /api/v1/warranty/product/:product_id
+     */
+    router.get('/product/:product_id', authenticate, (req, res) => {
+        try {
+            const product_id = req.params.product_id;
+
+            if (!product_id) {
+                return res.status(400).json({ success: false, error: 'product_id is required' });
+            }
+
+            // Get product information
+            const product = db.prepare(`
+                SELECT warranty_months, model_name, activation_date, sales_invoice_date,
+                       registration_date, sales_channel, ship_to_dealer_date
+                FROM products
+                WHERE id = ?
+            `).get(product_id);
+
+            if (!product) {
+                return res.status(404).json({ success: false, error: 'Product not found' });
+            }
+
+            // Create a mock ticket context with just the created_at as now, in case it falls back to ticket creation date
+            const mockTicket = { created_at: new Date().toISOString() };
+
+            const result = calculateWarranty({
+                ticket: mockTicket,
+                installedBase: product, // product data acts as installedBase here
+                technical_damage_status: 'no_damage',
+                warranty_months: product.warranty_months || 24 // Use product's warranty_months
+            });
+
+            return res.json({
+                success: true,
+                data: result
+            });
+        } catch (err) {
+            console.error('[Warranty] Product Calculate error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
      * Get warranty calculation for a ticket
      * GET /api/v1/warranty/:ticketId
      */

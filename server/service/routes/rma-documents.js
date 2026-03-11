@@ -6,7 +6,7 @@
 
 const express = require('express');
 
-module.exports = function(db, authenticate) {
+module.exports = function (db, authenticate) {
     const router = express.Router();
 
     // ============================================
@@ -57,8 +57,13 @@ module.exports = function(db, authenticate) {
     }
 
     function checkMSDepartmentAccess(user) {
-        // MS department users and admin/lead roles have access
-        return user.department_name === 'MS' || ['Admin', 'Lead'].includes(user.role);
+        if (!user) return false;
+        // MS and OP department users and admin/lead roles have access
+        return ['MS', 'OP'].includes(user?.department_code) ||
+            ['MS', 'OP'].includes(user?.department_name) ||
+            (user?.department_name || '').includes('市场') ||
+            (user?.department_name || '').includes('运营') ||
+            ['Admin', 'Lead'].includes(user?.role);
     }
 
     // ============================================
@@ -137,6 +142,14 @@ module.exports = function(db, authenticate) {
      */
     router.get('/pi/:id', authenticate, (req, res) => {
         try {
+            const piId = parseInt(req.params.id);
+            if (!piId) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'INVALID_ID', message: '无效的PI ID' }
+                });
+            }
+
             const pi = db.prepare(`
                 SELECT pi.*,
                        u.display_name as created_by_name,
@@ -515,8 +528,8 @@ module.exports = function(db, authenticate) {
                 WHERE id = ?
             `).run(req.user.id, req.params.id);
 
-            // Update ticket's active PI reference
-            db.prepare('UPDATE tickets SET active_pi_id = ? WHERE id = ?').run(req.params.id, pi.ticket_id);
+            // Update ticket's active PI reference and payment amount
+            db.prepare('UPDATE tickets SET active_pi_id = ?, payment_amount = ? WHERE id = ?').run(req.params.id, pi.total_amount, pi.ticket_id);
 
             // Log audit
             logDocumentAudit(db, 'pi', req.params.id, 'published', req.user.id, req.user.display_name || req.user.username, null, null);
@@ -527,6 +540,51 @@ module.exports = function(db, authenticate) {
             });
         } catch (err) {
             console.error('[RMA Documents] Publish PI error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/rma-documents/pi/:id/recall
+     * Revert published/approved PI to draft
+     */
+    router.post('/pi/:id/recall', authenticate, (req, res) => {
+        try {
+            // Only Lead or Admin can recall
+            if (!['Admin', 'Lead'].includes(req.user.role)) {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权撤回PI' }
+                });
+            }
+
+            const pi = db.prepare('SELECT * FROM proforma_invoices WHERE id = ? AND is_deleted = 0').get(req.params.id);
+
+            if (!pi) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: 'PI不存在' }
+                });
+            }
+
+            db.prepare(`
+                UPDATE proforma_invoices
+                SET status = 'draft', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(req.params.id);
+
+            // Log audit
+            logDocumentAudit(db, 'pi', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, 'Document recalled to draft');
+
+            res.json({
+                success: true,
+                data: { id: parseInt(req.params.id), status: 'draft' }
+            });
+        } catch (err) {
+            console.error('[RMA Documents] Recall PI error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
@@ -668,6 +726,14 @@ module.exports = function(db, authenticate) {
      */
     router.get('/repair-reports/:id', authenticate, (req, res) => {
         try {
+            const reportId = parseInt(req.params.id);
+            if (!reportId) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'INVALID_ID', message: '无效的维修报告 ID' }
+                });
+            }
+
             const report = db.prepare(`
                 SELECT rr.*,
                        u.display_name as created_by_name,
@@ -678,7 +744,7 @@ module.exports = function(db, authenticate) {
                 LEFT JOIN users ru ON rr.reviewed_by = ru.id
                 LEFT JOIN users pu ON rr.published_by = pu.id
                 WHERE rr.id = ? AND rr.is_deleted = 0
-            `).get(req.params.id);
+            `).get(reportId);
 
             if (!report) {
                 return res.status(404).json({
@@ -1037,13 +1103,57 @@ module.exports = function(db, authenticate) {
 
             // Log audit
             logDocumentAudit(db, 'repair_report', req.params.id, 'published', req.user.id, req.user.display_name || req.user.username, null, null);
-
             res.json({
                 success: true,
                 data: { id: parseInt(req.params.id), status: 'published' }
             });
         } catch (err) {
             console.error('[RMA Documents] Publish report error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/rma-documents/repair-reports/:id/recall
+     * Revert published/approved repair report to draft
+     */
+    router.post('/repair-reports/:id/recall', authenticate, (req, res) => {
+        try {
+            // Only Lead or Admin can recall
+            if (!['Admin', 'Lead'].includes(req.user.role)) {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权撤回维修报告' }
+                });
+            }
+
+            const report = db.prepare('SELECT * FROM repair_reports WHERE id = ? AND is_deleted = 0').get(req.params.id);
+
+            if (!report) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '维修报告不存在' }
+                });
+            }
+
+            db.prepare(`
+                UPDATE repair_reports
+                SET status = 'draft', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `).run(req.params.id);
+
+            // Log audit
+            logDocumentAudit(db, 'repair_report', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, 'Document recalled to draft');
+
+            res.json({
+                success: true,
+                data: { id: parseInt(req.params.id), status: 'draft' }
+            });
+        } catch (err) {
+            console.error('[RMA Documents] Recall repair report error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }

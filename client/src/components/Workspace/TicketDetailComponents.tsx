@@ -159,7 +159,7 @@ const DiagnosticReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
       <span style={{
         fontSize: 10, padding: '1px 6px', borderRadius: 4,
         background: metadata.is_warranty ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-        color: metadata.is_warranty ? '#10B981' : '#F59E0B',
+        color: metadata.is_warranty ? '#10B981' : '#FFD200',
         border: `1px solid ${metadata.is_warranty ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`
       }}>
         {metadata.is_warranty ? '保修免费' : '付费/拒保'}
@@ -329,7 +329,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'status_change': return '#3B82F6'; // Kine Blue for system events
       case 'creation': case 'system_event': return '#3B82F6'; // Kine Blue for system events
       case 'assignment': case 'assignment_change': return '#FFD700';
-      case 'priority_change': return '#F59E0B';
+      case 'priority_change': return '#FFD200';
       case 'mention': return '#8B5CF6';
       case 'field_update': return '#FFD700';
       case 'diagnostic_report': return '#10B981';
@@ -380,9 +380,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         </div>
 
         {/* Main Body */}
-        <div style={{ flex: 1, minWidth: 0, fontSize: '15px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-            <span style={{ fontWeight: 700, color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-main)', flexShrink: 0, fontSize: 14 }}>{actorName}</span>
+        <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
+            <span style={{ fontWeight: 600, color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
               {getVisibilityBadge(activity.visibility)}
@@ -396,7 +396,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 <DiagnosticReportContent metadata={activity.metadata as any} />
               ) : (
                 <div
-                  style={{ color: isSystemEvent ? '#666' : '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  style={{ color: isSystemEvent ? '#666' : '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}
                   dangerouslySetInnerHTML={{
                     __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
                   }}
@@ -759,12 +759,103 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           </div>
 
           {/* Text Content */}
-          {activity.content && (
+          {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && (
             <div style={{
               fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
               background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
             }} dangerouslySetInnerHTML={{ __html: activity.content_html || activity.content.replace(/\n/g, '<br/>') }} />
           )}
+
+          {/* Diagnostic Report Content */}
+          {activity.activity_type === 'diagnostic_report' && activity.metadata && (() => {
+            const meta = activity.metadata as any;
+            return (
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
+                  <Wrench size={14} /> {meta.submission_type === 'technical_diagnosis' ? '详细诊断报告' : '诊断记录'}
+                </div>
+
+                <div style={{ fontSize: 13 }}>
+                  <div style={{ color: '#888', marginBottom: 4 }}>故障判定:</div>
+                  <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.diagnosis || '-'}</div>
+                </div>
+
+                <div style={{ fontSize: 13 }}>
+                  <div style={{ color: '#888', marginBottom: 4 }}>维修方案/建议:</div>
+                  <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_advice || '-'}</div>
+                </div>
+
+                {(meta.technical_damage_status || meta.technical_warranty_suggestion) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
+                    {meta.technical_damage_status && (
+                      <div style={{ fontSize: 13 }}>
+                        <div style={{ color: '#888', marginBottom: 4 }}>损坏判定:</div>
+                        <div style={{ color: meta.technical_damage_status === 'physical_damage' ? '#EF4444' : (meta.technical_damage_status === 'no_damage' ? '#10B981' : '#FFD200'), fontWeight: 500 }}>
+                          {meta.technical_damage_status === 'physical_damage' ? '人为损坏/物理损伤' : (meta.technical_damage_status === 'no_damage' ? '无人为损坏/正常故障' : '无法判定')}
+                        </div>
+                      </div>
+                    )}
+                    {meta.technical_warranty_suggestion && (
+                      <div style={{ fontSize: 13 }}>
+                        <div style={{ color: '#888', marginBottom: 4 }}>保修建议:</div>
+                        <div style={{ color: meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '#FFD700' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '#10B981' : '#3B82F6'), fontWeight: 500 }}>
+                          {meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '建议保外' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '建议保内' : '需进一步核实')}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(meta.estimated_labor_hours > 0 || (meta.estimated_parts && meta.estimated_parts.length > 0)) && (
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12, marginTop: 4 }}>
+                    <div style={{ color: '#888', marginBottom: 8, fontSize: 12, fontWeight: 600 }}>预估配件与工时</div>
+                    {meta.estimated_labor_hours > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                        <span style={{ color: '#ccc' }}>预估工时</span>
+                        <span style={{ color: '#FFD700' }}>{meta.estimated_labor_hours} 小时</span>
+                      </div>
+                    )}
+                    {meta.estimated_parts && meta.estimated_parts.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                        {meta.estimated_parts.map((p: any, i: number) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                            <span style={{ color: '#ccc', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name} {p.sku && `(${p.sku})`}</span>
+                            <span style={{ color: '#FFD700', paddingLeft: 8 }}>x{p.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Repair Report Content */}
+          {activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete' && (() => {
+            const meta = activity.metadata as any;
+            return (
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
+                  <Wrench size={14} /> 维修记录细节
+                </div>
+
+                {meta.repair_content && (
+                  <div style={{ fontSize: 13 }}>
+                    <div style={{ color: '#888', marginBottom: 4 }}>维修工作详述:</div>
+                    <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_content}</div>
+                  </div>
+                )}
+
+                {meta.test_result && (
+                  <div style={{ fontSize: 13 }}>
+                    <div style={{ color: '#888', marginBottom: 4 }}>老化/测试结论:</div>
+                    <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.test_result}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Field Updates (if any) */}
           {activity.activity_type.endsWith('_change') && activity.metadata && (

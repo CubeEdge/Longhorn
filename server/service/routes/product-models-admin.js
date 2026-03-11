@@ -7,17 +7,34 @@ const express = require('express');
 module.exports = function (db, authenticate) {
     const router = express.Router();
 
-    // Check if user can manage product models (Admin, Exec, or MS Lead)
+    // Check if user can manage product models (Admin, Exec, or MS Lead/Staff)
+    const canViewModels = (user) => {
+        return user.role === 'Admin' ||
+            user.role === 'Exec' ||
+            ['MS', 'OP'].includes(user.department_code) ||
+            (user.department_name || '').includes('市场') ||
+            (user.department_name || '').includes('运营');
+    };
+
     const requireModelAdmin = (req, res, next) => {
         const user = req.user;
-        const canManage = user.role === 'Admin' ||
+        const isMsLeadPlus = user.role === 'Admin' ||
             user.role === 'Exec' ||
             (user.role === 'Lead' && user.department_code === 'MS');
 
-        if (!canManage) {
+        // For non-GET requests (POST/PUT/DELETE), require Lead+
+        if (req.method !== 'GET' && !isMsLeadPlus) {
             return res.status(403).json({
                 success: false,
                 error: { code: 'FORBIDDEN', message: 'Only Admin, Exec, or MS Lead can manage product models' }
+            });
+        }
+
+        // For GET requests, allow all MS staff
+        if (req.method === 'GET' && !canViewModels(user)) {
+            return res.status(403).json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Access denied' }
             });
         }
         next();

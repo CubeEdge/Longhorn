@@ -51,14 +51,14 @@ export const ProductCard: React.FC<any> = ({ productName, serialNumber, warranty
                         padding: '4px 10px',
                         borderRadius: '12px',
                         fontSize: '11px',
-                        background: warrantyStatus === '在保' || warrantyStatus === 'Active'
-                            ? 'rgba(16, 185, 129, 0.15)' : 'rgba(156, 163, 175, 0.1)',
-                        color: warrantyStatus === '在保' || warrantyStatus === 'Active'
-                            ? '#34d399' : '#9ca3af',
+                        background: warrantyStatus === '保内' || warrantyStatus === '在保' || warrantyStatus === '在保内' || warrantyStatus === 'Active' || warrantyStatus === 'ACTIVE'
+                            ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: warrantyStatus === '保内' || warrantyStatus === '在保' || warrantyStatus === '在保内' || warrantyStatus === 'Active' || warrantyStatus === 'ACTIVE'
+                            ? '#10B981' : '#EF4444',
                         fontWeight: 600
                     }}
                 >
-                    {warrantyStatus === 'Active' ? '在保' : warrantyStatus}
+                    {warrantyStatus === 'Active' || warrantyStatus === 'ACTIVE' ? '保内' : (warrantyStatus === 'Expired' || warrantyStatus === 'EXPIRED' ? '过保' : warrantyStatus)}
                 </span>
             </div>
         </div>

@@ -677,7 +677,7 @@ const authenticate = (req, res, next) => {
                 const user = db.prepare(`
                     SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
                            u.job_title, u.status, u.dealer_id, u.region_responsible,
-                           d.name as department_name, d.name as department_code
+                           d.name as department_name, d.code as department_code
                     FROM users u
                     LEFT JOIN departments d ON u.department_id = d.id
                     WHERE u.id = ? OR u.id = CAST(? AS REAL)
@@ -695,7 +695,7 @@ const authenticate = (req, res, next) => {
                     const targetUser = db.prepare(`
                         SELECT u.id, u.username, u.display_name, u.role, u.department_id, u.user_type, 
                                u.job_title, u.dealer_id, u.region_responsible,
-                               d.name as department_name, d.name as department_code
+                               d.name as department_name, d.code as department_code
                         FROM users u
                         LEFT JOIN departments d ON u.department_id = d.id
                         WHERE u.id = ? OR u.id = CAST(? AS REAL)

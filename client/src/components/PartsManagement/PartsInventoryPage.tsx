@@ -224,11 +224,11 @@ const PartsInventoryPage: React.FC = () => {
                                 background: stats.alerts.low_stock_count > 0 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
-                                <TrendingDown size={20} color={stats.alerts.low_stock_count > 0 ? '#F59E0B' : '#10B981'} />
+                                <TrendingDown size={20} color={stats.alerts.low_stock_count > 0 ? '#FFD200' : '#10B981'} />
                             </div>
                             <div>
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>低库存预警</div>
-                                <div style={{ fontSize: 20, fontWeight: 700, color: stats.alerts.low_stock_count > 0 ? '#F59E0B' : 'inherit' }}>
+                                <div style={{ fontSize: 20, fontWeight: 700, color: stats.alerts.low_stock_count > 0 ? '#FFD200' : 'inherit' }}>
                                     {stats.alerts.low_stock_count}
                                 </div>
                             </div>
@@ -289,9 +289,9 @@ const PartsInventoryPage: React.FC = () => {
                     style={{
                         padding: '10px 16px',
                         background: showLowStockOnly ? 'rgba(245,158,11,0.2)' : 'var(--glass-bg)',
-                        border: `1px solid ${showLowStockOnly ? '#F59E0B' : 'var(--glass-border)'}`,
+                        border: `1px solid ${showLowStockOnly ? '#FFD200' : 'var(--glass-border)'}`,
                         borderRadius: 8,
-                        color: showLowStockOnly ? '#F59E0B' : 'var(--text-main)',
+                        color: showLowStockOnly ? '#FFD200' : 'var(--text-main)',
                         fontSize: 14,
                         cursor: 'pointer',
                         display: 'flex',
@@ -375,7 +375,7 @@ const PartsInventoryPage: React.FC = () => {
                                                 fontSize: 11,
                                                 fontWeight: 600,
                                                 background: 'rgba(245,158,11,0.2)',
-                                                color: '#F59E0B'
+                                                color: '#FFD200'
                                             }}>低库存</span>
                                         ) : (
                                             <span style={{

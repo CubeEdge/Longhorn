@@ -88,7 +88,7 @@ const PartsCatalogPage: React.FC = () => {
         switch (status) {
             case 'active': return '#10B981';
             case 'discontinued': return '#EF4444';
-            case 'pending': return '#F59E0B';
+            case 'pending': return '#FFD200';
             default: return '#888';
         }
     };

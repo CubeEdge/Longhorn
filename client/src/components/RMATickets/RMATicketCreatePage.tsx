@@ -262,7 +262,7 @@ const RMATicketCreatePage: React.FC = () => {
                                     className="form-control"
                                     placeholder="ME_XXXXXX"
                                     style={{
-                                        borderColor: warrantyCheckStatus === 'needs_registration' ? '#F59E0B' :
+                                        borderColor: warrantyCheckStatus === 'needs_registration' ? '#FFD200' :
                                             warrantyCheckStatus === 'valid' ? '#10B981' : undefined
                                     }}
                                 />
@@ -281,12 +281,12 @@ const RMATicketCreatePage: React.FC = () => {
                                 {!checkingWarranty && warrantyCheckStatus === 'needs_registration' && (
                                     <span style={{
                                         position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                                        color: '#F59E0B', fontSize: 11, cursor: 'pointer', letterSpacing: '-0.01em'
+                                        color: '#FFD200', fontSize: 11, cursor: 'pointer', letterSpacing: '-0.01em'
                                     }} onClick={() => setShowWarrantyModal(true)}>⚠ 需注册</span>
                                 )}
                             </div>
                             {warrantyCheckStatus === 'needs_registration' && (
-                                <div style={{ fontSize: 11, color: '#F59E0B', marginTop: 4, letterSpacing: '-0.01em' }}>
+                                <div style={{ fontSize: 11, color: '#FFD200', marginTop: 4, letterSpacing: '-0.01em' }}>
                                     该产品未注册保修信息，<span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowWarrantyModal(true)}>点击注册</span>
                                 </div>
                             )}

@@ -438,7 +438,7 @@ const InquiryTicketListPage: React.FC = () => {
                                         <>
                                             <span style={{ fontWeight: 500 }}>{accountName}</span>
                                             <span>·</span>
-                                            <span>{snapshotName} <span style={{ color: '#F59E0B', fontSize: '0.8rem' }}>(临时)</span></span>
+                                            <span>{snapshotName} <span style={{ color: '#FFD200', fontSize: '0.8rem' }}>(临时)</span></span>
                                         </>
                                     );
                                 } else if (!accountName && !contactName && snapshotName) {

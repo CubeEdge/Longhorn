@@ -102,7 +102,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [showReviewModal, setShowReviewModal] = useState(false);
-    
+
     const [piData, setPIData] = useState<PIData>({
         status: 'draft',
         content: DEFAULT_CONTENT,
@@ -134,7 +134,19 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
-                setPIData(res.data.data);
+                const incomingData = res.data.data;
+                // Defensive merge to ensure all content structure exists
+                setPIData({
+                    ...incomingData,
+                    content: {
+                        ...DEFAULT_CONTENT,
+                        ...(incomingData.content || {}),
+                        header: { ...DEFAULT_CONTENT.header, ...(incomingData.content?.header || {}) },
+                        customer_info: { ...DEFAULT_CONTENT.customer_info, ...(incomingData.content?.customer_info || {}) },
+                        device_info: { ...DEFAULT_CONTENT.device_info, ...(incomingData.content?.device_info || {}) },
+                        terms: { ...DEFAULT_CONTENT.terms, ...(incomingData.content?.terms || {}) }
+                    }
+                });
             }
         } catch (err) {
             console.error('Failed to load PI:', err);
@@ -153,15 +165,22 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             });
             if (res.data.success) {
                 const ticket = res.data.data;
+
+                // Construct address from ticket if available
+                let customerAddress = ticket.account_address || '';
+                if (!customerAddress && ticket.billing_address) {
+                    customerAddress = ticket.billing_address;
+                }
+
                 setPIData(prev => ({
                     ...prev,
                     content: {
                         ...prev.content,
                         customer_info: {
                             name: ticket.account_name || '',
-                            address: '',
+                            address: customerAddress,
                             contact: ticket.contact_name || ticket.reporter_name || '',
-                            email: ''
+                            email: ticket.contact_email || ''
                         },
                         device_info: {
                             product_name: ticket.product_name || '',
@@ -170,6 +189,73 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         }
                     }
                 }));
+
+                // Try to fetch latest published repair report to import items
+                try {
+                    const reportRes = await axios.get(`/api/v1/rma-documents/repair-reports?ticket_id=${ticketId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (reportRes.data.success && reportRes.data.data.length > 0) {
+                        // Get the latest one (usually the first if sorted by created_at DESC)
+                        const latestReportMeta = reportRes.data.data[0];
+
+                        // Fetch the full content of this report
+                        const fullReportRes = await axios.get(`/api/v1/rma-documents/repair-reports/${latestReportMeta.id}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+
+                        if (fullReportRes.data.success) {
+                            const report = fullReportRes.data.data;
+                            const reportContent = report.content;
+
+                            const newItems: PIItem[] = [];
+
+                            // 1. Add parts
+                            if (reportContent.repair_process?.parts_replaced) {
+                                reportContent.repair_process.parts_replaced.forEach((part: any) => {
+                                    newItems.push({
+                                        id: `part-${part.id || Date.now() + Math.random()}`,
+                                        description: part.part_number ? `${part.name} (${part.part_number})` : part.name,
+                                        quantity: part.quantity || 1,
+                                        unit_price: part.unit_price || 0,
+                                        total: (part.quantity || 1) * (part.unit_price || 0)
+                                    });
+                                });
+                            }
+
+                            // 2. Add labor
+                            if (reportContent.labor_charges) {
+                                reportContent.labor_charges.forEach((labor: any, idx: number) => {
+                                    newItems.push({
+                                        id: `labor-${idx}-${Date.now()}`,
+                                        description: `Labor: ${labor.description}`,
+                                        quantity: labor.hours || 1,
+                                        unit_price: labor.rate || 0,
+                                        total: labor.total || 0
+                                    });
+                                });
+                            }
+
+                            if (newItems.length > 0) {
+                                const taxRate = piData.tax_rate || 0;
+                                const discountAmount = piData.discount_amount || 0;
+                                const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+                                setPIData(prev => ({
+                                    ...prev,
+                                    content: {
+                                        ...prev.content,
+                                        items: newItems
+                                    },
+                                    subtotal,
+                                    tax_amount: taxAmount,
+                                    total_amount: total
+                                }));
+                            }
+                        }
+                    }
+                } catch (reportErr) {
+                    console.error('Failed to auto-import items from repair report:', reportErr);
+                }
             }
         } catch (err) {
             console.error('Failed to load ticket:', err);
@@ -178,8 +264,8 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         }
     };
 
-    const calculateTotals = (items: PIItem[], taxRate: number, discount: number) => {
-        const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const calculateTotals = (items: PIItem[], taxRate: number = 0, discount: number = 0) => {
+        const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0);
         const taxAmount = subtotal * (taxRate / 100);
         const total = subtotal + taxAmount - discount;
         return { subtotal, taxAmount, total };
@@ -196,9 +282,11 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             }
             return item;
         });
-        
-        const { subtotal, taxAmount, total } = calculateTotals(newItems, piData.tax_rate, piData.discount_amount);
-        
+
+        const taxRate = Number(piData.tax_rate) || 0;
+        const discountAmount = Number(piData.discount_amount) || 0;
+        const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+
         setPIData(prev => ({
             ...prev,
             content: { ...prev.content, items: newItems },
@@ -224,8 +312,10 @@ export const PIEditor: React.FC<PIEditorProps> = ({
 
     const removeItem = (id: string) => {
         const newItems = piData.content.items.filter(item => item.id !== id);
-        const { subtotal, taxAmount, total } = calculateTotals(newItems, piData.tax_rate, piData.discount_amount);
-        
+        const taxRate = Number(piData.tax_rate) || 0;
+        const discountAmount = Number(piData.discount_amount) || 0;
+        const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+
         setPIData(prev => ({
             ...prev,
             content: { ...prev.content, items: newItems },
@@ -281,6 +371,38 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         }
     };
 
+    const publishPI = async () => {
+        if (!window.confirm('确认发布 PI？发布后文档将锁定，且不可直接修改。')) return;
+        setSubmitting(true);
+        try {
+            await axios.post(`/api/v1/rma-documents/pi/${piId}/publish`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            loadPI();
+            onSuccess();
+        } catch (err: any) {
+            alert(err.response?.data?.error || '发布失败');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const recallPI = async () => {
+        if (!window.confirm('确认撤回 PI 为草稿状态？')) return;
+        setSubmitting(true);
+        try {
+            await axios.post(`/api/v1/rma-documents/pi/${piId}/recall`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            loadPI();
+            onSuccess();
+        } catch (err: any) {
+            alert(err.response?.data?.error || '撤回失败');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const exportPDF = async () => {
         try {
             const previewElement = document.getElementById('pi-preview-content');
@@ -328,250 +450,268 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
                     display: 'flex', flexDirection: 'column'
                 }}>
-                {/* Header */}
-                <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <FileText size={18} color="#10B981" />
-                        </div>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
-                                {piId ? '编辑 PI' : '新建 PI'}
-                            </h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                                <span style={{ fontSize: 12, color: '#888' }}>工单 {ticketNumber}</span>
-                                {piData.pi_number && (
-                                    <span style={{ fontSize: 11, color: '#3B82F6', background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: 4 }}>
-                                        {piData.pi_number}
-                                    </span>
-                                )}
-                                <StatusBadge status={piData.status} />
+                    {/* Header */}
+                    <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={18} color="#10B981" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
+                                    {piId ? '编辑 PI' : '制作PI发票'}
+                                </h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                                    <span style={{ fontSize: 12, color: '#888' }}>工单 {ticketNumber}</span>
+                                    {piData.pi_number && (
+                                        <span style={{ fontSize: 11, color: '#3B82F6', background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: 4 }}>
+                                            {piData.pi_number}
+                                        </span>
+                                    )}
+                                    <StatusBadge status={piData.status} />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button
-                            onClick={() => setActiveTab('edit')}
-                            style={{
-                                padding: '6px 16px', background: activeTab === 'edit' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                border: 'none', color: activeTab === 'edit' ? '#fff' : '#888', borderRadius: 6,
-                                cursor: 'pointer', fontSize: 13
-                            }}
-                        >
-                            编辑
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('preview')}
-                            style={{
-                                padding: '6px 16px', background: activeTab === 'preview' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                border: 'none', color: activeTab === 'preview' ? '#fff' : '#888', borderRadius: 6,
-                                cursor: 'pointer', fontSize: 13
-                            }}
-                        >
-                            预览
-                        </button>
-                        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>
-                            <X size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Body */}
-                <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-                    {loading ? (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
-                            加载中...
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <button
+                                onClick={() => setActiveTab('edit')}
+                                style={{
+                                    padding: '6px 16px', background: activeTab === 'edit' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    border: 'none', color: activeTab === 'edit' ? '#fff' : '#888', borderRadius: 6,
+                                    cursor: 'pointer', fontSize: 13
+                                }}
+                            >
+                                编辑
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('preview')}
+                                style={{
+                                    padding: '6px 16px', background: activeTab === 'preview' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    border: 'none', color: activeTab === 'preview' ? '#fff' : '#888', borderRadius: 6,
+                                    cursor: 'pointer', fontSize: 13
+                                }}
+                            >
+                                预览
+                            </button>
+                            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>
+                                <X size={20} />
+                            </button>
                         </div>
-                    ) : activeTab === 'edit' ? (
-                        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            {/* Customer Info */}
-                            <Section title="客户信息">
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                    <Input label="客户名称" value={piData.content.customer_info.name} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, name: v } } }))} disabled={!canEdit} />
-                                    <Input label="联系人" value={piData.content.customer_info.contact} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, contact: v } } }))} disabled={!canEdit} />
-                                    <Input label="邮箱" value={piData.content.customer_info.email} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, email: v } } }))} disabled={!canEdit} />
-                                    <Input label="地址" value={piData.content.customer_info.address} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, address: v } } }))} disabled={!canEdit} />
-                                </div>
-                            </Section>
+                    </div>
 
-                            {/* Device Info */}
-                            <Section title="设备信息">
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                    <Input label="产品型号" value={piData.content.device_info.product_name} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, device_info: { ...prev.content.device_info, product_name: v } } }))} disabled={!canEdit} />
-                                    <Input label="序列号" value={piData.content.device_info.serial_number} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, device_info: { ...prev.content.device_info, serial_number: v } } }))} disabled={!canEdit} />
-                                </div>
-                            </Section>
+                    {/* Body */}
+                    <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+                        {loading ? (
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                                加载中...
+                            </div>
+                        ) : activeTab === 'edit' ? (
+                            <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                {/* Customer Info */}
+                                <Section title="客户信息">
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <Input label="客户名称" value={piData.content.customer_info.name} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, name: v } } }))} disabled={!canEdit} />
+                                        <Input label="联系人" value={piData.content.customer_info.contact} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, contact: v } } }))} disabled={!canEdit} />
+                                        <Input label="邮箱" value={piData.content.customer_info.email} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, email: v } } }))} disabled={!canEdit} />
+                                        <Input label="地址" value={piData.content.customer_info.address} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, customer_info: { ...prev.content.customer_info, address: v } } }))} disabled={!canEdit} />
+                                    </div>
+                                </Section>
 
-                            {/* Items */}
-                            <Section title="服务项目" action={canEdit && <button onClick={addItem} style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> 添加</button>}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {piData.content.items.map((item) => (
-                                        <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
-                                            <div style={{ flex: 1 }}>
+                                {/* Device Info */}
+                                <Section title="设备信息">
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <Input label="产品型号" value={piData.content.device_info.product_name} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, device_info: { ...prev.content.device_info, product_name: v } } }))} disabled={!canEdit} />
+                                        <Input label="序列号" value={piData.content.device_info.serial_number} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, device_info: { ...prev.content.device_info, serial_number: v } } }))} disabled={!canEdit} />
+                                    </div>
+                                </Section>
+
+                                {/* Items */}
+                                <Section title="服务项目" action={canEdit && <button onClick={addItem} style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> 添加</button>}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {piData.content.items.map((item) => (
+                                            <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <input
+                                                        type="text"
+                                                        value={item.description}
+                                                        onChange={e => updateItem(item.id, 'description', e.target.value)}
+                                                        placeholder="服务/零件描述"
+                                                        disabled={!canEdit}
+                                                        style={{ width: '100%', padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                </div>
                                                 <input
-                                                    type="text"
-                                                    value={item.description}
-                                                    onChange={e => updateItem(item.id, 'description', e.target.value)}
-                                                    placeholder="服务/零件描述"
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                                    placeholder="数量"
                                                     disabled={!canEdit}
-                                                    style={{ width: '100%', padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
                                                 />
+                                                <input
+                                                    type="number"
+                                                    value={item.unit_price}
+                                                    onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
+                                                    placeholder="单价"
+                                                    disabled={!canEdit}
+                                                    style={{ width: 100, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
+                                                />
+                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: '#FFD700', fontWeight: 600 }}>
+                                                    ¥{Number(item.total || 0).toFixed(2)}
+                                                </div>
+                                                {canEdit && (
+                                                    <button onClick={() => removeItem(item.id)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </div>
+                                        ))}
+                                        {piData.content.items.length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+                                                暂无服务项目，点击"添加"按钮添加
+                                            </div>
+                                        )}
+                                    </div>
+                                </Section>
+
+                                {/* Financial Summary */}
+                                <Section title="财务汇总">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 300, marginLeft: 'auto' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
+                                            <span>小计</span>
+                                            <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#aaa' }}>税率 (%)</span>
                                             <input
                                                 type="number"
-                                                value={item.quantity}
-                                                onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                                                placeholder="数量"
+                                                value={piData.tax_rate}
+                                                onChange={e => {
+                                                    const rate = parseFloat(e.target.value) || 0;
+                                                    const { taxAmount, total } = calculateTotals(piData.content.items, rate, piData.discount_amount);
+                                                    setPIData(prev => ({ ...prev, tax_rate: rate, tax_amount: taxAmount, total_amount: total }));
+                                                }}
                                                 disabled={!canEdit}
-                                                style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
+                                                style={{ width: 60, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
                                             />
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
+                                            <span>税额</span>
+                                            <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#aaa' }}>优惠金额</span>
                                             <input
                                                 type="number"
-                                                value={item.unit_price}
-                                                onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
-                                                placeholder="单价"
+                                                value={piData.discount_amount}
+                                                onChange={e => {
+                                                    const discount = parseFloat(e.target.value) || 0;
+                                                    const { taxAmount, total } = calculateTotals(piData.content.items, piData.tax_rate, discount);
+                                                    setPIData(prev => ({ ...prev, discount_amount: discount, tax_amount: taxAmount, total_amount: total }));
+                                                }}
                                                 disabled={!canEdit}
-                                                style={{ width: 100, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
+                                                style={{ width: 100, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
                                             />
-                                            <div style={{ width: 100, padding: 8, textAlign: 'right', color: '#FFD700', fontWeight: 600 }}>
-                                                ¥{item.total.toFixed(2)}
-                                            </div>
-                                            {canEdit && (
-                                                <button onClick={() => removeItem(item.id)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
                                         </div>
-                                    ))}
-                                    {piData.content.items.length === 0 && (
-                                        <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
-                                            暂无服务项目，点击"添加"按钮添加
+                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#FFD700', fontWeight: 600 }}>合计</span>
+                                            <span style={{ color: '#FFD700', fontSize: 20, fontWeight: 700 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
                                         </div>
-                                    )}
-                                </div>
-                            </Section>
+                                    </div>
+                                </Section>
 
-                            {/* Financial Summary */}
-                            <Section title="财务汇总">
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 300, marginLeft: 'auto' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                                        <span>小计</span>
-                                        <span>¥{piData.subtotal.toFixed(2)}</span>
+                                {/* Terms */}
+                                <Section title="条款">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <Input label="付款条款" value={piData.content.terms.payment_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, payment_terms: v } } }))} disabled={!canEdit} />
+                                        <Input label="交付条款" value={piData.content.terms.delivery_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, delivery_terms: v } } }))} disabled={!canEdit} />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <span style={{ color: '#aaa', fontSize: 13 }}>有效期 (天)</span>
+                                            <input
+                                                type="number"
+                                                value={piData.content.terms.valid_days}
+                                                onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, valid_days: parseInt(e.target.value) || 7 } } }))}
+                                                disabled={!canEdit}
+                                                style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ color: '#aaa' }}>税率 (%)</span>
-                                        <input
-                                            type="number"
-                                            value={piData.tax_rate}
-                                            onChange={e => {
-                                                const rate = parseFloat(e.target.value) || 0;
-                                                const { taxAmount, total } = calculateTotals(piData.content.items, rate, piData.discount_amount);
-                                                setPIData(prev => ({ ...prev, tax_rate: rate, tax_amount: taxAmount, total_amount: total }));
-                                            }}
-                                            disabled={!canEdit}
-                                            style={{ width: 60, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                                        <span>税额</span>
-                                        <span>¥{piData.tax_amount.toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ color: '#aaa' }}>优惠金额</span>
-                                        <input
-                                            type="number"
-                                            value={piData.discount_amount}
-                                            onChange={e => {
-                                                const discount = parseFloat(e.target.value) || 0;
-                                                const { taxAmount, total } = calculateTotals(piData.content.items, piData.tax_rate, discount);
-                                                setPIData(prev => ({ ...prev, discount_amount: discount, tax_amount: taxAmount, total_amount: total }));
-                                            }}
-                                            disabled={!canEdit}
-                                            style={{ width: 100, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
-                                        />
-                                    </div>
-                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ color: '#FFD700', fontWeight: 600 }}>合计</span>
-                                        <span style={{ color: '#FFD700', fontSize: 20, fontWeight: 700 }}>¥{piData.total_amount.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </Section>
+                                </Section>
 
-                            {/* Terms */}
-                            <Section title="条款">
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <Input label="付款条款" value={piData.content.terms.payment_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, payment_terms: v } } }))} disabled={!canEdit} />
-                                    <Input label="交付条款" value={piData.content.terms.delivery_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, delivery_terms: v } } }))} disabled={!canEdit} />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <span style={{ color: '#aaa', fontSize: 13 }}>有效期 (天)</span>
-                                        <input
-                                            type="number"
-                                            value={piData.content.terms.valid_days}
-                                            onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, valid_days: parseInt(e.target.value) || 7 } } }))}
-                                            disabled={!canEdit}
-                                            style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                        />
-                                    </div>
-                                </div>
-                            </Section>
+                                {/* Notes */}
+                                <Section title="备注">
+                                    <textarea
+                                        value={piData.content.notes}
+                                        onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, notes: e.target.value } }))}
+                                        disabled={!canEdit}
+                                        placeholder="添加备注信息..."
+                                        style={{ width: '100%', minHeight: 80, padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical' }}
+                                    />
+                                </Section>
+                            </div>
+                        ) : (
+                            <PIPreview piData={piData} />
+                        )}
+                    </div>
 
-                            {/* Notes */}
-                            <Section title="备注">
-                                <textarea
-                                    value={piData.content.notes}
-                                    onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, notes: e.target.value } }))}
-                                    disabled={!canEdit}
-                                    placeholder="添加备注信息..."
-                                    style={{ width: '100%', minHeight: 80, padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical' }}
-                                />
-                            </Section>
+                    {/* Footer */}
+                    <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {canExport && (
+                                <button
+                                    onClick={exportPDF}
+                                    style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <Download size={16} /> 导出PDF
+                                </button>
+                            )}
                         </div>
-                    ) : (
-                        <PIPreview piData={piData} />
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {canExport && (
-                            <button
-                                onClick={exportPDF}
-                                style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Download size={16} /> 导出PDF
-                            </button>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
-                        {canEdit && (
-                            <button
-                                onClick={saveDraft}
-                                disabled={saving}
-                                style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Save size={16} /> {saving ? '保存中...' : '保存草稿'}
-                            </button>
-                        )}
-                        {canSubmit && piId && (
-                            <button
-                                onClick={submitForReview}
-                                disabled={submitting}
-                                style={{ padding: '8px 20px', background: '#3B82F6', border: 'none', borderRadius: 6, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Send size={16} /> {submitting ? '提交中...' : '提交审核'}
-                            </button>
-                        )}
-                        {canReview && piId && (
-                            <button
-                                onClick={() => setShowReviewModal(true)}
-                                style={{ padding: '8px 20px', background: '#F59E0B', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Shield size={16} /> 审核
-                            </button>
-                        )}
-                    </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
+                            {canEdit && (
+                                <button
+                                    onClick={saveDraft}
+                                    disabled={saving}
+                                    style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <Save size={16} /> {saving ? '保存中...' : '保存草稿'}
+                                </button>
+                            )}
+                            {canSubmit && piId && (
+                                <button
+                                    onClick={submitForReview}
+                                    disabled={submitting}
+                                    style={{ padding: '8px 20px', background: '#3B82F6', border: 'none', borderRadius: 6, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <Send size={16} /> {submitting ? '提交中...' : '提交审核'}
+                                </button>
+                            )}
+                            {canReview && piId && piData.status === 'pending_review' && (
+                                <button
+                                    onClick={() => setShowReviewModal(true)}
+                                    style={{ padding: '8px 20px', background: '#FFD200', border: 'none', borderRadius: 6, color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <Shield size={16} /> 审核
+                                </button>
+                            )}
+                            {piData.status === 'approved' && ['Lead', 'Admin'].includes(user?.role || '') && (
+                                <button
+                                    onClick={publishPI}
+                                    disabled={submitting}
+                                    style={{ padding: '8px 20px', background: '#10B981', border: 'none', borderRadius: 6, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <Send size={16} /> 发布 PI
+                                </button>
+                            )}
+                            {piData.status === 'published' && ['Lead', 'Admin'].includes(user?.role || '') && (
+                                <button
+                                    onClick={recallPI}
+                                    disabled={submitting}
+                                    style={{ padding: '8px 20px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#EF4444', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                    <X size={16} /> 撤回修改
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -618,7 +758,7 @@ const Input: React.FC<{ label: string; value: string; onChange: (v: string) => v
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const configs: Record<string, { text: string; color: string; bg: string }> = {
         'draft': { text: '草稿', color: '#888', bg: 'rgba(255,255,255,0.1)' },
-        'pending_review': { text: '审核中', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+        'pending_review': { text: '审核中', color: '#FFD200', bg: 'rgba(245,158,11,0.15)' },
         'approved': { text: '已批准', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
         'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
         'published': { text: '已发布', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' }
@@ -636,7 +776,7 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
         <div id="pi-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333' }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '2px solid #333', paddingBottom: 20 }}>
-                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{piData.content.header.title}</h1>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Proforma Invoice</h1>
                 <p style={{ margin: '8px 0 0 0', fontSize: 16, color: '#666' }}>{piData.content.header.subtitle}</p>
             </div>
 
@@ -689,8 +829,8 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
                         <tr key={item.id}>
                             <td style={{ padding: 12, borderBottom: '1px solid #ddd', fontSize: 14 }}>{item.description || `[Item ${index + 1}]`}</td>
                             <td style={{ padding: 12, borderBottom: '1px solid #ddd', textAlign: 'center', fontSize: 14 }}>{item.quantity}</td>
-                            <td style={{ padding: 12, borderBottom: '1px solid #ddd', textAlign: 'right', fontSize: 14 }}>¥{item.unit_price.toFixed(2)}</td>
-                            <td style={{ padding: 12, borderBottom: '1px solid #ddd', textAlign: 'right', fontSize: 14 }}>¥{item.total.toFixed(2)}</td>
+                            <td style={{ padding: 12, borderBottom: '1px solid #ddd', textAlign: 'right', fontSize: 14 }}>¥{Number(item.unit_price || 0).toFixed(2)}</td>
+                            <td style={{ padding: 12, borderBottom: '1px solid #ddd', textAlign: 'right', fontSize: 14 }}>¥{Number(item.total || 0).toFixed(2)}</td>
                         </tr>
                     ))}
                     {piData.content.items.length === 0 && (
@@ -705,21 +845,21 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
             <div style={{ marginLeft: 'auto', width: 300, marginBottom: 30 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
                     <span>Subtotal:</span>
-                    <span>¥{piData.subtotal.toFixed(2)}</span>
+                    <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
                     <span>Tax ({piData.tax_rate}%):</span>
-                    <span>¥{piData.tax_amount.toFixed(2)}</span>
+                    <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
                 </div>
                 {piData.discount_amount > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee', color: '#10B981' }}>
                         <span>Discount:</span>
-                        <span>-¥{piData.discount_amount.toFixed(2)}</span>
+                        <span>-¥{Number(piData.discount_amount || 0).toFixed(2)}</span>
                     </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderTop: '2px solid #333', fontSize: 18, fontWeight: 700 }}>
                     <span>Total:</span>
-                    <span>¥{piData.total_amount.toFixed(2)}</span>
+                    <span>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
                 </div>
             </div>
 

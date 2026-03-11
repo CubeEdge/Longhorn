@@ -107,7 +107,7 @@ export const DebugBadge: React.FC<DebugBadgeProps> = ({ type, code, children }) 
       case 'permission':
         return '#10B981'; // Green
       case 'mask':
-        return '#F59E0B'; // Amber
+        return '#FFD200'; // Amber
       case 'role':
         return '#3B82F6'; // Blue
       case 'field':
@@ -232,7 +232,7 @@ export const DebugInfoPanel: React.FC = () => {
           <span style={{ color: '#10B981' }}>●</span> Permission: 权限检查点
         </div>
         <div style={{ marginBottom: 8 }}>
-          <span style={{ color: '#F59E0B' }}>●</span> Mask: 数据脱敏点
+          <span style={{ color: '#FFD200' }}>●</span> Mask: 数据脱敏点
         </div>
         <div style={{ marginBottom: 8 }}>
           <span style={{ color: '#3B82F6' }}>●</span> Role: 角色检查点

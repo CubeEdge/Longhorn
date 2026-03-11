@@ -50,7 +50,7 @@ const PartsManagementPage: React.FC = () => {
             label: '消耗记录',
             description: '维修配件使用记录',
             icon: ClipboardList,
-            color: '#F59E0B',
+            color: '#FFD200',
             path: '/service/parts/consumption'
         },
         {

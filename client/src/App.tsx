@@ -247,22 +247,22 @@ const App: React.FC = () => {
 
           {/* 3. 资产和物料 (第三入口) */}
           <Route path="/service/products" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductManagement /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductManagement /> : <Navigate to="/" />
           } />
           <Route path="/service/products/:id" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductDetailPage /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductDetailPage /> : <Navigate to="/" />
           } />
           <Route path="/service/product-models" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelsManagement /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductModelsManagement /> : <Navigate to="/" />
           } />
           <Route path="/service/product-models/:id" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductModelDetailPage /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductModelDetailPage /> : <Navigate to="/" />
           } />
           <Route path="/service/product-skus" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductSkusManagement /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductSkusManagement /> : <Navigate to="/" />
           } />
           <Route path="/service/product-skus/:id" element={
-            ['Admin', 'Lead'].includes(user?.role || '') ? <ProductSkuDetailPage /> : <Navigate to="/" />
+            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductSkuDetailPage /> : <Navigate to="/" />
           } />
           <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 

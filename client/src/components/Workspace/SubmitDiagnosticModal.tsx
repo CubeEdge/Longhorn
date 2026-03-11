@@ -226,7 +226,7 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                     {/* Diagnosis Conclusion */}
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#aaa', marginBottom: 8 }}>
-                            <AlertTriangle size={14} color="#F59E0B" /> 故障判定 (必填)
+                            <AlertTriangle size={14} color="#FFD200" /> 故障判定 (必填)
                         </label>
                         <textarea
                             value={diagnosis}
@@ -346,7 +346,7 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                     {/* Technical Damage Assessment */}
                     <div>
                         <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>
-                            <AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle', color: '#F59E0B' }} />
+                            <AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle', color: '#FFD200' }} />
                             技术损坏判定 (必填)
                         </label>
                         <div style={{ display: 'flex', gap: 12 }}>
@@ -372,8 +372,8 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
                                 onClick={() => setDamageStatus('uncertain')}
                                 style={{
                                     flex: 1, padding: '12px', background: damageStatus === 'uncertain' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${damageStatus === 'uncertain' ? '#F59E0B' : 'rgba(255,255,255,0.1)'}`,
-                                    color: damageStatus === 'uncertain' ? '#F59E0B' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    border: `1px solid ${damageStatus === 'uncertain' ? '#FFD200' : 'rgba(255,255,255,0.1)'}`,
+                                    color: damageStatus === 'uncertain' ? '#FFD200' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: damageStatus === 'uncertain' ? 600 : 400
                                 }}
                             >无法判定</button>

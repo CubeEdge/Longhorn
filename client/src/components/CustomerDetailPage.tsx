@@ -456,7 +456,7 @@ const CustomerDetailPage: React.FC = () => {
                                     fontSize: '0.85rem',
                                     fontWeight: 700,
                                     background: 'rgba(245, 158, 11, 0.15)',
-                                    color: '#F59E0B',
+                                    color: '#FFD200',
                                     border: '1px solid rgba(245, 158, 11, 0.3)'
                                 }}
                             >

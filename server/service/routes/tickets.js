@@ -1728,7 +1728,11 @@ module.exports = function (db, authenticate, serviceUpload) {
             for (const field of allowedFields) {
                 if (updates[field] !== undefined) {
                     sets.push(`${field} = ?`);
-                    if (field === 'reporter_snapshot') {
+
+                    // Fields that must be stored as JSON strings
+                    const jsonFields = ['reporter_snapshot', 'warranty_calculation', 'ms_review', 'final_settlement'];
+
+                    if (jsonFields.includes(field)) {
                         params.push(updates[field] ? JSON.stringify(updates[field]) : null);
                     } else {
                         // SQLite3 cannot bind booleans; convert to integer

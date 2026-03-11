@@ -334,7 +334,7 @@ const PartsSettlementPage: React.FC = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <Clock size={20} color="#F59E0B" />
+                                <Clock size={20} color="#FFD200" />
                             </div>
                             <span style={{ color: '#6B7280', fontSize: '14px' }}>待付款金额</span>
                         </div>

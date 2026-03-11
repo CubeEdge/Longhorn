@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
-import { useLanguage } from '../i18n/useLanguage';
 import {
     ArrowLeft, Layers, Package, Info,
     Edit2, ChevronDown, ChevronUp, AlertCircle,
@@ -214,17 +213,17 @@ const ProductModelDetailPage: React.FC = () => {
                                 </span>
                             </div>
 
-                            <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>{model.name_zh}</h3>
-                            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: 24 }}>{model.name_en || '-'}</p>
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 8 }}>{model.name_zh}</h3>
+                            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 24 }}>{model.name_en || '-'}</p>
 
                             <div style={{ display: 'flex', gap: 40 }}>
                                 <div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{model.sku_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SKU数量</div>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{model.sku_count || 0}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SKU数量</div>
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{model.instance_count || 0}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备</div>
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{model.instance_count || 0}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备</div>
                                 </div>
                             </div>
                         </div>

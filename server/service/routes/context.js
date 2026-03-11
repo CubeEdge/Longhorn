@@ -100,7 +100,7 @@ module.exports = (db, authenticate) => {
                     COALESCE(problem_summary, problem_description) as summary,
                     status, created_at as date
                 FROM tickets 
-                WHERE account_id = ?
+                WHERE account_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)
                 ORDER BY created_at DESC
             `).all(cId);
 
@@ -264,7 +264,7 @@ module.exports = (db, authenticate) => {
                 FROM tickets t
                 LEFT JOIN accounts a ON t.account_id = a.id
                 LEFT JOIN contacts c ON t.contact_id = c.id
-                WHERE t.account_id = ?
+                WHERE t.account_id = ? AND (t.is_deleted = 0 OR t.is_deleted IS NULL)
                 ORDER BY t.created_at DESC
             `).all(account_id);
 
@@ -392,7 +392,7 @@ module.exports = (db, authenticate) => {
                     FROM tickets t
                     LEFT JOIN accounts a ON t.account_id = a.id
                     LEFT JOIN contacts c ON t.contact_id = c.id
-                    WHERE t.product_id = ?
+                    WHERE t.product_id = ? AND (t.is_deleted = 0 OR t.is_deleted IS NULL)
                     ORDER BY t.created_at DESC
                 `).all(pId);
             } else {
@@ -412,7 +412,7 @@ module.exports = (db, authenticate) => {
                     FROM tickets t
                     LEFT JOIN accounts a ON t.account_id = a.id
                     LEFT JOIN contacts c ON t.contact_id = c.id
-                    WHERE t.serial_number = ?
+                    WHERE t.serial_number = ? AND (t.is_deleted = 0 OR t.is_deleted IS NULL)
                     ORDER BY t.created_at DESC
                 `).all(serial_number);
             }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calculator, CheckCircle, AlertTriangle, DollarSign, FileText, Loader2, Save } from 'lucide-react';
+import { X, Calculator, CheckCircle, AlertTriangle, DollarSign, FileText, Loader2, Save, Shield } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -121,7 +121,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                 customer_confirmed: customerConfirmed,
                 confirmed_at: customerConfirmed ? new Date().toISOString() : null
             };
-            
+
             // Only include estimated costs if they have values
             if (estimatedMin && estimatedMin !== '') {
                 msReviewData.estimated_cost_min = parseFloat(estimatedMin);
@@ -129,7 +129,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
             if (estimatedMax && estimatedMax !== '') {
                 msReviewData.estimated_cost_max = parseFloat(estimatedMax);
             }
-            
+
             // Save MS review data
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 ms_review: msReviewData,
@@ -198,8 +198,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                 {/* Header */}
                 <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Calculator size={20} color="#F59E0B" />
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255, 210, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Calculator size={20} color="#FFD200" />
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>商务审核 - 保修计算</h3>
@@ -259,45 +259,41 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                         </div>
 
                         {warrantyCalc ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                <div style={{
-                                    padding: 12, borderRadius: 8,
-                                    background: warrantyCalc.final_warranty_status === 'warranty_valid'
-                                        ? 'rgba(16,185,129,0.1)'
-                                        : warrantyCalc.final_warranty_status === 'warranty_void_damage'
-                                            ? 'rgba(239,68,68,0.1)'
-                                            : 'rgba(245,158,11,0.1)',
-                                    border: `1px solid ${warrantyCalc.final_warranty_status === 'warranty_valid'
-                                        ? '#10B981'
-                                        : warrantyCalc.final_warranty_status === 'warranty_void_damage'
-                                            ? '#EF4444'
-                                            : '#F59E0B'}`
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                        {warrantyCalc.final_warranty_status === 'warranty_valid'
-                                            ? <CheckCircle size={20} color="#10B981" />
-                                            : warrantyCalc.final_warranty_status === 'warranty_void_damage'
-                                                ? <AlertTriangle size={20} color="#EF4444" />
-                                                : <AlertTriangle size={20} color="#F59E0B" />}
-                                        <span style={{
-                                            fontSize: 16, fontWeight: 600,
-                                            color: warrantyCalc.final_warranty_status === 'warranty_valid'
-                                                ? '#10B981'
-                                                : warrantyCalc.final_warranty_status === 'warranty_void_damage'
-                                                    ? '#EF4444'
-                                                    : '#F59E0B'
-                                        }}>
-                                            {warrantyCalc.final_warranty_status === 'warranty_valid'
-                                                ? '✅ 在保期内 - 免费维修'
-                                                : warrantyCalc.final_warranty_status === 'warranty_void_damage'
-                                                    ? '❌ 人为损坏 - 保修失效'
-                                                    : '⚠️ 已过保 - 付费维修'}
-                                        </span>
+                            <div style={{
+                                padding: 20,
+                                background: 'rgba(0,0,0,0.2)',
+                                borderRadius: 12,
+                                border: `2px solid ${warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <div style={{
+                                        width: 50,
+                                        height: 50,
+                                        borderRadius: '50%',
+                                        background: `${warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444'}20`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: 16
+                                    }}>
+                                        <Shield size={24} color={warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444'} />
                                     </div>
-                                    <div style={{ fontSize: 13, color: '#aaa' }}>
-                                        <div>保修起始日：<span style={{ color: '#fff' }}>{warrantyCalc.start_date}</span></div>
-                                        <div>保修结束日：<span style={{ color: '#fff' }}>{warrantyCalc.end_date}</span></div>
-                                        <div>计算依据：<span style={{ color: '#fff' }}>{getBasisText(warrantyCalc.calculation_basis)}</span></div>
+                                    <div>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444' }}>
+                                            {warrantyCalc.final_warranty_status === 'warranty_valid' ? '在保' : '过保'}
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: 4 }}>
+                                            截止日期: {warrantyCalc.end_date}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#666', textTransform: 'uppercase' }}>计算依据</div>
+                                    <div style={{ fontSize: '0.9rem', color: '#fff', fontWeight: 500, marginTop: 4 }}>
+                                        {getBasisText(warrantyCalc.calculation_basis)}
                                     </div>
                                 </div>
                             </div>
@@ -351,8 +347,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                 </div>
                             </div>
                             <div style={{ fontSize: 12, color: '#666' }}>
-                                {warrantyCalc.final_warranty_status === 'warranty_valid' 
-                                    ? '* 保内维修免费，填写预估费用仅用于与客户沟通参考' 
+                                {warrantyCalc.final_warranty_status === 'warranty_valid'
+                                    ? '* 保内维修免费，填写预估费用仅用于与客户沟通参考'
                                     : '* 此为预估费用，实际费用将在维修完成后根据实际备件和工时计算'}
                             </div>
                         </div>
@@ -400,7 +396,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                         onClick={handleSubmit}
                         disabled={loading || !warrantyCalc}
                         style={{
-                            padding: '10px 24px', background: '#FFD700',
+                            padding: '10px 24px', background: '#FFD200',
                             border: 'none', color: '#000', borderRadius: 8, fontWeight: 700,
                             cursor: loading || !warrantyCalc ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                             opacity: loading || !warrantyCalc ? 0.7 : 1
@@ -430,29 +426,77 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                 <X size={24} />
                             </button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div style={{ fontSize: 14, color: '#aaa', lineHeight: 1.6 }}>
-                                <p style={{ margin: '0 0 12px 0' }}>系统按照以下优先级顺序计算保修期：</p>
-                                <ol style={{ margin: 0, paddingLeft: 20, color: '#fff' }}>
-                                    <li style={{ marginBottom: 8 }}><strong>优先级 1 (IoT)</strong>：若 activation_date 存在，以此为准</li>
-                                    <li style={{ marginBottom: 8 }}><strong>优先级 2 (人工)</strong>：若 sales_invoice_date 存在（有发票），以此为准</li>
-                                    <li style={{ marginBottom: 8 }}><strong>优先级 3 (注册)</strong>：若 registration_date 存在，以此为准</li>
-                                    <li style={{ marginBottom: 8 }}><strong>优先级 4 (直销)</strong>：若 sales_channel == DIRECT，按 ship_date + 7天</li>
-                                    <li><strong>优先级 5 (兜底)</strong>：若均为 NULL，按 ship_to_dealer_date + 90天</li>
-                                </ol>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {/* Rules Section */}
+                            <div style={{ padding: '0 4px' }}>
+                                <h4 style={{ margin: '0 0 10px 0', fontSize: 13, color: '#aaa', fontWeight: 600 }}>保修计算说明</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: '#888' }}>
+                                    {[
+                                        { p: 1, basis: 'IOT_ACTIVATION', label: 'IoT', detail: '联网激活日期' },
+                                        { p: 2, basis: 'INVOICE_PROOF', label: '发票', detail: '人工发票日期' },
+                                        { p: 3, basis: 'REGISTRATION', label: '注册', detail: '用户注册日期' },
+                                        { p: 4, basis: 'DIRECT_SHIPMENT', label: '直销', detail: '直销出库+7天' },
+                                        { p: 5, basis: 'DEALER_FALLBACK', label: '兜底', detail: '代理发货+90天' }
+                                    ].map((rule) => {
+                                        const isActive = warrantyCalc?.calculation_basis?.toUpperCase() === rule.basis;
+                                        return (
+                                            <div key={rule.p} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                padding: '6px 10px',
+                                                background: isActive ? 'rgba(255, 210, 0, 0.1)' : 'rgba(255,255,255,0.02)',
+                                                borderRadius: 6,
+                                                border: isActive ? '1px solid rgba(255, 210, 0, 0.3)' : '1px solid rgba(255,255,255,0.05)',
+                                                gridColumn: rule.p === 5 ? 'span 2' : 'auto'
+                                            }}>
+                                                <span style={{ color: isActive ? '#FFD200' : '#888', fontWeight: 700 }}>{rule.p}.</span>
+                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: isActive ? '#fff' : '#ccc', fontWeight: 600 }}>{rule.label}</span>
+                                                    <span style={{ fontSize: 11, opacity: 0.7 }}>{rule.detail}</span>
+                                                </div>
+                                                {isActive && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFD200' }} />}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 8 }}>
-                                <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>本机计算结果</div>
-                                <div style={{ fontSize: 14, color: '#fff' }}>
-                                    <div>计算依据：<strong>{getBasisText(warrantyCalc.calculation_basis)}</strong></div>
-                                    <div>保修起始：<strong>{warrantyCalc.start_date}</strong></div>
-                                    <div>保修结束：<strong>{warrantyCalc.end_date}</strong></div>
+                            <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
+
+                            {/* Result Section */}
+                            <div style={{
+                                padding: 16, borderRadius: 12,
+                                background: warrantyCalc.final_warranty_status === 'warranty_valid' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                border: `1px solid ${warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444'}`,
+                                display: 'flex', flexDirection: 'column', gap: 12
+                            }}>
+                                <h4 style={{ margin: 0, fontSize: 12, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444', opacity: 0.8, textTransform: 'uppercase', letterSpacing: 0.5 }}>本机计算结果</h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {warrantyCalc.final_warranty_status === 'warranty_valid'
+                                        ? <CheckCircle size={22} color="#10B981" />
+                                        : <AlertTriangle size={22} color="#EF4444" />}
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444' }}>
+                                        {warrantyCalc.final_warranty_status === 'warranty_valid' ? '在保期内 - 免费维修' : '已过保 - 付费维修'}
+                                    </span>
+                                </div>
+                                <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+                                    {[
+                                        { label: '生效日期', value: warrantyCalc.start_date || '-' },
+                                        { label: '截止日期', value: warrantyCalc.end_date || '-' },
+                                        { label: '计算依据', value: getBasisText(warrantyCalc.calculation_basis) || '-', fullWidth: true }
+                                    ].map((item, idx) => (
+                                        <div key={idx} style={{ gridColumn: item.fullWidth ? '1/-1' : 'span 1' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{item.label}</div>
+                                            <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{item.value}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </div >
+                </div >
             )}
-        </div>
+        </div >
     );
 };

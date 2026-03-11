@@ -116,7 +116,7 @@ export const DocumentReviewModal: React.FC<DocumentReviewModalProps> = ({
     const getStatusConfig = (status: string) => {
         const configs: Record<string, { text: string; color: string; bg: string; icon: React.ReactNode }> = {
             'draft': { text: '草稿', color: '#888', bg: 'rgba(255,255,255,0.1)', icon: <FileText size={16} /> },
-            'pending_review': { text: '待审核', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', icon: <Clock size={16} /> },
+            'pending_review': { text: '待审核', color: '#FFD200', bg: 'rgba(245,158,11,0.15)', icon: <Clock size={16} /> },
             'approved': { text: '已批准', color: '#10B981', bg: 'rgba(16,185,129,0.15)', icon: <CheckCircle size={16} /> },
             'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)', icon: <XCircle size={16} /> },
             'published': { text: '已发布', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: <FileText size={16} /> }
@@ -309,8 +309,8 @@ export const DocumentReviewModal: React.FC<DocumentReviewModalProps> = ({
                                     border: '1px solid rgba(245,158,11,0.3)'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                        <MessageSquare size={14} color="#F59E0B" />
-                                        <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>
+                                        <MessageSquare size={14} color="#FFD200" />
+                                        <span style={{ fontSize: 12, color: '#FFD200', fontWeight: 600 }}>
                                             上次审核意见
                                         </span>
                                     </div>
@@ -376,7 +376,7 @@ export const DocumentReviewModal: React.FC<DocumentReviewModalProps> = ({
 
 const configs: Record<string, { text: string; color: string; bg: string; icon: React.ReactNode }> = {
     'draft': { text: '草稿', color: '#888', bg: 'rgba(255,255,255,0.1)', icon: <FileText size={16} /> },
-    'pending_review': { text: '待审核', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', icon: <Clock size={16} /> },
+    'pending_review': { text: '待审核', color: '#FFD200', bg: 'rgba(245,158,11,0.15)', icon: <Clock size={16} /> },
     'approved': { text: '已批准', color: '#10B981', bg: 'rgba(16,185,129,0.15)', icon: <CheckCircle size={16} /> },
     'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)', icon: <XCircle size={16} /> },
     'published': { text: '已发布', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', icon: <FileText size={16} /> }

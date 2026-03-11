@@ -28,13 +28,14 @@ interface CustomerContextSidebarProps {
     onClose?: () => void;
     ticketProductName?: string;
     onRequestEdit?: (correctModelName: string) => void;
+    hideDeviceCard?: boolean;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     ticketId, accountId, contactId, reporterSnapshot,
     serialNumber, customerName, contactName,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
-    onCleanComplete, onClose, ticketProductName, onRequestEdit
+    onCleanComplete, onClose, ticketProductName, onRequestEdit, hideDeviceCard
 }) => {
     // const { t } = useLanguage();
     const { token } = useAuthStore();
@@ -178,12 +179,12 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     };
 
     const cardTitleStyle: React.CSSProperties = {
-        fontSize: '0.7rem',
+        fontSize: '0.8rem',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         color: 'var(--text-tertiary)',
         marginBottom: '12px',
-        fontWeight: 600,
+        fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
         gap: '6px'
@@ -411,23 +412,23 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 {/* Status 2: Corporate + Temp */}
                 {data?.account && !contactId && reporterSnapshot && (
                     <div style={{ ...cardStyle, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                        <div style={{ ...cardTitleStyle, color: '#F59E0B' }}>
+                        <div style={{ ...cardTitleStyle, color: '#FFD200' }}>
                             <Building size={12} /> 客户信息 (临时对接)
                         </div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
                             {data.account.name}
                         </h3>
                         <div style={{ padding: '12px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 8 }}>
-                            <div style={{ fontSize: '0.8rem', color: '#F59E0B', fontWeight: 600, marginBottom: 8 }}>
+                            <div style={{ fontSize: '0.8rem', color: '#FFD200', fontWeight: 600, marginBottom: 8 }}>
                                 ⚠️ 未归档联系人
                             </div>
                             <div style={rowStyle}>
-                                <User size={14} style={iconColStyle} color="#F59E0B" />
+                                <User size={14} style={iconColStyle} color="#FFD200" />
                                 <div style={{ ...textColStyle, color: '#ddd' }}>{reporterSnapshot.name}</div>
                             </div>
                             {reporterSnapshot.phone && (
                                 <div style={rowStyle}>
-                                    <Smartphone size={14} style={iconColStyle} color="#F59E0B" />
+                                    <Smartphone size={14} style={iconColStyle} color="#FFD200" />
                                     <div style={{ ...textColStyle, color: '#ddd' }}>{reporterSnapshot.phone}</div>
                                 </div>
                             )}
@@ -436,7 +437,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 style={{
                                     marginTop: 10, width: '100%', padding: '6px 0',
                                     background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
-                                    borderRadius: 6, color: '#F59E0B', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
+                                    borderRadius: 6, color: '#FFD200', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
                                 }}
                             >
                                 + 入库联系人并清洗
@@ -621,7 +622,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
 
                 {/* ===== Card 3: 设备详情卡片 ===== */}
-                {data?.device && (
+                {data?.device && !hideDeviceCard && (
                     <div
                         style={{
                             ...cardStyle,
@@ -645,7 +646,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             style={{ ...cardTitleStyle, cursor: 'pointer', justifyContent: 'space-between' }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Smartphone size={12} /> 关联资产 / Asset
+                                <Smartphone size={12} /> 实物设备 / Device
                                 {data.device.is_unregistered && (
                                     <span style={{
                                         fontSize: '0.65rem',
@@ -760,7 +761,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                         marginBottom: '12px',
                                         border: '1px solid rgba(245, 158, 11, 0.3)'
                                     }}>
-                                        <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginBottom: '8px', fontWeight: 500, lineHeight: 1.4 }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#FFD200', marginBottom: '8px', fontWeight: 500, lineHeight: 1.4 }}>
                                             ⚠️ 声明型号 ({ticketProductName}) 与实物型号 ({data.device.model_name}) 不符
                                         </div>
                                         <button
@@ -768,7 +769,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             style={{
                                                 width: '100%', padding: '6px 0',
                                                 background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
-                                                borderRadius: 6, color: '#F59E0B', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600
+                                                borderRadius: 6, color: '#FFD200', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600
                                             }}
                                         >
                                             一键修正型号

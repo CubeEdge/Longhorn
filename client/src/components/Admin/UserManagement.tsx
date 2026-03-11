@@ -118,7 +118,7 @@ function StatusBadge({ user }: { user: User }) {
         // Inactive: rarely login
         return (
             <span style={{ 
-                color: '#F59E0B', 
+                color: '#FFD200', 
                 fontSize: '0.85rem',
                 background: 'rgba(245,158,11,0.15)',
                 padding: '3px 10px',

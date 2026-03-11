@@ -235,7 +235,7 @@ const ServiceOverviewPage: React.FC = () => {
           subtitle={t('overview.unassigned_sub') || "Unassigned"}
           value={stats?.unassigned_count || 0}
           icon={PackageOpen}
-          color="#F59E0B"
+          color="#FFD200"
           onClick={() => navigate(`/service/team-hub?assignee=0`)}
           alert={(stats?.unassigned_count || 0) > 0}
           tooltipKey="unassigned"
@@ -490,7 +490,7 @@ const RiskTicketRow: React.FC<{ ticket: RiskTicket; onClick: () => void }> = ({ 
       width: 8,
       height: 8,
       borderRadius: '50%',
-      background: ticket.sla_status === 'breached' ? '#EF4444' : '#F59E0B'
+      background: ticket.sla_status === 'breached' ? '#EF4444' : '#FFD200'
     }} />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-main)' }}>{ticket.ticket_number}</div>
@@ -502,7 +502,7 @@ const RiskTicketRow: React.FC<{ ticket: RiskTicket; onClick: () => void }> = ({ 
     <div style={{
       fontSize: 12,
       fontWeight: 600,
-      color: ticket.sla_status === 'breached' ? '#EF4444' : '#F59E0B'
+      color: ticket.sla_status === 'breached' ? '#EF4444' : '#FFD200'
     }}>
       {ticket.remaining_hours > 0 ? `${Math.round(ticket.remaining_hours)}h` : '已超时'}
     </div>
@@ -551,7 +551,7 @@ const TeamLoadBar: React.FC<{ member: TeamMember; maxTickets: number }> = ({ mem
 const SlaGauge: React.FC<{ breachRate: number }> = ({ breachRate }) => {
   const { t } = useLanguage();
   const healthRate = 100 - breachRate;
-  const color = breachRate > 20 ? '#EF4444' : breachRate > 10 ? '#F59E0B' : '#10B981';
+  const color = breachRate > 20 ? '#EF4444' : breachRate > 10 ? '#FFD200' : '#10B981';
   const label = breachRate > 20 ? (t('overview.health_poor') || '需关注') : breachRate > 10 ? (t('overview.health_fair') || '一般') : (t('overview.health_good') || '健康');
 
   return (

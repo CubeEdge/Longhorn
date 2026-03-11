@@ -734,26 +734,29 @@ UI 刷新，状态从“状态 2”变为“状态 1”。
 ### 7.1.1 核心数据结构 (v2.0)
 
 **A. 产品目录 (product_models)**
+定义基础平台硬件型号。
 ```json
 {
+  "id": "INTEGER PRIMARY KEY",
   "model_code": "C181",           // 产品型号 (Model Code)
+  "model_name": "MAVO Edge 8K",   // 内部名称 (用于旧数据兼容)
   "name_zh": "MAVO Edge 8K",      // 产品名称 (中文)
-  "name_en": "MAVO Edge 8K",       // 产品名称 (英文)
+  "name_en": "MAVO Edge 8K",      // 产品名称 (英文)
   "brand": "Kinefinity",
-  "material_id_prefix": "9-010-001", // 物料 ID 前缀
+  "internal_prefix": "9-010-001", // 物料 ID 前缀 (ERP 9-series)
   "hero_image": "url_to_image",
-  "sku_count": 5,
   "is_active": true
 }
 ```
 
 **B. 商品规格 (product_skus)**
+定义具体的销售形态（套装、卡口、颜色）。
 ```json
 {
-  "id": "uuid",
-  "model_id": "model_uuid",
-  "sku_code": "A010-001-01",       // 商品编码 (SKU ID)
-  "material_id": "9-010-001-01",   // 物料 ID (Material ID / 原SaaS ID)
+  "id": "INTEGER PRIMARY KEY",
+  "model_id": "INTEGER",           // 关联 product_models.id
+  "sku_code": "A010-001-01",       // 商品编码 (SKU ID / A系列)
+  "erp_code": "9-010-001-01",      // 物料 ID (ERP ID / 9系列)
   "display_name": "MAVO Edge 8K 基础套装",
   "display_name_en": "MAVO Edge 8K Basic Kit",
   "spec_label": "深空灰 / E卡口",
@@ -762,10 +765,35 @@ UI 刷新，状态从“状态 2”变为“状态 1”。
 }
 ```
 
-**C. 设备台账 (products)**
-参考 §4.3，增加 `sku_id` 和 `grade` 核心字段。
-- **Grade 标识**: 列表页通过彩色微缩标签展示 (🟢A / 🟡B / 🔴C)。
-- **视觉确认**: 在详情页录入 SN 后，自动拉取 `sku_image` 进行视觉对齐。
+**C. 设备台账 (products / Installed Base)**
+定义每一台具有唯一 SN 的设备实例。
+```json
+{
+  "id": "INTEGER PRIMARY KEY",
+  "serial_number": "KD8K-2501-0099",
+  "sku_id": "INTEGER",             // 关联 product_skus.id
+  "model_name": "String",          // 冗余型号名 (兼容性)
+  "product_sku": "String",         // 冗余 SKU 编码 (兼容性)
+  "grade": "Enum",                 // 品质等级: A (全新), B (官翻), C (维修级)
+  "warehouse": "String",           // 物理位置/仓库
+  "entry_channel": "Enum",         // 入库渠道 (FACTORY, RETURN, TRADE_IN)
+  
+  // 保修依据 (Warranty Basis)
+  "is_iot_device": "Boolean",      // 是否支持联网
+  "is_activated": "Boolean",       // 是否已联网激活
+  "activation_date": "Date",       // 联网激活日期 (优先级 1)
+  "sales_invoice_date": "Date",    // 发票日期 (优先级 2)
+  "registration_date": "Date",     // 客户注册日期 (优先级 3)
+  "ship_to_dealer_date": "Date",   // 发货至经销商日期 (优先级 5 兜底)
+  
+  // 保修计算结果 (Computed Result)
+  "warranty_start_date": "Date",   // 最终保修起始日
+  "warranty_end_date": "Date",     // 最终保修结束日
+  "warranty_months": "Integer",    // 保修期 (默认 24)
+  "warranty_status": "ACTIVE",     // ACTIVE / EXPIRED
+  "warranty_source": "Enum"        // 记录计算依据来源
+}
+```
 
 ## 7.2 配件管理整合方案
 

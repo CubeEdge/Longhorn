@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
-import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Save, Trash2, Info, Power, PowerOff } from 'lucide-react';
+import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Trash2, Info, Power, PowerOff } from 'lucide-react';
+import ProductModal from './Workspace/ProductModal';
 
 // macOS 26 Modal Style - Device Ledger uses centered modal instead of drawer
 
@@ -61,18 +62,7 @@ interface Product {
     sku_id?: number | null;
 }
 
-interface ProductModel {
-    id: number;
-    name_zh: string;
-    model_code: string;
-}
-
-interface ProductSku {
-    id: number;
-    model_id: number;
-    sku_code: string;
-    display_name: string;
-}
+// ProductModel and ProductSku interfaces removed as they were unused here
 
 const PRODUCT_FAMILY_MAP = {
     'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
@@ -99,20 +89,16 @@ const ProductManagement: React.FC = () => {
     const statusFilter = (searchParams.get('status') || 'ALL') as ProductStatus;
 
     const [products, setProducts] = useState<Product[]>([]);
-    const [models, setModels] = useState<ProductModel[]>([]);
-    const [skus, setSkus] = useState<ProductSku[]>([]);
     const [loading, setLoading] = useState(false);
-    const [, setTotal] = useState(0);
+    // const [total, setTotal] = useState(0); // Removed as it was unused
     const [error, setError] = useState<string | null>(null);
 
     // Modal State (macOS 26 style)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [saving, setSaving] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'basic' | 'business'>('basic');
 
     // More dropdown state (for header filter)
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
@@ -125,27 +111,6 @@ const ProductManagement: React.FC = () => {
     // Search expand state
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
-
-    // Form State
-    const [formData, setFormData] = useState<Partial<Product>>({
-        model_name: '',
-        serial_number: '',
-        product_sku: '',
-        firmware_version: '',
-        production_date: '',
-        description: '',
-        status: 'ACTIVE',
-        sales_channel: 'DIRECT',
-        sold_to_dealer_id: undefined,
-        ship_to_dealer_date: '',
-        current_owner_id: undefined,
-        registration_date: '',
-        sales_invoice_date: '',
-        sales_invoice_proof: '',
-        warranty_start_date: '',
-        warranty_months: 24,
-        sku_id: undefined
-    });
 
     const updateParams = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
@@ -192,7 +157,7 @@ const ProductManagement: React.FC = () => {
             });
             if (res.data.success) {
                 setProducts(res.data.data);
-                setTotal(res.data.meta.total);
+                // setTotal(res.data.meta.total); // Removed as it was unused
             }
         } catch (err: any) {
             console.error('Failed to fetch products', err);
@@ -202,23 +167,9 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    const fetchOptions = async () => {
-        try {
-            const [modelsRes, skusRes] = await Promise.all([
-                axios.get('/api/v1/admin/product-models', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } })
-            ]);
-            if (modelsRes.data.success) setModels(modelsRes.data.data);
-            if (skusRes.data.success) setSkus(skusRes.data.data);
-        } catch (err) {
-            console.error('Failed to fetch product options', err);
-        }
-    };
-
     useEffect(() => {
         if (token) {
             fetchProducts();
-            fetchOptions();
         }
     }, [token, productFamily, page, searchQuery, sortBy, sortOrder, statusFilter]);
 
@@ -236,49 +187,13 @@ const ProductManagement: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // URL based logic removed as requested
+
     const handleOpenDrawer = (product?: Product) => {
         if (product) {
             setEditingProduct(product);
-            setFormData({
-                model_name: product.model_name,
-                serial_number: product.serial_number,
-                product_sku: product.product_sku,
-                firmware_version: product.firmware_version,
-                production_date: product.production_date,
-                description: product.description,
-                status: product.status || 'ACTIVE',
-                sales_channel: product.sales_channel,
-                sold_to_dealer_id: product.sold_to_dealer_id,
-                ship_to_dealer_date: product.ship_to_dealer_date,
-                current_owner_id: product.current_owner_id,
-                registration_date: product.registration_date,
-                sales_invoice_date: product.sales_invoice_date,
-                sales_invoice_proof: product.sales_invoice_proof,
-                warranty_start_date: product.warranty_start_date,
-                warranty_months: product.warranty_months,
-                sku_id: product.sku_id
-            });
         } else {
             setEditingProduct(null);
-            setFormData({
-                model_name: '',
-                serial_number: '',
-                product_sku: '',
-                firmware_version: '',
-                production_date: '',
-                description: '',
-                status: 'ACTIVE',
-                sales_channel: 'DIRECT',
-                sold_to_dealer_id: undefined,
-                ship_to_dealer_date: '',
-                current_owner_id: undefined,
-                registration_date: '',
-                sales_invoice_date: '',
-                sales_invoice_proof: '',
-                warranty_start_date: '',
-                warranty_months: 24,
-                sku_id: undefined
-            });
         }
         setIsModalOpen(true);
     };
@@ -286,29 +201,6 @@ const ProductManagement: React.FC = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingProduct(null);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSaving(true);
-        try {
-            if (editingProduct) {
-                await axios.put(`/api/v1/admin/products/${editingProduct.id}`, formData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-            } else {
-                await axios.post(`/api/v1/admin/products`, formData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-            }
-            handleCloseModal();
-            fetchProducts();
-        } catch (err: any) {
-            console.error('Failed to save product', err);
-            alert(err.response?.data?.error?.message || 'Failed to save product');
-        } finally {
-            setSaving(false);
-        }
     };
 
     const handleDeleteClick = (product: Product) => {
@@ -374,7 +266,7 @@ const ProductManagement: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                     <h2 style={{ fontSize: '1.8rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Package size={28} color="#FFD700" />
+                        <Package size={28} color="#FFD200" />
                         设备台账
                     </h2>
                     <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{t('admin.manage_products_desc') || '管理已售设备序列号及保修信息'}</p>
@@ -530,9 +422,9 @@ const ProductManagement: React.FC = () => {
                                             gap: 8,
                                             width: '100%',
                                             padding: '10px 12px',
-                                            background: statusFilter === 'IN_REPAIR' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                            background: statusFilter === 'IN_REPAIR' ? 'rgba(255, 210, 0, 0.1)' : 'transparent',
                                             border: 'none',
-                                            color: statusFilter === 'IN_REPAIR' ? '#F59E0B' : 'var(--text-main)',
+                                            color: statusFilter === 'IN_REPAIR' ? '#FFD200' : 'var(--text-main)',
                                             fontSize: '0.9rem',
                                             cursor: 'pointer',
                                             textAlign: 'left'
@@ -592,9 +484,9 @@ const ProductManagement: React.FC = () => {
                     border: '1px solid rgba(255, 215, 0, 0.2)',
                     borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)'
                 }}>
-                    <Info size={16} color="#FFD700" />
+                    <Info size={16} color="#FFD200" />
                     <span>
-                        设备台账权限：<strong style={{ color: '#FFD700' }}>仅 MS Lead、Exec 或 Admin 可添加/编辑设备</strong>
+                        设备台账权限：<strong style={{ color: '#FFD200' }}>仅 MS Lead、Exec 或 Admin 可添加/编辑设备</strong>
                     </span>
                 </div>
             )}
@@ -833,7 +725,7 @@ const ProductManagement: React.FC = () => {
                                                                     padding: '10px 12px',
                                                                     background: 'transparent',
                                                                     border: 'none',
-                                                                    color: '#F59E0B',
+                                                                    color: '#FFD200',
                                                                     fontSize: '0.9rem',
                                                                     cursor: 'pointer',
                                                                     textAlign: 'left'
@@ -947,380 +839,13 @@ const ProductManagement: React.FC = () => {
                 </button>
             </div>
 
-            {/* Add/Edit Modal - macOS 26 Style */}
-            {isModalOpen && (
-                <>
-                    <div
-                        onClick={handleCloseModal}
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'rgba(0,0,0,0.8)',
-                            backdropFilter: 'blur(10px)',
-                            zIndex: 1000
-                        }}
-                    />
-                    <div style={{
-                        position: 'fixed',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: 560,
-                        maxHeight: '85vh',
-                        background: '#1c1c1e',
-                        borderRadius: 16,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        zIndex: 1001,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
-                        overflow: 'hidden'
-                    }}>
-                        {/* Modal Header */}
-                        <div style={{
-                            padding: '20px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'rgba(0,0,0,0.2)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: 10,
-                                    background: editingProduct ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    {editingProduct ? <Edit2 size={20} color="#3B82F6" /> : <Plus size={20} color="#10B981" />}
-                                </div>
-                                <div>
-                                    <div style={{ fontWeight: 600, fontSize: 17, color: '#fff', letterSpacing: '-0.01em' }}>
-                                        {editingProduct ? '编辑产品' : '添加产品'}
-                                    </div>
-                                    <div style={{ fontSize: 12, color: '#888', marginTop: 2, letterSpacing: '-0.01em' }}>
-                                        {editingProduct ? '修改设备台账信息' : '录入新设备到台账'}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleCloseModal}
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 8,
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#888',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Tab Navigation */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', padding: '0 24px' }}>
-                            <button
-                                onClick={() => setActiveTab('basic')}
-                                style={{
-                                    padding: '12px 20px',
-                                    background: 'none',
-                                    border: 'none',
-                                    borderBottom: `2px solid ${activeTab === 'basic' ? '#3B82F6' : 'transparent'}`,
-                                    color: activeTab === 'basic' ? '#3B82F6' : 'var(--text-secondary)',
-                                    fontWeight: 600,
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                基本信息
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('business')}
-                                style={{
-                                    padding: '12px 20px',
-                                    background: 'none',
-                                    border: 'none',
-                                    borderBottom: `2px solid ${activeTab === 'business' ? '#3B82F6' : 'transparent'}`,
-                                    color: activeTab === 'business' ? '#3B82F6' : 'var(--text-secondary)',
-                                    fontWeight: 600,
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                业务信息
-                            </button>
-                        </div>
-
-                        {/* Modal Body */}
-                        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            {activeTab === 'basic' ? (
-                                <>
-                                    {/* Section: Physical Identity */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
-                                        物理身份
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            型号名称 <span style={{ color: '#EF4444' }}>*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.model_name || ''}
-                                            onChange={(e) => {
-                                                const modelName = e.target.value;
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    model_name: modelName,
-                                                    product_sku: '', // Reset SKU when model changes
-                                                    sku_id: undefined
-                                                }));
-                                            }}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        >
-                                            <option value="" disabled>请选择型号</option>
-                                            {models.map(m => (
-                                                <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            产品SKU
-                                        </label>
-                                        <select
-                                            value={formData.sku_id || ''}
-                                            onChange={(e) => {
-                                                const skuId = e.target.value;
-                                                const selectedSku = skus.find(s => s.id.toString() === skuId);
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    sku_id: selectedSku ? selectedSku.id : undefined,
-                                                    product_sku: selectedSku ? selectedSku.sku_code : ''
-                                                }));
-                                            }}
-                                            disabled={!formData.model_name}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', opacity: !formData.model_name ? 0.5 : 1 }}
-                                        >
-                                            <option value="">{formData.model_name ? '请选择 SKU' : '请先选择型号'}</option>
-                                            {skus.filter(s => {
-                                                const model = models.find(m => m.name_zh === formData.model_name);
-                                                return model && s.model_id === model.id;
-                                            }).map(s => (
-                                                <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            序列号
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.serial_number || ''}
-                                            onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                            placeholder="例如: ME_107649"
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            生产日期
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.production_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            固件版本
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.firmware_version || ''}
-                                            onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                            placeholder="例如: 8.0.123"
-                                        />
-                                    </div>
-
-                                    {/* Section: Description */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                        其他
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            描述
-                                        </label>
-                                        <textarea
-                                            value={formData.description || ''}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            rows={3}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'none' }}
-                                            placeholder="设备描述..."
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Section: Status */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12 }}>
-                                        业务状态
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            设备状态 <span style={{ color: '#EF4444' }}>*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        >
-                                            <option value="ACTIVE">在役</option>
-                                            <option value="IN_REPAIR">维修中</option>
-                                            <option value="STOLEN">失窃</option>
-                                            <option value="SCRAPPED">报废</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Section: Sales Trace */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                        销售溯源
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            销售渠道
-                                        </label>
-                                        <select
-                                            value={formData.sales_channel}
-                                            onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        >
-                                            <option value="DIRECT">直销</option>
-                                            <option value="DEALER">经销商</option>
-                                        </select>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            发货日期
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.ship_to_dealer_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, ship_to_dealer_date: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-
-                                    {/* Section: Ownership */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                        终端归属
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            注册日期
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.registration_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, registration_date: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            发票日期
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.sales_invoice_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, sales_invoice_date: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-
-                                    {/* Section: Warranty */}
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: -12, marginTop: 8 }}>
-                                        保修信息
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            保修起始日期
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.warranty_start_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, warranty_start_date: e.target.value })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                            保修时长（月）
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={120}
-                                            value={formData.warranty_months || 24}
-                                            onChange={(e) => setFormData({ ...formData, warranty_months: parseInt(e.target.value) })}
-                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(0,0,0,0.2)' }}>
-                            {editingProduct && (
-                                <button
-                                    onClick={() => handleDeleteClick(editingProduct)}
-                                    style={{
-                                        width: '100%', padding: '10px', borderRadius: 10, fontWeight: 600,
-                                        background: 'rgba(239,68,68,0.08)', color: '#EF4444',
-                                        border: '1px solid rgba(239,68,68,0.3)',
-                                        cursor: 'pointer', fontSize: '0.88rem',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
-                                    }}
-                                >
-                                    <Trash2 size={15} /> 删除产品
-                                </button>
-                            )}
-                            <button
-                                onClick={handleSubmit}
-                                disabled={saving}
-                                style={{
-                                    width: '100%', padding: '10px', borderRadius: 10, fontWeight: 600,
-                                    background: 'var(--accent-blue)', color: '#000',
-                                    border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: '0.88rem',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                    opacity: saving ? 0.7 : 1
-                                }}
-                            >
-                                {editingProduct
-                                    ? <><Save size={15} /> {saving ? '保存中...' : '保存更改'}</>
-                                    : <><Plus size={15} /> {saving ? '创建中...' : '创建产品'}</>
-                                }
-                            </button>
-                        </div>
-                    </div>
-                </>
-            )}
+            {/* Product Modal */}
+            <ProductModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                onSuccess={() => fetchProducts()}
+                editingProduct={editingProduct}
+            />
 
             {/* Delete Confirmation Modal - macOS 26 Style */}
             {isDeleteModalOpen && deleteConfirm && (
